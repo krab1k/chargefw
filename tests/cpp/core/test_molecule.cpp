@@ -23,6 +23,25 @@ auto main() -> int
     assert(water.bond_count() == 2);
     assert(water.conformer_count() == 1);
     assert(water.has_coordinates());
+    assert(water.atoms().size() == 3);
+    assert(water.bonds().size() == 2);
+    assert(water.conformers().size() == 1);
+    assert(water.atom(0).atomic_number() == 8);
+    assert(water.bond(0).order() == core::BondOrder::SINGLE);
+    assert(water.conformer(0).size() == 3);
+
+    const auto charged_pair = chargefw::test::make_formally_charged_pair();
+    assert(!charged_pair.has_coordinates());
+
+    bool rejected_bad_atom_access = false;
+
+    try {
+        [[maybe_unused]] const auto& invalid = water.atom(3);
+    } catch (const std::out_of_range&) {
+        rejected_bad_atom_access = true;
+    }
+
+    assert(rejected_bad_atom_access);
 
     bool rejected_invalid_bond_index = false;
 

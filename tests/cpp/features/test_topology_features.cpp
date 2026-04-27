@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cassert>
 #include <span>
+#include <stdexcept>
 #include <vector>
 
 namespace features = chargefw::features;
@@ -23,6 +24,8 @@ auto main() -> int
     const auto water = chargefw::test::make_water();
     const features::TopologyFeatures topology{water};
 
+    assert(&topology.molecule() == &water);
+
     assert(topology.degree(0) == 2);
     assert(topology.degree(1) == 1);
     assert(topology.degree(2) == 1);
@@ -37,9 +40,11 @@ auto main() -> int
 
     const auto oh1_bond_index = topology.bond_index_between(0, 1);
     const auto oh2_bond_index = topology.bond_index_between(0, 2);
+    const auto no_self_bond = topology.bond_index_between(0, 0);
 
     assert(oh1_bond_index.has_value());
     assert(oh2_bond_index.has_value());
+    assert(!no_self_bond.has_value());
 
     assert(topology.are_bonded(0, 1));
     assert(topology.are_bonded(1, 0));
@@ -47,6 +52,16 @@ auto main() -> int
 
     const auto oxygen_bonds = to_vector(topology.incident_bond_indices(0));
     assert(oxygen_bonds.size() == 2);
+
+    bool rejected_atom_index = false;
+
+    try {
+        [[maybe_unused]] const auto invalid_degree = topology.degree(3);
+    } catch (const std::out_of_range&) {
+        rejected_atom_index = true;
+    }
+
+    assert(rejected_atom_index);
 
     return 0;
 }

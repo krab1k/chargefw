@@ -24,11 +24,15 @@ auto main() -> int
     const auto water = chargefw::test::make_water();
     const features::ConformerFeatures geometry{water, 0};
 
+    assert(&geometry.molecule() == &water);
+    assert(geometry.conformer_index() == 0);
+
     const auto& oxygen = geometry.position(0);
     assert(approximately_equal(oxygen.x, 0.0, 1e-12));
     assert(approximately_equal(oxygen.y, 0.0, 1e-12));
     assert(approximately_equal(oxygen.z, 0.0, 1e-12));
 
+    assert(approximately_equal(geometry.squared_distance(0, 1), 0.9572 * 0.9572, 1e-12));
     assert(approximately_equal(geometry.distance(0, 1), 0.9572, 1e-12));
 
     auto neighbors = geometry.neighbor_indices_within(0, 1.1);
@@ -48,6 +52,16 @@ auto main() -> int
     }
 
     assert(rejected_bad_conformer);
+
+    bool rejected_bad_atom = false;
+
+    try {
+        [[maybe_unused]] const auto& invalid_position = geometry.position(3);
+    } catch (const std::out_of_range&) {
+        rejected_bad_atom = true;
+    }
+
+    assert(rejected_bad_atom);
 
     bool rejected_negative_radius = false;
 

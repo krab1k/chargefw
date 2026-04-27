@@ -6,7 +6,9 @@
 #include <chargefw/methods/method_registry.h>
 
 #include <cassert>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace features = chargefw::features;
 namespace methods = chargefw::methods;
@@ -41,8 +43,25 @@ auto main() -> int
     assert(dummy != nullptr);
     assert(formal != nullptr);
 
+    const auto method_names = registry.names();
+    assert((method_names == std::vector<std::string>{"dummy", "formal"}));
+
     assert(dummy->id() == std::string_view{"dummy"});
     assert(formal->id() == std::string_view{"formal"});
+
+    assert(dummy->metadata().name == std::string_view{"Dummy method"});
+    assert(dummy->metadata().full_name == std::string_view{"Dummy zero charges"});
+    assert(!dummy->metadata().publication.has_value());
+    assert(dummy->metadata().priority == 10);
+    assert(!dummy->requirements().formal_charges);
+    assert(dummy->option_schema().empty());
+
+    assert(formal->metadata().name == std::string_view{"Formal"});
+    assert(formal->metadata().full_name == std::string_view{"Formal atomic charges"});
+    assert(!formal->metadata().publication.has_value());
+    assert(formal->metadata().priority == 10);
+    assert(formal->requirements().formal_charges);
+    assert(formal->option_schema().empty());
 
     const auto water = chargefw::test::make_water();
 
