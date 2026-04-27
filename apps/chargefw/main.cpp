@@ -1,28 +1,33 @@
+#include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/position.h>
-#include <chargefw/core/molecule_collection.h>
-#include <chargefw/features/topology_features.h>
 #include <chargefw/features/conformer_features.h>
-#include <chargefw/charges/charge_collection.h>
-
+#include <chargefw/features/topology_features.h>
+#include <chargefw/methods/calculation_input.h>
+#include <chargefw/methods/method_registry.h>
+#include <chargefw/methods/method_options.h>
 
 #include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string_view>
 #include <utility>
-#include <print>
 #include <vector>
 
+namespace chg = chargefw::charges;
 namespace core = chargefw::core;
 namespace features = chargefw::features;
+namespace methods = chargefw::methods;
 
 auto make_water() -> core::Molecule
 {
     std::vector<core::Atom> atoms{
         core::Atom{8, 0, "O"},
-        core::Atom{1, 0 ,"H1"},
-        core::Atom{1, 0,"H2"}
+        core::Atom{1, 0, "H1"},
+        core::Atom{1, 0, "H2"}
     };
 
     std::vector<core::Bond> bonds{
@@ -48,118 +53,76 @@ auto make_water() -> core::Molecule
     };
 }
 
-auto make_example_charges() -> chargefw::charges::ChargeCollection
+auto calculate_charges(const methods::Method& method, const core::Molecule& molecule)
+    -> chg::AtomicCharges
 {
-    namespace chg = chargefw::charges;
+    const features::TopologyFeatures topology{molecule};
+    const features::ConformerFeatures geometry{molecule, 0};
 
-    std::vector<chg::ChargeAssignment> peoe_assignments{
-        chg::ChargeAssignment{
-            .target = chg::ChargeTarget{
-                .molecule_index = 0,
-                .conformer_index = std::nullopt
-            },
-            .charges = chg::AtomicCharges{std::vector<double>{0.1, -0.2, 0.1}}
-        }
+    const methods::MethodOptions method_options{
+        methods::make_default_options(method.option_schema())
     };
 
-    std::vector<chg::ChargeAssignment> eem_assignments{
-        chg::ChargeAssignment{
-            .target = chg::ChargeTarget{
-                .molecule_index = 0,
-                .conformer_index = 0
-            },
-            .charges = chg::AtomicCharges{std::vector<double>{0.2, -0.3, 0.1}}
-        }
+    const methods::CalculationInput input{
+        .molecule = molecule,
+        .topology = topology,
+        .geometry = &geometry,
+        .method_options = method_options
     };
 
-    return chg::ChargeCollection{
-        std::vector<chg::ChargeSet>{
-            chg::ChargeSet{
-                "peoe",
-                std::move(peoe_assignments)
-            },
-            chg::ChargeSet{
-                "eem",
-                std::move(eem_assignments),
-                "parameters1"
-            }
-        }
-    };
+    return method.calculate(input);
 }
 
-auto main() -> int
+auto print_charges(std::string_view label,
+                   const core::Molecule& molecule,
+                   const chg::AtomicCharges& charges) -> void
 {
-
-    auto collection = chargefw::core::MoleculeCollection{
-        std::vector<chargefw::core::Molecule>{
-            make_water(),
-            make_water()
-        },
-        "example batch"
-    };
-
-
-    auto charges = make_example_charges();
-    std::println("Charge set count: {}", charges.charge_set_count());
-    std::println("{}", charges[0].assignment(0).charges.values());
-
-
-    const auto molecule = collection[0];
-    const features::TopologyFeatures topology{molecule};
-
-    const features::ConformerFeatures geometry{molecule, 0};
-    const auto oh_distance = geometry.distance(0, 1);
-    const auto neighbors = geometry.neighbor_indices_within(0, 1.1);
-
-    std::cout << oh_distance << std::endl;
-    for (const auto &neighbor_index : topology.neighbor_indices(1)) {
-        std::cout << neighbor_index << ' ';
-    }
-    std::cout << '\n';
-
-    std::cout << "Molecule: " << molecule.name() << '\n';
-    std::cout << "Atoms: " << molecule.atom_count() << '\n';
-    std::cout << "Bonds: " << molecule.bond_count() << '\n';
-    std::cout << '\n';
+    std::cout << label << '\n';
 
     for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
         const auto& atom = molecule.atom(atom_index);
 
         std::cout
-            << "Atom " << atom_index
-            << " name=" << atom.name()
+            << "  atom " << atom_index
+            << " " << atom.name()
             << " Z=" << atom.atomic_number()
-            << " degree=" << topology.degree(atom_index)
-            << " neighbors=";
-
-        for (const auto neighbor_index : topology.neighbor_indices(atom_index)) {
-            std::cout << neighbor_index << ' ';
-        }
-
-        std::cout << '\n';
-    }
-
-    std::cout << '\n';
-
-    const auto oh_bond_index = topology.bond_index_between(0, 1);
-
-    if (oh_bond_index.has_value()) {
-        const auto& bond = molecule.bond(*oh_bond_index);
-
-        std::cout
-            << "Atoms 0 and 1 are bonded. Bond index: "
-            << *oh_bond_index
-            << ", order: "
-            << static_cast<int>(bond.order())
+            << " q=" << charges[atom_index]
             << '\n';
     }
 
-    std::cout
-        << "Atoms 1 and 2 bonded? "
-        << (topology.are_bonded(1, 2) ? "yes" : "no")
-        << '\n';
+    std::cout << "  total = " << charges.total() << "\n\n";
+}
 
+auto require_method(const methods::MethodRegistry& registry, std::string_view id)
+    -> const methods::Method&
+{
+    const auto* method = registry.find(id);
 
+    if (method == nullptr) {
+        throw std::runtime_error{"method not found: " + std::string{id}};
+    }
+
+    return *method;
+}
+
+auto main() -> int
+{
+    const auto molecule = make_water();
+
+    const auto& registry = methods::method_registry();
+
+    const auto& dummy = require_method(registry, "dummy");
+    const auto& formal = require_method(registry, "formal");
+
+    const auto dummy_charges = calculate_charges(dummy, molecule);
+    const auto formal_charges = calculate_charges(formal, molecule);
+
+    std::cout << "Molecule: " << molecule.name() << '\n';
+    std::cout << "Atoms: " << molecule.atom_count() << '\n';
+    std::cout << "Bonds: " << molecule.bond_count() << "\n\n";
+
+    print_charges("Dummy charges:", molecule, dummy_charges);
+    print_charges("Formal charges:", molecule, formal_charges);
 
     return 0;
 }

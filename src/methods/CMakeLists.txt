@@ -1,6 +1,9 @@
 target_sources(chargefw_core
         PRIVATE
         method_options.cpp
+        method_registry.cpp
+        builtin_methods.h
+        builtin_methods.cpp
 
         PUBLIC
         FILE_SET HEADERS
@@ -12,6 +15,7 @@ target_sources(chargefw_core
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_metadata.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_options.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_registry.h
 )
 
 add_subdirectory(builtin)

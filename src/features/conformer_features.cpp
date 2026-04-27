@@ -41,14 +41,14 @@ auto ConformerFeatures::position(const std::size_t atom_index) const -> const co
 auto ConformerFeatures::squared_distance(const std::size_t first_atom_index,
                                          const std::size_t second_atom_index) const -> double
 {
-    const auto& first = position(first_atom_index);
-    const auto& second = position(second_atom_index);
+    const auto& [x1, y1, z1] = position(first_atom_index);
+    const auto& [x2, y2, z2] = position(second_atom_index);
 
-    const auto dx = first.x - second.x;
-    const auto dy = first.y - second.y;
-    const auto dz = first.z - second.z;
+    const auto dx = x1 - x2;
+    const auto dy = y1 - y2;
+    const auto dz = z1 - z2;
 
-    return (dx * dx) + (dy * dy) + (dz * dz);
+    return dx * dx + dy * dy + dz * dz;
 }
 
 auto ConformerFeatures::distance(const std::size_t first_atom_index,
