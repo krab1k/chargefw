@@ -1,0 +1,7 @@
+target_sources(chargefw_core
+        PRIVATE
+        dummy.h
+        dummy.cpp
+        formal.h
+        formal.cpp
+)
