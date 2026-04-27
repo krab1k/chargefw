@@ -1,3 +1,4 @@
+#include <chargefw/core/periodic_table.h>
 #include <chargefw/parameters/parameter_classifier.h>
 
 #include <algorithm>
@@ -8,8 +9,7 @@
 namespace chargefw::parameters {
 namespace {
 
-auto bond_order_type(const core::BondOrder order) -> std::string
-{
+auto bond_order_type(const core::BondOrder order) -> std::string {
     switch (order) {
     case core::BondOrder::UNKNOWN:
         return "unknown";
@@ -30,8 +30,7 @@ auto bond_order_type(const core::BondOrder order) -> std::string
     return "unknown";
 }
 
-auto bond_order_rank(const core::BondOrder order) -> int
-{
+auto bond_order_rank(const core::BondOrder order) -> int {
     switch (order) {
     case core::BondOrder::UNKNOWN:
         return 0;
@@ -54,8 +53,7 @@ auto bond_order_rank(const core::BondOrder order) -> int
 
 auto highest_bond_order_type(const core::Molecule& molecule,
                              const features::TopologyFeatures& topology,
-                             const std::size_t atom_index) -> std::string
-{
+                             const std::size_t atom_index) -> std::string {
     auto highest = 0;
 
     for (const auto bond_index : topology.incident_bond_indices(atom_index)) {
@@ -65,11 +63,30 @@ auto highest_bond_order_type(const core::Molecule& molecule,
     return std::to_string(highest);
 }
 
-auto atom_type_for(const core::Molecule& molecule,
-                   const features::TopologyFeatures& topology,
+auto bonded_elements_type(const core::Molecule& molecule,
+                          const features::TopologyFeatures& topology, const std::size_t atom_index)
+    -> std::string {
+    std::vector<std::string_view> symbols;
+    symbols.reserve(topology.degree(atom_index));
+
+    for (const auto neighbor_index : topology.neighbor_indices(atom_index)) {
+        symbols.push_back(core::element_symbol(molecule.atom(neighbor_index).atomic_number()));
+    }
+
+    std::ranges::sort(symbols);
+
+    std::string type;
+
+    for (const auto symbol : symbols) {
+        type += symbol;
+    }
+
+    return type;
+}
+
+auto atom_type_for(const core::Molecule& molecule, const features::TopologyFeatures& topology,
                    const std::size_t atom_index,
-                   const AtomParameterClassificationKind classification) -> std::string
-{
+                   const AtomParameterClassificationKind classification) -> std::string {
     switch (classification) {
     case AtomParameterClassificationKind::PLAIN:
         return "*";
@@ -78,18 +95,14 @@ auto atom_type_for(const core::Molecule& molecule,
         return highest_bond_order_type(molecule, topology, atom_index);
 
     case AtomParameterClassificationKind::BONDED_ELEMENTS:
-        throw std::logic_error{
-            "bonded-elements atom parameter classification is not implemented yet"
-        };
+        return bonded_elements_type(molecule, topology, atom_index);
     }
 
     throw std::logic_error{"unknown atom parameter classification"};
 }
 
-auto bond_type_for(const core::Molecule& molecule,
-                   const std::size_t bond_index,
-                   const BondParameterClassificationKind classification) -> std::string
-{
+auto bond_type_for(const core::Molecule& molecule, const std::size_t bond_index,
+                   const BondParameterClassificationKind classification) -> std::string {
     switch (classification) {
     case BondParameterClassificationKind::PLAIN:
         return "*";
@@ -101,11 +114,8 @@ auto bond_type_for(const core::Molecule& molecule,
     throw std::logic_error{"unknown bond parameter classification"};
 }
 
-auto matches_atom_key(const core::Molecule& molecule,
-                      const features::TopologyFeatures& topology,
-                      const std::size_t atom_index,
-                      const AtomParameterKey& key) -> bool
-{
+auto matches_atom_key(const core::Molecule& molecule, const features::TopologyFeatures& topology,
+                      const std::size_t atom_index, const AtomParameterKey& key) -> bool {
     const auto& atom = molecule.atom(atom_index);
 
     if (key.atomic_number != 0 && key.atomic_number != atom.atomic_number()) {
@@ -117,9 +127,8 @@ auto matches_atom_key(const core::Molecule& molecule,
 
 auto find_atom_parameter_entry(const core::Molecule& molecule,
                                const features::TopologyFeatures& topology,
-                               const std::size_t atom_index,
-                               const AtomParameters& parameters) -> std::size_t
-{
+                               const std::size_t atom_index, const AtomParameters& parameters)
+    -> std::size_t {
     for (std::size_t entry_index = 0; entry_index < parameters.size(); ++entry_index) {
         const auto& [key, named_parameters] = parameters[entry_index];
 
@@ -128,15 +137,12 @@ auto find_atom_parameter_entry(const core::Molecule& molecule,
         }
     }
 
-    throw std::invalid_argument{
-        "no atom parameter entry for atom index " + std::to_string(atom_index)
-    };
+    throw std::invalid_argument{"no atom parameter entry for atom index " +
+                                std::to_string(atom_index)};
 }
 
-auto classify_atoms(const core::Molecule& molecule,
-                    const features::TopologyFeatures& topology,
-                    const AtomParameters& parameters) -> AtomParameterClassification
-{
+auto classify_atoms(const core::Molecule& molecule, const features::TopologyFeatures& topology,
+                    const AtomParameters& parameters) -> AtomParameterClassification {
     if (parameters.empty() && molecule.atom_count() != 0) {
         throw std::invalid_argument{"atom parameters are required but empty"};
     }
@@ -151,23 +157,18 @@ auto classify_atoms(const core::Molecule& molecule,
     return AtomParameterClassification{std::move(indices)};
 }
 
-auto matches_bond_key(const core::Molecule& molecule,
-                      const features::TopologyFeatures& topology,
-                      const std::size_t bond_index,
-                      const BondParameterKey& key) -> bool
-{
+auto matches_bond_key(const core::Molecule& molecule, const features::TopologyFeatures& topology,
+                      const std::size_t bond_index, const BondParameterKey& key) -> bool {
     const auto& bond = molecule.bond(bond_index);
 
     const auto first_atom_index = bond.first_atom_index();
     const auto second_atom_index = bond.second_atom_index();
 
-    const auto forward =
-        matches_atom_key(molecule, topology, first_atom_index, key.first_atom) &&
-        matches_atom_key(molecule, topology, second_atom_index, key.second_atom);
+    const auto forward = matches_atom_key(molecule, topology, first_atom_index, key.first_atom) &&
+                         matches_atom_key(molecule, topology, second_atom_index, key.second_atom);
 
-    const auto reverse =
-        matches_atom_key(molecule, topology, first_atom_index, key.second_atom) &&
-        matches_atom_key(molecule, topology, second_atom_index, key.first_atom);
+    const auto reverse = matches_atom_key(molecule, topology, first_atom_index, key.second_atom) &&
+                         matches_atom_key(molecule, topology, second_atom_index, key.first_atom);
 
     if (!forward && !reverse) {
         return false;
@@ -178,9 +179,8 @@ auto matches_bond_key(const core::Molecule& molecule,
 
 auto find_bond_parameter_entry(const core::Molecule& molecule,
                                const features::TopologyFeatures& topology,
-                               const std::size_t bond_index,
-                               const BondParameters& parameters) -> std::size_t
-{
+                               const std::size_t bond_index, const BondParameters& parameters)
+    -> std::size_t {
     for (std::size_t entry_index = 0; entry_index < parameters.size(); ++entry_index) {
         const auto& [key, named_parameters] = parameters[entry_index];
 
@@ -189,15 +189,12 @@ auto find_bond_parameter_entry(const core::Molecule& molecule,
         }
     }
 
-    throw std::invalid_argument{
-        "no bond parameter entry for bond index " + std::to_string(bond_index)
-    };
+    throw std::invalid_argument{"no bond parameter entry for bond index " +
+                                std::to_string(bond_index)};
 }
 
-auto classify_bonds(const core::Molecule& molecule,
-                    const features::TopologyFeatures& topology,
-                    const BondParameters& parameters) -> BondParameterClassification
-{
+auto classify_bonds(const core::Molecule& molecule, const features::TopologyFeatures& topology,
+                    const BondParameters& parameters) -> BondParameterClassification {
     if (parameters.empty()) {
         return BondParameterClassification{};
     }
@@ -214,17 +211,13 @@ auto classify_bonds(const core::Molecule& molecule,
 
 } // namespace
 
-auto classify_parameters(const core::Molecule& molecule,
-                         const features::TopologyFeatures& topology,
-                         const ParameterSet& parameters) -> ParameterClassification
-{
+auto classify_parameters(const core::Molecule& molecule, const features::TopologyFeatures& topology,
+                         const ParameterSet& parameters) -> ParameterClassification {
     auto atom_classification = classify_atoms(molecule, topology, parameters.atom());
     auto bond_classification = classify_bonds(molecule, topology, parameters.bond());
 
-    auto classification = ParameterClassification{
-        std::move(atom_classification),
-        std::move(bond_classification)
-    };
+    auto classification =
+        ParameterClassification{std::move(atom_classification), std::move(bond_classification)};
 
     validate_parameter_classification(molecule, parameters, classification);
 
