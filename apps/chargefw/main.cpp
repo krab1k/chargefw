@@ -10,6 +10,8 @@
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/parameters/parameter_set.h>
+#include <chargefw/parameters/parameter_classification.h>
+#include <chargefw/parameters/parameter_view.h>
 
 #include <iostream>
 #include <memory>
@@ -160,14 +162,33 @@ auto main() -> int
                     }
                 }
             }
+        },
+        params::BondParameters{}
+    };
+
+    const auto classification = params::ParameterClassification{
+        params::AtomParameterClassification{
+            std::vector<std::size_t>{1, 0, 0}
         }
     };
 
-    const auto kappa = parameter_set.common().parameter("kappa");
-    const auto oxygen_a = parameter_set.atom().parameter(1, "A");
+    const params::ParameterView parameters{
+        parameter_set,
+        classification
+    };
 
-    std::cout << "kappa = " << kappa << '\n';
-    std::cout << "Oxygen A = " << oxygen_a << '\n';
+    const auto kappa = parameters.common("kappa");
+
+    const auto atom_a = parameters.atom("A");
+    const auto atom_b = parameters.atom("B");
+
+    const auto oxygen_a = atom_a[0];
+    const auto oxygen_b = atom_b[0];
+
+    std::cout << "kappa: " << kappa << '\n';
+    std::cout << "A: " << oxygen_a << '\n';
+    std::cout << "B: " << oxygen_b << '\n';
+
 
     return 0;
 }

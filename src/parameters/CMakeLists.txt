@@ -4,7 +4,9 @@ target_sources(chargefw_core
         bond_parameters.cpp
         common_parameters.cpp
         parameter_set.cpp
+        parameter_view.cpp
         parameter_helpers.cpp
+        parameter_classification.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
