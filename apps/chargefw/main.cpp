@@ -4,7 +4,7 @@
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/position.h>
 #include <chargefw/core/molecule_collection.h>
-#include <chargefw/features/prepared_molecule.h>
+#include <chargefw/features/topology_features.h>
 #include <chargefw/features/conformer_features.h>
 #include <chargefw/charges/charge_collection.h>
 
@@ -101,18 +101,18 @@ auto main() -> int
 
     auto charges = make_example_charges();
     std::println("Charge set count: {}", charges.charge_set_count());
-    std::println("{}", charges.charge_set(0).assignment(0).charges.values());
+    std::println("{}", charges[0].assignment(0).charges.values());
 
 
     const auto molecule = collection[0];
-    const features::PreparedMolecule prepared{molecule};
+    const features::TopologyFeatures topology{molecule};
 
     const features::ConformerFeatures geometry{molecule, 0};
     const auto oh_distance = geometry.distance(0, 1);
     const auto neighbors = geometry.neighbor_indices_within(0, 1.1);
 
     std::cout << oh_distance << std::endl;
-    for (const auto &neighbor_index : prepared.neighbor_indices(1)) {
+    for (const auto &neighbor_index : topology.neighbor_indices(1)) {
         std::cout << neighbor_index << ' ';
     }
     std::cout << '\n';
@@ -129,10 +129,10 @@ auto main() -> int
             << "Atom " << atom_index
             << " name=" << atom.name()
             << " Z=" << atom.atomic_number()
-            << " degree=" << prepared.degree(atom_index)
+            << " degree=" << topology.degree(atom_index)
             << " neighbors=";
 
-        for (const auto neighbor_index : prepared.neighbor_indices(atom_index)) {
+        for (const auto neighbor_index : topology.neighbor_indices(atom_index)) {
             std::cout << neighbor_index << ' ';
         }
 
@@ -141,7 +141,7 @@ auto main() -> int
 
     std::cout << '\n';
 
-    const auto oh_bond_index = prepared.bond_index_between(0, 1);
+    const auto oh_bond_index = topology.bond_index_between(0, 1);
 
     if (oh_bond_index.has_value()) {
         const auto& bond = molecule.bond(*oh_bond_index);
@@ -156,7 +156,7 @@ auto main() -> int
 
     std::cout
         << "Atoms 1 and 2 bonded? "
-        << (prepared.are_bonded(1, 2) ? "yes" : "no")
+        << (topology.are_bonded(1, 2) ? "yes" : "no")
         << '\n';
 
 

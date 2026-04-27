@@ -1,4 +1,4 @@
-#include <chargefw/features/prepared_molecule.h>
+#include <chargefw/features/topology_features.h>
 
 #include <stdexcept>
 
@@ -13,7 +13,7 @@ auto validate_atom_index(const core::Molecule& molecule, const std::size_t atom_
 
 } // namespace
 
-PreparedMolecule::PreparedMolecule(const core::Molecule& molecule)
+TopologyFeatures::TopologyFeatures(const core::Molecule& molecule)
     : molecule_{&molecule}, neighbor_indices_(molecule.atom_count()),
       incident_bond_indices_(molecule.atom_count()) {
     const auto bonds = molecule.bonds();
@@ -32,16 +32,16 @@ PreparedMolecule::PreparedMolecule(const core::Molecule& molecule)
     }
 }
 
-auto PreparedMolecule::molecule() const noexcept -> const core::Molecule& {
+auto TopologyFeatures::molecule() const noexcept -> const core::Molecule& {
     return *molecule_;
 }
 
-auto PreparedMolecule::degree(const std::size_t atom_index) const -> std::size_t {
+auto TopologyFeatures::degree(const std::size_t atom_index) const -> std::size_t {
     validate_atom_index(molecule(), atom_index);
     return neighbor_indices_[atom_index].size();
 }
 
-auto PreparedMolecule::neighbor_indices(const std::size_t atom_index) const
+auto TopologyFeatures::neighbor_indices(const std::size_t atom_index) const
     -> std::span<const std::size_t> {
     validate_atom_index(molecule(), atom_index);
 
@@ -49,7 +49,7 @@ auto PreparedMolecule::neighbor_indices(const std::size_t atom_index) const
     return {neighbors.data(), neighbors.size()};
 }
 
-auto PreparedMolecule::incident_bond_indices(const std::size_t atom_index) const
+auto TopologyFeatures::incident_bond_indices(const std::size_t atom_index) const
     -> std::span<const std::size_t> {
     validate_atom_index(molecule(), atom_index);
 
@@ -57,7 +57,7 @@ auto PreparedMolecule::incident_bond_indices(const std::size_t atom_index) const
     return {bonds.data(), bonds.size()};
 }
 
-auto PreparedMolecule::bond_index_between(const std::size_t first_atom_index,
+auto TopologyFeatures::bond_index_between(const std::size_t first_atom_index,
                                           const std::size_t second_atom_index) const
     -> std::optional<std::size_t> {
     validate_atom_index(molecule(), first_atom_index);
@@ -79,7 +79,7 @@ auto PreparedMolecule::bond_index_between(const std::size_t first_atom_index,
     return std::nullopt;
 }
 
-auto PreparedMolecule::are_bonded(const std::size_t first_atom_index,
+auto TopologyFeatures::are_bonded(const std::size_t first_atom_index,
                                   const std::size_t second_atom_index) const -> bool {
     return bond_index_between(first_atom_index, second_atom_index).has_value();
 }

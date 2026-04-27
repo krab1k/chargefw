@@ -15,7 +15,6 @@ class Conformer {
     explicit Conformer(std::vector<Position> positions, std::string name = {});
 
     [[nodiscard]] auto positions() const noexcept -> std::span<const Position>;
-    [[nodiscard]] auto position(std::size_t atom_index) const -> const Position&;
 
     [[nodiscard]] auto size() const noexcept -> std::size_t;
     [[nodiscard]] auto empty() const noexcept -> bool;

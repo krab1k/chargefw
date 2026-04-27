@@ -33,10 +33,11 @@ target_sources(chargefw_core
         src/core/molecule.cpp
         src/core/conformer.cpp
         src/core/molecule_collection.cpp
-        src/features/prepared_molecule.cpp
+        src/features/topology_features.cpp
         src/features/conformer_features.cpp
         src/charges/atomic_charges.cpp
         src/charges/charge_collection.cpp
+        src/methods/method_options.cpp
   PUBLIC
   FILE_SET HEADERS
   BASE_DIRS include
@@ -47,10 +48,15 @@ target_sources(chargefw_core
         include/chargefw/core/position.h
         include/chargefw/core/conformer.h
         include/chargefw/core/molecule_collection.h
-        include/chargefw/features/prepared_molecule.h
+        include/chargefw/features/topology_features.h
         include/chargefw/features/conformer_features.h
         include/chargefw/charges/atomic_charges.h
         include/chargefw/charges/charge_collection.h
+        include/chargefw/methods/feature_requirements.h
+        include/chargefw/methods/method.h
+        include/chargefw/methods/method_metadata.h
+        include/chargefw/methods/method_options.h
+        include/chargefw/methods/calculation_input.h
 )
 
 target_include_directories(chargefw_core

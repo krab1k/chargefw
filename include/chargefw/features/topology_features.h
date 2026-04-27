@@ -9,9 +9,9 @@
 
 namespace chargefw::features {
 
-class PreparedMolecule {
+class TopologyFeatures {
   public:
-    explicit PreparedMolecule(const core::Molecule& molecule);
+    explicit TopologyFeatures(const core::Molecule& molecule);
 
     [[nodiscard]] auto molecule() const noexcept -> const core::Molecule&;
 

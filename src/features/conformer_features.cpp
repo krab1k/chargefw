@@ -35,7 +35,7 @@ auto ConformerFeatures::conformer_index() const noexcept -> std::size_t
 auto ConformerFeatures::position(const std::size_t atom_index) const -> const core::Position&
 {
     validate_atom_index(atom_index);
-    return molecule_->conformer(conformer_index_).position(atom_index);
+    return molecule_->conformer(conformer_index_)[atom_index];
 }
 
 auto ConformerFeatures::squared_distance(const std::size_t first_atom_index,

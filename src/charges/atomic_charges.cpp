@@ -26,10 +26,6 @@ auto AtomicCharges::values() const noexcept -> std::span<const double> {
     return values_;
 }
 
-auto AtomicCharges::charge(const std::size_t atom_index) const -> double {
-    return values_.at(atom_index);
-}
-
 auto AtomicCharges::size() const noexcept -> std::size_t {
     return values_.size();
 }
