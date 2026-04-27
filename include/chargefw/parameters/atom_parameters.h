@@ -1,0 +1,48 @@
+#pragma once
+
+#include <chargefw/parameters/common_parameters.h>
+
+#include <cstddef>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace chargefw::parameters {
+
+struct AtomParameterKey {
+    std::string element;
+    std::string atom_class;
+    std::string atom_type;
+};
+
+struct AtomParameterEntry {
+    AtomParameterKey key;
+    std::vector<NamedParameter> parameters;
+};
+
+class AtomParameters {
+public:
+    AtomParameters() = default;
+
+    explicit AtomParameters(std::vector<AtomParameterEntry> entries);
+
+    [[nodiscard]] auto entries() const noexcept -> std::span<const AtomParameterEntry>;
+
+    [[nodiscard]] auto size() const noexcept -> std::size_t;
+    [[nodiscard]] auto empty() const noexcept -> bool;
+
+    [[nodiscard]] auto entry(std::size_t index) const -> const AtomParameterEntry&;
+
+    [[nodiscard]] auto operator[](std::size_t index) const noexcept -> const AtomParameterEntry&;
+    [[nodiscard]] auto at(std::size_t index) const -> const AtomParameterEntry&;
+
+    [[nodiscard]] auto contains(std::size_t entry_index, std::string_view name) const -> bool;
+
+    [[nodiscard]] auto parameter(std::size_t entry_index, std::string_view name) const -> double;
+
+private:
+    std::vector<AtomParameterEntry> entries_;
+};
+
+} // namespace chargefw::parameters

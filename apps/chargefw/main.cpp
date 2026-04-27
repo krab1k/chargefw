@@ -9,6 +9,7 @@
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/methods/method_options.h>
+#include <chargefw/parameters/parameter_set.h>
 
 #include <iostream>
 #include <memory>
@@ -21,6 +22,7 @@ namespace chg = chargefw::charges;
 namespace core = chargefw::core;
 namespace features = chargefw::features;
 namespace methods = chargefw::methods;
+namespace params = chargefw::parameters;
 
 auto make_water() -> core::Molecule
 {
@@ -123,6 +125,49 @@ auto main() -> int
 
     print_charges("Dummy charges:", molecule, dummy_charges);
     print_charges("Formal charges:", molecule, formal_charges);
+
+    auto parameter_set = params::ParameterSet{
+        params::ParameterSetMetadata{
+            .id = "example-eem",
+            .method_id = "eem",
+            .name = "Example EEM",
+            .publication = "internal",
+            .notes = "development fixture"
+        },
+        params::CommonParameters{
+            std::vector{
+                params::NamedParameter{.name = "kappa", .value = 1.0}
+            }
+        },
+        params::AtomParameters{
+            std::vector{
+                params::AtomParameterEntry{
+                    .key = params::AtomParameterKey{
+                        .element = "H"
+                    },
+                    .parameters = std::vector{
+                        params::NamedParameter{.name = "A", .value = 7.17},
+                        params::NamedParameter{.name = "B", .value = 13.89}
+                    }
+                },
+                params::AtomParameterEntry{
+                    .key = params::AtomParameterKey{
+                        .element = "O"
+                    },
+                    .parameters = std::vector{
+                        params::NamedParameter{.name = "A", .value = 8.74},
+                        params::NamedParameter{.name = "B", .value = 13.36}
+                    }
+                }
+            }
+        }
+    };
+
+    const auto kappa = parameter_set.common().parameter("kappa");
+    const auto oxygen_a = parameter_set.atom().parameter(1, "A");
+
+    std::cout << "kappa = " << kappa << '\n';
+    std::cout << "Oxygen A = " << oxygen_a << '\n';
 
     return 0;
 }
