@@ -1,20 +1,14 @@
 #pragma once
 
 #include <chargefw/parameters/common_parameters.h>
+#include <chargefw/parameters/parameter_key.h>
 
 #include <cstddef>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 
 namespace chargefw::parameters {
-
-struct AtomParameterKey {
-    std::string element;
-    std::string atom_class;
-    std::string atom_type;
-};
 
 struct AtomParameterEntry {
     AtomParameterKey key;

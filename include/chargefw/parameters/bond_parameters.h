@@ -1,22 +1,14 @@
 #pragma once
 
-#include <chargefw/parameters/atom_parameters.h>
 #include <chargefw/parameters/common_parameters.h>
+#include <chargefw/parameters/parameter_key.h>
 
 #include <cstddef>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 
 namespace chargefw::parameters {
-
-struct BondParameterKey {
-    AtomParameterKey first_atom;
-    AtomParameterKey second_atom;
-    std::string bond_class;
-    std::string bond_type;
-};
 
 struct BondParameterEntry {
     BondParameterKey key;

@@ -7,6 +7,8 @@ target_sources(chargefw_core
         parameter_view.cpp
         parameter_helpers.cpp
         parameter_classification.cpp
+        parameter_classifier.cpp
+        parameter_key.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
