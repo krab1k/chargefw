@@ -7,6 +7,7 @@
 #include <span>
 #include <stdexcept>
 #include <string_view>
+#include <algorithm>
 
 namespace chargefw::core {
 
@@ -38,6 +39,36 @@ auto validate_bond_atom_indices(
         }
     }
 }
+
+auto same_unordered_bond(const Bond& first, const Bond& second) noexcept -> bool
+{
+    return (
+        first.first_atom_index() == second.first_atom_index() &&
+        first.second_atom_index() == second.second_atom_index()
+    ) || (
+        first.first_atom_index() == second.second_atom_index() &&
+        first.second_atom_index() == second.first_atom_index()
+    );
+}
+
+auto validate_no_duplicate_bonds(const std::vector<Bond>& bonds) -> void
+{
+    for (auto first = bonds.begin(); first != bonds.end(); ++first) {
+        const auto duplicate = std::find_if(
+            std::next(first),
+            bonds.end(),
+            [first](const Bond& second) {
+                return same_unordered_bond(*first, second);
+            }
+        );
+
+        if (duplicate != bonds.end()) {
+            throw std::invalid_argument{"molecule contains duplicate bonds"};
+        }
+    }
+}
+
+
 } // namespace
 
 Molecule::Molecule(std::vector<Atom> atoms, std::vector<Bond> bonds,
@@ -46,6 +77,7 @@ Molecule::Molecule(std::vector<Atom> atoms, std::vector<Bond> bonds,
       name_{std::move(name)} {
     validate_conformers(atoms_, conformers_);
     validate_bond_atom_indices(atoms_, bonds_);
+    validate_no_duplicate_bonds(bonds_);
 }
 
 auto Molecule::name() const noexcept -> std::string_view {

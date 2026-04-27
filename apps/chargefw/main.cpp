@@ -24,24 +24,24 @@ namespace methods = chargefw::methods;
 
 auto make_water() -> core::Molecule
 {
-    std::vector<core::Atom> atoms{
+    std::vector atoms{
         core::Atom{8, 0, "O"},
         core::Atom{1, 0, "H1"},
         core::Atom{1, 0, "H2"}
     };
 
-    std::vector<core::Bond> bonds{
+    std::vector bonds{
         core::Bond{0, 1, core::BondOrder::SINGLE},
         core::Bond{0, 2, core::BondOrder::SINGLE}
     };
 
-    std::vector<core::Position> positions{
+    std::vector positions{
         core::Position{0.0000, 0.0000, 0.0000},
         core::Position{0.9572, 0.0000, 0.0000},
         core::Position{-0.2390, 0.9270, 0.0000}
     };
 
-    std::vector<core::Conformer> conformers{
+    std::vector conformers{
         core::Conformer{std::move(positions), "model-1"}
     };
 
