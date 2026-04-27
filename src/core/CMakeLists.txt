@@ -5,6 +5,9 @@ target_sources(chargefw_core
         conformer.cpp
         molecule.cpp
         molecule_collection.cpp
+        periodic_table.cpp
+        elements.h
+        elements.cpp
 
         PUBLIC
         FILE_SET HEADERS
@@ -17,4 +20,5 @@ target_sources(chargefw_core
         ../../include/chargefw/core/molecule.h
         ../../include/chargefw/core/molecule_collection.h
         ../../include/chargefw/core/position.h
+        ../../include/chargefw/core/periodic_table.h
 )
