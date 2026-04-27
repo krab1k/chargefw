@@ -1,0 +1,36 @@
+#pragma once
+
+#include <chargefw/core/molecule.h>
+#include <chargefw/core/position.h>
+
+#include <cstddef>
+#include <vector>
+
+namespace chargefw::features {
+
+class ConformerFeatures {
+  public:
+    explicit ConformerFeatures(const core::Molecule& molecule, std::size_t conformer_index = 0);
+
+    [[nodiscard]] auto molecule() const noexcept -> const core::Molecule&;
+    [[nodiscard]] auto conformer_index() const noexcept -> std::size_t;
+
+    [[nodiscard]] auto position(std::size_t atom_index) const -> const core::Position&;
+
+    [[nodiscard]] auto squared_distance(std::size_t first_atom_index,
+                                        std::size_t second_atom_index) const -> double;
+    [[nodiscard]] auto distance(std::size_t first_atom_index, std::size_t second_atom_index) const
+        -> double;
+
+    [[nodiscard]] auto neighbor_indices_within(std::size_t atom_index, double radius) const
+        -> std::vector<std::size_t>;
+
+  private:
+    auto validate_conformer_index() const -> void;
+    auto validate_atom_index(std::size_t atom_index) const -> void;
+
+    const core::Molecule* molecule_;
+    std::size_t conformer_index_;
+};
+
+} // namespace chargefw::features

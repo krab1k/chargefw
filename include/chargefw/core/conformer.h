@@ -22,6 +22,9 @@ class Conformer {
 
     [[nodiscard]] auto name() const noexcept -> std::string_view;
 
+    [[nodiscard]] auto operator[](std::size_t index) const noexcept -> const Position&;
+    [[nodiscard]] auto at(std::size_t index) const -> const Position&;
+
   private:
     std::vector<Position> positions_;
     std::string name_;

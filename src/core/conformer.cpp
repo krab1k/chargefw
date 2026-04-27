@@ -27,4 +27,12 @@ auto Conformer::name() const noexcept -> std::string_view {
     return name_;
 }
 
+auto Conformer::operator[](std::size_t index) const noexcept -> const Position& {
+        return positions_[index];
+}
+
+auto Conformer::at(std::size_t index) const -> const Position& {
+    return positions_.at(index);
+}
+
 } // namespace chargefw::core
