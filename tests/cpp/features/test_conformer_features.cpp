@@ -6,21 +6,24 @@
 #include <cassert>
 #include <cmath>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
+namespace core = chargefw::core;
 namespace features = chargefw::features;
 
 namespace {
 
-auto approximately_equal(const double first, const double second, const double tolerance) -> bool
-{
+auto approximately_equal(const double first, const double second, const double tolerance) -> bool {
     return std::abs(first - second) <= tolerance;
 }
 
 } // namespace
 
-auto main() -> int
-{
+auto main() -> int {
+    static_assert(!std::is_constructible_v<features::ConformerFeatures, core::Molecule&&>);
+    static_assert(!std::is_constructible_v<features::ConformerFeatures, core::Molecule&&, std::size_t>);
+
     const auto water = chargefw::test::make_water();
     const features::ConformerFeatures geometry{water, 0};
 

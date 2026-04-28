@@ -50,11 +50,11 @@ class ParameterView {
     explicit ParameterView(const ParameterSet& parameter_set,
                            const ParameterClassification& classification);
 
-    ParameterView(const ParameterSet&& parameter_set,
+    explicit ParameterView(const ParameterSet&& parameter_set,
                   const ParameterClassification& classification) = delete;
-    ParameterView(const ParameterSet& parameter_set,
+    explicit ParameterView(const ParameterSet& parameter_set,
                   const ParameterClassification&& classification) = delete;
-    ParameterView(const ParameterSet&& parameter_set,
+    explicit ParameterView(const ParameterSet&& parameter_set,
                   const ParameterClassification&& classification) = delete;
 
     [[nodiscard]] auto parameter_set() const noexcept -> const ParameterSet&;
