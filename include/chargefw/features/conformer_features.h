@@ -12,6 +12,9 @@ class ConformerFeatures {
   public:
     explicit ConformerFeatures(const core::Molecule& molecule, std::size_t conformer_index = 0);
 
+    explicit ConformerFeatures(core::Molecule&&) = delete;
+    explicit ConformerFeatures(const core::Molecule&&) = delete;
+
     [[nodiscard]] auto molecule() const noexcept -> const core::Molecule&;
     [[nodiscard]] auto conformer_index() const noexcept -> std::size_t;
 

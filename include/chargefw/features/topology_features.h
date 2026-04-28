@@ -13,6 +13,9 @@ class TopologyFeatures {
   public:
     explicit TopologyFeatures(const core::Molecule& molecule);
 
+    explicit TopologyFeatures(core::Molecule&&) = delete;
+    explicit TopologyFeatures(const core::Molecule&&) = delete;
+
     [[nodiscard]] auto molecule() const noexcept -> const core::Molecule&;
 
     [[nodiscard]] auto degree(std::size_t atom_index) const -> std::size_t;
