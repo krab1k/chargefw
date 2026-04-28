@@ -7,6 +7,7 @@ target_sources(chargefw_core
         parameter_view.cpp
         parameter_helpers.cpp
         parameter_classification.cpp
+        classification_result.cpp
         parameter_classifier.cpp
         parameter_key.cpp
         PUBLIC
@@ -16,6 +17,7 @@ target_sources(chargefw_core
         FILES
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/atom_parameters.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/bond_parameters.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/classification_result.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/common_parameters.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_classification.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_classifier.h

@@ -1,0 +1,44 @@
+#pragma once
+
+#include <chargefw/parameters/parameter_classification.h>
+
+#include <cstddef>
+#include <string>
+#include <vector>
+
+namespace chargefw::parameters {
+
+enum class ClassificationIssueKind {
+    MISSING_ATOM_PARAMETER,
+    MISSING_BOND_PARAMETER,
+};
+
+struct ClassificationIssue {
+    ClassificationIssueKind kind;
+    std::size_t object_index = 0;
+    std::string message;
+};
+
+struct ClassificationOptions {
+    bool permissive_types = false;
+};
+
+class ClassificationResult {
+  public:
+    ClassificationResult() = default;
+
+    explicit ClassificationResult(ParameterClassification classification);
+    explicit ClassificationResult(std::vector<ClassificationIssue> issues);
+
+    [[nodiscard]] auto ok() const noexcept -> bool;
+    [[nodiscard]] explicit operator bool() const noexcept;
+
+    [[nodiscard]] auto classification() const -> const ParameterClassification&;
+    [[nodiscard]] auto issues() const noexcept -> const std::vector<ClassificationIssue>&;
+
+  private:
+    ParameterClassification classification_;
+    std::vector<ClassificationIssue> issues_;
+};
+
+} // namespace chargefw::parameters
