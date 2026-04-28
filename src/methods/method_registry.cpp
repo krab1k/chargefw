@@ -25,7 +25,7 @@ auto validate_methods(const std::vector<std::unique_ptr<Method>>& methods) -> vo
         const auto duplicate = std::find_if(
             std::next(first),
             methods.end(),
-            [first](const std::unique_ptr<Method>& second) {
+            [first](const std::unique_ptr<Method>& second) -> bool {
                 return (*first)->id() == second->id();
             }
         );
@@ -51,7 +51,7 @@ auto MethodRegistry::find(const std::string_view id) const noexcept -> const Met
 {
     const auto iter = std::ranges::find_if(
         methods_,
-        [id](const std::unique_ptr<Method>& method) {
+        [id](const std::unique_ptr<Method>& method) -> bool {
             return method->id() == id;
         }
     );

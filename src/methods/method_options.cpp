@@ -52,7 +52,7 @@ namespace {
 [[nodiscard]] auto find_spec(std::span<const MethodOptionSpec> schema, const std::string_view id)
     -> const MethodOptionSpec* {
     const auto iter = std::ranges::find_if(
-        schema, [id](const MethodOptionSpec& option) { return option.id == id; });
+        schema, [id](const MethodOptionSpec& option) -> bool { return option.id == id; });
 
     if (iter == schema.end()) {
         return nullptr;

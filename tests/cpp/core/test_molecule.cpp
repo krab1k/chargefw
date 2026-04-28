@@ -96,7 +96,7 @@ auto main() -> int
         };
 
         std::vector positions{
-            core::Position{0.0, 0.0, 0.0}
+            core::Position{.x=0.0, .y=0.0, .z=0.0}
         };
 
         std::vector conformers{

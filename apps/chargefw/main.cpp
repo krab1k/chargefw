@@ -76,9 +76,9 @@ auto main() -> int {
     };
 
     auto positions = std::vector{
-        core::Position{0.0000, 0.0000, 0.0000},
-        core::Position{0.9572, 0.0000, 0.0000},
-        core::Position{-0.2390, 0.9270, 0.0000},
+        core::Position{.x=0.0000, .y=0.0000, .z=0.0000},
+        core::Position{.x=0.9572, .y=0.0000, .z=0.0000},
+        core::Position{.x=-0.2390, .y=0.9270, .z=0.0000},
     };
 
     auto conformers = std::vector{

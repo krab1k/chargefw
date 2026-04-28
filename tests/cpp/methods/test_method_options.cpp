@@ -61,15 +61,15 @@ auto main() -> int {
     methods::validate_method_options(schema, options);
 
     assert(rejects_invalid_argument(
-        [&schema] { methods::validate_method_options(schema, methods::MethodOptions{}); }));
+        [&schema] -> void { methods::validate_method_options(schema, methods::MethodOptions{}); }));
 
-    assert(rejects_invalid_argument([&schema] {
+    assert(rejects_invalid_argument([&schema] -> void {
         auto invalid_options = methods::make_default_options(schema);
         invalid_options.set("limit", 50.0);
         methods::validate_method_options(schema, invalid_options);
     }));
 
-    assert(rejects_invalid_argument([&schema] {
+    assert(rejects_invalid_argument([&schema] -> void {
         auto invalid_options = methods::make_default_options(schema);
         invalid_options.set("extra", true);
         methods::validate_method_options(schema, invalid_options);
@@ -135,7 +135,7 @@ auto main() -> int {
          .choices = {}}};
 
     assert(rejects_invalid_argument(
-        [&duplicate_id_schema] { methods::validate_method_option_schema(duplicate_id_schema); }));
+        [&duplicate_id_schema] -> void { methods::validate_method_option_schema(duplicate_id_schema); }));
 
     const methods::MethodOptionSpec wrong_default_type_schema[]{
         {.id = "limit",
@@ -144,7 +144,7 @@ auto main() -> int {
          .default_value = 25.0,
          .choices = {}}};
 
-    assert(rejects_invalid_argument([&wrong_default_type_schema] {
+    assert(rejects_invalid_argument([&wrong_default_type_schema] -> void {
         methods::validate_method_option_schema(wrong_default_type_schema);
     }));
 
@@ -155,7 +155,7 @@ auto main() -> int {
          .default_value = 25,
          .choices = {25, 50.0}}};
 
-    assert(rejects_invalid_argument([&wrong_choice_type_schema] {
+    assert(rejects_invalid_argument([&wrong_choice_type_schema] -> void {
         methods::validate_method_option_schema(wrong_choice_type_schema);
     }));
 
@@ -166,7 +166,7 @@ auto main() -> int {
          .default_value = 25,
          .choices = {50, 100}}};
 
-    assert(rejects_invalid_argument([&default_not_allowed_schema] {
+    assert(rejects_invalid_argument([&default_not_allowed_schema] -> void {
         methods::validate_method_option_schema(default_not_allowed_schema);
     }));
 

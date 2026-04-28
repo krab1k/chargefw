@@ -12,8 +12,8 @@ auto main() -> int
 {
     const core::Conformer conformer{
         {
-            core::Position{0.0, 0.0, 0.0},
-            core::Position{1.0, 0.0, 0.0}
+            core::Position{.x=0.0, .y=0.0, .z=0.0},
+            core::Position{.x=1.0, .y=0.0, .z=0.0}
         },
         "model-1"
     };

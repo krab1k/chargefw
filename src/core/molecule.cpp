@@ -57,7 +57,7 @@ auto validate_no_duplicate_bonds(const std::vector<Bond>& bonds) -> void
         const auto duplicate = std::find_if(
             std::next(first),
             bonds.end(),
-            [first](const Bond& second) {
+            [first](const Bond& second) -> bool {
                 return same_unordered_bond(*first, second);
             }
         );
