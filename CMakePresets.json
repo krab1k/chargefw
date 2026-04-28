@@ -11,8 +11,8 @@
         "CMAKE_C_COMPILER": "/usr/bin/gcc",
         "CMAKE_CXX_COMPILER": "/usr/bin/g++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CHARGEFW2_BUILD_TESTS": "ON",
-        "CHARGEFW2_ENABLE_WARNINGS": "ON"
+        "CHARGEFW_BUILD_TESTS": "ON",
+        "CHARGEFW_ENABLE_WARNINGS": "ON"
       }
     },
     {
@@ -25,8 +25,8 @@
         "CMAKE_C_COMPILER": "/usr/bin/gcc",
         "CMAKE_CXX_COMPILER": "/usr/bin/g++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CHARGEFW2_BUILD_TESTS": "ON",
-        "CHARGEFW2_ENABLE_WARNINGS": "ON"
+        "CHARGEFW_BUILD_TESTS": "ON",
+        "CHARGEFW_ENABLE_WARNINGS": "ON"
       }
     },
     {
@@ -39,8 +39,8 @@
         "CMAKE_C_COMPILER": "/usr/bin/clang",
         "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CHARGEFW2_BUILD_TESTS": "ON",
-        "CHARGEFW2_ENABLE_WARNINGS": "ON"
+        "CHARGEFW_BUILD_TESTS": "ON",
+        "CHARGEFW_ENABLE_WARNINGS": "ON"
       }
     },
     {
@@ -49,7 +49,7 @@
       "inherits": "clang-debug",
       "binaryDir": "${sourceDir}/build/clang-asan",
       "cacheVariables": {
-        "CHARGEFW2_ENABLE_SANITIZERS": "ON"
+        "CHARGEFW_ENABLE_SANITIZERS": "ON"
       }
     },
     {
@@ -58,7 +58,7 @@
       "inherits": "clang-debug",
       "binaryDir": "${sourceDir}/build/clang-tidy",
       "cacheVariables": {
-        "CHARGEFW2_ENABLE_CLANG_TIDY": "ON"
+        "CHARGEFW_ENABLE_CLANG_TIDY": "ON"
       }
     }
   ],
