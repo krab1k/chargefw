@@ -8,17 +8,20 @@
 
 namespace chargefw::core {
 
-auto Element::valence_electron_count() const -> int {
-    if (group < 3) {
+auto Element::valence_electron_count() const noexcept -> std::optional<int> {
+    if (atomic_number == 2) {
+        return 2;
+    }
+
+    if (group == 1 || group == 2) {
         return group;
     }
 
-    if (group > 12) {
+    if (group >= 13 && group <= 18) {
         return group - 10;
     }
 
-    throw std::runtime_error{"valence electron count is undefined for element '" +
-                             std::string{symbol} + "'"};
+    return std::nullopt;
 }
 
 auto PeriodicTable::elements() const noexcept -> std::span<const Element> {

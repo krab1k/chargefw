@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 #include <string_view>
 
@@ -19,7 +20,7 @@ struct Element {
     double electron_affinity = 0.0;
     double first_ionization_potential = 0.0;
 
-    [[nodiscard]] auto valence_electron_count() const -> int;
+    [[nodiscard]] auto valence_electron_count() const noexcept -> std::optional<int>;
 };
 
 class PeriodicTable {

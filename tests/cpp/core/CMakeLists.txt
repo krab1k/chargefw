@@ -17,3 +17,7 @@ chargefw_add_test(test_molecule
 chargefw_add_test(test_molecule_collection
         test_molecule_collection.cpp
 )
+
+chargefw_add_test(test_periodic_table
+        test_periodic_table.cpp
+)
