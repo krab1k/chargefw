@@ -14,5 +14,14 @@ target_sources(chargefw_core
         BASE_DIRS
         ${PROJECT_SOURCE_DIR}/include
         FILES
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/atom_parameters.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/bond_parameters.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/common_parameters.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_classification.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_classifier.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_key.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_set.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_set_metadata.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_view.h
+
 )
