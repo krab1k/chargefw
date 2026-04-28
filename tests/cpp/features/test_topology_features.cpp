@@ -12,15 +12,13 @@ namespace features = chargefw::features;
 
 namespace {
 
-auto to_vector(std::span<const std::size_t> values) -> std::vector<std::size_t>
-{
+auto to_vector(std::span<const std::size_t> values) -> std::vector<std::size_t> {
     return {values.begin(), values.end()};
 }
 
 } // namespace
 
-auto main() -> int
-{
+auto main() -> int {
     const auto water = chargefw::test::make_water();
     const features::TopologyFeatures topology{water};
 
@@ -36,7 +34,7 @@ auto main() -> int
     assert((oxygen_neighbors == std::vector<std::size_t>{1, 2}));
 
     const auto h1_neighbors = to_vector(topology.neighbor_indices(1));
-    assert((h1_neighbors == std::vector<std::size_t>{0}));
+    assert(h1_neighbors == std::vector<std::size_t>{0});
 
     const auto oh1_bond_index = topology.bond_index_between(0, 1);
     const auto oh2_bond_index = topology.bond_index_between(0, 2);

@@ -15,7 +15,8 @@ Checks: >
   -readability-identifier-length,
   -bugprone-easily-swappable-parameters,
   -portability-avoid-pragma-once,
-  -readability-avoid-const-params-in-decls
+  -readability-avoid-const-params-in-decls,
+  -readability-isolate-declaration
 
 WarningsAsErrors: ''
 HeaderFilterRegex: '.*'
