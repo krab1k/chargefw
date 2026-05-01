@@ -4,6 +4,7 @@ target_sources(chargefw_core
         method_registry.cpp
         method_prerequisites.cpp
         parameter_prerequisites.cpp
+        method_applicability.cpp
         builtin_methods.h
         builtin_methods.cpp
         method.cpp
@@ -20,6 +21,7 @@ target_sources(chargefw_core
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_registry.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_prerequisites.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/parameter_prerequisites.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_applicability.h
 )
 
 add_subdirectory(builtin)

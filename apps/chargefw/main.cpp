@@ -8,10 +8,9 @@
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method.h>
+#include <chargefw/methods/method_applicability.h>
 #include <chargefw/methods/method_options.h>
-#include <chargefw/methods/method_prerequisites.h>
 #include <chargefw/methods/method_registry.h>
-#include <chargefw/methods/parameter_prerequisites.h>
 #include <chargefw/parameters/atom_parameters.h>
 #include <chargefw/parameters/parameter_key.h>
 #include <chargefw/parameters/parameter_set.h>
@@ -20,6 +19,7 @@
 #include <iostream>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -68,18 +68,22 @@ auto atom_key(const int atomic_number,
         .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
 }
 
-auto make_water_parameters() -> parameters::ParameterSet {
+auto make_demo_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{.id = "demo-water-parameters",
+        parameters::ParameterSetMetadata{.id = "demo-parameters",
                                          .method_id = "demo-atom-parameter-method",
-                                         .name = "Demo water parameters"},
+                                         .name = "Demo parameters"},
         {},
         parameters::AtomParameters{
             {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
               .parameters = {{.name = "value", .value = 1.0}}},
              {.key =
                   atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
-              .parameters = {{.name = "value", .value = 2.0}}}}}};
+              .parameters = {{.name = "value", .value = 2.0}}},
+             {.key = atom_key(7, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+              .parameters = {{.name = "value", .value = 3.0}}},
+             {.key = atom_key(17, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+              .parameters = {{.name = "value", .value = 4.0}}}}}};
 }
 
 class DemoAtomParameterMethod final : public methods::Method {
@@ -114,116 +118,110 @@ class DemoAtomParameterMethod final : public methods::Method {
     }
 };
 
-auto print_result(std::string_view label, const methods::PrerequisiteResult& result) -> void {
-    std::cout << label << ": " << (result ? "ok" : "not ok") << '\n';
+auto print_rejections(const methods::ApplicabilityResult& result) -> void {
+    if (result.rejected.empty()) {
+        return;
+    }
 
-    for (const auto& issue : result.issues()) {
-        std::cout << "  - " << issue.message << '\n';
+    std::cout << "\nRejected candidates:\n";
+
+    for (const auto& rejected : result.rejected) {
+        std::cout << "  method index " << rejected.method_index;
+
+        if (rejected.parameter_set_index.has_value()) {
+            std::cout << ", parameter set index " << *rejected.parameter_set_index;
+        }
+
+        std::cout << '\n';
+
+        for (const auto& issue : rejected.issues) {
+            std::cout << "    - " << issue.message << '\n';
+        }
     }
 }
 
-auto print_parameter_result(std::string_view label,
-                            const methods::ParameterPrerequisiteResult& result) -> void {
-    std::cout << label << ": " << (result ? "ok" : "not ok") << '\n';
+auto print_applicable(const methods::ApplicabilityResult& result) -> void {
+    std::cout << "Applicable candidates: " << result.applicable.size() << '\n';
 
-    for (const auto& issue : result.issues) {
-        std::cout << "  - " << issue.message << '\n';
-    }
+    for (const auto& candidate : result.applicable) {
+        std::cout << "  - method: " << candidate.method->id();
 
-    if (result.classification.has_value()) {
-        std::cout << "  atom classification:";
-
-        for (const auto index : result.classification->atom().parameter_entry_indices()) {
-            std::cout << ' ' << index;
+        if (candidate.parameter_set != nullptr) {
+            std::cout << ", parameters: " << candidate.parameter_set->id();
+            std::cout << ", classifications: " << candidate.classifications.size();
+        } else {
+            std::cout << ", no parameters";
         }
 
         std::cout << '\n';
     }
 }
 
-auto print_collection_parameter_result(std::string_view label,
-                                       const methods::CollectionParameterPrerequisiteResult& result)
-    -> void {
-    std::cout << label << ": " << (result ? "ok" : "not ok") << '\n';
+auto calculate_and_print(const methods::ApplicableMethod& selected,
+                         const features::PreparedMoleculeCollection& prepared) -> void {
+    if (selected.uses_parameters()) {
+        std::cout << "\nSelected parameterized candidate: " << selected.method->id() << " / "
+                  << selected.parameter_set->id() << '\n';
 
-    for (const auto& issue : result.issues) {
-        std::cout << "  - " << issue.message << '\n';
+        std::cout << "Calculation is intentionally not shown yet, because CalculationInput "
+                     "does not carry ParameterView in main.\n";
+
+        return;
     }
 
-    if (result) {
-        std::cout << "  classifications: " << result.classifications.size() << '\n';
+    std::cout << "\nCalculating with selected method: " << selected.method->id() << '\n';
+
+    for (std::size_t molecule_index = 0; molecule_index < prepared.molecule_count();
+         ++molecule_index) {
+        const auto& prepared_molecule = prepared[molecule_index];
+
+        const methods::CalculationInput input{prepared_molecule, selected.method_options};
+
+        const auto charges = selected.method->calculate(input);
+
+        std::cout << "  molecule " << molecule_index << " charges:";
+
+        for (const auto charge : charges.values()) {
+            std::cout << ' ' << charge;
+        }
+
+        std::cout << "  total=" << charges.total() << '\n';
     }
-}
-
-auto calculate_and_print(const methods::Method& method,
-                         const features::PreparedMolecule& prepared_molecule) -> void {
-    const auto method_options = methods::make_default_options(method.option_schema());
-
-    const methods::CalculationInput input{prepared_molecule, method_options};
-
-    const auto charges = method.calculate(input);
-
-    std::cout << method.id() << " charges:";
-
-    for (const auto charge : charges.values()) {
-        std::cout << ' ' << charge;
-    }
-
-    std::cout << "  total=" << charges.total() << '\n';
 }
 
 } // namespace
 
 auto main() -> int {
     const auto collection = make_demo_collection();
-    const auto prepared = features::PreparedMoleculeCollection{collection};
+    const features::PreparedMoleculeCollection prepared{collection};
 
     const auto& registry = methods::method_registry();
 
-    const auto* dummy = registry.find("dummy");
-    const auto* formal = registry.find("formal");
-    const auto* veem = registry.find("veem");
+    std::vector<const methods::Method*> candidate_methods;
 
-    if (dummy == nullptr || formal == nullptr || veem == nullptr) {
-        std::cerr << "Required built-in methods are missing.\n";
+    for (const auto& method : registry.methods()) {
+        candidate_methods.push_back(method.get());
+    }
+
+    const DemoAtomParameterMethod demo_method;
+    candidate_methods.push_back(&demo_method);
+
+    const std::vector parameter_sets{make_demo_parameters()};
+
+    const auto applicability =
+        methods::find_applicable_methods(prepared, candidate_methods, parameter_sets);
+
+    print_applicable(applicability);
+    print_rejections(applicability);
+
+    if (applicability.applicable.empty()) {
+        std::cerr << "\nNo method or method/parameter-set pair supports the whole collection.\n";
         return 1;
     }
 
-    const auto dummy_options = methods::make_default_options(dummy->option_schema());
-    const auto formal_options = methods::make_default_options(formal->option_schema());
-    const auto veem_options = methods::make_default_options(veem->option_schema());
+    const auto& selected = applicability.applicable.front();
 
-    print_result("dummy collection method prerequisites",
-                 methods::check_method_prerequisites(*dummy, prepared, dummy_options));
-
-    print_result("formal collection method prerequisites",
-                 methods::check_method_prerequisites(*formal, prepared, formal_options));
-
-    print_result("veem collection method prerequisites",
-                 methods::check_method_prerequisites(*veem, prepared, veem_options));
-
-    std::cout << "\nCharges for first molecule:\n";
-    calculate_and_print(*dummy, prepared[0]);
-    calculate_and_print(*formal, prepared[0]);
-    calculate_and_print(*veem, prepared[0]);
-
-    const DemoAtomParameterMethod demo_method;
-    const auto demo_options = methods::make_default_options(demo_method.option_schema());
-
-    print_result("\ndemo method prerequisites for collection",
-                 methods::check_method_prerequisites(demo_method, prepared, demo_options));
-
-    const auto water_parameters = make_water_parameters();
-
-    print_parameter_result(
-        "demo parameter prerequisites for first molecule",
-        methods::check_parameter_prerequisites(demo_method, {.prepared_molecule = prepared[0],
-                                                             .parameter_set = water_parameters,
-                                                             .classification_options = {}}));
-
-    print_collection_parameter_result(
-        "demo parameter prerequisites for whole collection",
-        methods::check_parameter_prerequisites(demo_method, prepared, water_parameters, {}));
+    calculate_and_print(selected, prepared);
 
     return 0;
 }
