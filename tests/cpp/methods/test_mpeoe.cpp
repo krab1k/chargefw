@@ -63,7 +63,7 @@ auto make_collection() -> core::MoleculeCollection {
 
 auto load_mpeoe_parameters() -> std::vector<parameters::ParameterSet> {
     const auto path =
-        std::filesystem::path{CHARGEFW_TEST_PARAMETER_DIR} / "MPEOE_00_original.json";
+        std::filesystem::path{CHARGEFW_TEST_PARAMETER_DIR} / "MPEOE_original.json";
 
     std::vector<parameters::ParameterSet> parameter_sets;
     parameter_sets.push_back(parameters::load_parameter_set_json_file(path));
@@ -104,7 +104,7 @@ auto main() -> int {
 
     assert(charge_set.method_id() == std::string_view{"mpeoe"});
     assert(charge_set.parameter_set_id().has_value());
-    assert(*charge_set.parameter_set_id() == std::string_view{"MPEOE_00_original"});
+    assert(*charge_set.parameter_set_id() == std::string_view{"MPEOE_original"});
     assert(charge_set.assignment_count() == 1);
 
     const auto& charges = charge_set.assignment(0).charges;

@@ -44,11 +44,20 @@ auto main() -> int {
     assert(mpeoe != nullptr);
 
     const auto method_names = registry.names();
-    assert((method_names == std::vector<std::string>{"dummy", "formal", "peoe", "veem", "mpeoe"}));
+
+    assert((method_names == std::vector<std::string>{
+        "dummy",
+        "formal",
+        "mpeoe",
+        "peoe",
+        "veem"
+    }));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(formal->id() == std::string_view{"formal"});
     assert(veem->id() == std::string_view{"veem"});
+    assert(peoe->id() == std::string_view{"peoe"});
+    assert(mpeoe->id() == std::string_view{"mpeoe"});
 
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
     assert(dummy->metadata().full_name == std::string_view{"Dummy zero charges"});

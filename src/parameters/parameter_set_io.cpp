@@ -120,6 +120,20 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     return number;
 }
 
+[[nodiscard]] auto require_uint16(const Json& value, const std::string& context) -> std::uint16_t {
+    if (!value.is_number_integer()) {
+        throw_error(context, "expected integer, got " + json_type_name(value));
+    }
+
+    const auto number = value.get<int>();
+
+    if (number < 0 || number > 65535) {
+        throw_error(context, "expected integer in range [0, 65535]");
+    }
+
+    return static_cast<std::uint16_t>(number);
+}
+
 [[nodiscard]] auto optional_string_member(const Json& object, const std::string_view name,
                                           const std::string& context) -> std::string {
     const auto* value = optional_member(object, name);
@@ -197,6 +211,10 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     metadata.name = optional_string_member(metadata_json, "name", metadata_context);
     metadata.publication = optional_string_member(metadata_json, "publication", metadata_context);
     metadata.notes = optional_string_member(metadata_json, "notes", metadata_context);
+
+    if (const auto* priority = optional_member(metadata_json, "priority")) {
+        metadata.priority = require_uint16(*priority, child_context(metadata_context, "priority"));
+    }
 
     if (metadata.id.empty()) {
         metadata.id = generated_id_from_metadata(metadata.method_id, metadata.name);

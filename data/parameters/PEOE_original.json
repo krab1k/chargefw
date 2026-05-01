@@ -3,7 +3,8 @@
     "name": "Gasteiger 1980",
     "method": "peoe",
     "publication": "10.1016/0040-4020(80)80168-2",
-    "notes": "Derived directly from IPs and EAs"
+    "notes": "Derived directly from IPs and EAs",
+    "priority": 0
   },
   "common":
   {

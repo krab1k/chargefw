@@ -3,7 +3,8 @@
     "name": "No 1990 (DP1)",
     "method": "mpeoe",
     "publication": "10.1021/j100374a066",
-    "notes": "Empirically fitted to dipole (and quadrupole) moments"
+    "notes": "Empirically fitted to dipole (and quadrupole) moments",
+    "priority": 0
   },
   "common":
   {

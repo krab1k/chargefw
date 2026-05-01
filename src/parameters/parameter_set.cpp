@@ -49,6 +49,10 @@ auto ParameterSet::notes() const noexcept -> std::string_view {
     return metadata_.notes;
 }
 
+auto ParameterSet::priority() const noexcept -> std::uint16_t {
+    return metadata_.priority;
+}
+
 auto ParameterSet::common() const noexcept -> const CommonParameters& {
     return common_;
 }

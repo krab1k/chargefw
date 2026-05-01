@@ -21,10 +21,13 @@ class ParameterSet {
     [[nodiscard]] auto name() const noexcept -> std::string_view;
     [[nodiscard]] auto publication() const noexcept -> std::string_view;
     [[nodiscard]] auto notes() const noexcept -> std::string_view;
+    [[nodiscard]] auto priority() const noexcept -> std::uint16_t;
+
 
     [[nodiscard]] auto common() const noexcept -> const CommonParameters&;
     [[nodiscard]] auto atom() const noexcept -> const AtomParameters&;
     [[nodiscard]] auto bond() const noexcept -> const BondParameters&;
+
 
   private:
     ParameterSetMetadata metadata_;
