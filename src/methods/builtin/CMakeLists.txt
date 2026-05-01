@@ -4,4 +4,6 @@ target_sources(chargefw_core
         dummy.cpp
         formal.h
         formal.cpp
+        veem.h
+        veem.cpp
 )

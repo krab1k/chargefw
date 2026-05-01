@@ -53,6 +53,14 @@ auto make_formally_charged_pair() -> core::Molecule {
     return core::Molecule{std::move(atoms), {}, {}, "charged-pair"};
 }
 
+auto make_demo_collection() -> core::MoleculeCollection {
+    std::vector<core::Molecule> molecules;
+    molecules.push_back(make_water());
+    molecules.push_back(make_formally_charged_pair());
+
+    return core::MoleculeCollection{std::move(molecules), "demo collection"};
+}
+
 auto atom_key(const int atomic_number,
               const parameters::AtomParameterClassificationKind classification, std::string type)
     -> parameters::AtomParameterKey {
@@ -124,9 +132,11 @@ auto print_parameter_result(std::string_view label,
 
     if (result.classification.has_value()) {
         std::cout << "  atom classification:";
+
         for (const auto index : result.classification->atom().parameter_entry_indices()) {
             std::cout << ' ' << index;
         }
+
         std::cout << '\n';
     }
 }
@@ -156,32 +166,34 @@ auto calculate_and_print(const methods::Method& method,
     const auto charges = method.calculate(input);
 
     std::cout << method.id() << " charges:";
+
     for (const auto charge : charges.values()) {
         std::cout << ' ' << charge;
     }
+
     std::cout << "  total=" << charges.total() << '\n';
 }
 
 } // namespace
 
 auto main() -> int {
-    auto collection = core::MoleculeCollection{
-        std::vector<core::Molecule>{make_water(), make_formally_charged_pair()}, "demo collection"};
-
+    const auto collection = make_demo_collection();
     const auto prepared = features::PreparedMoleculeCollection{collection};
 
     const auto& registry = methods::method_registry();
 
     const auto* dummy = registry.find("dummy");
     const auto* formal = registry.find("formal");
+    const auto* veem = registry.find("veem");
 
-    if (dummy == nullptr || formal == nullptr) {
+    if (dummy == nullptr || formal == nullptr || veem == nullptr) {
         std::cerr << "Required built-in methods are missing.\n";
         return 1;
     }
 
     const auto dummy_options = methods::make_default_options(dummy->option_schema());
     const auto formal_options = methods::make_default_options(formal->option_schema());
+    const auto veem_options = methods::make_default_options(veem->option_schema());
 
     print_result("dummy collection method prerequisites",
                  methods::check_method_prerequisites(*dummy, prepared, dummy_options));
@@ -189,9 +201,13 @@ auto main() -> int {
     print_result("formal collection method prerequisites",
                  methods::check_method_prerequisites(*formal, prepared, formal_options));
 
+    print_result("veem collection method prerequisites",
+                 methods::check_method_prerequisites(*veem, prepared, veem_options));
+
     std::cout << "\nCharges for first molecule:\n";
     calculate_and_print(*dummy, prepared[0]);
     calculate_and_print(*formal, prepared[0]);
+    calculate_and_print(*veem, prepared[0]);
 
     const DemoAtomParameterMethod demo_method;
     const auto demo_options = methods::make_default_options(demo_method.option_schema());
