@@ -15,6 +15,18 @@ option(CHARGEFW_BUILD_CLI "Build the chargefw command-line application" ON)
 option(CHARGEFW_ENABLE_WARNINGS "Enable project warnings" ON)
 option(CHARGEFW_ENABLE_SANITIZERS "Enable sanitizers" OFF)
 
+include(GNUInstallDirs)
+
+include(FetchContent)
+
+FetchContent_Declare(
+        nlohmann_json
+        URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+)
+
+FetchContent_MakeAvailable(nlohmann_json)
+
+
 include(cmake/warnings.cmake)
 include(cmake/sanitizers.cmake)
 
@@ -35,6 +47,11 @@ target_include_directories(chargefw_core
         src
 )
 
+target_link_libraries(chargefw_core
+        PRIVATE
+        nlohmann_json::nlohmann_json
+)
+
 add_subdirectory(src)
 
 if(CHARGEFW_ENABLE_WARNINGS)
@@ -53,3 +70,30 @@ if(CHARGEFW_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif()
+
+install(
+        DIRECTORY
+        ${PROJECT_SOURCE_DIR}/data/parameters
+        DESTINATION
+        ${CMAKE_INSTALL_DATADIR}/chargefw
+        FILES_MATCHING
+        PATTERN "*.json"
+)
+
+configure_file(
+        ${PROJECT_SOURCE_DIR}/include/chargefw/config.h.in
+        ${PROJECT_BINARY_DIR}/generated/chargefw/config.h
+        @ONLY
+)
+
+target_include_directories(chargefw_core
+        PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/generated>
+)
+
+install(
+        FILES
+        ${PROJECT_BINARY_DIR}/generated/chargefw/config.h
+        DESTINATION
+        ${CMAKE_INSTALL_INCLUDEDIR}/chargefw
+)

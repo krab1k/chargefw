@@ -8,11 +8,7 @@
 #include <chargefw/methods/method_applicability.h>
 #include <chargefw/methods/method_calculation.h>
 #include <chargefw/methods/method_registry.h>
-#include <chargefw/parameters/atom_parameters.h>
-#include <chargefw/parameters/common_parameters.h>
-#include <chargefw/parameters/parameter_key.h>
-#include <chargefw/parameters/parameter_set.h>
-#include <chargefw/parameters/parameter_set_metadata.h>
+#include <chargefw/parameters/parameter_set_io.h>
 
 #include <iostream>
 #include <utility>
@@ -26,13 +22,6 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto atom_key(const int atomic_number) -> parameters::AtomParameterKey {
-    return parameters::AtomParameterKey{.atomic_number = atomic_number,
-                                        .classification =
-                                            parameters::AtomParameterClassificationKind::PLAIN,
-                                        .type = "*"};
-}
-
 auto make_hf() -> core::Molecule {
     std::vector atoms{core::Atom{1, 0, "H"}, core::Atom{9, 0, "F"}};
 
@@ -45,21 +34,6 @@ auto make_collection() -> core::MoleculeCollection {
     std::vector molecules{make_hf()};
 
     return core::MoleculeCollection{std::move(molecules), "demo"};
-}
-
-auto make_peoe_parameters() -> parameters::ParameterSet {
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "peoe-demo-parameters", .method_id = "peoe", .name = "PEOE demo parameters"},
-        parameters::CommonParameters{{{.name = "dampH", .value = 20.02}}},
-        parameters::AtomParameters{{{.key = atom_key(1),
-                                     .parameters = {{.name = "A", .value = 7.17},
-                                                    {.name = "B", .value = 6.24},
-                                                    {.name = "C", .value = -0.56}}},
-                                    {.key = atom_key(9),
-                                     .parameters = {{.name = "A", .value = 12.06},
-                                                    {.name = "B", .value = 13.85},
-                                                    {.name = "C", .value = 3.98}}}}}};
 }
 
 auto print_charge_set(const charges::ChargeSet& charge_set) -> void {
@@ -86,6 +60,13 @@ auto main() -> int {
     const auto collection = make_collection();
     const features::PreparedMoleculeCollection prepared{collection};
 
+    const auto parameter_sets = parameters::load_default_parameter_sets();
+
+    if (parameter_sets.empty()) {
+        std::cerr << "No default parameter sets found.\n";
+        return 1;
+    }
+
     const auto& registry = methods::method_registry();
     const auto* peoe = registry.find("peoe");
 
@@ -94,15 +75,13 @@ auto main() -> int {
         return 1;
     }
 
-    const std::vector<const methods::Method*> candidate_methods{peoe};
-
-    const std::vector parameter_sets{make_peoe_parameters()};
+    const std::vector candidate_methods{peoe};
 
     const auto applicability =
         methods::find_applicable_methods(prepared, candidate_methods, parameter_sets);
 
     if (applicability.applicable.empty()) {
-        std::cerr << "No applicable PEOE candidate.\n";
+        std::cerr << "No applicable method/parameter-set pair.\n";
 
         for (const auto& rejected : applicability.rejected) {
             for (const auto& issue : rejected.issues) {

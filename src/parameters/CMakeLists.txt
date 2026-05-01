@@ -10,6 +10,8 @@ target_sources(chargefw_core
         classification_result.cpp
         parameter_classifier.cpp
         parameter_key.cpp
+        parameter_set_io.cpp
+        parameter_data_paths.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
@@ -25,5 +27,7 @@ target_sources(chargefw_core
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_set.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_set_metadata.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_view.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_set_io.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_data_paths.h
 
 )
