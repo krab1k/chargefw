@@ -6,12 +6,11 @@ namespace chargefw::methods::builtin {
 auto FormalMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     std::vector<double> values;
 
-    const auto& molecule = input.prepared_molecule.molecule();
-
+    const auto& molecule = input.molecule();
     values.reserve(molecule.atom_count());
 
     for (const auto& atom : molecule.atoms()) {
-        values.push_back(atom.formal_charge());
+        values.push_back(static_cast<double>(atom.formal_charge()));
     }
 
     return charges::AtomicCharges{std::move(values)};

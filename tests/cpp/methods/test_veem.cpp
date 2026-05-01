@@ -68,11 +68,7 @@ auto main() -> int {
     bool rejected_unchecked_calculation = false;
 
     try {
-        const methods::CalculationInput input{
-            .prepared_molecule = prepared_iron,
-            .geometry = nullptr,
-            .method_options = options
-        };
+        const methods::CalculationInput input{prepared_iron, options};
 
         [[maybe_unused]] const auto charges = veem->calculate(input);
     } catch (const std::logic_error&) {

@@ -109,7 +109,7 @@ class DemoAtomParameterMethod final : public methods::Method {
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {
-        const auto& molecule = input.prepared_molecule.molecule();
+        const auto& molecule = input.molecule();
         return charges::AtomicCharges{std::vector<double>(molecule.atom_count(), 0.0)};
     }
 };
@@ -159,9 +159,7 @@ auto calculate_and_print(const methods::Method& method,
                          const features::PreparedMolecule& prepared_molecule) -> void {
     const auto method_options = methods::make_default_options(method.option_schema());
 
-    const methods::CalculationInput input{.prepared_molecule = prepared_molecule,
-                                          .geometry = nullptr,
-                                          .method_options = method_options};
+    const methods::CalculationInput input{prepared_molecule, method_options};
 
     const auto charges = method.calculate(input);
 

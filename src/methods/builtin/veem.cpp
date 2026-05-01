@@ -13,10 +13,9 @@ namespace {
     const auto count = element.valence_electron_count();
 
     if (!count.has_value()) {
-        throw std::logic_error{
-            "VEEM calculation called for element '" + std::string{element.symbol} +
-            "' without available valence electron count"
-        };
+        throw std::logic_error{"VEEM calculation called for element '" +
+                               std::string{element.symbol} +
+                               "' without available valence electron count"};
     }
 
     return *count;
@@ -24,10 +23,8 @@ namespace {
 
 } // namespace
 
-auto VEEMMethod::add_method_specific_prerequisite_issues(
-    const MethodPrerequisiteInput& input,
-    PrerequisiteResult& result
-) const -> void {
+auto VEEMMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                         PrerequisiteResult& result) const -> void {
     const auto& table = core::periodic_table();
     const auto& molecule = input.prepared_molecule.molecule();
 
@@ -39,30 +36,26 @@ auto VEEMMethod::add_method_specific_prerequisite_issues(
                 .kind = PrerequisiteIssueKind::unsupported_molecule,
                 .message = "atom " + std::to_string(atom_index) +
                            " has atomic number outside the bundled periodic table",
-                .atom_index = atom_index
-            });
+                .atom_index = atom_index});
             continue;
         }
 
         const auto& element = table.element(atom.atomic_number());
 
         if (!element.valence_electron_count().has_value()) {
-            result.add(PrerequisiteIssue{
-                .kind = PrerequisiteIssueKind::unsupported_molecule,
-                .message = "atom " + std::to_string(atom_index) + " (" +
-                           std::string{element.symbol} +
-                           ") has no VEEM valence electron count",
-                .atom_index = atom_index
-            });
+            result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::unsupported_molecule,
+                                         .message = "atom " + std::to_string(atom_index) + " (" +
+                                                    std::string{element.symbol} +
+                                                    ") has no VEEM valence electron count",
+                                         .atom_index = atom_index});
         }
     }
 }
 
 auto VEEMMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto& table = core::periodic_table();
-    const auto& molecule = input.prepared_molecule.molecule();
-
-    std::vector<double> charges(molecule.atom_count(), 0.0);
+    const auto& molecule = input.molecule();
+    std::vector charges(molecule.atom_count(), 0.0);
 
     if (molecule.atom_count() == 0) {
         return charges::AtomicCharges{std::move(charges)};
@@ -94,9 +87,8 @@ auto VEEMMethod::calculate(const CalculationInput& input) const -> charges::Atom
         const auto& element = table.element(atom.atomic_number());
         const auto valence = static_cast<double>(valence_electron_count_or_throw(element));
 
-        charges[atom_index] =
-            valence * (equalized_electronegativity - element.electronegativity) /
-            equalized_electronegativity;
+        charges[atom_index] = valence * (equalized_electronegativity - element.electronegativity) /
+                              equalized_electronegativity;
     }
 
     return charges::AtomicCharges{std::move(charges)};

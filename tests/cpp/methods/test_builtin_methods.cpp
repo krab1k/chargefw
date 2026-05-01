@@ -21,9 +21,7 @@ auto calculate(const methods::Method& method, const chargefw::core::Molecule& mo
     const features::PreparedMolecule prepared_molecule{molecule};
     const auto method_options = methods::make_default_options(method.option_schema());
 
-    const methods::CalculationInput input{.prepared_molecule = prepared_molecule,
-                                          .geometry = nullptr,
-                                          .method_options = method_options};
+    const methods::CalculationInput input{prepared_molecule, method_options};
 
     return method.calculate(input);
 }

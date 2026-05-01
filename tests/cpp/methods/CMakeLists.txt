@@ -14,6 +14,10 @@ chargefw_add_test(test_method_prerequisites
         test_method_prerequisites.cpp
 )
 
+chargefw_add_test(test_calculation_input
+        test_calculation_input.cpp
+)
+
 chargefw_add_test(test_veem
         test_veem.cpp
 )
