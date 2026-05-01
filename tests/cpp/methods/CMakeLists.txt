@@ -9,3 +9,7 @@ chargefw_add_test(test_method_options
 chargefw_add_test(test_method_registry
         test_method_registry.cpp
 )
+
+chargefw_add_test(test_method_prerequisites
+        test_method_prerequisites.cpp
+)

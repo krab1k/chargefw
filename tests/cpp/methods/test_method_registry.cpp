@@ -27,7 +27,7 @@ class StubMethod final : public methods::Method {
         return metadata_;
     }
 
-    [[nodiscard]] auto requirements() const noexcept -> methods::FeatureRequirements override
+    [[nodiscard]] auto requirements() const noexcept -> methods::MethodRequirements override
     {
         return {};
     }

@@ -16,8 +16,12 @@ class FormalMethod final : public Method {
         return metadata;
     }
 
-    [[nodiscard]] auto requirements() const noexcept -> FeatureRequirements override {
-        return FeatureRequirements{.formal_charges = true};
+    [[nodiscard]] auto requirements() const noexcept -> MethodRequirements override {
+        auto requirements = MethodRequirements{};
+        requirements.formal_charges = true;
+        requirements.resources.time = ComplexityTerm::atoms;
+        requirements.resources.memory = ComplexityTerm::constant;
+        return requirements;
     }
 
     [[nodiscard]] auto option_schema() const noexcept

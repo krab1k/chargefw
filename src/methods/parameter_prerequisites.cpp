@@ -1,0 +1,166 @@
+// src/methods/parameter_prerequisites.cpp
+#include <chargefw/methods/parameter_prerequisites.h>
+#include <chargefw/parameters/parameter_classifier.h>
+
+#include <string>
+
+namespace chargefw::methods {
+namespace {
+
+auto add_missing_parameter_issue(ParameterPrerequisiteResult& result, std::string message) -> void {
+    result.issues.push_back(PrerequisiteIssue{
+        .kind = PrerequisiteIssueKind::missing_parameters,
+        .message = std::move(message)
+    });
+}
+
+auto check_common_parameters(const MethodRequirements& requirements,
+                             const parameters::ParameterSet& parameter_set,
+                             ParameterPrerequisiteResult& result) -> void {
+    for (const auto name : requirements.common_parameters) {
+        if (!parameter_set.common().contains(name)) {
+            add_missing_parameter_issue(
+                result,
+                "parameter set '" + std::string{parameter_set.id()} +
+                    "' is missing common parameter '" + std::string{name} + "'"
+            );
+        }
+    }
+}
+
+auto check_atom_parameter_names(const MethodRequirements& requirements,
+                                const parameters::ParameterSet& parameter_set,
+                                ParameterPrerequisiteResult& result) -> void {
+    if (!requirements.requires_atom_parameters()) {
+        return;
+    }
+
+    if (parameter_set.atom().empty()) {
+        add_missing_parameter_issue(
+            result,
+            "parameter set '" + std::string{parameter_set.id()} +
+                "' has no atom parameter entries"
+        );
+        return;
+    }
+
+    for (std::size_t entry_index = 0; entry_index < parameter_set.atom().size(); ++entry_index) {
+        for (const auto name : requirements.atom_parameters) {
+            if (!parameter_set.atom().contains(entry_index, name)) {
+                add_missing_parameter_issue(
+                    result,
+                    "atom parameter entry " + std::to_string(entry_index) +
+                        " in parameter set '" + std::string{parameter_set.id()} +
+                        "' is missing parameter '" + std::string{name} + "'"
+                );
+            }
+        }
+    }
+}
+
+auto check_bond_parameter_names(const MethodRequirements& requirements,
+                                const parameters::ParameterSet& parameter_set,
+                                ParameterPrerequisiteResult& result) -> void {
+    if (!requirements.requires_bond_parameters()) {
+        return;
+    }
+
+    if (parameter_set.bond().empty()) {
+        add_missing_parameter_issue(
+            result,
+            "parameter set '" + std::string{parameter_set.id()} +
+                "' has no bond parameter entries"
+        );
+        return;
+    }
+
+    for (std::size_t entry_index = 0; entry_index < parameter_set.bond().size(); ++entry_index) {
+        for (const auto name : requirements.bond_parameters) {
+            if (!parameter_set.bond().contains(entry_index, name)) {
+                add_missing_parameter_issue(
+                    result,
+                    "bond parameter entry " + std::to_string(entry_index) +
+                        " in parameter set '" + std::string{parameter_set.id()} +
+                        "' is missing parameter '" + std::string{name} + "'"
+                );
+            }
+        }
+    }
+}
+
+auto add_classification_issues(
+    ParameterPrerequisiteResult& result,
+    const std::vector<parameters::ClassificationIssue>& issues
+) -> void {
+    for (const auto& issue : issues) {
+        PrerequisiteIssue prerequisite_issue{
+            .kind = PrerequisiteIssueKind::parameter_classification_failed,
+            .message = issue.message
+        };
+
+        switch (issue.kind) {
+        case parameters::ClassificationIssueKind::MISSING_ATOM_PARAMETER:
+            prerequisite_issue.atom_index = issue.object_index;
+            break;
+
+        case parameters::ClassificationIssueKind::MISSING_BOND_PARAMETER:
+            prerequisite_issue.bond_index = issue.object_index;
+            break;
+        }
+
+        result.issues.push_back(std::move(prerequisite_issue));
+    }
+}
+
+} // namespace
+
+auto check_parameter_prerequisites(const Method& method,
+                                   const ParameterPrerequisiteInput& input)
+    -> ParameterPrerequisiteResult {
+    ParameterPrerequisiteResult result;
+
+    const auto requirements = method.requirements();
+
+    if (!requirements.requires_parameters()) {
+        return result;
+    }
+
+    if (!input.parameter_set.method_id().empty() &&
+        input.parameter_set.method_id() != method.id()) {
+        add_missing_parameter_issue(
+            result,
+            "parameter set '" + std::string{input.parameter_set.id()} +
+                "' belongs to method '" + std::string{input.parameter_set.method_id()} +
+                "', not '" + std::string{method.id()} + "'"
+        );
+        return result;
+    }
+
+    check_common_parameters(requirements, input.parameter_set, result);
+    check_atom_parameter_names(requirements, input.parameter_set, result);
+    check_bond_parameter_names(requirements, input.parameter_set, result);
+
+    if (!result.issues.empty()) {
+        return result;
+    }
+
+    if (requirements.requires_atom_parameters() || requirements.requires_bond_parameters()) {
+        const auto classification = parameters::try_classify_parameters(
+            input.molecule,
+            input.topology,
+            input.parameter_set,
+            input.classification_options
+        );
+
+        if (!classification) {
+            add_classification_issues(result, classification.issues());
+            return result;
+        }
+
+        result.classification = classification.classification();
+    }
+
+    return result;
+}
+
+} // namespace chargefw::methods

@@ -16,8 +16,11 @@ public:
         return metadata;
     }
 
-    [[nodiscard]] auto requirements() const noexcept -> FeatureRequirements override {
-        return {};
+    [[nodiscard]] auto requirements() const noexcept -> MethodRequirements override {
+        auto requirements = MethodRequirements{};
+        requirements.resources.time = ComplexityTerm::atoms;
+        requirements.resources.memory = ComplexityTerm::constant;
+        return requirements;
     }
 
     [[nodiscard]] auto option_schema() const noexcept

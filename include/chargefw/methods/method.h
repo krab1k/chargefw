@@ -1,10 +1,11 @@
 #pragma once
 
-#include <chargefw/methods/method_options.h>
-#include <chargefw/methods/feature_requirements.h>
-#include <chargefw/methods/method_metadata.h>
-#include <chargefw/methods/calculation_input.h>
 #include <chargefw/charges/atomic_charges.h>
+#include <chargefw/methods/calculation_input.h>
+#include <chargefw/methods/method_metadata.h>
+#include <chargefw/methods/method_options.h>
+#include <chargefw/methods/method_prerequisites.h>
+#include <chargefw/methods/method_requirements.h>
 
 #include <span>
 #include <string_view>
@@ -21,13 +22,22 @@ class Method {
         return metadata().id;
     }
 
-    [[nodiscard]] virtual auto requirements() const noexcept -> FeatureRequirements = 0;
+    [[nodiscard]] virtual auto requirements() const -> MethodRequirements = 0;
+
+    [[nodiscard]] auto requires_parameters() const -> bool;
 
     [[nodiscard]] virtual auto option_schema() const noexcept
         -> std::span<const MethodOptionSpec> = 0;
 
+    [[nodiscard]] auto check_method_prerequisites(const MethodPrerequisiteInput& input) const
+        -> PrerequisiteResult;
+
     [[nodiscard]] virtual auto calculate(const CalculationInput& input) const
         -> charges::AtomicCharges = 0;
+
+  protected:
+    virtual auto add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                         PrerequisiteResult& result) const -> void;
 };
 
 } // namespace chargefw::methods

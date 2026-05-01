@@ -2,20 +2,23 @@ target_sources(chargefw_core
         PRIVATE
         method_options.cpp
         method_registry.cpp
+        method_prerequisites.cpp
+        parameter_prerequisites.cpp
         builtin_methods.h
         builtin_methods.cpp
-
+        method.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
         ${PROJECT_SOURCE_DIR}/include
         FILES
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/calculation_input.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/methods/feature_requirements.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_metadata.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_options.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_registry.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_prerequisites.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/methods/parameter_prerequisites.h
 )
 
 add_subdirectory(builtin)
