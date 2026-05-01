@@ -1,4 +1,4 @@
-#include <chargefw/charges/atomic_charges.h>
+#include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
@@ -9,13 +9,14 @@
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_applicability.h>
-#include <chargefw/methods/method_options.h>
+#include <chargefw/methods/method_calculation.h>
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/atom_parameters.h>
 #include <chargefw/parameters/parameter_key.h>
 #include <chargefw/parameters/parameter_set.h>
 #include <chargefw/parameters/parameter_set_metadata.h>
 
+#include <cstddef>
 #include <iostream>
 #include <optional>
 #include <span>
@@ -114,31 +115,18 @@ class DemoAtomParameterMethod final : public methods::Method {
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {
         const auto& molecule = input.molecule();
-        return charges::AtomicCharges{std::vector<double>(molecule.atom_count(), 0.0)};
+        const auto value = input.parameters().atom("value");
+
+        std::vector<double> values;
+        values.reserve(molecule.atom_count());
+
+        for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
+            values.push_back(value[atom_index]);
+        }
+
+        return charges::AtomicCharges{std::move(values)};
     }
 };
-
-auto print_rejections(const methods::ApplicabilityResult& result) -> void {
-    if (result.rejected.empty()) {
-        return;
-    }
-
-    std::cout << "\nRejected candidates:\n";
-
-    for (const auto& rejected : result.rejected) {
-        std::cout << "  method index " << rejected.method_index;
-
-        if (rejected.parameter_set_index.has_value()) {
-            std::cout << ", parameter set index " << *rejected.parameter_set_index;
-        }
-
-        std::cout << '\n';
-
-        for (const auto& issue : rejected.issues) {
-            std::cout << "    - " << issue.message << '\n';
-        }
-    }
-}
 
 auto print_applicable(const methods::ApplicabilityResult& result) -> void {
     std::cout << "Applicable candidates: " << result.applicable.size() << '\n';
@@ -157,35 +145,37 @@ auto print_applicable(const methods::ApplicabilityResult& result) -> void {
     }
 }
 
-auto calculate_and_print(const methods::ApplicableMethod& selected,
-                         const features::PreparedMoleculeCollection& prepared) -> void {
-    if (selected.uses_parameters()) {
-        std::cout << "\nSelected parameterized candidate: " << selected.method->id() << " / "
-                  << selected.parameter_set->id() << '\n';
-
-        std::cout << "Calculation is intentionally not shown yet, because CalculationInput "
-                     "does not carry ParameterView in main.\n";
-
-        return;
+auto select_demo_candidate(const methods::ApplicabilityResult& result)
+    -> const methods::ApplicableMethod* {
+    for (const auto& candidate : result.applicable) {
+        if (candidate.uses_parameters()) {
+            return &candidate;
+        }
     }
 
-    std::cout << "\nCalculating with selected method: " << selected.method->id() << '\n';
+    if (!result.applicable.empty()) {
+        return &result.applicable.front();
+    }
 
-    for (std::size_t molecule_index = 0; molecule_index < prepared.molecule_count();
-         ++molecule_index) {
-        const auto& prepared_molecule = prepared[molecule_index];
+    return nullptr;
+}
 
-        const methods::CalculationInput input{prepared_molecule, selected.method_options};
+auto print_charge_set(const charges::ChargeSet& charge_set) -> void {
+    std::cout << "\nCharge set:\n";
+    std::cout << "  method: " << charge_set.method_id() << '\n';
 
-        const auto charges = selected.method->calculate(input);
+    if (charge_set.parameter_set_id().has_value()) {
+        std::cout << "  parameters: " << *charge_set.parameter_set_id() << '\n';
+    }
 
-        std::cout << "  molecule " << molecule_index << " charges:";
+    for (const auto& assignment : charge_set.assignments()) {
+        std::cout << "  molecule " << assignment.target.molecule_index << " charges:";
 
-        for (const auto charge : charges.values()) {
+        for (const auto charge : assignment.charges.values()) {
             std::cout << ' ' << charge;
         }
 
-        std::cout << "  total=" << charges.total() << '\n';
+        std::cout << "  total=" << assignment.charges.total() << '\n';
     }
 }
 
@@ -212,16 +202,17 @@ auto main() -> int {
         methods::find_applicable_methods(prepared, candidate_methods, parameter_sets);
 
     print_applicable(applicability);
-    print_rejections(applicability);
 
-    if (applicability.applicable.empty()) {
+    const auto* selected = select_demo_candidate(applicability);
+
+    if (selected == nullptr) {
         std::cerr << "\nNo method or method/parameter-set pair supports the whole collection.\n";
         return 1;
     }
 
-    const auto& selected = applicability.applicable.front();
+    const auto charge_set = methods::calculate_charges(*selected, prepared);
 
-    calculate_and_print(selected, prepared);
+    print_charge_set(charge_set);
 
     return 0;
 }

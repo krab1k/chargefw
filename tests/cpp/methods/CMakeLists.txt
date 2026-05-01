@@ -22,6 +22,10 @@ chargefw_add_test(test_method_applicability
         test_method_applicability.cpp
 )
 
+chargefw_add_test(test_method_calculation
+        test_method_calculation.cpp
+)
+
 chargefw_add_test(test_veem
         test_veem.cpp
 )
