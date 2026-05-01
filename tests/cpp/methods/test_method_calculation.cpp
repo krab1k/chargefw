@@ -33,16 +33,41 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-class AtomParameterMethod final : public methods::Method {
-public:
+class WrongSizeMethod final : public methods::Method {
+  public:
     [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{
-            .id = "atom-parameter-test",
-            .name = "Atom parameter test",
-            .full_name = "Atom parameter test",
-            .publication = std::nullopt,
-            .priority = 0
-        };
+        static constexpr methods::MethodMetadata metadata{.id = "wrong-size-test",
+                                                          .name = "Wrong size test",
+                                                          .full_name = "Wrong size test",
+                                                          .publication = std::nullopt,
+                                                          .priority = 0};
+
+        return metadata;
+    }
+
+    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
+        return {};
+    }
+
+    [[nodiscard]] auto option_schema() const noexcept
+        -> std::span<const methods::MethodOptionSpec> override {
+        return {};
+    }
+
+    [[nodiscard]] auto calculate(const methods::CalculationInput&) const
+        -> charges::AtomicCharges override {
+        return charges::AtomicCharges{std::vector<double>{0.0}};
+    }
+};
+
+class AtomParameterMethod final : public methods::Method {
+  public:
+    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
+        static constexpr methods::MethodMetadata metadata{.id = "atom-parameter-test",
+                                                          .name = "Atom parameter test",
+                                                          .full_name = "Atom parameter test",
+                                                          .publication = std::nullopt,
+                                                          .priority = 0};
 
         return metadata;
     }
@@ -75,98 +100,49 @@ public:
     }
 };
 
-auto atom_key(
-    const int atomic_number,
-    const parameters::AtomParameterClassificationKind classification,
-    std::string type
-) -> parameters::AtomParameterKey {
+auto atom_key(const int atomic_number,
+              const parameters::AtomParameterClassificationKind classification, std::string type)
+    -> parameters::AtomParameterKey {
     return {
-        .atomic_number = atomic_number,
-        .classification = classification,
-        .type = std::move(type)
-    };
+        .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
 }
 
 auto make_collection() -> core::MoleculeCollection {
-    std::vector molecules{
-        chargefw::test::make_water(),
-        chargefw::test::make_formally_charged_pair()
-    };
+    std::vector molecules{chargefw::test::make_water(),
+                          chargefw::test::make_formally_charged_pair()};
 
-    return core::MoleculeCollection{
-        std::move(molecules),
-        "test-collection"
-    };
+    return core::MoleculeCollection{std::move(molecules), "test-collection"};
 }
 
 auto make_parameter_set() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
-            .id = "test-parameters",
-            .method_id = "atom-parameter-test",
-            .name = "Test parameters"
-        },
+            .id = "test-parameters", .method_id = "atom-parameter-test", .name = "Test parameters"},
         {},
         parameters::AtomParameters{
-            {
-                {
-                    .key = atom_key(
-                        1,
-                        parameters::AtomParameterClassificationKind::BONDED_ELEMENTS,
-                        "O"
-                    ),
-                    .parameters = {{.name = "value", .value = 1.0}}
-                },
-                {
-                    .key = atom_key(
-                        8,
-                        parameters::AtomParameterClassificationKind::BONDED_ELEMENTS,
-                        "HH"
-                    ),
-                    .parameters = {{.name = "value", .value = 2.0}}
-                },
-                {
-                    .key = atom_key(
-                        7,
-                        parameters::AtomParameterClassificationKind::PLAIN,
-                        "*"
-                    ),
-                    .parameters = {{.name = "value", .value = 3.0}}
-                },
-                {
-                    .key = atom_key(
-                        17,
-                        parameters::AtomParameterClassificationKind::PLAIN,
-                        "*"
-                    ),
-                    .parameters = {{.name = "value", .value = 4.0}}
-                }
-            }
-        }
-    };
+            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+              .parameters = {{.name = "value", .value = 1.0}}},
+             {.key =
+                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+              .parameters = {{.name = "value", .value = 2.0}}},
+             {.key = atom_key(7, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+              .parameters = {{.name = "value", .value = 3.0}}},
+             {.key = atom_key(17, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+              .parameters = {{.name = "value", .value = 4.0}}}}}};
 }
 
-auto make_parameterized_candidate(
-    const AtomParameterMethod& method,
-    const parameters::ParameterSet& parameter_set
-) -> methods::ApplicableMethod {
+auto make_parameterized_candidate(const AtomParameterMethod& method,
+                                  const parameters::ParameterSet& parameter_set)
+    -> methods::ApplicableMethod {
     return methods::ApplicableMethod{
         .method = &method,
         .parameter_set = &parameter_set,
         .method_options = methods::MethodOptions{},
         .classifications = {
             parameters::ParameterClassification{
-                parameters::AtomParameterClassification{
-                    std::vector<std::size_t>{1, 0, 0}
-                }
-            },
+                parameters::AtomParameterClassification{std::vector<std::size_t>{1, 0, 0}}},
             parameters::ParameterClassification{
-                parameters::AtomParameterClassification{
-                    std::vector<std::size_t>{2, 3}
-                }
-            }
-        }
-    };
+                parameters::AtomParameterClassification{std::vector<std::size_t>{2, 3}}}}};
 }
 
 } // namespace
@@ -184,13 +160,9 @@ auto main() -> int {
         .method = dummy,
         .parameter_set = nullptr,
         .method_options = methods::make_default_options(dummy->option_schema()),
-        .classifications = {}
-    };
+        .classifications = {}};
 
-    const auto dummy_charges = methods::calculate_charges(
-        dummy_candidate,
-        prepared
-    );
+    const auto dummy_charges = methods::calculate_charges(dummy_candidate, prepared);
 
     assert(dummy_charges.method_id() == std::string_view{"dummy"});
     assert(!dummy_charges.parameter_set_id().has_value());
@@ -207,15 +179,11 @@ auto main() -> int {
     const AtomParameterMethod parameterized_method;
     const auto parameter_set = make_parameter_set();
 
-    const auto parameterized_candidate = make_parameterized_candidate(
-        parameterized_method,
-        parameter_set
-    );
+    const auto parameterized_candidate =
+        make_parameterized_candidate(parameterized_method, parameter_set);
 
-    const auto parameterized_charges = methods::calculate_charges(
-        parameterized_candidate,
-        prepared
-    );
+    const auto parameterized_charges =
+        methods::calculate_charges(parameterized_candidate, prepared);
 
     assert(parameterized_charges.method_id() == std::string_view{"atom-parameter-test"});
     assert(parameterized_charges.parameter_set_id().has_value());
@@ -238,17 +206,13 @@ auto main() -> int {
     bool rejected_null_method = false;
 
     try {
-        const methods::ApplicableMethod invalid_candidate{
-            .method = nullptr,
-            .parameter_set = nullptr,
-            .method_options = {},
-            .classifications = {}
-        };
+        const methods::ApplicableMethod invalid_candidate{.method = nullptr,
+                                                          .parameter_set = nullptr,
+                                                          .method_options = {},
+                                                          .classifications = {}};
 
-        [[maybe_unused]] const auto invalid_charges = methods::calculate_charges(
-            invalid_candidate,
-            prepared
-        );
+        [[maybe_unused]] const auto invalid_charges =
+            methods::calculate_charges(invalid_candidate, prepared);
     } catch (const std::invalid_argument&) {
         rejected_null_method = true;
     }
@@ -258,22 +222,57 @@ auto main() -> int {
     bool rejected_missing_classification = false;
 
     try {
-        const methods::ApplicableMethod invalid_candidate{
-            .method = &parameterized_method,
-            .parameter_set = &parameter_set,
-            .method_options = {},
-            .classifications = {}
-        };
+        const methods::ApplicableMethod invalid_candidate{.method = &parameterized_method,
+                                                          .parameter_set = &parameter_set,
+                                                          .method_options = {},
+                                                          .classifications = {}};
 
-        [[maybe_unused]] const auto invalid_charges = methods::calculate_charges(
-            invalid_candidate,
-            prepared
-        );
+        [[maybe_unused]] const auto invalid_charges =
+            methods::calculate_charges(invalid_candidate, prepared);
     } catch (const std::invalid_argument&) {
         rejected_missing_classification = true;
     }
 
     assert(rejected_missing_classification);
+
+    bool rejected_wrong_charge_count = false;
+
+    try {
+        const WrongSizeMethod wrong_size_method;
+
+        const methods::ApplicableMethod invalid_candidate{.method = &wrong_size_method,
+                                                          .parameter_set = nullptr,
+                                                          .method_options = {},
+                                                          .classifications = {}};
+
+        [[maybe_unused]] const auto invalid_charges =
+            methods::calculate_charges(invalid_candidate, prepared);
+    } catch (const std::invalid_argument&) {
+        rejected_wrong_charge_count = true;
+    }
+
+    assert(rejected_wrong_charge_count);
+
+    bool rejected_invalid_classification = false;
+
+    try {
+        const methods::ApplicableMethod invalid_candidate{
+            .method = &parameterized_method,
+            .parameter_set = &parameter_set,
+            .method_options = {},
+            .classifications = {
+                parameters::ParameterClassification{
+                    parameters::AtomParameterClassification{std::vector<std::size_t>{999, 0, 0}}},
+                parameters::ParameterClassification{
+                    parameters::AtomParameterClassification{std::vector<std::size_t>{2, 3}}}}};
+
+        [[maybe_unused]] const auto invalid_charges =
+            methods::calculate_charges(invalid_candidate, prepared);
+    } catch (const std::invalid_argument&) {
+        rejected_invalid_classification = true;
+    }
+
+    assert(rejected_invalid_classification);
 
     return 0;
 }
