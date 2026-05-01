@@ -14,10 +14,6 @@ chargefw_add_test(test_method_prerequisites
         test_method_prerequisites.cpp
 )
 
-chargefw_add_test(test_calculation_input
-        test_calculation_input.cpp
-)
-
 chargefw_add_test(test_method_applicability
         test_method_applicability.cpp
 )
@@ -26,10 +22,19 @@ chargefw_add_test(test_method_calculation
         test_method_calculation.cpp
 )
 
-chargefw_add_test(test_veem
-        test_veem.cpp
-)
-
 chargefw_add_test(test_peoe
         test_peoe.cpp
+)
+
+chargefw_add_test(test_mpeoe
+        test_mpeoe.cpp
+)
+
+target_compile_definitions(test_mpeoe
+        PRIVATE
+        CHARGEFW_TEST_PARAMETER_DIR="${PROJECT_SOURCE_DIR}/data/parameters"
+)
+
+chargefw_add_test(test_veem
+        test_veem.cpp
 )

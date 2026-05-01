@@ -35,14 +35,16 @@ auto main() -> int {
     const auto* formal = registry.find("formal");
     const auto* veem = registry.find("veem");
     const auto* peoe = registry.find("peoe");
+    const auto* mpeoe = registry.find("mpeoe");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
     assert(veem != nullptr);
     assert(peoe != nullptr);
+    assert(mpeoe != nullptr);
 
     const auto method_names = registry.names();
-    assert((method_names == std::vector<std::string>{"dummy", "formal", "peoe", "veem"}));
+    assert((method_names == std::vector<std::string>{"dummy", "formal", "peoe", "veem", "mpeoe"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(formal->id() == std::string_view{"formal"});
@@ -80,6 +82,23 @@ auto main() -> int {
            std::string_view{"Partial Equalization of Atomic Electronegativity"});
     assert(peoe->metadata().publication.has_value());
     assert(peoe->metadata().priority == 120);
+
+    assert(mpeoe->id() == std::string_view{"mpeoe"});
+    assert(mpeoe->metadata().name == std::string_view{"MPEOE"});
+    assert(mpeoe->metadata().full_name ==
+           std::string_view{"Modified Partial Equalization of Atomic Electronegativity"});
+    assert(mpeoe->metadata().publication.has_value());
+    assert(mpeoe->metadata().priority == 110);
+
+    assert(mpeoe->requirements().bond_graph);
+    assert(mpeoe->requirements().requires_common_parameters());
+    assert(mpeoe->requirements().requires_atom_parameters());
+    assert(mpeoe->requirements().requires_bond_parameters());
+    assert(mpeoe->requirements().common_parameters.size() == 1);
+    assert(mpeoe->requirements().atom_parameters.size() == 2);
+    assert(mpeoe->requirements().bond_parameters.size() == 1);
+    assert(mpeoe->requires_parameters());
+    assert(mpeoe->option_schema().size() == 1);
 
     assert(peoe->requirements().bond_graph);
     assert(peoe->requirements().requires_common_parameters());

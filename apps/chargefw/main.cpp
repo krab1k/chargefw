@@ -22,16 +22,19 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto make_hf() -> core::Molecule {
-    std::vector atoms{core::Atom{1, 0, "H"}, core::Atom{9, 0, "F"}};
+auto make_methane() -> core::Molecule {
+    std::vector atoms{core::Atom{6, 0, "C"}, core::Atom{1, 0, "H1"}, core::Atom{1, 0, "H2"},
+                      core::Atom{1, 0, "H3"}, core::Atom{1, 0, "H4"}};
 
-    std::vector bonds{core::Bond{0, 1, core::BondOrder::SINGLE}};
+    std::vector bonds{
+        core::Bond{0, 1, core::BondOrder::SINGLE}, core::Bond{0, 2, core::BondOrder::SINGLE},
+        core::Bond{0, 3, core::BondOrder::SINGLE}, core::Bond{0, 4, core::BondOrder::SINGLE}};
 
-    return core::Molecule{std::move(atoms), std::move(bonds), {}, "hf"};
+    return core::Molecule{std::move(atoms), std::move(bonds), {}, "methane"};
 }
 
 auto make_collection() -> core::MoleculeCollection {
-    std::vector molecules{make_hf()};
+    std::vector molecules{make_methane()};
 
     return core::MoleculeCollection{std::move(molecules), "demo"};
 }
@@ -62,26 +65,21 @@ auto main() -> int {
 
     const auto parameter_sets = parameters::load_default_parameter_sets();
 
-    if (parameter_sets.empty()) {
-        std::cerr << "No default parameter sets found.\n";
-        return 1;
-    }
-
     const auto& registry = methods::method_registry();
-    const auto* peoe = registry.find("peoe");
+    const auto* mpeoe = registry.find("mpeoe");
 
-    if (peoe == nullptr) {
-        std::cerr << "PEOE method is not registered.\n";
+    if (mpeoe == nullptr) {
+        std::cerr << "MPEOE method is not registered.\n";
         return 1;
     }
 
-    const std::vector candidate_methods{peoe};
+    const std::vector candidate_methods{mpeoe};
 
     const auto applicability =
         methods::find_applicable_methods(prepared, candidate_methods, parameter_sets);
 
     if (applicability.applicable.empty()) {
-        std::cerr << "No applicable method/parameter-set pair.\n";
+        std::cerr << "No applicable MPEOE parameter set.\n";
 
         for (const auto& rejected : applicability.rejected) {
             for (const auto& issue : rejected.issues) {

@@ -261,9 +261,12 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
 
     return CommonParameters{make_named_parameters(names, values_json, values_context)};
 }
-
 [[nodiscard]] auto atomic_number_from_symbol(const std::string& symbol, const std::string& context)
     -> int {
+    if (symbol == "*") {
+        return 0;
+    }
+
     try {
         return core::periodic_table().element(symbol).atomic_number;
     } catch (const std::out_of_range&) {
@@ -304,6 +307,62 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
                        .type = type};
 }
 
+[[nodiscard]] auto parse_flat_bond_key(const Json& key_json, const std::string& context)
+    -> BondParameterKey {
+    ensure_array(key_json, context);
+
+    if (key_json.size() != 8) {
+        throw_error(context, "flat bond key must have exactly 8 items: "
+                             "[first_symbol, first_classification, first_type, "
+                             "second_symbol, second_classification, second_type, "
+                             "bond_classification, bond_type]");
+    }
+
+    const auto first_symbol = require_string(key_json[0], array_context(context, 0));
+    const auto first_classification = require_string(key_json[1], array_context(context, 1));
+    const auto first_type = require_string(key_json[2], array_context(context, 2));
+
+    const auto second_symbol = require_string(key_json[3], array_context(context, 3));
+    const auto second_classification = require_string(key_json[4], array_context(context, 4));
+    const auto second_type = require_string(key_json[5], array_context(context, 5));
+
+    const auto bond_classification = require_string(key_json[6], array_context(context, 6));
+    const auto bond_type = require_string(key_json[7], array_context(context, 7));
+
+    return BondParameterKey{
+        .first_atom =
+            AtomParameterKey{
+                .atomic_number = atomic_number_from_symbol(first_symbol, array_context(context, 0)),
+                .classification = atom_classification_kind_from_string(first_classification),
+                .type = first_type},
+        .second_atom = AtomParameterKey{.atomic_number = atomic_number_from_symbol(
+                                            second_symbol, array_context(context, 3)),
+                                        .classification = atom_classification_kind_from_string(
+                                            second_classification),
+                                        .type = second_type},
+        .bond =
+            BondTypeKey{.classification = bond_classification_kind_from_string(bond_classification),
+                        .type = bond_type}};
+}
+
+[[nodiscard]] auto parse_bond_key(const Json& key_json, const std::string& context)
+    -> BondParameterKey {
+    ensure_array(key_json, context);
+
+    if (key_json.size() == 8 && key_json[0].is_string()) {
+        return parse_flat_bond_key(key_json, context);
+    }
+
+    if (key_json.size() != 3) {
+        throw_error(context, "bond key must either have nested form "
+                             "[first_atom, second_atom, bond] or flat ChargeFW2 form with 8 items");
+    }
+
+    return BondParameterKey{.first_atom = parse_atom_key(key_json[0], array_context(context, 0)),
+                            .second_atom = parse_atom_key(key_json[1], array_context(context, 1)),
+                            .bond = parse_bond_type_key(key_json[2], array_context(context, 2))};
+}
+
 [[nodiscard]] auto parse_atom_parameters(const Json& root, const std::string& context)
     -> AtomParameters {
     const auto* atom_json = optional_member(root, "atom");
@@ -341,19 +400,6 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     }
 
     return AtomParameters{std::move(entries)};
-}
-
-[[nodiscard]] auto parse_bond_key(const Json& key_json, const std::string& context)
-    -> BondParameterKey {
-    ensure_array(key_json, context);
-
-    if (key_json.size() != 3) {
-        throw_error(context, "bond key must have exactly 3 items: [first_atom, second_atom, bond]");
-    }
-
-    return BondParameterKey{.first_atom = parse_atom_key(key_json[0], array_context(context, 0)),
-                            .second_atom = parse_atom_key(key_json[1], array_context(context, 1)),
-                            .bond = parse_bond_type_key(key_json[2], array_context(context, 2))};
 }
 
 [[nodiscard]] auto parse_bond_parameters(const Json& root, const std::string& context)
