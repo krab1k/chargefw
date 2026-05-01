@@ -34,13 +34,15 @@ auto main() -> int {
     const auto* dummy = registry.find("dummy");
     const auto* formal = registry.find("formal");
     const auto* veem = registry.find("veem");
+    const auto* peoe = registry.find("peoe");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
     assert(veem != nullptr);
+    assert(peoe != nullptr);
 
     const auto method_names = registry.names();
-    assert((method_names == std::vector<std::string>{"dummy", "formal", "veem"}));
+    assert((method_names == std::vector<std::string>{"dummy", "formal", "peoe", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(formal->id() == std::string_view{"formal"});
@@ -71,6 +73,21 @@ auto main() -> int {
     assert(veem->requirements().resources.memory == methods::ComplexityTerm::constant);
     assert(!veem->requires_parameters());
     assert(veem->option_schema().empty());
+
+    assert(peoe->id() == std::string_view{"peoe"});
+    assert(peoe->metadata().name == std::string_view{"PEOE"});
+    assert(peoe->metadata().full_name ==
+           std::string_view{"Partial Equalization of Atomic Electronegativity"});
+    assert(peoe->metadata().publication.has_value());
+    assert(peoe->metadata().priority == 120);
+
+    assert(peoe->requirements().bond_graph);
+    assert(peoe->requirements().requires_common_parameters());
+    assert(peoe->requirements().requires_atom_parameters());
+    assert(peoe->requirements().common_parameters.size() == 1);
+    assert(peoe->requirements().atom_parameters.size() == 3);
+    assert(peoe->requires_parameters());
+    assert(peoe->option_schema().size() == 1);
 
     const auto water = chargefw::test::make_water();
 

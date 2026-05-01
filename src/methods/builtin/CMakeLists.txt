@@ -6,4 +6,6 @@ target_sources(chargefw_core
         formal.cpp
         veem.h
         veem.cpp
+        peoe.h
+        peoe.cpp
 )

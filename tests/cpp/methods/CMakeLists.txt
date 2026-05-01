@@ -29,3 +29,7 @@ chargefw_add_test(test_method_calculation
 chargefw_add_test(test_veem
         test_veem.cpp
 )
+
+chargefw_add_test(test_peoe
+        test_peoe.cpp
+)
