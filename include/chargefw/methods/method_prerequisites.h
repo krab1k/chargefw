@@ -1,6 +1,8 @@
+// include/chargefw/methods/method_prerequisites.h
 #pragma once
 
-#include <chargefw/core/molecule.h>
+#include <chargefw/features/prepared_molecule.h>
+#include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method_options.h>
 
 #include <optional>
@@ -9,6 +11,8 @@
 #include <vector>
 
 namespace chargefw::methods {
+
+class Method;
 
 enum class PrerequisiteIssueKind {
     invalid_options,
@@ -40,8 +44,13 @@ class PrerequisiteResult {
 };
 
 struct MethodPrerequisiteInput {
-    const core::Molecule& molecule;
+    const features::PreparedMolecule& prepared_molecule;
     const MethodOptions& method_options;
 };
+
+[[nodiscard]] auto check_method_prerequisites(const Method& method,
+                                              const features::PreparedMoleculeCollection& molecules,
+                                              const MethodOptions& method_options)
+    -> PrerequisiteResult;
 
 } // namespace chargefw::methods

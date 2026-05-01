@@ -3,13 +3,14 @@
 #include <chargefw/methods/calculation_input.h>
 
 namespace chargefw::methods::builtin {
-[[nodiscard]] auto FormalMethod::calculate(const CalculationInput& input) const
-    -> charges::AtomicCharges {
-
+auto FormalMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     std::vector<double> values;
-    values.reserve(input.molecule.atom_count());
 
-    for (const auto& atom : input.molecule.atoms()) {
+    const auto& molecule = input.prepared_molecule.molecule();
+
+    values.reserve(molecule.atom_count());
+
+    for (const auto& atom : molecule.atoms()) {
         values.push_back(atom.formal_charge());
     }
 

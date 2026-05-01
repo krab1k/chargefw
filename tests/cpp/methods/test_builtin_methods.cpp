@@ -1,6 +1,6 @@
 #include "support/test_molecules.h"
 
-#include <chargefw/features/topology_features.h>
+#include <chargefw/features/prepared_molecule.h>
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
@@ -18,12 +18,11 @@ namespace {
 auto calculate(const methods::Method& method, const chargefw::core::Molecule& molecule)
     -> chargefw::charges::AtomicCharges
 {
-    const features::TopologyFeatures topology{molecule};
+    const features::PreparedMolecule prepared_molecule{molecule};
     const auto method_options = methods::make_default_options(method.option_schema());
 
     const methods::CalculationInput input{
-        .molecule = molecule,
-        .topology = topology,
+        .prepared_molecule = prepared_molecule,
         .geometry = nullptr,
         .method_options = method_options
     };

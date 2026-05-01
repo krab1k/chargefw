@@ -41,7 +41,7 @@ class StubMethod final : public methods::Method {
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> chargefw::charges::AtomicCharges override
     {
-        return chargefw::charges::AtomicCharges{std::vector(input.molecule.atom_count(), 0.0)};
+        return chargefw::charges::AtomicCharges{std::vector(input.prepared_molecule.molecule().atom_count(), 0.0)};
     }
 
   private:

@@ -3,8 +3,9 @@
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
+#include <chargefw/core/molecule_collection.h>
 #include <chargefw/core/position.h>
-#include <chargefw/features/topology_features.h>
+#include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_options.h>
@@ -17,7 +18,6 @@
 #include <chargefw/parameters/parameter_set_metadata.h>
 
 #include <iostream>
-#include <memory>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -47,6 +47,12 @@ auto make_water() -> core::Molecule {
     return core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers), "water"};
 }
 
+auto make_formally_charged_pair() -> core::Molecule {
+    std::vector atoms{core::Atom{7, 1, "N"}, core::Atom{17, -1, "Cl"}};
+
+    return core::Molecule{std::move(atoms), {}, {}, "charged-pair"};
+}
+
 auto atom_key(const int atomic_number,
               const parameters::AtomParameterClassificationKind classification, std::string type)
     -> parameters::AtomParameterKey {
@@ -54,7 +60,7 @@ auto atom_key(const int atomic_number,
         .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
 }
 
-auto make_matching_water_parameters() -> parameters::ParameterSet {
+auto make_water_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{.id = "demo-water-parameters",
                                          .method_id = "demo-atom-parameter-method",
@@ -66,17 +72,6 @@ auto make_matching_water_parameters() -> parameters::ParameterSet {
              {.key =
                   atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
               .parameters = {{.name = "value", .value = 2.0}}}}}};
-}
-
-auto make_nonmatching_water_parameters() -> parameters::ParameterSet {
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{.id = "demo-incomplete-parameters",
-                                         .method_id = "demo-atom-parameter-method",
-                                         .name = "Incomplete demo parameters"},
-        {},
-        parameters::AtomParameters{
-            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
-              .parameters = {{.name = "value", .value = 1.0}}}}}};
 }
 
 class DemoAtomParameterMethod final : public methods::Method {
@@ -92,7 +87,7 @@ class DemoAtomParameterMethod final : public methods::Method {
         return metadata;
     }
 
-    [[nodiscard]] auto requirements() const noexcept -> methods::MethodRequirements override {
+    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
         auto requirements = methods::MethodRequirements{};
         requirements.bond_graph = true;
         requirements.atom_parameters = {"value"};
@@ -106,7 +101,8 @@ class DemoAtomParameterMethod final : public methods::Method {
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {
-        return charges::AtomicCharges{std::vector<double>(input.molecule.atom_count(), 0.0)};
+        const auto& molecule = input.prepared_molecule.molecule();
+        return charges::AtomicCharges{std::vector<double>(molecule.atom_count(), 0.0)};
     }
 };
 
@@ -135,12 +131,25 @@ auto print_parameter_result(std::string_view label,
     }
 }
 
-auto calculate_and_print(const methods::Method& method, const core::Molecule& molecule,
-                         const features::TopologyFeatures& topology) -> void {
+auto print_collection_parameter_result(std::string_view label,
+                                       const methods::CollectionParameterPrerequisiteResult& result)
+    -> void {
+    std::cout << label << ": " << (result ? "ok" : "not ok") << '\n';
+
+    for (const auto& issue : result.issues) {
+        std::cout << "  - " << issue.message << '\n';
+    }
+
+    if (result) {
+        std::cout << "  classifications: " << result.classifications.size() << '\n';
+    }
+}
+
+auto calculate_and_print(const methods::Method& method,
+                         const features::PreparedMolecule& prepared_molecule) -> void {
     const auto method_options = methods::make_default_options(method.option_schema());
 
-    const methods::CalculationInput input{.molecule = molecule,
-                                          .topology = topology,
+    const methods::CalculationInput input{.prepared_molecule = prepared_molecule,
                                           .geometry = nullptr,
                                           .method_options = method_options};
 
@@ -156,8 +165,10 @@ auto calculate_and_print(const methods::Method& method, const core::Molecule& mo
 } // namespace
 
 auto main() -> int {
-    const auto water = make_water();
-    const features::TopologyFeatures topology{water};
+    auto collection = core::MoleculeCollection{
+        std::vector<core::Molecule>{make_water(), make_formally_charged_pair()}, "demo collection"};
+
+    const auto prepared = features::PreparedMoleculeCollection{collection};
 
     const auto& registry = methods::method_registry();
 
@@ -172,40 +183,33 @@ auto main() -> int {
     const auto dummy_options = methods::make_default_options(dummy->option_schema());
     const auto formal_options = methods::make_default_options(formal->option_schema());
 
-    print_result(
-        "dummy method prerequisites",
-        dummy->check_method_prerequisites({.molecule = water, .method_options = dummy_options}));
+    print_result("dummy collection method prerequisites",
+                 methods::check_method_prerequisites(*dummy, prepared, dummy_options));
 
-    print_result(
-        "formal method prerequisites",
-        formal->check_method_prerequisites({.molecule = water, .method_options = formal_options}));
+    print_result("formal collection method prerequisites",
+                 methods::check_method_prerequisites(*formal, prepared, formal_options));
 
-    calculate_and_print(*dummy, water, topology);
-    calculate_and_print(*formal, water, topology);
+    std::cout << "\nCharges for first molecule:\n";
+    calculate_and_print(*dummy, prepared[0]);
+    calculate_and_print(*formal, prepared[0]);
 
     const DemoAtomParameterMethod demo_method;
     const auto demo_options = methods::make_default_options(demo_method.option_schema());
 
-    print_result("demo parameterized method prerequisites",
-                 demo_method.check_method_prerequisites(
-                     {.molecule = water, .method_options = demo_options}));
+    print_result("\ndemo method prerequisites for collection",
+                 methods::check_method_prerequisites(demo_method, prepared, demo_options));
 
-    const auto matching_parameters = make_matching_water_parameters();
-    const auto nonmatching_parameters = make_nonmatching_water_parameters();
+    const auto water_parameters = make_water_parameters();
 
     print_parameter_result(
-        "matching parameter prerequisites",
-        methods::check_parameter_prerequisites(demo_method, {.molecule = water,
-                                                             .topology = topology,
-                                                             .parameter_set = matching_parameters,
+        "demo parameter prerequisites for first molecule",
+        methods::check_parameter_prerequisites(demo_method, {.prepared_molecule = prepared[0],
+                                                             .parameter_set = water_parameters,
                                                              .classification_options = {}}));
 
-    print_parameter_result("nonmatching parameter prerequisites",
-                           methods::check_parameter_prerequisites(
-                               demo_method, {.molecule = water,
-                                             .topology = topology,
-                                             .parameter_set = nonmatching_parameters,
-                                             .classification_options = {}}));
+    print_collection_parameter_result(
+        "demo parameter prerequisites for whole collection",
+        methods::check_parameter_prerequisites(demo_method, prepared, water_parameters, {}));
 
     return 0;
 }

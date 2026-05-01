@@ -1,12 +1,22 @@
 #include "support/test_molecules.h"
 
+#include <chargefw/core/molecule_collection.h>
+#include <chargefw/features/prepared_molecule.h>
+#include <chargefw/features/prepared_molecule_collection.h>
+#include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method.h>
-#include <chargefw/methods/method_registry.h>
 #include <chargefw/methods/method_options.h>
+#include <chargefw/methods/method_prerequisites.h>
+#include <chargefw/methods/method_registry.h>
 
 #include <cassert>
+#include <optional>
 #include <span>
+#include <utility>
+#include <vector>
 
+namespace core = chargefw::core;
+namespace features = chargefw::features;
 namespace methods = chargefw::methods;
 
 namespace {
@@ -26,7 +36,9 @@ public:
     }
 
     [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        return methods::MethodRequirements{.coordinates = true};
+        auto requirements = methods::MethodRequirements{};
+        requirements.coordinates = true;
+        return requirements;
     }
 
     [[nodiscard]] auto option_schema() const noexcept
@@ -36,7 +48,7 @@ public:
 
     [[nodiscard]] auto calculate(const methods::CalculationInput&) const
         -> chargefw::charges::AtomicCharges override {
-        return chargefw::charges::AtomicCharges{{}};
+        return chargefw::charges::AtomicCharges{std::vector<double>{}};
     }
 };
 
@@ -55,14 +67,12 @@ public:
     }
 
     [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        return methods::MethodRequirements{
-            .resources = methods::ResourceRequirements{
-                .time = methods::ComplexityTerm::atoms_cubed,
-                .memory = methods::ComplexityTerm::atoms_squared,
-                .large_molecule_atom_threshold = 2,
-                .reject_large_without_reduction = true
-            }
-        };
+        auto requirements = methods::MethodRequirements{};
+        requirements.resources.time = methods::ComplexityTerm::atoms_cubed;
+        requirements.resources.memory = methods::ComplexityTerm::atoms_squared;
+        requirements.resources.large_molecule_atom_threshold = 2;
+        requirements.resources.reject_large_without_reduction = true;
+        return requirements;
     }
 
     [[nodiscard]] auto option_schema() const noexcept
@@ -72,15 +82,27 @@ public:
 
     [[nodiscard]] auto calculate(const methods::CalculationInput&) const
         -> chargefw::charges::AtomicCharges override {
-        return chargefw::charges::AtomicCharges{{}};
+        return chargefw::charges::AtomicCharges{std::vector<double>{}};
     }
 };
+
+auto make_collection() -> core::MoleculeCollection {
+    std::vector molecules{
+        chargefw::test::make_water(),
+        chargefw::test::make_formally_charged_pair()
+    };
+
+    return core::MoleculeCollection{std::move(molecules), "test-collection"};
+}
 
 } // namespace
 
 auto main() -> int {
     const auto water = chargefw::test::make_water();
     const auto charged_pair = chargefw::test::make_formally_charged_pair();
+
+    const features::PreparedMolecule prepared_water{water};
+    const features::PreparedMolecule prepared_charged_pair{charged_pair};
 
     const auto empty_options = methods::MethodOptions{};
 
@@ -92,24 +114,24 @@ auto main() -> int {
     assert(formal != nullptr);
 
     assert(dummy->check_method_prerequisites({
-        .molecule = water,
+        .prepared_molecule = prepared_water,
         .method_options = empty_options
     }));
 
     assert(formal->check_method_prerequisites({
-        .molecule = water,
+        .prepared_molecule = prepared_water,
         .method_options = empty_options
     }));
 
     const CoordinatesMethod coordinates_method;
 
     assert(coordinates_method.check_method_prerequisites({
-        .molecule = water,
+        .prepared_molecule = prepared_water,
         .method_options = empty_options
     }));
 
     const auto missing_coordinates = coordinates_method.check_method_prerequisites({
-        .molecule = charged_pair,
+        .prepared_molecule = prepared_charged_pair,
         .method_options = empty_options
     });
 
@@ -121,7 +143,7 @@ auto main() -> int {
     const DenseMethod dense_method;
 
     const auto dense_result = dense_method.check_method_prerequisites({
-        .molecule = water,
+        .prepared_molecule = prepared_water,
         .method_options = empty_options
     });
 
@@ -129,6 +151,28 @@ auto main() -> int {
     assert(dense_result.issues().size() == 1);
     assert(dense_result.issues()[0].kind ==
            methods::PrerequisiteIssueKind::resource_limit);
+
+    const auto collection = make_collection();
+    const features::PreparedMoleculeCollection prepared_collection{collection};
+
+    const auto dummy_collection_result = methods::check_method_prerequisites(
+        *dummy,
+        prepared_collection,
+        empty_options
+    );
+
+    assert(dummy_collection_result);
+
+    const auto coordinates_collection_result = methods::check_method_prerequisites(
+        coordinates_method,
+        prepared_collection,
+        empty_options
+    );
+
+    assert(!coordinates_collection_result);
+    assert(coordinates_collection_result.issues().size() == 1);
+    assert(coordinates_collection_result.issues()[0].kind ==
+           methods::PrerequisiteIssueKind::missing_feature);
 
     return 0;
 }

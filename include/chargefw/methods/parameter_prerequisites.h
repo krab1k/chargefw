@@ -1,8 +1,7 @@
 #pragma once
 
-#include <chargefw/core/molecule.h>
-#include <chargefw/features/topology_features.h>
-#include <chargefw/methods/method.h>
+#include <chargefw/features/prepared_molecule.h>
+#include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method_prerequisites.h>
 #include <chargefw/parameters/classification_result.h>
 #include <chargefw/parameters/parameter_classification.h>
@@ -13,9 +12,10 @@
 
 namespace chargefw::methods {
 
+class Method;
+
 struct ParameterPrerequisiteInput {
-    const core::Molecule& molecule;
-    const features::TopologyFeatures& topology;
+    const features::PreparedMolecule& prepared_molecule;
     const parameters::ParameterSet& parameter_set;
     parameters::ClassificationOptions classification_options = {};
 };
@@ -33,8 +33,28 @@ struct ParameterPrerequisiteResult {
     }
 };
 
+struct CollectionParameterPrerequisiteResult {
+    std::vector<PrerequisiteIssue> issues;
+    std::vector<parameters::ParameterClassification> classifications;
+
+    [[nodiscard]] auto ok() const noexcept -> bool {
+        return issues.empty();
+    }
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return ok();
+    }
+};
+
 [[nodiscard]] auto check_parameter_prerequisites(const Method& method,
                                                  const ParameterPrerequisiteInput& input)
     -> ParameterPrerequisiteResult;
+
+[[nodiscard]] auto
+check_parameter_prerequisites(const Method& method,
+                              const features::PreparedMoleculeCollection& molecules,
+                              const parameters::ParameterSet& parameter_set,
+                              const parameters::ClassificationOptions& classification_options = {})
+    -> CollectionParameterPrerequisiteResult;
 
 } // namespace chargefw::methods

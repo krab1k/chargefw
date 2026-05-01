@@ -3,10 +3,9 @@
 #include <chargefw/methods/calculation_input.h>
 
 namespace chargefw::methods::builtin {
-[[nodiscard]] auto DummyMethod::calculate(const CalculationInput& input) const
-    -> charges::AtomicCharges {
-
-    return charges::AtomicCharges{std::vector(input.molecule.atom_count(), 0.0)};
+auto DummyMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
+    return charges::AtomicCharges{
+        std::vector(input.prepared_molecule.molecule().atom_count(), 0.0)};
 }
 
 } // namespace chargefw::methods::builtin

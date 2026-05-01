@@ -28,20 +28,21 @@ auto Method::check_method_prerequisites(const MethodPrerequisiteInput& input) co
     }
 
     const auto method_requirements = requirements();
+    const auto& molecule = input.prepared_molecule.molecule();
 
-    if (method_requirements.coordinates && !input.molecule.has_coordinates()) {
+    if (method_requirements.coordinates && !molecule.has_coordinates()) {
         result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::missing_feature,
                                      .message = "method '" + std::string{id()} +
                                                 "' requires coordinates"});
     }
 
     if (method_requirements.resources.reject_large_without_reduction &&
-        input.molecule.atom_count() > method_requirements.resources.large_molecule_atom_threshold) {
-        result.add(PrerequisiteIssue{
-            .kind = PrerequisiteIssueKind::resource_limit,
-            .message = "method '" + std::string{id()} + "' is not suitable for molecule '" +
-                       std::string{input.molecule.name()} + "' with " +
-                       std::to_string(input.molecule.atom_count()) + " atoms"});
+        molecule.atom_count() > method_requirements.resources.large_molecule_atom_threshold) {
+        result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::resource_limit,
+                                     .message = "method '" + std::string{id()} +
+                                                "' is not suitable for molecule '" +
+                                                std::string{molecule.name()} + "' with " +
+                                                std::to_string(molecule.atom_count()) + " atoms"});
     }
 
     add_method_specific_prerequisite_issues(input, result);

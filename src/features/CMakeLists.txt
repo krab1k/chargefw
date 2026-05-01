@@ -10,4 +10,6 @@ target_sources(chargefw_core
         FILES
         ${PROJECT_SOURCE_DIR}/include/chargefw/features/topology_features.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/features/conformer_features.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/features/prepared_molecule.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/features/prepared_molecule_collection.h
 )
