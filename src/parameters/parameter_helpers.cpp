@@ -46,7 +46,7 @@ auto validate_named_parameters(std::span<const NamedParameter> parameters,
 auto contains_named_parameter(std::span<const NamedParameter> parameters,
                               const std::string_view name) noexcept -> bool {
     return std::ranges::any_of(parameters,
-                               [name](const auto& parameter) { return parameter.name == name; });
+                               [name](const auto& parameter) -> bool { return parameter.name == name; });
 }
 
 auto named_parameter(std::span<const NamedParameter> parameters, const std::string_view name,
