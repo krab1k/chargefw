@@ -44,8 +44,10 @@ class PrerequisiteResult {
 };
 
 struct MethodPrerequisiteInput {
+    // NOLINTBEGIN(cppcoreguidelines-avoid-const-or-ref-data-members)
     const features::PreparedMolecule& prepared_molecule;
     const MethodOptions& method_options;
+    // NOLINTEND(cppcoreguidelines-avoid-const-or-ref-data-members)
 };
 
 [[nodiscard]] auto check_method_prerequisites(const Method& method,

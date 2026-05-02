@@ -15,8 +15,10 @@ namespace chargefw::methods {
 class Method;
 
 struct ParameterPrerequisiteInput {
+    // NOLINTBEGIN(cppcoreguidelines-avoid-const-or-ref-data-members)
     const features::PreparedMolecule& prepared_molecule;
     const parameters::ParameterSet& parameter_set;
+    // NOLINTEND(cppcoreguidelines-avoid-const-or-ref-data-members)
     parameters::ClassificationOptions classification_options = {};
 };
 
