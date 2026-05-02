@@ -14,7 +14,7 @@ auto main() -> int {
         {chargefw::test::make_water(), chargefw::test::make_formally_charged_pair()}, "examples"};
 
     assert(collection.name() == std::string_view{"examples"});
-    assert(collection.molecule_count() == 2);
+    assert(collection.size() == 2);
     assert(!collection.empty());
     assert(collection.molecules().size() == 2);
     assert(collection[0].name() == std::string_view{"water"});
@@ -22,7 +22,7 @@ auto main() -> int {
 
     const core::MoleculeCollection empty_collection{std::vector<core::Molecule>{}, "empty"};
     assert(empty_collection.empty());
-    assert(empty_collection.molecule_count() == 0);
+    assert(empty_collection.size() == 0);
 
     bool rejected_bad_index = false;
 

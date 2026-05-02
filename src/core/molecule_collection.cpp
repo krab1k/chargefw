@@ -15,7 +15,7 @@ auto MoleculeCollection::molecules() const noexcept -> std::span<const Molecule>
     return molecules_;
 }
 
-auto MoleculeCollection::molecule_count() const noexcept -> std::size_t {
+auto MoleculeCollection::size() const noexcept -> std::size_t {
     return molecules_.size();
 }
 

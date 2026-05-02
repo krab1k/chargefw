@@ -12,7 +12,7 @@ namespace chargefw::features {
 class PreparedMoleculeCollection {
   public:
     explicit PreparedMoleculeCollection(const core::MoleculeCollection& collection) {
-        molecules_.reserve(collection.molecule_count());
+        molecules_.reserve(collection.size());
 
         for (const auto& molecule : collection.molecules()) {
             molecules_.emplace_back(molecule);

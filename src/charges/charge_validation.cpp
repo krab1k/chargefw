@@ -12,23 +12,23 @@ auto make_context(const std::size_t charge_set_index, const std::size_t assignme
            std::to_string(assignment_index) + ": ";
 }
 
-auto validate_target_molecule_index(const core::MoleculeCollection& molecules,
+auto validate_target_molecule_index(const core::MoleculeCollection& collection,
                                     const ChargeTarget& target, const std::size_t charge_set_index,
                                     const std::size_t assignment_index) -> void {
-    if (target.molecule_index >= molecules.molecule_count()) {
+    if (target.molecule_index >= collection.size()) {
         throw std::invalid_argument{make_context(charge_set_index, assignment_index) +
                                     "target molecule index is outside the molecule collection"};
     }
 }
 
-auto validate_target_conformer_index(const core::MoleculeCollection& molecules,
+auto validate_target_conformer_index(const core::MoleculeCollection& collection,
                                      const ChargeTarget& target, const std::size_t charge_set_index,
                                      const std::size_t assignment_index) -> void {
     if (!target.conformer_index.has_value()) {
         return;
     }
 
-    const auto& molecule = molecules[target.molecule_index];
+    const auto& molecule = collection[target.molecule_index];
 
     if (*target.conformer_index >= molecule.conformer_count()) {
         throw std::invalid_argument{make_context(charge_set_index, assignment_index) +
@@ -36,10 +36,10 @@ auto validate_target_conformer_index(const core::MoleculeCollection& molecules,
     }
 }
 
-auto validate_charge_count(const core::MoleculeCollection& molecules,
+auto validate_charge_count(const core::MoleculeCollection& collection,
                            const ChargeAssignment& assignment, const std::size_t charge_set_index,
                            const std::size_t assignment_index) -> void {
-    const auto& molecule = molecules[assignment.target.molecule_index];
+    const auto& molecule = collection[assignment.target.molecule_index];
 
     if (assignment.charges.size() != molecule.atom_count()) {
         throw std::invalid_argument{make_context(charge_set_index, assignment_index) +
@@ -59,7 +59,7 @@ auto validate_assignment(const core::MoleculeCollection& molecules,
 
 } // namespace
 
-auto validate_charge_collection(const core::MoleculeCollection& molecules,
+auto validate_charge_collection(const core::MoleculeCollection& collection,
                                 const ChargeCollection& charges) -> void {
     const auto charge_sets = charges.charge_sets();
 
@@ -69,7 +69,7 @@ auto validate_charge_collection(const core::MoleculeCollection& molecules,
 
         for (std::size_t assignment_index = 0; assignment_index < assignments.size();
              ++assignment_index) {
-            validate_assignment(molecules, assignments[assignment_index], charge_set_index,
+            validate_assignment(collection, assignments[assignment_index], charge_set_index,
                                 assignment_index);
         }
     }

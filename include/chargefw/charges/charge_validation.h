@@ -5,7 +5,7 @@
 
 namespace chargefw::charges {
 
-auto validate_charge_collection(const core::MoleculeCollection& molecules,
+auto validate_charge_collection(const core::MoleculeCollection& collection,
                                 const ChargeCollection& charges) -> void;
 
 } // namespace chargefw::charges
