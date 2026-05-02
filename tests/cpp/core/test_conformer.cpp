@@ -27,7 +27,6 @@ auto main() -> int
 
     const core::Conformer empty_conformer{std::vector<core::Position>{}, "empty"};
     assert(empty_conformer.empty());
-    assert(empty_conformer.size() == 0);
     assert(empty_conformer.positions().empty());
 
     bool rejected_bad_index = false;

@@ -56,7 +56,7 @@ class WrongSizeMethod final : public methods::Method {
 
     [[nodiscard]] auto calculate(const methods::CalculationInput&) const
         -> charges::AtomicCharges override {
-        return charges::AtomicCharges{std::vector<double>{0.0}};
+        return charges::AtomicCharges{std::vector{0.0}};
     }
 };
 

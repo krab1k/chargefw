@@ -30,7 +30,6 @@ auto main() -> int
 
     const charges::AtomicCharges empty_values{std::vector<double>{}};
     assert(empty_values.empty());
-    assert(empty_values.size() == 0);
     assert(approximately_equal(empty_values.total(), 0.0));
 
     bool rejected_bad_index = false;
