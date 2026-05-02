@@ -10,6 +10,7 @@
 #include <cassert>
 #include <stdexcept>
 #include <vector>
+#include <optional>
 
 namespace core = chargefw::core;
 namespace features = chargefw::features;
@@ -62,8 +63,7 @@ auto main() -> int {
     assert(!iron_check);
     assert(iron_check.issues().size() == 1);
     assert(iron_check.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
-    assert(iron_check.issues()[0].atom_index.has_value());
-    assert(*iron_check.issues()[0].atom_index == 0);
+    assert(iron_check.issues()[0].atom_index == std::optional<std::size_t>{0});
 
     bool rejected_unchecked_calculation = false;
 

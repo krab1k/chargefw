@@ -28,15 +28,13 @@ namespace parameters = chargefw::parameters;
 namespace {
 
 class AtomParameterMethod final : public methods::Method {
-public:
+  public:
     [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{
-            .id = "atom-parameter-test",
-            .name = "Atom parameter test",
-            .full_name = "Atom parameter test",
-            .publication = std::nullopt,
-            .priority = 0
-        };
+        static constexpr methods::MethodMetadata metadata{.id = "atom-parameter-test",
+                                                          .name = "Atom parameter test",
+                                                          .full_name = "Atom parameter test",
+                                                          .publication = std::nullopt,
+                                                          .priority = 0};
 
         return metadata;
     }
@@ -59,129 +57,61 @@ public:
     }
 };
 
-auto atom_key(
-    const int atomic_number,
-    const parameters::AtomParameterClassificationKind classification,
-    std::string type
-) -> parameters::AtomParameterKey {
+auto atom_key(const int atomic_number,
+              const parameters::AtomParameterClassificationKind classification, std::string type)
+    -> parameters::AtomParameterKey {
     return {
-        .atomic_number = atomic_number,
-        .classification = classification,
-        .type = std::move(type)
-    };
+        .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
 }
 
 auto make_collection() -> core::MoleculeCollection {
-    std::vector molecules{
-        chargefw::test::make_water(),
-        chargefw::test::make_formally_charged_pair()
-    };
+    std::vector molecules{chargefw::test::make_water(),
+                          chargefw::test::make_formally_charged_pair()};
 
-    return core::MoleculeCollection{
-        std::move(molecules),
-        "test-collection"
-    };
+    return core::MoleculeCollection{std::move(molecules), "test-collection"};
 }
 
 auto make_wrong_method_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "wrong-method-parameters",
-            .method_id = "other-method",
-            .name = "Wrong method parameters"
-        },
+        parameters::ParameterSetMetadata{.id = "wrong-method-parameters",
+                                         .method_id = "other-method",
+                                         .name = "Wrong method parameters"},
         {},
         parameters::AtomParameters{
-            {
-                {
-                    .key = atom_key(
-                        1,
-                        parameters::AtomParameterClassificationKind::PLAIN,
-                        "*"
-                    ),
-                    .parameters = {{.name = "value", .value = 1.0}}
-                }
-            }
-        }
-    };
+            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+              .parameters = {{.name = "value", .value = 1.0}}}}}};
 }
 
 auto make_water_only_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "water-only-parameters",
-            .method_id = "atom-parameter-test",
-            .name = "Water only parameters"
-        },
+        parameters::ParameterSetMetadata{.id = "water-only-parameters",
+                                         .method_id = "atom-parameter-test",
+                                         .name = "Water only parameters"},
         {},
         parameters::AtomParameters{
-            {
-                {
-                    .key = atom_key(
-                        1,
-                        parameters::AtomParameterClassificationKind::BONDED_ELEMENTS,
-                        "O"
-                    ),
-                    .parameters = {{.name = "value", .value = 1.0}}
-                },
-                {
-                    .key = atom_key(
-                        8,
-                        parameters::AtomParameterClassificationKind::BONDED_ELEMENTS,
-                        "HH"
-                    ),
-                    .parameters = {{.name = "value", .value = 2.0}}
-                }
-            }
-        }
-    };
+            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+              .parameters = {{.name = "value", .value = 1.0}}},
+             {.key =
+                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+              .parameters = {{.name = "value", .value = 2.0}}}}}};
 }
 
 auto make_collection_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "collection-parameters",
-            .method_id = "atom-parameter-test",
-            .name = "Collection parameters"
-        },
+        parameters::ParameterSetMetadata{.id = "collection-parameters",
+                                         .method_id = "atom-parameter-test",
+                                         .name = "Collection parameters"},
         {},
         parameters::AtomParameters{
-            {
-                {
-                    .key = atom_key(
-                        1,
-                        parameters::AtomParameterClassificationKind::BONDED_ELEMENTS,
-                        "O"
-                    ),
-                    .parameters = {{.name = "value", .value = 1.0}}
-                },
-                {
-                    .key = atom_key(
-                        8,
-                        parameters::AtomParameterClassificationKind::BONDED_ELEMENTS,
-                        "HH"
-                    ),
-                    .parameters = {{.name = "value", .value = 2.0}}
-                },
-                {
-                    .key = atom_key(
-                        7,
-                        parameters::AtomParameterClassificationKind::PLAIN,
-                        "*"
-                    ),
-                    .parameters = {{.name = "value", .value = 3.0}}
-                },
-                {
-                    .key = atom_key(
-                        17,
-                        parameters::AtomParameterClassificationKind::PLAIN,
-                        "*"
-                    ),
-                    .parameters = {{.name = "value", .value = 4.0}}
-                }
-            }
-        }
-    };
+            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+              .parameters = {{.name = "value", .value = 1.0}}},
+             {.key =
+                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+              .parameters = {{.name = "value", .value = 2.0}}},
+             {.key = atom_key(7, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+              .parameters = {{.name = "value", .value = 3.0}}},
+             {.key = atom_key(17, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+              .parameters = {{.name = "value", .value = 4.0}}}}}};
 }
 
 } // namespace
@@ -197,22 +127,13 @@ auto main() -> int {
 
     const AtomParameterMethod atom_parameter_method;
 
-    const std::vector<const methods::Method*> candidate_methods{
-        dummy,
-        &atom_parameter_method
-    };
+    const std::vector<const methods::Method*> candidate_methods{dummy, &atom_parameter_method};
 
-    const std::vector parameter_sets{
-        make_wrong_method_parameters(),
-        make_water_only_parameters(),
-        make_collection_parameters()
-    };
+    const std::vector parameter_sets{make_wrong_method_parameters(), make_water_only_parameters(),
+                                     make_collection_parameters()};
 
-    const auto result = methods::find_applicable_methods(
-        prepared_collection,
-        candidate_methods,
-        parameter_sets
-    );
+    const auto result =
+        methods::find_applicable_methods(prepared_collection, candidate_methods, parameter_sets);
 
     assert(!result.empty());
     assert(result.applicable.size() == 2);
@@ -229,7 +150,8 @@ auto main() -> int {
     assert(parameterized_applicable.method == &atom_parameter_method);
     assert(parameterized_applicable.parameter_set != nullptr);
     assert(parameterized_applicable.uses_parameters());
-    assert(parameterized_applicable.parameter_set->id() == std::string_view{"collection-parameters"});
+    assert(parameterized_applicable.parameter_set->id() ==
+           std::string_view{"collection-parameters"});
     assert(parameterized_applicable.classifications.size() == prepared_collection.molecule_count());
 
     const auto& water_classification = parameterized_applicable.classifications[0];
@@ -248,14 +170,12 @@ auto main() -> int {
     assert(result.rejected.size() == 2);
 
     assert(result.rejected[0].method_index == 1);
-    assert(result.rejected[0].parameter_set_index.has_value());
-    assert(*result.rejected[0].parameter_set_index == 0);
+    assert(result.rejected[0].parameter_set_index == std::optional<std::size_t>{0});
     assert(!result.rejected[0].issues.empty());
     assert(result.rejected[0].issues[0].kind == methods::PrerequisiteIssueKind::missing_parameters);
 
     assert(result.rejected[1].method_index == 1);
-    assert(result.rejected[1].parameter_set_index.has_value());
-    assert(*result.rejected[1].parameter_set_index == 1);
+    assert(result.rejected[1].parameter_set_index == std::optional<std::size_t>{1});
     assert(!result.rejected[1].issues.empty());
     assert(result.rejected[1].issues[0].kind ==
            methods::PrerequisiteIssueKind::parameter_classification_failed);
