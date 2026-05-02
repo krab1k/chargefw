@@ -12,6 +12,13 @@ function(chargefw_setup_developer_tools)
 
   if(CHARGEFW_ENABLE_CLANG_TIDY)
     find_program(CLANG_TIDY_EXE clang-tidy REQUIRED)
-    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}" PARENT_SCOPE)
+
+    set(
+      CMAKE_CXX_CLANG_TIDY
+      "${CLANG_TIDY_EXE}"
+      "--header-filter=^${PROJECT_SOURCE_DIR}/(include|src|apps|tests)/"
+      "--exclude-header-filter=^(${PROJECT_BINARY_DIR}|${PROJECT_SOURCE_DIR}/build)/"
+      PARENT_SCOPE
+    )
   endif()
 endfunction()
