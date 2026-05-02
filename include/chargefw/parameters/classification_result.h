@@ -3,12 +3,13 @@
 #include <chargefw/parameters/parameter_classification.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace chargefw::parameters {
 
-enum class ClassificationIssueKind {
+enum class ClassificationIssueKind : std::uint8_t {
     MISSING_ATOM_PARAMETER,
     MISSING_BOND_PARAMETER,
 };

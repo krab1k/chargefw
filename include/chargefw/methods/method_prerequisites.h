@@ -1,20 +1,21 @@
-// include/chargefw/methods/method_prerequisites.h
 #pragma once
 
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method_options.h>
 
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
 #include <vector>
 
+
 namespace chargefw::methods {
 
 class Method;
 
-enum class PrerequisiteIssueKind {
+enum class PrerequisiteIssueKind : std::uint8_t {
     invalid_options,
     missing_feature,
     unsupported_molecule,

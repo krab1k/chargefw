@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string_view>
 #include <vector>
 
@@ -8,7 +9,7 @@ namespace chargefw::methods {
 
 inline constexpr std::size_t default_large_molecule_atom_threshold = 20'000;
 
-enum class ComplexityTerm {
+enum class ComplexityTerm : std::uint8_t {
     constant,                 // 1
     atoms,                    // N
     bonds,                    // M

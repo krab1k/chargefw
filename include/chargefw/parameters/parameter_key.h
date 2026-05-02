@@ -1,17 +1,18 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
 namespace chargefw::parameters {
 
-enum class AtomParameterClassificationKind {
+enum class AtomParameterClassificationKind : std::uint8_t {
     PLAIN,
     HIGHEST_BOND_ORDER,
     BONDED_ELEMENTS
 };
 
-enum class BondParameterClassificationKind {
+enum class BondParameterClassificationKind : std::uint8_t {
     PLAIN,
     BOND_ORDER
 };

@@ -1,9 +1,10 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 namespace chargefw::core {
-enum class BondOrder { UNKNOWN, SINGLE, DOUBLE, TRIPLE, AROMATIC };
+enum class BondOrder : std::uint8_t { UNKNOWN, SINGLE, DOUBLE, TRIPLE, AROMATIC };
 
 class Bond {
   public:
