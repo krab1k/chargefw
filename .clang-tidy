@@ -10,13 +10,14 @@ Checks: >
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-owning-memory,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
-  -cppcoreguidelines-pro-type-reinterpret-cast
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
   -cppcoreguidelines-non-private-member-variables-in-classes,
   -readability-identifier-length,
   -bugprone-easily-swappable-parameters,
   -portability-avoid-pragma-once,
   -readability-avoid-const-params-in-decls,
-  -readability-isolate-declaration
+  -readability-isolate-declaration,
   -readability-math-missing-parentheses
 
 WarningsAsErrors: ''

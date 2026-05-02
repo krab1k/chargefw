@@ -2,6 +2,7 @@
 
 #include "parameters/parameter_helpers.h"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -44,13 +45,8 @@ auto validate_named_parameters(std::span<const NamedParameter> parameters,
 
 auto contains_named_parameter(std::span<const NamedParameter> parameters,
                               const std::string_view name) noexcept -> bool {
-    for (const auto& [parameter_name, value] : parameters) {
-        if (parameter_name == name) {
-            return true;
-        }
-    }
-
-    return false;
+    return std::ranges::any_of(parameters,
+                               [name](const auto& parameter) { return parameter.name == name; });
 }
 
 auto named_parameter(std::span<const NamedParameter> parameters, const std::string_view name,

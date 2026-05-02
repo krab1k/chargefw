@@ -10,7 +10,7 @@ auto FormalMethod::calculate(const CalculationInput& input) const -> charges::At
     values.reserve(molecule.atom_count());
 
     for (const auto& atom : molecule.atoms()) {
-        values.push_back(static_cast<double>(atom.formal_charge()));
+        values.push_back(atom.formal_charge());
     }
 
     return charges::AtomicCharges{std::move(values)};
