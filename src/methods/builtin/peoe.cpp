@@ -41,8 +41,8 @@ auto PEOEMethod::calculate(const CalculationInput& input) const -> charges::Atom
 
     const auto atom_count = molecule.atom_count();
 
-    std::vector<double> charges(atom_count, 0.0);
-    std::vector<double> electronegativities(atom_count, 0.0);
+    std::vector charges(atom_count, 0.0);
+    std::vector electronegativities(atom_count, 0.0);
 
     for (int alpha = 1; alpha < iterations; ++alpha) {
         for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {

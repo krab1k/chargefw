@@ -38,7 +38,7 @@ class PEOEMethod final : public Method {
         -> charges::AtomicCharges override;
 
   private:
-    inline static const std::array<MethodOptionSpec, 1> option_schema_{
+    inline static const std::array option_schema_{
         MethodOptionSpec{.id = "iters",
                          .description = "Number of PEOE iterations",
                          .type = MethodOptionType::integer,
