@@ -17,6 +17,7 @@ Checks: >
   -portability-avoid-pragma-once,
   -readability-avoid-const-params-in-decls,
   -readability-isolate-declaration
+  -readability-math-missing-parentheses
 
 WarningsAsErrors: ''
 HeaderFilterRegex: '.*'
