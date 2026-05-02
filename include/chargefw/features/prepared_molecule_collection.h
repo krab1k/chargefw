@@ -10,7 +10,7 @@
 namespace chargefw::features {
 
 class PreparedMoleculeCollection {
-public:
+  public:
     explicit PreparedMoleculeCollection(const core::MoleculeCollection& collection) {
         molecules_.reserve(collection.molecule_count());
 
@@ -42,7 +42,7 @@ public:
         return molecules_.at(index);
     }
 
-private:
+  private:
     std::vector<PreparedMolecule> molecules_;
 };
 

@@ -6,11 +6,8 @@
 namespace chargefw::features {
 
 class PreparedMolecule {
-public:
-    explicit PreparedMolecule(const core::Molecule& molecule)
-        : topology_{molecule}
-    {
-    }
+  public:
+    explicit PreparedMolecule(const core::Molecule& molecule) : topology_{molecule} {}
 
     PreparedMolecule(core::Molecule&&) = delete;
     PreparedMolecule(const core::Molecule&&) = delete;
@@ -23,7 +20,7 @@ public:
         return topology_;
     }
 
-private:
+  private:
     TopologyFeatures topology_;
 };
 

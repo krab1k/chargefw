@@ -44,10 +44,8 @@ class Method {
   protected:
     Method() = default;
 
-    virtual auto add_method_specific_prerequisite_issues(
-        const MethodPrerequisiteInput& input,
-        PrerequisiteResult& result
-    ) const -> void;
+    virtual auto add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                         PrerequisiteResult& result) const -> void;
 };
 
 } // namespace chargefw::methods

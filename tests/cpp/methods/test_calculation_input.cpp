@@ -24,47 +24,25 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto atom_key(
-    const int atomic_number,
-    const parameters::AtomParameterClassificationKind classification,
-    std::string type
-) -> parameters::AtomParameterKey {
+auto atom_key(const int atomic_number,
+              const parameters::AtomParameterClassificationKind classification, std::string type)
+    -> parameters::AtomParameterKey {
     return {
-        .atomic_number = atomic_number,
-        .classification = classification,
-        .type = std::move(type)
-    };
+        .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
 }
 
 auto make_water_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-water-parameters",
-            .method_id = "test-method",
-            .name = "Test water parameters"
-        },
+        parameters::ParameterSetMetadata{.id = "test-water-parameters",
+                                         .method_id = "test-method",
+                                         .name = "Test water parameters"},
         {},
         parameters::AtomParameters{
-            {
-                {
-                    .key = atom_key(
-                        1,
-                        parameters::AtomParameterClassificationKind::BONDED_ELEMENTS,
-                        "O"
-                    ),
-                    .parameters = {{.name = "value", .value = 1.0}}
-                },
-                {
-                    .key = atom_key(
-                        8,
-                        parameters::AtomParameterClassificationKind::BONDED_ELEMENTS,
-                        "HH"
-                    ),
-                    .parameters = {{.name = "value", .value = 2.0}}
-                }
-            }
-        }
-    };
+            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+              .parameters = {{.name = "value", .value = 1.0}}},
+             {.key =
+                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+              .parameters = {{.name = "value", .value = 2.0}}}}}};
 }
 
 } // namespace
@@ -74,10 +52,7 @@ auto main() -> int {
     const features::PreparedMolecule prepared_water{water};
     const methods::MethodOptions options;
 
-    const methods::CalculationInput basic_input{
-        prepared_water,
-        options
-    };
+    const methods::CalculationInput basic_input{prepared_water, options};
 
     assert(&basic_input.prepared_molecule() == &prepared_water);
     assert(&basic_input.molecule() == &water);
@@ -112,11 +87,7 @@ auto main() -> int {
 
     const features::ConformerFeatures geometry{water};
 
-    const methods::CalculationInput geometry_input{
-        prepared_water,
-        options,
-        &geometry
-    };
+    const methods::CalculationInput geometry_input{prepared_water, options, &geometry};
 
     assert(geometry_input.has_geometry());
     assert(geometry_input.geometry_if_available() == &geometry);
@@ -125,22 +96,12 @@ auto main() -> int {
     const auto parameter_set = make_water_parameters();
 
     const parameters::ParameterClassification classification{
-        parameters::AtomParameterClassification{
-            std::vector<std::size_t>{1, 0, 0}
-        }
-    };
+        parameters::AtomParameterClassification{std::vector<std::size_t>{1, 0, 0}}};
 
-    const parameters::ParameterView parameter_view{
-        parameter_set,
-        classification
-    };
+    const parameters::ParameterView parameter_view{parameter_set, classification};
 
-    const methods::CalculationInput parameter_input{
-        prepared_water,
-        options,
-        nullptr,
-        &parameter_view
-    };
+    const methods::CalculationInput parameter_input{prepared_water, options, nullptr,
+                                                    &parameter_view};
 
     assert(parameter_input.has_parameters());
     assert(parameter_input.parameters_if_available() == &parameter_view);

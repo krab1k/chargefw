@@ -47,8 +47,9 @@ auto PeriodicTable::element(const int atomic_number) const -> const Element& {
 auto PeriodicTable::element(const std::string_view symbol) const -> const Element& {
     const auto all_elements = elements();
 
-    const auto found = std::ranges::find_if(
-        all_elements, [symbol](const Element& element) -> bool { return element.symbol == symbol; });
+    const auto found = std::ranges::find_if(all_elements, [symbol](const Element& element) -> bool {
+        return element.symbol == symbol;
+    });
 
     if (found == all_elements.end()) {
         throw std::out_of_range{"unknown element symbol '" + std::string{symbol} + "'"};
@@ -67,8 +68,9 @@ auto PeriodicTable::contains(const int atomic_number) const noexcept -> bool {
 auto PeriodicTable::contains(const std::string_view symbol) const noexcept -> bool {
     const auto all_elements = elements();
 
-    return std::ranges::any_of(
-        all_elements, [symbol](const Element& element) -> bool { return element.symbol == symbol; });
+    return std::ranges::any_of(all_elements, [symbol](const Element& element) -> bool {
+        return element.symbol == symbol;
+    });
 }
 
 auto periodic_table() noexcept -> const PeriodicTable& {

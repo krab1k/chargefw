@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -7,11 +8,10 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include <cstdint>
 
 namespace chargefw::methods {
 
-enum class MethodOptionType: std::uint8_t { boolean, integer, floating_point, string };
+enum class MethodOptionType : std::uint8_t { boolean, integer, floating_point, string };
 
 using MethodOptionValue = std::variant<bool, int, double, std::string>;
 

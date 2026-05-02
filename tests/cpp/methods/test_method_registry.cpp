@@ -15,35 +15,29 @@ namespace {
 
 class StubMethod final : public methods::Method {
   public:
-    explicit StubMethod(std::string id) : id_{std::move(id)},
-                                          metadata_{.id = id_,
-                                                    .name = id_,
-                                                    .full_name = id_,
-                                                    .publication = std::nullopt,
-                                                    .priority = 0} {}
+    explicit StubMethod(std::string id)
+        : id_{std::move(id)}, metadata_{.id = id_,
+                                        .name = id_,
+                                        .full_name = id_,
+                                        .publication = std::nullopt,
+                                        .priority = 0} {}
 
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override
-    {
+    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
         return metadata_;
     }
 
-    [[nodiscard]] auto requirements() const noexcept -> methods::MethodRequirements override
-    {
+    [[nodiscard]] auto requirements() const noexcept -> methods::MethodRequirements override {
         return {};
     }
 
     [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override
-    {
+        -> std::span<const methods::MethodOptionSpec> override {
         return {};
     }
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
-        -> chargefw::charges::AtomicCharges override
-    {
-        return chargefw::charges::AtomicCharges{
-            std::vector(input.molecule().atom_count(), 0.0)
-        };
+        -> chargefw::charges::AtomicCharges override {
+        return chargefw::charges::AtomicCharges{std::vector(input.molecule().atom_count(), 0.0)};
     }
 
   private:
@@ -53,8 +47,7 @@ class StubMethod final : public methods::Method {
 
 } // namespace
 
-auto main() -> int
-{
+auto main() -> int {
     auto methods_for_registry = std::vector<std::unique_ptr<methods::Method>>{};
     methods_for_registry.push_back(std::make_unique<StubMethod>("zeta"));
     methods_for_registry.push_back(std::make_unique<StubMethod>("alpha"));

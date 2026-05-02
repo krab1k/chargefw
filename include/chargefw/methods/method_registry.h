@@ -11,7 +11,7 @@
 namespace chargefw::methods {
 
 class MethodRegistry {
-public:
+  public:
     explicit MethodRegistry(std::vector<std::unique_ptr<Method>> methods);
 
     [[nodiscard]] auto find(std::string_view id) const noexcept -> const Method*;
@@ -20,7 +20,7 @@ public:
 
     [[nodiscard]] auto names() const -> std::vector<std::string>;
 
-private:
+  private:
     std::vector<std::unique_ptr<Method>> methods_;
 };
 

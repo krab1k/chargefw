@@ -5,8 +5,7 @@
 
 namespace core = chargefw::core;
 
-auto main() -> int
-{
+auto main() -> int {
     const core::Bond bond{0, 1, core::BondOrder::SINGLE};
 
     assert(bond.first_atom_index() == 0);

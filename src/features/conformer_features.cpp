@@ -6,8 +6,7 @@
 namespace chargefw::features {
 namespace {
 
-auto validate_radius(const double radius) -> void
-{
+auto validate_radius(const double radius) -> void {
     if (radius < 0.0) {
         throw std::invalid_argument{"radius must not be negative"};
     }
@@ -17,30 +16,25 @@ auto validate_radius(const double radius) -> void
 
 ConformerFeatures::ConformerFeatures(const core::Molecule& molecule,
                                      const std::size_t conformer_index)
-    : molecule_{&molecule}, conformer_index_{conformer_index}
-{
+    : molecule_{&molecule}, conformer_index_{conformer_index} {
     validate_conformer_index();
 }
 
-auto ConformerFeatures::molecule() const noexcept -> const core::Molecule&
-{
+auto ConformerFeatures::molecule() const noexcept -> const core::Molecule& {
     return *molecule_;
 }
 
-auto ConformerFeatures::conformer_index() const noexcept -> std::size_t
-{
+auto ConformerFeatures::conformer_index() const noexcept -> std::size_t {
     return conformer_index_;
 }
 
-auto ConformerFeatures::position(const std::size_t atom_index) const -> const core::Position&
-{
+auto ConformerFeatures::position(const std::size_t atom_index) const -> const core::Position& {
     validate_atom_index(atom_index);
     return molecule_->conformer(conformer_index_)[atom_index];
 }
 
 auto ConformerFeatures::squared_distance(const std::size_t first_atom_index,
-                                         const std::size_t second_atom_index) const -> double
-{
+                                         const std::size_t second_atom_index) const -> double {
     const auto& [x1, y1, z1] = position(first_atom_index);
     const auto& [x2, y2, z2] = position(second_atom_index);
 
@@ -52,15 +46,13 @@ auto ConformerFeatures::squared_distance(const std::size_t first_atom_index,
 }
 
 auto ConformerFeatures::distance(const std::size_t first_atom_index,
-                                 const std::size_t second_atom_index) const -> double
-{
+                                 const std::size_t second_atom_index) const -> double {
     return std::sqrt(squared_distance(first_atom_index, second_atom_index));
 }
 
 auto ConformerFeatures::neighbor_indices_within(const std::size_t atom_index,
                                                 const double radius) const
-    -> std::vector<std::size_t>
-{
+    -> std::vector<std::size_t> {
     validate_atom_index(atom_index);
     validate_radius(radius);
 
@@ -81,18 +73,16 @@ auto ConformerFeatures::neighbor_indices_within(const std::size_t atom_index,
     return neighbors;
 }
 
-auto ConformerFeatures::validate_conformer_index() const -> void
-{
+auto ConformerFeatures::validate_conformer_index() const -> void {
     if (conformer_index_ >= molecule_->conformer_count()) {
         throw std::out_of_range{"conformer index is outside the molecule"};
     }
 }
 
-auto ConformerFeatures::validate_atom_index(const std::size_t atom_index) const -> void
-{
+auto ConformerFeatures::validate_atom_index(const std::size_t atom_index) const -> void {
     if (atom_index >= molecule_->atom_count()) {
         throw std::out_of_range{"atom index is outside the molecule"};
     }
 }
 
-} // namespace chargefw::features//
+} // namespace chargefw::features

@@ -7,7 +7,7 @@
 namespace chargefw::charges {
 
 class AtomicCharges {
-public:
+  public:
     explicit AtomicCharges(std::vector<double> values);
 
     [[nodiscard]] auto values() const noexcept -> std::span<const double>;
@@ -21,7 +21,7 @@ public:
     [[nodiscard]] auto operator[](std::size_t index) const noexcept -> double;
     [[nodiscard]] auto at(std::size_t index) const -> double;
 
-private:
+  private:
     std::vector<double> values_;
 };
 

@@ -6,8 +6,7 @@
 namespace chargefw::parameters {
 
 auto atom_classification_kind_from_string(const std::string_view value)
-    -> AtomParameterClassificationKind
-{
+    -> AtomParameterClassificationKind {
     if (value == "plain") {
         return AtomParameterClassificationKind::PLAIN;
     }
@@ -20,12 +19,12 @@ auto atom_classification_kind_from_string(const std::string_view value)
         return AtomParameterClassificationKind::BONDED_ELEMENTS;
     }
 
-    throw std::invalid_argument{"unknown atom parameter classification '" + std::string{value} + "'"};
+    throw std::invalid_argument{"unknown atom parameter classification '" + std::string{value} +
+                                "'"};
 }
 
 auto bond_classification_kind_from_string(const std::string_view value)
-    -> BondParameterClassificationKind
-{
+    -> BondParameterClassificationKind {
     if (value == "plain") {
         return BondParameterClassificationKind::PLAIN;
     }
@@ -34,11 +33,11 @@ auto bond_classification_kind_from_string(const std::string_view value)
         return BondParameterClassificationKind::BOND_ORDER;
     }
 
-    throw std::invalid_argument{"unknown bond parameter classification '" + std::string{value} + "'"};
+    throw std::invalid_argument{"unknown bond parameter classification '" + std::string{value} +
+                                "'"};
 }
 
-auto to_string(const AtomParameterClassificationKind kind) noexcept -> std::string_view
-{
+auto to_string(const AtomParameterClassificationKind kind) noexcept -> std::string_view {
     switch (kind) {
     case AtomParameterClassificationKind::PLAIN:
         return "plain";
@@ -53,8 +52,7 @@ auto to_string(const AtomParameterClassificationKind kind) noexcept -> std::stri
     return "unknown";
 }
 
-auto to_string(const BondParameterClassificationKind kind) noexcept -> std::string_view
-{
+auto to_string(const BondParameterClassificationKind kind) noexcept -> std::string_view {
     switch (kind) {
     case BondParameterClassificationKind::PLAIN:
         return "plain";

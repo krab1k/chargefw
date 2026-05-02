@@ -16,7 +16,7 @@ struct BondParameterEntry {
 };
 
 class BondParameters {
-public:
+  public:
     BondParameters() = default;
 
     explicit BondParameters(std::vector<BondParameterEntry> entries);
@@ -35,7 +35,7 @@ public:
 
     [[nodiscard]] auto parameter(std::size_t entry_index, std::string_view name) const -> double;
 
-private:
+  private:
     std::vector<BondParameterEntry> entries_;
 };
 

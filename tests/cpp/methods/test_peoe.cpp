@@ -26,75 +26,39 @@ namespace parameters = chargefw::parameters;
 namespace {
 
 auto atom_key(const int atomic_number) -> parameters::AtomParameterKey {
-    return parameters::AtomParameterKey{
-        .atomic_number = atomic_number,
-        .classification = parameters::AtomParameterClassificationKind::PLAIN,
-        .type = "*"
-    };
+    return parameters::AtomParameterKey{.atomic_number = atomic_number,
+                                        .classification =
+                                            parameters::AtomParameterClassificationKind::PLAIN,
+                                        .type = "*"};
 }
 
 auto make_hf() -> core::Molecule {
-    std::vector atoms{
-        core::Atom{1, 0, "H"},
-        core::Atom{9, 0, "F"}
-    };
+    std::vector atoms{core::Atom{1, 0, "H"}, core::Atom{9, 0, "F"}};
 
-    std::vector bonds{
-        core::Bond{0, 1, core::BondOrder::SINGLE}
-    };
+    std::vector bonds{core::Bond{0, 1, core::BondOrder::SINGLE}};
 
-    return core::Molecule{
-        std::move(atoms),
-        std::move(bonds),
-        {},
-        "hf"
-    };
+    return core::Molecule{std::move(atoms), std::move(bonds), {}, "hf"};
 }
 
 auto make_collection() -> core::MoleculeCollection {
-    std::vector molecules{
-        make_hf()
-    };
+    std::vector molecules{make_hf()};
 
-    return core::MoleculeCollection{
-        std::move(molecules),
-        "test"
-    };
+    return core::MoleculeCollection{std::move(molecules), "test"};
 }
 
 auto make_peoe_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
-            .id = "peoe-test-parameters",
-            .method_id = "peoe",
-            .name = "PEOE test parameters"
-        },
-        parameters::CommonParameters{
-            {
-                {.name = "dampH", .value = 20.02}
-            }
-        },
-        parameters::AtomParameters{
-            {
-                {
-                    .key = atom_key(1),
-                    .parameters = {
-                        {.name = "A", .value = 7.17},
-                        {.name = "B", .value = 6.24},
-                        {.name = "C", .value = -0.56}
-                    }
-                },
-                {
-                    .key = atom_key(9),
-                    .parameters = {
-                        {.name = "A", .value = 12.06},
-                        {.name = "B", .value = 13.85},
-                        {.name = "C", .value = 3.98}
-                    }
-                }
-            }
-        }
-    };
+            .id = "peoe-test-parameters", .method_id = "peoe", .name = "PEOE test parameters"},
+        parameters::CommonParameters{{{.name = "dampH", .value = 20.02}}},
+        parameters::AtomParameters{{{.key = atom_key(1),
+                                     .parameters = {{.name = "A", .value = 7.17},
+                                                    {.name = "B", .value = 6.24},
+                                                    {.name = "C", .value = -0.56}}},
+                                    {.key = atom_key(9),
+                                     .parameters = {{.name = "A", .value = 12.06},
+                                                    {.name = "B", .value = 13.85},
+                                                    {.name = "C", .value = 3.98}}}}}};
 }
 
 } // namespace
@@ -109,27 +73,17 @@ auto main() -> int {
     assert(peoe != nullptr);
     assert(peoe->requires_parameters());
 
-    const std::vector<const methods::Method*> candidate_methods{
-        peoe
-    };
+    const std::vector<const methods::Method*> candidate_methods{peoe};
 
-    const std::vector parameter_sets{
-        make_peoe_parameters()
-    };
+    const std::vector parameter_sets{make_peoe_parameters()};
 
-    const auto applicability = methods::find_applicable_methods(
-        prepared,
-        candidate_methods,
-        parameter_sets
-    );
+    const auto applicability =
+        methods::find_applicable_methods(prepared, candidate_methods, parameter_sets);
 
     assert(applicability.applicable.size() == 1);
     assert(applicability.rejected.empty());
 
-    const auto charge_set = methods::calculate_charges(
-        applicability.applicable.front(),
-        prepared
-    );
+    const auto charge_set = methods::calculate_charges(applicability.applicable.front(), prepared);
 
     assert(charge_set.method_id() == std::string_view{"peoe"});
     assert(charge_set.parameter_set_id().has_value());

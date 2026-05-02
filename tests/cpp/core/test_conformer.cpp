@@ -8,15 +8,10 @@
 
 namespace core = chargefw::core;
 
-auto main() -> int
-{
-    const core::Conformer conformer{
-        {
-            core::Position{.x=0.0, .y=0.0, .z=0.0},
-            core::Position{.x=1.0, .y=0.0, .z=0.0}
-        },
-        "model-1"
-    };
+auto main() -> int {
+    const core::Conformer conformer{{core::Position{.x = 0.0, .y = 0.0, .z = 0.0},
+                                     core::Position{.x = 1.0, .y = 0.0, .z = 0.0}},
+                                    "model-1"};
 
     assert(conformer.name() == std::string_view{"model-1"});
     assert(conformer.size() == 2);

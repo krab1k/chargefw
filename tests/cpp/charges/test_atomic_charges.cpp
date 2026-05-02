@@ -10,15 +10,13 @@ namespace charges = chargefw::charges;
 
 namespace {
 
-auto approximately_equal(const double first, const double second) -> bool
-{
+auto approximately_equal(const double first, const double second) -> bool {
     return std::abs(first - second) <= 1e-12;
 }
 
 } // namespace
 
-auto main() -> int
-{
+auto main() -> int {
     const charges::AtomicCharges values{{0.2, -0.1, -0.1}};
 
     assert(values.size() == 3);
@@ -46,8 +44,7 @@ auto main() -> int
 
     try {
         [[maybe_unused]] const charges::AtomicCharges invalid{
-            {0.0, std::numeric_limits<double>::infinity()}
-        };
+            {0.0, std::numeric_limits<double>::infinity()}};
     } catch (const std::invalid_argument&) {
         rejected_non_finite = true;
     }

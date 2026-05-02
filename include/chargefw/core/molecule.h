@@ -4,11 +4,11 @@
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 
-#include <span>
-#include <vector>
 #include <cstddef>
+#include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace chargefw::core {
 class Molecule {

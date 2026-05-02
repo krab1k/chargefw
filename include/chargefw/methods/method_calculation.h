@@ -6,9 +6,8 @@
 
 namespace chargefw::methods {
 
-[[nodiscard]] auto calculate_charges(
-    const ApplicableMethod& selected,
-    const features::PreparedMoleculeCollection& molecules
-) -> charges::ChargeSet;
+[[nodiscard]] auto calculate_charges(const ApplicableMethod& selected,
+                                     const features::PreparedMoleculeCollection& molecules)
+    -> charges::ChargeSet;
 
 } // namespace chargefw::methods

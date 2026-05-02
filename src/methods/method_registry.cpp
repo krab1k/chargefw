@@ -9,8 +9,7 @@
 namespace chargefw::methods {
 namespace {
 
-auto validate_methods(const std::vector<std::unique_ptr<Method>>& methods) -> void
-{
+auto validate_methods(const std::vector<std::unique_ptr<Method>>& methods) -> void {
     for (const auto& method : methods) {
         if (method == nullptr) {
             throw std::invalid_argument{"method registry contains null method"};
@@ -22,19 +21,14 @@ auto validate_methods(const std::vector<std::unique_ptr<Method>>& methods) -> vo
     }
 
     for (auto first = methods.begin(); first != methods.end(); ++first) {
-        const auto duplicate = std::find_if(
-            std::next(first),
-            methods.end(),
-            [first](const std::unique_ptr<Method>& second) -> bool {
-                return (*first)->id() == second->id();
-            }
-        );
+        const auto duplicate = std::find_if(std::next(first), methods.end(),
+                                            [first](const std::unique_ptr<Method>& second) -> bool {
+                                                return (*first)->id() == second->id();
+                                            });
 
         if (duplicate != methods.end()) {
-            throw std::invalid_argument{
-                "method registry contains duplicate method id '" +
-                std::string{(*first)->id()} + "'"
-            };
+            throw std::invalid_argument{"method registry contains duplicate method id '" +
+                                        std::string{(*first)->id()} + "'"};
         }
     }
 }
@@ -42,19 +36,15 @@ auto validate_methods(const std::vector<std::unique_ptr<Method>>& methods) -> vo
 } // namespace
 
 MethodRegistry::MethodRegistry(std::vector<std::unique_ptr<Method>> methods)
-    : methods_{std::move(methods)}
-{
+    : methods_{std::move(methods)} {
     validate_methods(methods_);
 }
 
-auto MethodRegistry::find(const std::string_view id) const noexcept -> const Method*
-{
-    const auto iter = std::ranges::find_if(
-        methods_,
-        [id](const std::unique_ptr<Method>& method) -> bool {
+auto MethodRegistry::find(const std::string_view id) const noexcept -> const Method* {
+    const auto iter =
+        std::ranges::find_if(methods_, [id](const std::unique_ptr<Method>& method) -> bool {
             return method->id() == id;
-        }
-    );
+        });
 
     if (iter == methods_.end()) {
         return nullptr;
@@ -63,13 +53,11 @@ auto MethodRegistry::find(const std::string_view id) const noexcept -> const Met
     return iter->get();
 }
 
-auto MethodRegistry::methods() const noexcept -> std::span<const std::unique_ptr<Method>>
-{
+auto MethodRegistry::methods() const noexcept -> std::span<const std::unique_ptr<Method>> {
     return methods_;
 }
 
-auto MethodRegistry::names() const -> std::vector<std::string>
-{
+auto MethodRegistry::names() const -> std::vector<std::string> {
     std::vector<std::string> result;
     result.reserve(methods_.size());
 
@@ -81,11 +69,8 @@ auto MethodRegistry::names() const -> std::vector<std::string>
     return result;
 }
 
-auto method_registry() -> const MethodRegistry&
-{
-    static const MethodRegistry registry{
-        make_builtin_methods()
-    };
+auto method_registry() -> const MethodRegistry& {
+    static const MethodRegistry registry{make_builtin_methods()};
 
     return registry;
 }

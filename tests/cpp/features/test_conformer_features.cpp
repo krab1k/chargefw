@@ -22,7 +22,8 @@ auto approximately_equal(const double first, const double second, const double t
 
 auto main() -> int {
     static_assert(!std::is_constructible_v<features::ConformerFeatures, core::Molecule&&>);
-    static_assert(!std::is_constructible_v<features::ConformerFeatures, core::Molecule&&, std::size_t>);
+    static_assert(
+        !std::is_constructible_v<features::ConformerFeatures, core::Molecule&&, std::size_t>);
 
     const auto water = chargefw::test::make_water();
     const features::ConformerFeatures geometry{water, 0};

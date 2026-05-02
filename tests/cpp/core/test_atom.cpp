@@ -6,8 +6,7 @@
 
 namespace core = chargefw::core;
 
-auto main() -> int
-{
+auto main() -> int {
     const core::Atom carbon{6, 0, "C1"};
 
     assert(carbon.atomic_number() == 6);

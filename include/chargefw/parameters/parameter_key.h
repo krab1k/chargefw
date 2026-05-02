@@ -12,10 +12,7 @@ enum class AtomParameterClassificationKind : std::uint8_t {
     BONDED_ELEMENTS
 };
 
-enum class BondParameterClassificationKind : std::uint8_t {
-    PLAIN,
-    BOND_ORDER
-};
+enum class BondParameterClassificationKind : std::uint8_t { PLAIN, BOND_ORDER };
 
 struct AtomParameterKey {
     int atomic_number = 0;

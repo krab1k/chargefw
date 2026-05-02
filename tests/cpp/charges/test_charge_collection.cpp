@@ -14,31 +14,21 @@
 namespace charges = chargefw::charges;
 namespace core = chargefw::core;
 
-auto main() -> int
-{
+auto main() -> int {
     const charges::ChargeTarget molecule_target{};
     assert(!molecule_target.is_conformer_specific());
 
-    const charges::ChargeTarget conformer_target{
-        .molecule_index = 0,
-        .conformer_index = 0
-    };
+    const charges::ChargeTarget conformer_target{.molecule_index = 0, .conformer_index = 0};
     assert(conformer_target.is_conformer_specific());
 
     const charges::ChargeAssignment water_assignment{
-        .target = conformer_target,
-        .charges = charges::AtomicCharges{{-0.8, 0.4, 0.4}}
-    };
+        .target = conformer_target, .charges = charges::AtomicCharges{{-0.8, 0.4, 0.4}}};
     const charges::ChargeAssignment pair_assignment{
         .target = charges::ChargeTarget{.molecule_index = 1, .conformer_index = std::nullopt},
-        .charges = charges::AtomicCharges{{1.0, -1.0}}
-    };
+        .charges = charges::AtomicCharges{{1.0, -1.0}}};
 
     const charges::ChargeSet charge_set{
-        "formal",
-        {water_assignment, pair_assignment},
-        std::string{"default"}
-    };
+        "formal", {water_assignment, pair_assignment}, std::string{"default"}};
 
     assert(charge_set.method_id() == std::string_view{"formal"});
     assert(charge_set.parameter_set_id().has_value());
@@ -63,12 +53,7 @@ auto main() -> int
     assert(empty_collection.empty());
 
     const core::MoleculeCollection molecules{
-        {
-            chargefw::test::make_water(),
-            chargefw::test::make_formally_charged_pair()
-        },
-        "molecules"
-    };
+        {chargefw::test::make_water(), chargefw::test::make_formally_charged_pair()}, "molecules"};
     charges::validate_charge_collection(molecules, collection);
 
     bool rejected_empty_method_id = false;
@@ -105,17 +90,10 @@ auto main() -> int
 
     try {
         charges::validate_charge_collection(
-            molecules,
-            charges::ChargeCollection{{
-                charges::ChargeSet{
-                    "dummy",
-                    {{
-                        .target = charges::ChargeTarget{.molecule_index = 2},
-                        .charges = charges::AtomicCharges{{0.0}}
-                    }}
-                }
-            }}
-        );
+            molecules, charges::ChargeCollection{{charges::ChargeSet{
+                           "dummy",
+                           {{.target = charges::ChargeTarget{.molecule_index = 2},
+                             .charges = charges::AtomicCharges{{0.0}}}}}}});
     } catch (const std::invalid_argument&) {
         rejected_bad_molecule_target = true;
     }
@@ -127,16 +105,10 @@ auto main() -> int
     try {
         charges::validate_charge_collection(
             molecules,
-            charges::ChargeCollection{{
-                charges::ChargeSet{
-                    "dummy",
-                    {{
-                        .target = charges::ChargeTarget{.molecule_index = 1, .conformer_index = 0},
-                        .charges = charges::AtomicCharges{{1.0, -1.0}}
-                    }}
-                }
-            }}
-        );
+            charges::ChargeCollection{{charges::ChargeSet{
+                "dummy",
+                {{.target = charges::ChargeTarget{.molecule_index = 1, .conformer_index = 0},
+                  .charges = charges::AtomicCharges{{1.0, -1.0}}}}}}});
     } catch (const std::invalid_argument&) {
         rejected_bad_conformer_target = true;
     }
@@ -147,17 +119,10 @@ auto main() -> int
 
     try {
         charges::validate_charge_collection(
-            molecules,
-            charges::ChargeCollection{{
-                charges::ChargeSet{
-                    "dummy",
-                    {{
-                        .target = charges::ChargeTarget{.molecule_index = 0},
-                        .charges = charges::AtomicCharges{{0.0, 0.0}}
-                    }}
-                }
-            }}
-        );
+            molecules, charges::ChargeCollection{{charges::ChargeSet{
+                           "dummy",
+                           {{.target = charges::ChargeTarget{.molecule_index = 0},
+                             .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}});
     } catch (const std::invalid_argument&) {
         rejected_bad_charge_count = true;
     }

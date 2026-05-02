@@ -9,15 +9,9 @@
 
 namespace core = chargefw::core;
 
-auto main() -> int
-{
+auto main() -> int {
     const core::MoleculeCollection collection{
-        {
-            chargefw::test::make_water(),
-            chargefw::test::make_formally_charged_pair()
-        },
-        "examples"
-    };
+        {chargefw::test::make_water(), chargefw::test::make_formally_charged_pair()}, "examples"};
 
     assert(collection.name() == std::string_view{"examples"});
     assert(collection.molecule_count() == 2);

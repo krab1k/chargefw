@@ -16,7 +16,7 @@ struct AtomParameterEntry {
 };
 
 class AtomParameters {
-public:
+  public:
     AtomParameters() = default;
 
     explicit AtomParameters(std::vector<AtomParameterEntry> entries);
@@ -35,7 +35,7 @@ public:
 
     [[nodiscard]] auto parameter(std::size_t entry_index, std::string_view name) const -> double;
 
-private:
+  private:
     std::vector<AtomParameterEntry> entries_;
 };
 

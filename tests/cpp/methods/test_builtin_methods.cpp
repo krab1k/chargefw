@@ -45,13 +45,7 @@ auto main() -> int {
 
     const auto method_names = registry.names();
 
-    assert((method_names == std::vector<std::string>{
-        "dummy",
-        "formal",
-        "mpeoe",
-        "peoe",
-        "veem"
-    }));
+    assert((method_names == std::vector<std::string>{"dummy", "formal", "mpeoe", "peoe", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(formal->id() == std::string_view{"formal"});

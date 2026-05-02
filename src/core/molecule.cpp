@@ -3,11 +3,11 @@
 #include "chargefw/core/atom.h"
 #include "chargefw/core/bond.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <span>
 #include <stdexcept>
 #include <string_view>
-#include <algorithm>
 
 namespace chargefw::core {
 
@@ -23,51 +23,36 @@ auto validate_conformers(const std::vector<Atom>& atoms, const std::vector<Confo
     }
 }
 
-auto validate_bond_atom_indices(
-    const std::vector<Atom>& atoms,
-    const std::vector<Bond>& bonds
-) -> void
-{
+auto validate_bond_atom_indices(const std::vector<Atom>& atoms, const std::vector<Bond>& bonds)
+    -> void {
     const auto atom_count = atoms.size();
 
     for (const auto& bond : bonds) {
-        if (
-            bond.first_atom_index() >= atom_count ||
-            bond.second_atom_index() >= atom_count
-        ) {
+        if (bond.first_atom_index() >= atom_count || bond.second_atom_index() >= atom_count) {
             throw std::invalid_argument{"bond refers to an atom index outside the molecule"};
         }
     }
 }
 
-auto same_unordered_bond(const Bond& first, const Bond& second) noexcept -> bool
-{
-    return (
-        first.first_atom_index() == second.first_atom_index() &&
-        first.second_atom_index() == second.second_atom_index()
-    ) || (
-        first.first_atom_index() == second.second_atom_index() &&
-        first.second_atom_index() == second.first_atom_index()
-    );
+auto same_unordered_bond(const Bond& first, const Bond& second) noexcept -> bool {
+    return (first.first_atom_index() == second.first_atom_index() &&
+            first.second_atom_index() == second.second_atom_index()) ||
+           (first.first_atom_index() == second.second_atom_index() &&
+            first.second_atom_index() == second.first_atom_index());
 }
 
-auto validate_no_duplicate_bonds(const std::vector<Bond>& bonds) -> void
-{
+auto validate_no_duplicate_bonds(const std::vector<Bond>& bonds) -> void {
     for (auto first = bonds.begin(); first != bonds.end(); ++first) {
-        const auto duplicate = std::find_if(
-            std::next(first),
-            bonds.end(),
-            [first](const Bond& second) -> bool {
+        const auto duplicate =
+            std::find_if(std::next(first), bonds.end(), [first](const Bond& second) -> bool {
                 return same_unordered_bond(*first, second);
-            }
-        );
+            });
 
         if (duplicate != bonds.end()) {
             throw std::invalid_argument{"molecule contains duplicate bonds"};
         }
     }
 }
-
 
 } // namespace
 

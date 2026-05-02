@@ -14,7 +14,7 @@ struct NamedParameter {
 };
 
 class CommonParameters {
-public:
+  public:
     CommonParameters() = default;
 
     explicit CommonParameters(std::vector<NamedParameter> parameters);
@@ -28,7 +28,7 @@ public:
 
     [[nodiscard]] auto parameter(std::string_view name) const -> double;
 
-private:
+  private:
     std::vector<NamedParameter> parameters_;
 };
 

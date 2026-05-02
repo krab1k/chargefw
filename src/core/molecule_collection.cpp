@@ -15,7 +15,6 @@ auto MoleculeCollection::molecules() const noexcept -> std::span<const Molecule>
     return molecules_;
 }
 
-
 auto MoleculeCollection::molecule_count() const noexcept -> std::size_t {
     return molecules_.size();
 }
@@ -24,7 +23,8 @@ auto MoleculeCollection::empty() const noexcept -> bool {
     return molecules_.empty();
 }
 
-[[nodiscard]] auto MoleculeCollection::operator[](std::size_t index) const noexcept -> const Molecule& {
+[[nodiscard]] auto MoleculeCollection::operator[](std::size_t index) const noexcept
+    -> const Molecule& {
     return molecules_[index];
 }
 
