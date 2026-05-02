@@ -135,7 +135,7 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     return require_string(*value, child_context(context, name));
 }
 
-[[nodiscard]] auto slugify(std::string value) -> std::string {
+[[nodiscard]] auto slugify(const std::string &value) -> std::string {
     std::string result;
     result.reserve(value.size());
 

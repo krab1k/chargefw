@@ -112,13 +112,13 @@ auto main() -> int {
     auto choice_options = methods::make_default_options(choice_schema);
     methods::validate_method_options(choice_schema, choice_options);
 
-    assert(rejects_invalid_argument([&choice_schema] {
+    assert(rejects_invalid_argument([&choice_schema] -> void {
         auto invalid_options = methods::make_default_options(choice_schema);
         invalid_options.set("mode", std::string{"slow"});
         methods::validate_method_options(choice_schema, invalid_options);
     }));
 
-    assert(rejects_invalid_argument([&choice_schema] {
+    assert(rejects_invalid_argument([&choice_schema] -> void {
         auto invalid_options = methods::make_default_options(choice_schema);
         invalid_options.set("limit", 100);
         methods::validate_method_options(choice_schema, invalid_options);
