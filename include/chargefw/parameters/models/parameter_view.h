@@ -1,7 +1,7 @@
 #pragma once
 
-#include <chargefw/parameters/parameter_classification.h>
-#include <chargefw/parameters/parameter_set.h>
+#include <chargefw/parameters/classification/parameter_classification.h>
+#include <chargefw/parameters/models/parameter_set.h>
 
 #include <cstddef>
 #include <string>

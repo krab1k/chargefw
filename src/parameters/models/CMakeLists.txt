@@ -1,0 +1,20 @@
+target_sources(chargefw_core
+        PRIVATE
+        atom_parameters.cpp
+        bond_parameters.cpp
+        common_parameters.cpp
+        parameter_view.cpp
+        parameter_key.cpp
+        parameter_set.cpp
+        PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS
+        ${PROJECT_SOURCE_DIR}/include
+        FILES
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/atom_parameters.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/bond_parameters.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/common_parameters.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/parameter_view.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/parameter_key.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/parameter_set.h
+)

@@ -1,5 +1,5 @@
+#include <chargefw/parameters/io/parameter_data_paths.h>
 #include <chargefw/config.h>
-#include <chargefw/parameters/parameter_data_paths.h>
 
 #include <cstdlib>
 #include <filesystem>

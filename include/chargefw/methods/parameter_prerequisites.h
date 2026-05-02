@@ -3,9 +3,9 @@
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method_prerequisites.h>
-#include <chargefw/parameters/classification_result.h>
-#include <chargefw/parameters/parameter_classification.h>
-#include <chargefw/parameters/parameter_set.h>
+#include <chargefw/parameters/classification/classification_result.h>
+#include <chargefw/parameters/classification/parameter_classification.h>
+#include <chargefw/parameters/models/parameter_set.h>
 
 #include <optional>
 #include <vector>

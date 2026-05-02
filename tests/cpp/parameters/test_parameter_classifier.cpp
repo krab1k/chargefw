@@ -4,12 +4,12 @@
 #include <chargefw/core/bond.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/features/topology_features.h>
-#include <chargefw/parameters/atom_parameters.h>
-#include <chargefw/parameters/bond_parameters.h>
-#include <chargefw/parameters/parameter_classifier.h>
-#include <chargefw/parameters/parameter_key.h>
-#include <chargefw/parameters/parameter_set.h>
-#include <chargefw/parameters/parameter_set_metadata.h>
+#include <chargefw/parameters/classification/parameter_classifier.h>
+#include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/bond_parameters.h>
+#include <chargefw/parameters/models/parameter_key.h>
+#include <chargefw/parameters/models/parameter_set.h>
+#include <chargefw/parameters/models/parameter_set_metadata.h>
 
 #include <cassert>
 #include <string>

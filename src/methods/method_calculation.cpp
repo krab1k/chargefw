@@ -2,8 +2,8 @@
 
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method.h>
-#include <chargefw/parameters/parameter_classification.h>
-#include <chargefw/parameters/parameter_view.h>
+#include <chargefw/parameters/classification/parameter_classification.h>
+#include <chargefw/parameters/models/parameter_view.h>
 
 #include <optional>
 #include <stdexcept>

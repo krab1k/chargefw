@@ -1,6 +1,6 @@
 #pragma once
 
-#include <chargefw/parameters/common_parameters.h>
+#include <chargefw/parameters/models/common_parameters.h>
 
 #include <span>
 #include <string_view>

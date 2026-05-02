@@ -1,7 +1,7 @@
 #pragma once
 
-#include <chargefw/parameters/common_parameters.h>
-#include <chargefw/parameters/parameter_key.h>
+#include <chargefw/parameters/models/common_parameters.h>
+#include <chargefw/parameters/models/parameter_key.h>
 
 #include <cstddef>
 #include <span>

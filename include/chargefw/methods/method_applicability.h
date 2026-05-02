@@ -3,8 +3,8 @@
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_prerequisites.h>
-#include <chargefw/parameters/parameter_classification.h>
-#include <chargefw/parameters/parameter_set.h>
+#include <chargefw/parameters/classification/parameter_classification.h>
+#include <chargefw/parameters/models/parameter_set.h>
 
 #include <cstddef>
 #include <optional>

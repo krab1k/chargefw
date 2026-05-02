@@ -4,12 +4,12 @@
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method_options.h>
-#include <chargefw/parameters/atom_parameters.h>
-#include <chargefw/parameters/parameter_classification.h>
-#include <chargefw/parameters/parameter_key.h>
-#include <chargefw/parameters/parameter_set.h>
-#include <chargefw/parameters/parameter_set_metadata.h>
-#include <chargefw/parameters/parameter_view.h>
+#include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/parameter_classification.h>
+#include <chargefw/parameters/models/parameter_key.h>
+#include <chargefw/parameters/models/parameter_set.h>
+#include <chargefw/parameters/models/parameter_set_metadata.h>
+#include <chargefw/parameters/models/parameter_view.h>
 
 #include <cassert>
 #include <cstddef>

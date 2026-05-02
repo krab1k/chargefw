@@ -1,6 +1,6 @@
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/parameter_prerequisites.h>
-#include <chargefw/parameters/parameter_classifier.h>
+#include <chargefw/parameters/classification/parameter_classifier.h>
 
 #include <string>
 

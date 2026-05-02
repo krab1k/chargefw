@@ -1,9 +1,9 @@
 #pragma once
 
-#include <chargefw/parameters/atom_parameters.h>
-#include <chargefw/parameters/bond_parameters.h>
-#include <chargefw/parameters/common_parameters.h>
-#include <chargefw/parameters/parameter_set_metadata.h>
+#include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/bond_parameters.h>
+#include <chargefw/parameters/models/common_parameters.h>
+#include <chargefw/parameters/models/parameter_set_metadata.h>
 
 #include <string_view>
 

@@ -1,5 +1,5 @@
 #include <chargefw/core/periodic_table.h>
-#include <chargefw/parameters/parameter_classifier.h>
+#include <chargefw/parameters/classification/parameter_classifier.h>
 
 #include <algorithm>
 #include <optional>

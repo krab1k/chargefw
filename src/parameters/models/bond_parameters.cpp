@@ -1,4 +1,4 @@
-#include <chargefw/parameters/bond_parameters.h>
+#include <chargefw/parameters/models/bond_parameters.h>
 
 #include "parameters/parameter_helpers.h"
 

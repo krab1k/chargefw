@@ -1,7 +1,6 @@
-#include <chargefw/parameters/parameter_set_io.h>
-
+#include <chargefw/parameters/io/parameter_set_io.h>
+#include <chargefw/parameters/io/parameter_data_paths.h>
 #include <chargefw/core/periodic_table.h>
-#include <chargefw/parameters/parameter_data_paths.h>
 
 #include <nlohmann/json.hpp>
 

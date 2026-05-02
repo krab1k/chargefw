@@ -3,7 +3,7 @@
 #include <chargefw/features/conformer_features.h>
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/methods/method_options.h>
-#include <chargefw/parameters/parameter_view.h>
+#include <chargefw/parameters/models/parameter_view.h>
 
 #include <functional>
 #include <stdexcept>

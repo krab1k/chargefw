@@ -1,7 +1,7 @@
 #pragma once
 
 #include <chargefw/core/molecule.h>
-#include <chargefw/parameters/parameter_set.h>
+#include <chargefw/parameters/models/parameter_set.h>
 
 #include <cstddef>
 #include <span>

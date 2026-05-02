@@ -1,33 +1,15 @@
+add_subdirectory(io)
+add_subdirectory(models)
+add_subdirectory(classification)
+
 target_sources(chargefw_core
         PRIVATE
-        atom_parameters.cpp
-        bond_parameters.cpp
-        common_parameters.cpp
-        parameter_set.cpp
-        parameter_view.cpp
+        parameter_helpers.h
         parameter_helpers.cpp
-        parameter_classification.cpp
-        classification_result.cpp
-        parameter_classifier.cpp
-        parameter_key.cpp
-        parameter_set_io.cpp
-        parameter_data_paths.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
         ${PROJECT_SOURCE_DIR}/include
-        FILES
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/atom_parameters.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/bond_parameters.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/classification_result.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/common_parameters.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_classification.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_classifier.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_key.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_set.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_set_metadata.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_view.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_set_io.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/parameter_data_paths.h
-
 )
+
+

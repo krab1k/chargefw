@@ -1,4 +1,4 @@
-#include <chargefw/parameters/classification_result.h>
+#include <chargefw/parameters/classification/classification_result.h>
 
 #include <stdexcept>
 #include <utility>

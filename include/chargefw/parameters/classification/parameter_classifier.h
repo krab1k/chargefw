@@ -2,9 +2,9 @@
 
 #include <chargefw/core/molecule.h>
 #include <chargefw/features/topology_features.h>
-#include <chargefw/parameters/classification_result.h>
-#include <chargefw/parameters/parameter_classification.h>
-#include <chargefw/parameters/parameter_set.h>
+#include <chargefw/parameters/classification/classification_result.h>
+#include <chargefw/parameters/classification/parameter_classification.h>
+#include <chargefw/parameters/models/parameter_set.h>
 
 namespace chargefw::parameters {
 

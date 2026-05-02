@@ -1,4 +1,4 @@
-#include <chargefw/parameters/atom_parameters.h>
+#include <chargefw/parameters/models/atom_parameters.h>
 
 #include "parameters/parameter_helpers.h"
 

@@ -9,11 +9,11 @@
 #include <chargefw/methods/method_calculation.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
-#include <chargefw/parameters/atom_parameters.h>
-#include <chargefw/parameters/parameter_classification.h>
-#include <chargefw/parameters/parameter_key.h>
-#include <chargefw/parameters/parameter_set.h>
-#include <chargefw/parameters/parameter_set_metadata.h>
+#include <chargefw/parameters/classification/parameter_classification.h>
+#include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/parameter_key.h>
+#include <chargefw/parameters/models/parameter_set.h>
+#include <chargefw/parameters/models/parameter_set_metadata.h>
 
 #include <cassert>
 #include <cstddef>

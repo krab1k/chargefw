@@ -1,4 +1,4 @@
-#include <chargefw/parameters/parameter_key.h>
+#include <chargefw/parameters/models/parameter_key.h>
 
 #include <stdexcept>
 #include <string>
