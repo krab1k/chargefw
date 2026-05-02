@@ -61,16 +61,6 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     }
 }
 
-[[nodiscard]] auto require_object(const Json& value, const std::string& context) -> const Json& {
-    ensure_object(value, context);
-    return value;
-}
-
-[[nodiscard]] auto require_array(const Json& value, const std::string& context) -> const Json& {
-    ensure_array(value, context);
-    return value;
-}
-
 [[nodiscard]] auto required_member(const Json& object, const std::string_view name,
                                    const std::string& context) -> const Json& {
     ensure_object(object, context);
@@ -226,8 +216,9 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
 [[nodiscard]] auto parse_names(const Json& object, const std::string& context)
     -> std::vector<std::string> {
     const auto names_context = child_context(context, "names");
-    const auto& names_member = required_member(object, "names", context);
-    const auto& names_json = require_array(names_member, names_context);
+    const auto& names_json = required_member(object, "names", context);
+
+    ensure_array(names_json, names_context);
 
     std::vector<std::string> names;
     names.reserve(names_json.size());
@@ -395,15 +386,18 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     const auto names = parse_names(*atom_json, atom_context);
 
     const auto data_context = child_context(atom_context, "data");
-    const auto& data_member = required_member(*atom_json, "data", atom_context);
-    const auto& data_json = require_array(data_member, data_context);
+    const auto& data_json = required_member(*atom_json, "data", atom_context);
+
+    ensure_array(data_json, data_context);
 
     std::vector<AtomParameterEntry> entries;
     entries.reserve(data_json.size());
 
     for (std::size_t entry_index = 0; entry_index < data_json.size(); ++entry_index) {
         const auto entry_context = array_context(data_context, entry_index);
-        const auto& entry_json = require_object(data_json[entry_index], entry_context);
+        const auto& entry_json = data_json[entry_index];
+
+        ensure_object(entry_json, entry_context);
 
         const auto key_context = child_context(entry_context, "key");
         const auto value_context = child_context(entry_context, "value");
@@ -434,15 +428,18 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     const auto names = parse_names(*bond_json, bond_context);
 
     const auto data_context = child_context(bond_context, "data");
-    const auto& data_member = required_member(*bond_json, "data", bond_context);
-    const auto& data_json = require_array(data_member, data_context);
+    const auto& data_json = required_member(*bond_json, "data", bond_context);
+
+    ensure_array(data_json, data_context);
 
     std::vector<BondParameterEntry> entries;
     entries.reserve(data_json.size());
 
     for (std::size_t entry_index = 0; entry_index < data_json.size(); ++entry_index) {
         const auto entry_context = array_context(data_context, entry_index);
-        const auto& entry_json = require_object(data_json[entry_index], entry_context);
+        const auto& entry_json = data_json[entry_index];
+
+        ensure_object(entry_json, entry_context);
 
         const auto key_context = child_context(entry_context, "key");
         const auto value_context = child_context(entry_context, "value");
