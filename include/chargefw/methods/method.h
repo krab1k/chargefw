@@ -14,6 +14,12 @@ namespace chargefw::methods {
 
 class Method {
   public:
+    Method(const Method&) = delete;
+    auto operator=(const Method&) -> Method& = delete;
+
+    Method(Method&&) = delete;
+    auto operator=(Method&&) -> Method& = delete;
+
     virtual ~Method() = default;
 
     [[nodiscard]] virtual auto metadata() const noexcept -> const MethodMetadata& = 0;
@@ -36,8 +42,12 @@ class Method {
         -> charges::AtomicCharges = 0;
 
   protected:
-    virtual auto add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
-                                                         PrerequisiteResult& result) const -> void;
+    Method() = default;
+
+    virtual auto add_method_specific_prerequisite_issues(
+        const MethodPrerequisiteInput& input,
+        PrerequisiteResult& result
+    ) const -> void;
 };
 
 } // namespace chargefw::methods
