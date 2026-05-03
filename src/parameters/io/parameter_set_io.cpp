@@ -269,6 +269,7 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
 
     return CommonParameters{make_named_parameters(names, values_json, values_context)};
 }
+
 [[nodiscard]] auto atomic_number_from_symbol(const std::string& symbol, const std::string& context)
     -> int {
     if (symbol == "*") {

@@ -17,4 +17,5 @@ target_sources(chargefw_core
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/parameter_view.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/parameter_key.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/parameter_set.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/parameters/models/parameter_set_metadata.h
 )

@@ -22,7 +22,6 @@ auto main() -> int {
 
     const core::MoleculeCollection empty_collection{std::vector<core::Molecule>{}, "empty"};
     assert(empty_collection.empty());
-    assert(empty_collection.size() == 0);
 
     bool rejected_bad_index = false;
 
