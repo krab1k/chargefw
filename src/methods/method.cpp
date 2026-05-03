@@ -50,7 +50,8 @@ auto Method::check_method_prerequisites(const MethodPrerequisiteInput& input) co
     return result;
 }
 
-auto Method::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput&,
-                                                     PrerequisiteResult&) const -> void {}
+auto Method::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& /* unused */,
+                                                     PrerequisiteResult& /* unused */) const
+    -> void {}
 
 } // namespace chargefw::methods
