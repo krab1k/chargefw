@@ -39,8 +39,7 @@ auto check_method_prerequisites(const Method& method,
                                 const MethodOptions& method_options) -> PrerequisiteResult {
     auto result = PrerequisiteResult{};
 
-    for (std::size_t molecule_index = 0; molecule_index < molecules.molecule_count();
-         ++molecule_index) {
+    for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
         const auto molecule_result = method.check_method_prerequisites(
             {.prepared_molecule = molecules[molecule_index], .method_options = method_options});
 

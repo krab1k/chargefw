@@ -12,13 +12,9 @@ class PreparedMolecule {
     PreparedMolecule(core::Molecule&&) = delete;
     PreparedMolecule(const core::Molecule&&) = delete;
 
-    [[nodiscard]] auto molecule() const noexcept -> const core::Molecule& {
-        return topology_.molecule();
-    }
+    [[nodiscard]] auto molecule() const noexcept -> const core::Molecule&;
 
-    [[nodiscard]] auto topology() const noexcept -> const TopologyFeatures& {
-        return topology_;
-    }
+    [[nodiscard]] auto topology() const noexcept -> const TopologyFeatures&;
 
   private:
     TopologyFeatures topology_;

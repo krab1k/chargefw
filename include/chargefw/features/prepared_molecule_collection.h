@@ -11,39 +11,20 @@ namespace chargefw::features {
 
 class PreparedMoleculeCollection {
   public:
-    explicit PreparedMoleculeCollection(const core::MoleculeCollection& collection) {
-        molecules_.reserve(collection.size());
+    explicit PreparedMoleculeCollection(const core::MoleculeCollection& collection);
 
-        for (const auto& molecule : collection.molecules()) {
-            molecules_.emplace_back(molecule);
-        }
-    }
+    explicit PreparedMoleculeCollection(core::MoleculeCollection&&) = delete;
+    explicit PreparedMoleculeCollection(const core::MoleculeCollection&&) = delete;
 
-    PreparedMoleculeCollection(core::MoleculeCollection&&) = delete;
-    PreparedMoleculeCollection(const core::MoleculeCollection&&) = delete;
+    [[nodiscard]] auto molecules() const noexcept -> std::span<const PreparedMolecule>;
 
-    [[nodiscard]] auto molecules() const noexcept -> std::span<const PreparedMolecule> {
-        return molecules_;
-    }
+    [[nodiscard]] auto size() const noexcept -> std::size_t;
+    [[nodiscard]] auto empty() const noexcept -> bool;
 
-    [[nodiscard]] auto molecule_count() const noexcept -> std::size_t {
-        return molecules_.size();
-    }
-
-    [[nodiscard]] auto empty() const noexcept -> bool {
-        return molecules_.empty();
-    }
-
-    [[nodiscard]] auto operator[](std::size_t index) const noexcept -> const PreparedMolecule& {
-        return molecules_[index];
-    }
-
-    [[nodiscard]] auto at(std::size_t index) const -> const PreparedMolecule& {
-        return molecules_.at(index);
-    }
+    [[nodiscard]] auto operator[](std::size_t index) const noexcept -> const PreparedMolecule&;
+    [[nodiscard]] auto at(std::size_t index) const -> const PreparedMolecule&;
 
   private:
     std::vector<PreparedMolecule> molecules_;
 };
-
 } // namespace chargefw::features

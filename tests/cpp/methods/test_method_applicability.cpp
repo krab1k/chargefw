@@ -152,7 +152,7 @@ auto main() -> int {
     assert(parameterized_applicable.uses_parameters());
     assert(parameterized_applicable.parameter_set->id() ==
            std::string_view{"collection-parameters"});
-    assert(parameterized_applicable.classifications.size() == prepared_collection.molecule_count());
+    assert(parameterized_applicable.classifications.size() == prepared_collection.size());
 
     const auto& water_classification = parameterized_applicable.classifications[0];
 

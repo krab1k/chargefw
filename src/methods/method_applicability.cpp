@@ -42,7 +42,7 @@ valid_classification_count(const MethodRequirements& requirements,
         return result.classifications.empty();
     }
 
-    return result.classifications.size() == molecules.molecule_count();
+    return result.classifications.size() == molecules.size();
 }
 
 [[nodiscard]] auto make_invalid_classification_count_issue(
@@ -51,8 +51,8 @@ valid_classification_count(const MethodRequirements& requirements,
     return make_issue(PrerequisiteIssueKind::parameter_classification_failed,
                       "method '" + std::string{method.id()} + "' produced " +
                           std::to_string(result.classifications.size()) +
-                          " parameter classifications for " +
-                          std::to_string(molecules.molecule_count()) + " molecules");
+                          " parameter classifications for " + std::to_string(molecules.size()) +
+                          " molecules");
 }
 
 } // namespace

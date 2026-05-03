@@ -40,11 +40,11 @@ auto validate_selected_candidate(const ApplicableMethod& selected,
         return;
     }
 
-    if (selected.classifications.size() != molecules.molecule_count()) {
+    if (selected.classifications.size() != molecules.size()) {
         throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
                                     "' has " + std::to_string(selected.classifications.size()) +
-                                    " classifications for " +
-                                    std::to_string(molecules.molecule_count()) + " molecules"};
+                                    " classifications for " + std::to_string(molecules.size()) +
+                                    " molecules"};
     }
 }
 
@@ -114,10 +114,9 @@ auto calculate_charges(const ApplicableMethod& selected,
     validate_selected_candidate(selected, molecules);
 
     std::vector<charges::ChargeAssignment> assignments;
-    assignments.reserve(molecules.molecule_count());
+    assignments.reserve(molecules.size());
 
-    for (std::size_t molecule_index = 0; molecule_index < molecules.molecule_count();
-         ++molecule_index) {
+    for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
         auto atomic_charges =
             selected.uses_parameters()
                 ? calculate_with_parameters(selected, molecules[molecule_index],

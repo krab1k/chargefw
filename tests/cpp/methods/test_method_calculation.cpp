@@ -166,7 +166,7 @@ auto main() -> int {
 
     assert(dummy_charges.method_id() == std::string_view{"dummy"});
     assert(!dummy_charges.parameter_set_id().has_value());
-    assert(dummy_charges.size() == prepared.molecule_count());
+    assert(dummy_charges.size() == prepared.size());
 
     assert(dummy_charges.assignment(0).target.molecule_index == 0);
     assert(!dummy_charges.assignment(0).target.conformer_index.has_value());
@@ -188,7 +188,7 @@ auto main() -> int {
     assert(parameterized_charges.method_id() == std::string_view{"atom-parameter-test"});
     assert(parameterized_charges.parameter_set_id().has_value());
     assert(*parameterized_charges.parameter_set_id() == std::string_view{"test-parameters"});
-    assert(parameterized_charges.size() == prepared.molecule_count());
+    assert(parameterized_charges.size() == prepared.size());
 
     const auto& water_charges = parameterized_charges.assignment(0).charges;
 

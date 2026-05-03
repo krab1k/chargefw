@@ -146,10 +146,9 @@ auto check_parameter_prerequisites(const Method& method,
                                    const parameters::ClassificationOptions& classification_options)
     -> CollectionParameterPrerequisiteResult {
     auto result = CollectionParameterPrerequisiteResult{};
-    result.classifications.reserve(molecules.molecule_count());
+    result.classifications.reserve(molecules.size());
 
-    for (std::size_t molecule_index = 0; molecule_index < molecules.molecule_count();
-         ++molecule_index) {
+    for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
         const auto molecule_result = check_parameter_prerequisites(
             method, {.prepared_molecule = molecules[molecule_index],
                      .parameter_set = parameter_set,
