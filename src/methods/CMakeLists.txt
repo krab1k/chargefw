@@ -9,6 +9,7 @@ target_sources(chargefw_core
         builtin_methods.cpp
         method.cpp
         method_calculation.cpp
+        calculation_input.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
