@@ -33,7 +33,7 @@ auto main() -> int {
     assert(charge_set.method_id() == std::string_view{"formal"});
     assert(charge_set.parameter_set_id().has_value());
     assert(*charge_set.parameter_set_id() == std::string_view{"default"});
-    assert(charge_set.assignment_count() == 2);
+    assert(charge_set.size() == 2);
     assert(!charge_set.empty());
     assert(charge_set.assignments().size() == 2);
     assert(charge_set.assignment(0).target.molecule_index == 0);
@@ -44,7 +44,7 @@ auto main() -> int {
     assert(parameterless_charge_set.empty());
 
     const charges::ChargeCollection collection{{charge_set}};
-    assert(collection.charge_set_count() == 1);
+    assert(collection.size() == 1);
     assert(!collection.empty());
     assert(collection.charge_sets().size() == 1);
     assert(collection[0].method_id() == std::string_view{"formal"});

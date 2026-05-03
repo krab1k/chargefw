@@ -78,7 +78,7 @@ auto main() -> int {
     assert(charge_set.method_id() == std::string_view{"mpeoe"});
     assert(charge_set.parameter_set_id().has_value());
     assert(*charge_set.parameter_set_id() == std::string_view{"MPEOE_original"});
-    assert(charge_set.assignment_count() == 1);
+    assert(charge_set.size() == 1);
 
     const auto& charges = charge_set.assignment(0).charges;
 

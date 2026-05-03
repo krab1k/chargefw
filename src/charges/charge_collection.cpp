@@ -41,7 +41,7 @@ auto ChargeSet::assignment(const std::size_t index) const -> const ChargeAssignm
     return assignments_.at(index);
 }
 
-auto ChargeSet::assignment_count() const noexcept -> std::size_t {
+auto ChargeSet::size() const noexcept -> std::size_t {
     return assignments_.size();
 }
 
@@ -56,7 +56,7 @@ auto ChargeCollection::charge_sets() const noexcept -> std::span<const ChargeSet
     return charge_sets_;
 }
 
-auto ChargeCollection::charge_set_count() const noexcept -> std::size_t {
+auto ChargeCollection::size() const noexcept -> std::size_t {
     return charge_sets_.size();
 }
 

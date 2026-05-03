@@ -38,8 +38,7 @@ class ChargeSet {
 
     [[nodiscard]] auto assignment(std::size_t index) const -> const ChargeAssignment&;
 
-    [[nodiscard]] auto assignment_count() const noexcept -> std::size_t;
-
+    [[nodiscard]] auto size() const noexcept -> std::size_t;
     [[nodiscard]] auto empty() const noexcept -> bool;
 
   private:
@@ -54,8 +53,7 @@ class ChargeCollection {
 
     [[nodiscard]] auto charge_sets() const noexcept -> std::span<const ChargeSet>;
 
-    [[nodiscard]] auto charge_set_count() const noexcept -> std::size_t;
-
+    [[nodiscard]] auto size() const noexcept -> std::size_t;
     [[nodiscard]] auto empty() const noexcept -> bool;
 
     [[nodiscard]] auto operator[](std::size_t index) const noexcept -> const ChargeSet&;
