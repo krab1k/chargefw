@@ -70,3 +70,7 @@ Testing/
 
 # Jetbrains
 .idea
+
+# Local devel
+_install
+CMakeUserPresets.json
