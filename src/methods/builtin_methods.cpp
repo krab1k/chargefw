@@ -2,6 +2,7 @@
 
 #include "methods/builtin/dummy.h"
 #include "methods/builtin/formal.h"
+#include "methods/builtin/gdac.h"
 #include "methods/builtin/mpeoe.h"
 #include "methods/builtin/peoe.h"
 #include "methods/builtin/veem.h"
@@ -19,6 +20,7 @@ auto make_builtin_methods() -> std::vector<std::unique_ptr<Method>> {
     methods.push_back(std::make_unique<builtin::VEEMMethod>());
     methods.push_back(std::make_unique<builtin::PEOEMethod>());
     methods.push_back(std::make_unique<builtin::MPEOEMethod>());
+    methods.push_back(std::make_unique<builtin::GDACMethod>());
 
     return methods;
 }

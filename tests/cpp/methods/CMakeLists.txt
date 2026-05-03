@@ -38,3 +38,12 @@ target_compile_definitions(test_mpeoe
 chargefw_add_test(test_veem
         test_veem.cpp
 )
+
+chargefw_add_test(test_gdac
+        test_gdac.cpp
+)
+
+target_compile_definitions(test_gdac
+        PRIVATE
+        CHARGEFW_TEST_PARAMETER_DIR="${PROJECT_SOURCE_DIR}/data/parameters"
+)

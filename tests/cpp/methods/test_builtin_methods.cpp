@@ -36,22 +36,26 @@ auto main() -> int {
     const auto* veem = registry.find("veem");
     const auto* peoe = registry.find("peoe");
     const auto* mpeoe = registry.find("mpeoe");
+    const auto* gdac = registry.find("gdac");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
     assert(veem != nullptr);
     assert(peoe != nullptr);
     assert(mpeoe != nullptr);
+    assert(gdac != nullptr);
 
     const auto method_names = registry.names();
 
-    assert((method_names == std::vector<std::string>{"dummy", "formal", "mpeoe", "peoe", "veem"}));
+    assert((method_names ==
+            std::vector<std::string>{"dummy", "formal", "gdac", "mpeoe", "peoe", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(formal->id() == std::string_view{"formal"});
     assert(veem->id() == std::string_view{"veem"});
     assert(peoe->id() == std::string_view{"peoe"});
     assert(mpeoe->id() == std::string_view{"mpeoe"});
+    assert(gdac->id() == std::string_view{"gdac"});
 
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
     assert(dummy->metadata().full_name == std::string_view{"Dummy zero charges"});
@@ -92,6 +96,22 @@ auto main() -> int {
            std::string_view{"Modified Partial Equalization of Atomic Electronegativity"});
     assert(mpeoe->metadata().publication.has_value());
     assert(mpeoe->metadata().priority == 110);
+
+    assert(gdac->id() == std::string_view{"gdac"});
+    assert(gdac->metadata().name == std::string_view{"GDAC"});
+    assert(gdac->metadata().full_name == std::string_view{"Geometry-Dependent Net Atomic Charges"});
+    assert(gdac->metadata().publication.has_value());
+    assert(gdac->metadata().priority == 100);
+
+    assert(gdac->requirements().bond_graph);
+    assert(gdac->requirements().coordinates);
+    assert(gdac->requirements().element_properties);
+    assert(gdac->requirements().requires_atom_parameters());
+    assert(!gdac->requirements().requires_common_parameters());
+    assert(!gdac->requirements().requires_bond_parameters());
+    assert(gdac->requirements().atom_parameters.size() == 2);
+    assert(gdac->requires_parameters());
+    assert(gdac->option_schema().size() == 1);
 
     assert(mpeoe->requirements().bond_graph);
     assert(mpeoe->requirements().requires_common_parameters());

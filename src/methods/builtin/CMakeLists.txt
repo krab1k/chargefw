@@ -10,4 +10,6 @@ target_sources(chargefw_core
         peoe.cpp
         mpeoe.h
         mpeoe.cpp
+        gdac.h
+        gdac.cpp
 )
