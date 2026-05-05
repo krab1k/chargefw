@@ -17,6 +17,7 @@ option(CHARGEFW_ENABLE_SANITIZERS "Enable sanitizers" OFF)
 option(CHARGEFW_ENABLE_CLANG_TIDY "Enable clang-tidy" OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 include(cmake/dependencies.cmake)
 include(cmake/developer_tools.cmake)
