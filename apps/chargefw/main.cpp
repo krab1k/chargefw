@@ -90,6 +90,39 @@ auto print_charge_set(const charges::ChargeSet& charge_set) -> void {
     }
 }
 
+[[nodiscard]] auto parameter_priority_of(const methods::ApplicableMethod& candidate) noexcept
+    -> std::uint16_t {
+    if (candidate.parameter_set == nullptr) {
+        return 0;
+    }
+
+    return candidate.parameter_set->priority();
+}
+
+[[nodiscard]] auto
+select_best_priority_per_method(std::span<const methods::ApplicableMethod> applicable)
+    -> std::vector<const methods::ApplicableMethod*> {
+    std::vector<const methods::ApplicableMethod*> selected;
+
+    for (const auto& candidate : applicable) {
+        const auto existing = std::ranges::find_if(
+            selected, [&candidate](const methods::ApplicableMethod* selected_candidate) {
+                return selected_candidate->method->id() == candidate.method->id();
+            });
+
+        if (existing == selected.end()) {
+            selected.push_back(&candidate);
+            continue;
+        }
+
+        if (parameter_priority_of(candidate) < parameter_priority_of(**existing)) {
+            *existing = &candidate;
+        }
+    }
+
+    return selected;
+}
+
 } // namespace
 
 auto main() -> int {
@@ -105,20 +138,22 @@ auto main() -> int {
         const auto applicability =
             methods::find_applicable_methods(prepared_collection, candidates, parameter_sets);
 
+        const auto selected_candidates = select_best_priority_per_method(applicability.applicable);
         std::cout << "Loaded methods: " << candidates.size() << '\n';
         std::cout << "Loaded parameter sets: " << parameter_sets.size() << '\n';
-        std::cout << "Applicable candidates: " << applicability.applicable.size() << "\n\n";
+        std::cout << "Applicable candidates: " << applicability.applicable.size() << "\n";
+        std::cout << "Selected candidates: " << selected_candidates.size() << "\n\n";
 
-        for (const auto& candidate : applicability.applicable) {
+        for (const auto* candidate : selected_candidates) {
             try {
-                const auto charge_set = methods::calculate_charges(candidate, prepared_collection);
+                const auto charge_set = methods::calculate_charges(*candidate, prepared_collection);
                 print_charge_set(charge_set);
                 std::cout << '\n';
             } catch (const std::exception& error) {
-                std::cerr << "Calculation failed for method '" << candidate.method->id() << "'";
+                std::cerr << "Calculation failed for method '" << candidate->method->id() << "'";
 
-                if (candidate.parameter_set != nullptr) {
-                    std::cerr << " with parameter set '" << candidate.parameter_set->id() << "'";
+                if (candidate->parameter_set != nullptr) {
+                    std::cerr << " with parameter set '" << candidate->parameter_set->id() << "'";
                 }
 
                 std::cerr << ": " << error.what() << '\n';
