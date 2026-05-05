@@ -4,6 +4,8 @@ target_sources(chargefw_core
         conformer_features.cpp
         prepared_molecule.cpp
         prepared_molecule_collection.cpp
+        topology_helpers.h
+        topology_helpers.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
