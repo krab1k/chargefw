@@ -9,4 +9,9 @@ auto breadth_first_distances(const std::vector<std::vector<std::size_t>>& adjace
                              std::size_t source, std::optional<std::size_t> max_distance)
     -> std::vector<int>;
 
+auto all_pairs_bond_distances(const std::vector<std::vector<std::size_t>>& adjacency)
+    -> std::vector<std::vector<int>>;
+
+auto is_connected(const std::vector<std::vector<std::size_t>>& adjacency) -> bool;
+
 }

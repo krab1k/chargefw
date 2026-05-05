@@ -42,6 +42,7 @@ auto main() -> int {
     const auto* mgc = registry.find("mgc");
     const auto* denr = registry.find("denr");
     const auto* kcm = registry.find("kcm");
+    const auto* tsef = registry.find("tsef");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
@@ -54,12 +55,13 @@ auto main() -> int {
     assert(mgc != nullptr);
     assert(denr != nullptr);
     assert(kcm != nullptr);
+    assert(tsef != nullptr);
 
     const auto method_names = registry.names();
 
-    assert(
-        (method_names == std::vector<std::string>{"charge2", "delre", "denr", "dummy", "formal",
-                                                  "gdac", "kcm", "mgc", "mpeoe", "peoe", "veem"}));
+    assert((method_names == std::vector<std::string>{"charge2", "delre", "denr", "dummy", "formal",
+                                                     "gdac", "kcm", "mgc", "mpeoe", "peoe", "tsef",
+                                                     "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
@@ -225,6 +227,27 @@ auto main() -> int {
     assert(kcm->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(kcm->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(kcm->requirements().resources.reject_large_without_reduction);
+
+    assert(tsef->id() == std::string_view{"tsef"});
+    assert(tsef->metadata().name == std::string_view{"TSEF"});
+    assert(tsef->metadata().full_name ==
+           std::string_view{"Topologically Symmetrical Energy Function"});
+    assert(tsef->metadata().publication.has_value());
+    assert(tsef->metadata().priority == 55);
+
+    assert(tsef->requirements().bond_graph);
+    assert(tsef->requirements().topological_distances);
+    assert(tsef->requirements().formal_charges);
+    assert(!tsef->requirements().requires_common_parameters());
+    assert(tsef->requirements().requires_atom_parameters());
+    assert(!tsef->requirements().requires_bond_parameters());
+    assert(tsef->requirements().atom_parameters.size() == 2);
+    assert(tsef->requires_parameters());
+    assert(tsef->option_schema().empty());
+
+    assert(tsef->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    assert(tsef->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(tsef->requirements().resources.reject_large_without_reduction);
 
     const auto water = chargefw::test::make_water();
 

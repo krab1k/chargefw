@@ -109,4 +109,14 @@ auto Molecule::has_coordinates() const noexcept -> bool {
     return !conformers_.empty();
 }
 
+auto total_formal_charge(const Molecule& molecule) noexcept -> double {
+    auto total = 0.0;
+
+    for (const auto& atom : molecule.atoms()) {
+        total += atom.formal_charge();
+    }
+
+    return total;
+}
+
 } // namespace chargefw::core

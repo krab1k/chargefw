@@ -22,4 +22,6 @@ target_sources(chargefw_core
         denr.cpp
         kcm.h
         kcm.cpp
+        tsef.h
+        tsef.cpp
 )

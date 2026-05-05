@@ -6,11 +6,12 @@
 #include "methods/builtin/dummy.h"
 #include "methods/builtin/formal.h"
 #include "methods/builtin/gdac.h"
+#include "methods/builtin/kcm.h"
 #include "methods/builtin/mgc.h"
 #include "methods/builtin/mpeoe.h"
 #include "methods/builtin/peoe.h"
+#include "methods/builtin/tsef.h"
 #include "methods/builtin/veem.h"
-#include "methods/builtin/kcm.h"
 
 #include <memory>
 #include <vector>
@@ -31,6 +32,7 @@ auto make_builtin_methods() -> std::vector<std::unique_ptr<Method>> {
     methods.push_back(std::make_unique<builtin::MGCMethod>());
     methods.push_back(std::make_unique<builtin::DENRMethod>());
     methods.push_back(std::make_unique<builtin::KCMMethod>());
+    methods.push_back(std::make_unique<builtin::TSEFMethod>());
 
     return methods;
 }

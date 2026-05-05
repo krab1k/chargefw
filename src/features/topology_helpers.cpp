@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <optional>
 #include <queue>
 #include <utility>
@@ -35,6 +36,28 @@ auto breadth_first_distances(const std::vector<std::vector<std::size_t>>& adjace
     }
 
     return distances;
+}
+
+auto all_pairs_bond_distances(const std::vector<std::vector<std::size_t>>& adjacency)
+    -> std::vector<std::vector<int>> {
+    auto distances = std::vector<std::vector<int>>{};
+    distances.reserve(adjacency.size());
+
+    for (std::size_t atom_index = 0; atom_index < adjacency.size(); ++atom_index) {
+        distances.push_back(breadth_first_distances(adjacency, atom_index, std::nullopt));
+    }
+
+    return distances;
+}
+
+auto is_connected(const std::vector<std::vector<std::size_t>>& adjacency) -> bool {
+    if (adjacency.empty()) {
+        return true;
+    }
+
+    const auto distances = breadth_first_distances(adjacency, 0, std::nullopt);
+
+    return std::ranges::all_of(distances, [](const int distance) -> bool { return distance >= 0; });
 }
 
 } // namespace chargefw::features

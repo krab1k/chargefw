@@ -39,4 +39,7 @@ class Molecule {
 
     std::string name_;
 };
+
+[[nodiscard]] auto total_formal_charge(const Molecule& molecule) noexcept -> double;
+
 } // namespace chargefw::core
