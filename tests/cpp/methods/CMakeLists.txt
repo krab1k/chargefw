@@ -55,3 +55,7 @@ chargefw_add_test(test_delre
 chargefw_add_test(test_denr
         test_denr.cpp
 )
+
+chargefw_add_test(test_kcm
+        test_kcm.cpp
+)

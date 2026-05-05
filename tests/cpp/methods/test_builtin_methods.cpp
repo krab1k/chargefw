@@ -41,6 +41,7 @@ auto main() -> int {
     const auto* delre = registry.find("delre");
     const auto* mgc = registry.find("mgc");
     const auto* denr = registry.find("denr");
+    const auto* kcm = registry.find("kcm");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
@@ -52,11 +53,13 @@ auto main() -> int {
     assert(delre != nullptr);
     assert(mgc != nullptr);
     assert(denr != nullptr);
+    assert(kcm != nullptr);
 
     const auto method_names = registry.names();
 
-    assert((method_names == std::vector<std::string>{"charge2", "delre", "denr", "dummy", "formal",
-                                                     "gdac", "mgc", "mpeoe", "peoe", "veem"}));
+    assert(
+        (method_names == std::vector<std::string>{"charge2", "delre", "denr", "dummy", "formal",
+                                                  "gdac", "kcm", "mgc", "mpeoe", "peoe", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
@@ -204,6 +207,24 @@ auto main() -> int {
     assert(denr->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(denr->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(denr->requirements().resources.reject_large_without_reduction);
+
+    assert(kcm->id() == std::string_view{"kcm"});
+    assert(kcm->metadata().name == std::string_view{"KCM"});
+    assert(kcm->metadata().full_name == std::string_view{"Kirchhoff Charge Model"});
+    assert(kcm->metadata().publication.has_value());
+    assert(kcm->metadata().priority == 60);
+
+    assert(kcm->requirements().bond_graph);
+    assert(kcm->requirements().requires_atom_parameters());
+    assert(!kcm->requirements().requires_common_parameters());
+    assert(!kcm->requirements().requires_bond_parameters());
+    assert(kcm->requirements().atom_parameters.size() == 2);
+    assert(kcm->requires_parameters());
+    assert(kcm->option_schema().empty());
+
+    assert(kcm->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    assert(kcm->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(kcm->requirements().resources.reject_large_without_reduction);
 
     const auto water = chargefw::test::make_water();
 

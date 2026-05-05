@@ -10,6 +10,7 @@
 #include "methods/builtin/mpeoe.h"
 #include "methods/builtin/peoe.h"
 #include "methods/builtin/veem.h"
+#include "methods/builtin/kcm.h"
 
 #include <memory>
 #include <vector>
@@ -29,6 +30,7 @@ auto make_builtin_methods() -> std::vector<std::unique_ptr<Method>> {
     methods.push_back(std::make_unique<builtin::DelReMethod>());
     methods.push_back(std::make_unique<builtin::MGCMethod>());
     methods.push_back(std::make_unique<builtin::DENRMethod>());
+    methods.push_back(std::make_unique<builtin::KCMMethod>());
 
     return methods;
 }
