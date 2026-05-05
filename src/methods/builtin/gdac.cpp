@@ -79,7 +79,8 @@ auto GDACMethod::calculate(const CalculationInput& input) const -> charges::Atom
     std::vector<double> charges(atom_count, 0.0);
     std::vector<double> electronegativities(atom_count, 0.0);
 
-    for (int alpha = 1; alpha < iterations; ++alpha) {
+    for (int iteration = 0; iteration < iterations; ++iteration) {
+        const auto alpha = iteration + 1;
         for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
             electronegativities[atom_index] =
                 parameter_b[atom_index] * charges[atom_index] + parameter_a[atom_index];
