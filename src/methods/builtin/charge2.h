@@ -23,6 +23,7 @@ class Charge2Method final : public Method {
         auto requirements = MethodRequirements{};
         requirements.bond_graph = true;
         requirements.topological_distances = true;
+        requirements.element_properties = true;
         requirements.common_parameters = {"a1", "a2", "a3", "b", "c", "alpha"};
         requirements.atom_parameters = {"chi", "P0", "q0"};
         requirements.resources.time = ComplexityTerm::atoms_plus_bonds;

@@ -4,7 +4,6 @@
 
 #include <chargefw/core/periodic_table.h>
 #include <chargefw/parameters/models/parameter_view.h>
-#include <math.h>
 
 #include <cstddef>
 #include <stdexcept>

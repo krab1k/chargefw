@@ -37,6 +37,7 @@ auto main() -> int {
     const auto* peoe = registry.find("peoe");
     const auto* mpeoe = registry.find("mpeoe");
     const auto* gdac = registry.find("gdac");
+    const auto* charge2 = registry.find("charge2");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
@@ -44,11 +45,12 @@ auto main() -> int {
     assert(peoe != nullptr);
     assert(mpeoe != nullptr);
     assert(gdac != nullptr);
+    assert(charge2 != nullptr);
 
     const auto method_names = registry.names();
 
-    assert((method_names ==
-            std::vector<std::string>{"dummy", "formal", "gdac", "mpeoe", "peoe", "veem"}));
+    assert((method_names == std::vector<std::string>{"charge2", "dummy", "formal", "gdac", "mpeoe",
+                                                     "peoe", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(formal->id() == std::string_view{"formal"});
@@ -130,6 +132,23 @@ auto main() -> int {
     assert(peoe->requirements().atom_parameters.size() == 3);
     assert(peoe->requires_parameters());
     assert(peoe->option_schema().size() == 1);
+
+    assert(charge2->id() == std::string_view{"charge2"});
+    assert(charge2->metadata().name == std::string_view{"Charge2"});
+    assert(charge2->metadata().full_name == std::string_view{"Charge2"});
+    assert(charge2->metadata().publication.has_value());
+    assert(charge2->metadata().priority == 30);
+
+    assert(charge2->requirements().bond_graph);
+    assert(charge2->requirements().topological_distances);
+    assert(charge2->requirements().element_properties);
+    assert(charge2->requirements().requires_common_parameters());
+    assert(charge2->requirements().requires_atom_parameters());
+    assert(!charge2->requirements().requires_bond_parameters());
+    assert(charge2->requirements().common_parameters.size() == 6);
+    assert(charge2->requirements().atom_parameters.size() == 3);
+    assert(charge2->requires_parameters());
+    assert(charge2->option_schema().size() == 1);
 
     const auto water = chargefw::test::make_water();
 
