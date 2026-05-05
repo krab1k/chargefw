@@ -26,4 +26,6 @@ target_sources(chargefw_core
         tsef.cpp
         qeq.h
         qeq.cpp
+        eem.h
+        eem.cpp
 )

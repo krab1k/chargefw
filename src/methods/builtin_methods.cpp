@@ -13,6 +13,7 @@
 #include "methods/builtin/qeq.h"
 #include "methods/builtin/tsef.h"
 #include "methods/builtin/veem.h"
+#include "methods/builtin/eem.h"
 
 #include <memory>
 #include <vector>
@@ -35,6 +36,7 @@ auto make_builtin_methods() -> std::vector<std::unique_ptr<Method>> {
     methods.push_back(std::make_unique<builtin::KCMMethod>());
     methods.push_back(std::make_unique<builtin::TSEFMethod>());
     methods.push_back(std::make_unique<builtin::QEqMethod>());
+    methods.push_back(std::make_unique<builtin::EEMMethod>());
 
     return methods;
 }

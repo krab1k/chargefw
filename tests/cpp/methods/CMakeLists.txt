@@ -63,3 +63,7 @@ chargefw_add_test(test_kcm
 chargefw_add_test(test_qeq
         test_qeq.cpp
 )
+
+chargefw_add_test(test_eem
+        test_eem.cpp
+)
