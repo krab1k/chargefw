@@ -100,6 +100,45 @@ class AtomParameterMethod final : public methods::Method {
     }
 };
 
+class GeometryMethod final : public methods::Method {
+  public:
+    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
+        static constexpr methods::MethodMetadata metadata{.id = "geometry-test",
+                                                          .name = "Geometry test",
+                                                          .full_name = "Geometry test",
+                                                          .publication = std::nullopt,
+                                                          .priority = 0};
+
+        return metadata;
+    }
+
+    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
+        auto requirements = methods::MethodRequirements{};
+        requirements.coordinates = true;
+        return requirements;
+    }
+
+    [[nodiscard]] auto option_schema() const noexcept
+        -> std::span<const methods::MethodOptionSpec> override {
+        return {};
+    }
+
+    [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
+        -> charges::AtomicCharges override {
+        const auto& molecule = input.molecule();
+        const auto& geometry = input.geometry();
+
+        std::vector<double> values;
+        values.reserve(molecule.atom_count());
+
+        for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
+            values.push_back(geometry.position(atom_index).x);
+        }
+
+        return charges::AtomicCharges{std::move(values)};
+    }
+};
+
 auto atom_key(const int atomic_number,
               const parameters::AtomParameterClassificationKind classification, std::string type)
     -> parameters::AtomParameterKey {
@@ -273,6 +312,38 @@ auto main() -> int {
     }
 
     assert(rejected_invalid_classification);
+
+    const GeometryMethod geometry_method;
+
+    const auto two_conformer_collection = core::MoleculeCollection{
+        std::vector{chargefw::test::make_two_conformer_water()}, "two-conformer-test"};
+
+    const features::PreparedMoleculeCollection prepared_two_conformer_collection{
+        two_conformer_collection};
+
+    const methods::ApplicableMethod geometry_candidate{.method = &geometry_method,
+                                                       .parameter_set = nullptr,
+                                                       .method_options = {},
+                                                       .classifications = {}};
+
+    const auto geometry_charges =
+        methods::calculate_charges(geometry_candidate, prepared_two_conformer_collection);
+
+    assert(geometry_charges.method_id() == std::string_view{"geometry-test"});
+    assert(!geometry_charges.parameter_set_id().has_value());
+    assert(geometry_charges.size() == 2);
+
+    assert(geometry_charges.assignment(0).target.molecule_index == 0);
+    assert(geometry_charges.assignment(0).target.conformer_index == std::optional<std::size_t>{0});
+
+    assert(geometry_charges.assignment(1).target.molecule_index == 0);
+    assert(geometry_charges.assignment(1).target.conformer_index == std::optional<std::size_t>{1});
+
+    assert(geometry_charges.assignment(0).charges.size() == 3);
+    assert(geometry_charges.assignment(1).charges.size() == 3);
+
+    assert(geometry_charges.assignment(0).charges[1] == 0.9572);
+    assert(geometry_charges.assignment(1).charges[1] == 1.1000);
 
     return 0;
 }

@@ -91,5 +91,34 @@ auto main() -> int {
     assert(!prerequisite_result.issues().empty());
     assert(prerequisite_result.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
 
+    const auto two_conformer_water = chargefw::test::make_two_conformer_water();
+    const features::PreparedMolecule prepared_two_conformer_water{two_conformer_water};
+
+    const auto two_conformer_classification = parameters::classify_parameters(
+        two_conformer_water, prepared_two_conformer_water.topology(), parameter_set);
+
+    const parameters::ParameterView two_conformer_parameter_view{parameter_set,
+                                                                 two_conformer_classification};
+
+    const features::ConformerFeatures first_geometry{two_conformer_water, 0};
+    const features::ConformerFeatures second_geometry{two_conformer_water, 1};
+
+    const methods::CalculationInput first_input{prepared_two_conformer_water, options,
+                                                &first_geometry, &two_conformer_parameter_view};
+
+    const methods::CalculationInput second_input{prepared_two_conformer_water, options,
+                                                 &second_geometry, &two_conformer_parameter_view};
+
+    const auto first_charges = gdac->calculate(first_input);
+    const auto second_charges = gdac->calculate(second_input);
+
+    assert(first_charges.size() == two_conformer_water.atom_count());
+    assert(second_charges.size() == two_conformer_water.atom_count());
+
+    assert(std::abs(first_charges.total()) < 1.0e-4);
+    assert(std::abs(second_charges.total()) < 1.0e-4);
+
+    assert(std::abs(first_charges[0] - second_charges[0]) > 1.0e-4);
+
     return 0;
 }
