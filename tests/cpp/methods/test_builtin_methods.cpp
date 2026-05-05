@@ -45,6 +45,7 @@ auto main() -> int {
     const auto* tsef = registry.find("tsef");
     const auto* qeq = registry.find("qeq");
     const auto* eem = registry.find("eem");
+    const auto* smpqeq = registry.find("smpqeq");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
@@ -60,12 +61,13 @@ auto main() -> int {
     assert(tsef != nullptr);
     assert(qeq != nullptr);
     assert(eem != nullptr);
+    assert(smpqeq != nullptr);
 
     const auto method_names = registry.names();
 
     assert((method_names == std::vector<std::string>{"charge2", "delre", "denr", "dummy", "eem",
                                                      "formal", "gdac", "kcm", "mgc", "mpeoe",
-                                                     "peoe", "qeq", "tsef", "veem"}));
+                                                     "peoe", "qeq", "smpqeq", "tsef", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
@@ -291,6 +293,26 @@ auto main() -> int {
     assert(eem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(eem->requirements().resources.reject_large_without_reduction);
+
+    assert(smpqeq->id() == std::string_view{"smpqeq"});
+    assert(smpqeq->metadata().name == std::string_view{"SMP/QEq"});
+    assert(smpqeq->metadata().full_name ==
+           std::string_view{"Self-Consistent Charge Equilibration Method"});
+    assert(smpqeq->metadata().publication.has_value());
+    assert(smpqeq->metadata().priority == 160);
+
+    assert(smpqeq->requirements().coordinates);
+    assert(smpqeq->requirements().formal_charges);
+    assert(smpqeq->requirements().requires_atom_parameters());
+    assert(!smpqeq->requirements().requires_common_parameters());
+    assert(!smpqeq->requirements().requires_bond_parameters());
+    assert(smpqeq->requirements().atom_parameters.size() == 4);
+    assert(smpqeq->requires_parameters());
+    assert(smpqeq->option_schema().empty());
+
+    assert(smpqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    assert(smpqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(smpqeq->requirements().resources.reject_large_without_reduction);
 
     const auto water = chargefw::test::make_water();
 
