@@ -1,5 +1,6 @@
 #include "methods/builtin_methods.h"
 
+#include "methods/builtin/charge2.h"
 #include "methods/builtin/dummy.h"
 #include "methods/builtin/formal.h"
 #include "methods/builtin/gdac.h"
@@ -21,6 +22,7 @@ auto make_builtin_methods() -> std::vector<std::unique_ptr<Method>> {
     methods.push_back(std::make_unique<builtin::PEOEMethod>());
     methods.push_back(std::make_unique<builtin::MPEOEMethod>());
     methods.push_back(std::make_unique<builtin::GDACMethod>());
+    methods.push_back(std::make_unique<builtin::Charge2Method>());
 
     return methods;
 }
