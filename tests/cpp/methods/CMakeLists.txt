@@ -79,3 +79,7 @@ chargefw_add_test(test_sfkeem
 chargefw_add_test(test_eqeq
         test_eqeq.cpp
 )
+
+chargefw_add_test(test_eqeqc
+        test_eqeqc.cpp
+)
