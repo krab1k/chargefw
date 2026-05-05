@@ -27,44 +27,33 @@ namespace parameters = chargefw::parameters;
 namespace {
 
 auto make_water() -> core::Molecule {
-    std::vector atoms{
-        core::Atom{8, 0, "O"},
-        core::Atom{1, 0, "H1"},
-        core::Atom{1, 0, "H2"}
-    };
+    std::vector atoms{core::Atom{8, 0, "O"}, core::Atom{1, 0, "H1"}, core::Atom{1, 0, "H2"}};
 
-    std::vector bonds{
-        core::Bond{0, 1, core::BondOrder::SINGLE},
-        core::Bond{0, 2, core::BondOrder::SINGLE}
-    };
+    std::vector bonds{core::Bond{0, 1, core::BondOrder::SINGLE},
+                      core::Bond{0, 2, core::BondOrder::SINGLE}};
 
-    std::vector positions{
-        core::Position{.x = 0.0000, .y = 0.0000, .z = 0.0000},
-        core::Position{.x = 0.9572, .y = 0.0000, .z = 0.0000},
-        core::Position{.x = -0.2390, .y = 0.9270, .z = 0.0000}
-    };
+    std::vector positions_1{core::Position{.x = 0.0000, .y = 0.0000, .z = 0.0000},
+                            core::Position{.x = 0.9572, .y = 0.0000, .z = 0.0000},
+                            core::Position{.x = -0.2390, .y = 0.9270, .z = 0.0000}};
 
-    std::vector conformers{
-        core::Conformer{std::move(positions), "model-1"}
-    };
+    std::vector positions_2{core::Position{.x = 0.0000, .y = 0.0000, .z = 0.0000},
+                            core::Position{.x = 1.1000, .y = 0.0000, .z = 0.0000},
+                            core::Position{.x = -0.3000, .y = 1.0500, .z = 0.0000}};
 
-    return core::Molecule{
-        std::move(atoms),
-        std::move(bonds),
-        std::move(conformers),
-        "water"
-    };
+    std::vector conformers{core::Conformer{std::move(positions_1), "model-1"},
+                           core::Conformer{std::move(positions_2), "model-2"}};
+
+    return core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers), "water"};
 }
 
 auto make_collection() -> core::MoleculeCollection {
-    std::vector molecules{
-        make_water()
-    };
+    std::vector molecules{make_water()};
 
     return core::MoleculeCollection{std::move(molecules), "demo"};
 }
 
-auto method_pointers(const methods::MethodRegistry& registry) -> std::vector<const methods::Method*> {
+auto method_pointers(const methods::MethodRegistry& registry)
+    -> std::vector<const methods::Method*> {
     std::vector<const methods::Method*> result;
     result.reserve(registry.methods().size());
 
@@ -101,11 +90,9 @@ auto print_charge_set(const charges::ChargeSet& charge_set) -> void {
     }
 }
 
-auto print_rejections(
-    const methods::ApplicabilityResult& applicability,
-    const std::vector<const methods::Method*>& candidate_methods,
-    const std::vector<parameters::ParameterSet>& parameter_sets
-) -> void {
+auto print_rejections(const methods::ApplicabilityResult& applicability,
+                      const std::vector<const methods::Method*>& candidate_methods,
+                      const std::vector<parameters::ParameterSet>& parameter_sets) -> void {
     if (applicability.rejected.empty()) {
         return;
     }
@@ -142,11 +129,8 @@ auto main() -> int {
         const auto& registry = methods::method_registry();
         const auto candidates = method_pointers(registry);
 
-        const auto applicability = methods::find_applicable_methods(
-            prepared_collection,
-            candidates,
-            parameter_sets
-        );
+        const auto applicability =
+            methods::find_applicable_methods(prepared_collection, candidates, parameter_sets);
 
         std::cout << "Loaded methods: " << candidates.size() << '\n';
         std::cout << "Loaded parameter sets: " << parameter_sets.size() << '\n';

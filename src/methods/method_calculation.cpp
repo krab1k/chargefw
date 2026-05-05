@@ -15,13 +15,18 @@ namespace chargefw::methods {
 namespace {
 
 [[nodiscard]] auto make_geometry_if_required(const Method& method,
-                                             const features::PreparedMolecule& molecule)
+                                             const features::PreparedMolecule& molecule,
+                                             const std::optional<std::size_t> conformer_index)
     -> std::optional<features::ConformerFeatures> {
     if (!method.requirements().coordinates) {
         return std::nullopt;
     }
 
-    return features::ConformerFeatures{molecule.molecule(), 0};
+    if (!conformer_index.has_value()) {
+        throw std::invalid_argument{"geometry-dependent method requires a conformer index"};
+    }
+
+    return features::ConformerFeatures{molecule.molecule(), *conformer_index};
 }
 
 auto validate_selected_candidate(const ApplicableMethod& selected,
@@ -88,10 +93,30 @@ auto validate_candidate_classification(const ApplicableMethod& selected,
     return std::string{selected.parameter_set->id()};
 }
 
+auto validate_coordinate_targets(const ApplicableMethod& selected,
+                                 const features::PreparedMoleculeCollection& prepared_collection)
+    -> void {
+    if (!selected.method->requirements().coordinates) {
+        return;
+    }
+
+    for (std::size_t molecule_index = 0; molecule_index < prepared_collection.size();
+         ++molecule_index) {
+        const auto& molecule = prepared_collection[molecule_index].molecule();
+
+        if (molecule.conformer_count() == 0) {
+            throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
+                                        "' requires coordinates, but molecule " +
+                                        std::to_string(molecule_index) + " has no conformers"};
+        }
+    }
+}
+
 [[nodiscard]] auto calculate_without_parameters(const ApplicableMethod& selected,
-                                                const features::PreparedMolecule& molecule)
+                                                const features::PreparedMolecule& molecule,
+                                                const std::optional<std::size_t> conformer_index)
     -> charges::AtomicCharges {
-    auto geometry = make_geometry_if_required(*selected.method, molecule);
+    auto geometry = make_geometry_if_required(*selected.method, molecule, conformer_index);
 
     const CalculationInput input{molecule, selected.method_options,
                                  geometry ? std::addressof(*geometry) : nullptr};
@@ -105,12 +130,13 @@ auto validate_candidate_classification(const ApplicableMethod& selected,
 
 [[nodiscard]] auto calculate_with_parameters(
     const ApplicableMethod& selected, const features::PreparedMolecule& molecule,
-    const parameters::ParameterClassification& classification) -> charges::AtomicCharges {
+    const parameters::ParameterClassification& classification,
+    const std::optional<std::size_t> conformer_index) -> charges::AtomicCharges {
     validate_candidate_classification(selected, molecule, classification);
 
     const parameters::ParameterView parameter_view{*selected.parameter_set, classification};
 
-    auto geometry = make_geometry_if_required(*selected.method, molecule);
+    auto geometry = make_geometry_if_required(*selected.method, molecule, conformer_index);
 
     const CalculationInput input{molecule, selected.method_options,
                                  geometry ? std::addressof(*geometry) : nullptr, &parameter_view};
@@ -125,26 +151,46 @@ auto validate_candidate_classification(const ApplicableMethod& selected,
 } // namespace
 
 auto calculate_charges(const ApplicableMethod& selected,
-                       const features::PreparedMoleculeCollection& molecules)
+                       const features::PreparedMoleculeCollection& prepared_collection)
     -> charges::ChargeSet {
-    validate_selected_candidate(selected, molecules);
+    validate_selected_candidate(selected, prepared_collection);
+    validate_coordinate_targets(selected, prepared_collection);
+
+    const auto geometry_dependent = selected.method->requirements().coordinates;
 
     std::vector<charges::ChargeAssignment> assignments;
-    assignments.reserve(molecules.size());
 
-    for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
-        auto atomic_charges =
-            selected.uses_parameters()
-                ? calculate_with_parameters(selected, molecules[molecule_index],
-                                            selected.classifications[molecule_index])
-                : calculate_without_parameters(selected, molecules[molecule_index]);
-        const auto conformer_index = selected.method->requirements().coordinates
-                                         ? std::optional<std::size_t>{0}
-                                         : std::nullopt;
-        assignments.push_back(charges::ChargeAssignment{
-            .target = charges::ChargeTarget{.molecule_index = molecule_index,
-                                            .conformer_index = conformer_index},
-            .charges = std::move(atomic_charges)});
+    std::size_t assignment_count = 0;
+
+    for (const auto& prepared_molecule : prepared_collection.molecules()) {
+        assignment_count += geometry_dependent ? prepared_molecule.molecule().conformer_count() : 1;
+    }
+
+    assignments.reserve(assignment_count);
+
+    for (std::size_t molecule_index = 0; molecule_index < prepared_collection.size();
+         ++molecule_index) {
+        const auto& prepared_molecule = prepared_collection[molecule_index];
+        const auto& molecule = prepared_molecule.molecule();
+
+        const auto target_count = geometry_dependent ? molecule.conformer_count() : 1;
+
+        for (std::size_t target_index = 0; target_index < target_count; ++target_index) {
+            const auto conformer_index =
+                geometry_dependent ? std::optional{target_index} : std::nullopt;
+
+            auto atomic_charges =
+                selected.uses_parameters()
+                    ? calculate_with_parameters(selected, prepared_molecule,
+                                                selected.classifications[molecule_index],
+                                                conformer_index)
+                    : calculate_without_parameters(selected, prepared_molecule, conformer_index);
+
+            assignments.push_back(charges::ChargeAssignment{
+                .target = charges::ChargeTarget{.molecule_index = molecule_index,
+                                                .conformer_index = conformer_index},
+                .charges = std::move(atomic_charges)});
+        }
     }
 
     return charges::ChargeSet{std::string{selected.method->id()}, std::move(assignments),
