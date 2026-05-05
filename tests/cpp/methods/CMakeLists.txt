@@ -51,3 +51,7 @@ target_compile_definitions(test_gdac
 chargefw_add_test(test_delre
         test_delre.cpp
 )
+
+chargefw_add_test(test_denr
+        test_denr.cpp
+)

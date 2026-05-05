@@ -40,6 +40,7 @@ auto main() -> int {
     const auto* charge2 = registry.find("charge2");
     const auto* delre = registry.find("delre");
     const auto* mgc = registry.find("mgc");
+    const auto* denr = registry.find("denr");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
@@ -50,11 +51,12 @@ auto main() -> int {
     assert(charge2 != nullptr);
     assert(delre != nullptr);
     assert(mgc != nullptr);
+    assert(denr != nullptr);
 
     const auto method_names = registry.names();
 
-    assert((method_names == std::vector<std::string>{"charge2", "delre", "dummy", "formal", "gdac",
-                                                     "mgc", "mpeoe", "peoe", "veem"}));
+    assert((method_names == std::vector<std::string>{"charge2", "delre", "denr", "dummy", "formal",
+                                                     "gdac", "mgc", "mpeoe", "peoe", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
@@ -182,6 +184,26 @@ auto main() -> int {
     assert(mgc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(mgc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(mgc->requirements().resources.reject_large_without_reduction);
+
+    assert(denr->id() == std::string_view{"denr"});
+    assert(denr->metadata().name == std::string_view{"DENR"});
+    assert(denr->metadata().full_name ==
+           std::string_view{"Dynamical Electronegativity Relaxation"});
+    assert(denr->metadata().publication.has_value());
+    assert(denr->metadata().priority == 50);
+
+    assert(denr->requirements().bond_graph);
+    assert(denr->requirements().requires_common_parameters());
+    assert(denr->requirements().requires_atom_parameters());
+    assert(!denr->requirements().requires_bond_parameters());
+    assert(denr->requirements().common_parameters.size() == 2);
+    assert(denr->requirements().atom_parameters.size() == 2);
+    assert(denr->requires_parameters());
+    assert(denr->option_schema().empty());
+
+    assert(denr->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    assert(denr->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(denr->requirements().resources.reject_large_without_reduction);
 
     const auto water = chargefw::test::make_water();
 

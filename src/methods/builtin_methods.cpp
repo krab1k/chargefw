@@ -2,6 +2,7 @@
 
 #include "methods/builtin/charge2.h"
 #include "methods/builtin/delre.h"
+#include "methods/builtin/denr.h"
 #include "methods/builtin/dummy.h"
 #include "methods/builtin/formal.h"
 #include "methods/builtin/gdac.h"
@@ -27,6 +28,7 @@ auto make_builtin_methods() -> std::vector<std::unique_ptr<Method>> {
     methods.push_back(std::make_unique<builtin::Charge2Method>());
     methods.push_back(std::make_unique<builtin::DelReMethod>());
     methods.push_back(std::make_unique<builtin::MGCMethod>());
+    methods.push_back(std::make_unique<builtin::DENRMethod>());
 
     return methods;
 }
