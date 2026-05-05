@@ -18,6 +18,12 @@ namespace {
                                "' without available valence electron count"};
     }
 
+    if (element.electronegativity <= 0.0) {
+        throw std::logic_error{"VEEM calculation called for element '" +
+                               std::string{element.symbol} +
+                               "' without positive electronegativity"};
+    }
+
     return *count;
 }
 
@@ -46,7 +52,16 @@ auto VEEMMethod::add_method_specific_prerequisite_issues(const MethodPrerequisit
             result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::unsupported_molecule,
                                          .message = "atom " + std::to_string(atom_index) + " (" +
                                                     std::string{element.symbol} +
-                                                    ") has no VEEM valence electron count",
+                                                    ") has no valence electron count",
+                                         .atom_index = atom_index});
+            continue;
+        }
+
+        if (element.electronegativity <= 0.0) {
+            result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::unsupported_molecule,
+                                         .message = "atom " + std::to_string(atom_index) + " (" +
+                                                    std::string{element.symbol} +
+                                                    ") has no positive electronegativity",
                                          .atom_index = atom_index});
         }
     }
