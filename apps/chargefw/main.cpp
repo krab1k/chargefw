@@ -90,33 +90,6 @@ auto print_charge_set(const charges::ChargeSet& charge_set) -> void {
     }
 }
 
-auto print_rejections(const methods::ApplicabilityResult& applicability,
-                      const std::vector<const methods::Method*>& candidate_methods,
-                      const std::vector<parameters::ParameterSet>& parameter_sets) -> void {
-    if (applicability.rejected.empty()) {
-        return;
-    }
-
-    std::cout << "\nRejected candidates:\n";
-
-    for (const auto& rejected : applicability.rejected) {
-        const auto* method = candidate_methods[rejected.method_index];
-
-        std::cout << "  method: " << method->id();
-
-        if (rejected.parameter_set_index.has_value()) {
-            const auto& parameter_set = parameter_sets[*rejected.parameter_set_index];
-            std::cout << "  parameters: " << parameter_set.id();
-        }
-
-        std::cout << '\n';
-
-        for (const auto& issue : rejected.issues) {
-            std::cout << "    - " << issue.message << '\n';
-        }
-    }
-}
-
 } // namespace
 
 auto main() -> int {
@@ -151,8 +124,6 @@ auto main() -> int {
                 std::cerr << ": " << error.what() << '\n';
             }
         }
-
-        print_rejections(applicability, candidates, parameter_sets);
 
         return 0;
     } catch (const std::exception& error) {
