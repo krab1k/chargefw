@@ -15,7 +15,6 @@ auto KCMMethod::calculate(const CalculationInput& input) const -> charges::Atomi
     const auto& parameters = input.parameters();
 
     const auto n = static_cast<Eigen::Index>(molecule.atom_count());
-    const auto m = static_cast<Eigen::Index>(molecule.bond_count());
 
     if (n == 0) {
         return charges::AtomicCharges{std::vector<double>{}};
@@ -24,35 +23,33 @@ auto KCMMethod::calculate(const CalculationInput& input) const -> charges::Atomi
     const auto electronegativity = parameters.atom("electronegativity");
     const auto hardness = parameters.atom("hardness");
 
-    Eigen::MatrixXd W = Eigen::MatrixXd::Zero(m, m);
-    Eigen::MatrixXd B = Eigen::MatrixXd::Zero(m, n);
+    Eigen::MatrixXd A = Eigen::MatrixXd::Identity(n, n);
     Eigen::VectorXd chi0 = Eigen::VectorXd::Zero(n);
 
     for (Eigen::Index i = 0; i < n; ++i) {
         chi0(i) = electronegativity[static_cast<std::size_t>(i)];
     }
 
-    for (Eigen::Index i = 0; i < m; ++i) {
-        const auto bond_index = static_cast<std::size_t>(i);
-        const auto& bond = molecule.bond(bond_index);
+    for (const auto& bond : molecule.bonds()) {
+        const auto i = bond.first_atom_index();
+        const auto j = bond.second_atom_index();
 
-        const auto first = bond.first_atom_index();
-        const auto second = bond.second_atom_index();
-
-        const auto eta = hardness[first] + hardness[second];
+        const auto eta = hardness[i] + hardness[j];
 
         if (eta == 0.0) {
             throw std::logic_error{"KCM bond hardness denominator must be non-zero"};
         }
 
-        W(i, i) = 1.0 / eta;
+        const auto w = 1.0 / eta;
 
-        B(i, static_cast<Eigen::Index>(first)) = 1.0;
-        B(i, static_cast<Eigen::Index>(second)) = -1.0;
+        const auto ei = static_cast<Eigen::Index>(i);
+        const auto ej = static_cast<Eigen::Index>(j);
+
+        A(ei, ei) += w;
+        A(ej, ej) += w;
+        A(ei, ej) -= w;
+        A(ej, ei) -= w;
     }
-
-    const Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n, n);
-    const Eigen::MatrixXd A = B.transpose() * W * B + I;
 
     Eigen::VectorXd q = A.partialPivLu().solve(chi0);
     q -= chi0;
