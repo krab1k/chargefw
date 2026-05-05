@@ -33,19 +33,17 @@ class Charge2Method final : public Method {
 
     [[nodiscard]] auto option_schema() const noexcept
         -> std::span<const MethodOptionSpec> override {
-        return {option_schema_.data(), option_schema_.size()};
+        static const std::array option_schema{
+            MethodOptionSpec{.id = "iters",
+                             .description = "Number of Charge2 iterations",
+                             .type = MethodOptionType::integer,
+                             .default_value = 10,
+                             .choices = {}}};
+        return {option_schema.data(), option_schema.size()};
     }
 
     [[nodiscard]] auto calculate(const CalculationInput& input) const
         -> charges::AtomicCharges override;
-
-  private:
-    inline static const std::array option_schema_{
-        MethodOptionSpec{.id = "iters",
-                         .description = "Number of Charge2 iterations",
-                         .type = MethodOptionType::integer,
-                         .default_value = 10,
-                         .choices = {}}};
 };
 
 } // namespace chargefw::methods::builtin
