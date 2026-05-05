@@ -30,59 +30,31 @@ namespace {
 auto make_parameter_set() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
-            .id = "test-delre",
-            .method_id = "delre",
-            .name = "Test DelRe parameters"
-        },
+            .id = "test-delre", .method_id = "delre", .name = "Test DelRe parameters"},
         {},
         parameters::AtomParameters{
-            {
-                {
-                    .key = {
-                        .atomic_number = 8,
-                        .classification = parameters::AtomParameterClassificationKind::PLAIN,
-                        .type = "*"
-                    },
-                    .parameters = {{.name = "delta", .value = 2.0}}
-                },
-                {
-                    .key = {
-                        .atomic_number = 1,
-                        .classification = parameters::AtomParameterClassificationKind::PLAIN,
-                        .type = "*"
-                    },
-                    .parameters = {{.name = "delta", .value = 1.0}}
-                }
-            }
-        },
+            {{.key = {.atomic_number = 8,
+                      .classification = parameters::AtomParameterClassificationKind::PLAIN,
+                      .type = "*"},
+              .parameters = {{.name = "delta", .value = 2.0}}},
+             {.key = {.atomic_number = 1,
+                      .classification = parameters::AtomParameterClassificationKind::PLAIN,
+                      .type = "*"},
+              .parameters = {{.name = "delta", .value = 1.0}}}}},
         parameters::BondParameters{
-            {
-                {
-                    .key = {
-                        .first_atom = {
-                            .atomic_number = 8,
-                            .classification = parameters::AtomParameterClassificationKind::PLAIN,
-                            .type = "*"
-                        },
-                        .second_atom = {
-                            .atomic_number = 1,
-                            .classification = parameters::AtomParameterClassificationKind::PLAIN,
-                            .type = "*"
-                        },
-                        .bond = {
-                            .classification = parameters::BondParameterClassificationKind::PLAIN,
-                            .type = "*"
-                        }
-                    },
-                    .parameters = {
-                        {.name = "eps", .value = 1.0},
-                        {.name = "gammaA", .value = 0.2},
-                        {.name = "gammaB", .value = 0.1}
-                    }
-                }
-            }
-        }
-    };
+            {{.key = {.first_atom = {.atomic_number = 8,
+                                     .classification =
+                                         parameters::AtomParameterClassificationKind::PLAIN,
+                                     .type = "*"},
+                      .second_atom = {.atomic_number = 1,
+                                      .classification =
+                                          parameters::AtomParameterClassificationKind::PLAIN,
+                                      .type = "*"},
+                      .bond = {.classification = parameters::BondParameterClassificationKind::PLAIN,
+                               .type = "*"}},
+              .parameters = {{.name = "eps", .value = 1.0},
+                             {.name = "gammaA", .value = 0.2},
+                             {.name = "gammaB", .value = 0.1}}}}}};
 }
 
 auto make_water_oxygen_first() -> core::Molecule {
@@ -103,8 +75,7 @@ auto make_water_hydrogen_first_bonds() -> core::Molecule {
     return core::Molecule{std::move(atoms), std::move(bonds), {}, "water-reversed"};
 }
 
-auto calculate_delre(const methods::Method& method,
-                     const core::Molecule& molecule,
+auto calculate_delre(const methods::Method& method, const core::Molecule& molecule,
                      const parameters::ParameterSet& parameter_set,
                      const parameters::ParameterClassification& classification)
     -> chargefw::charges::AtomicCharges {
@@ -135,8 +106,7 @@ auto main() -> int {
 
         const auto classification = parameters::ParameterClassification{
             parameters::AtomParameterClassification{std::vector<std::size_t>{0, 1, 1}},
-            parameters::BondParameterClassification{std::vector<std::size_t>{0, 0}}
-        };
+            parameters::BondParameterClassification{std::vector<std::size_t>{0, 0}}};
 
         const auto charges = calculate_delre(*delre, molecule, parameter_set, classification);
 
@@ -152,8 +122,7 @@ auto main() -> int {
 
         const auto classification = parameters::ParameterClassification{
             parameters::AtomParameterClassification{std::vector<std::size_t>{1, 0, 1}},
-            parameters::BondParameterClassification{std::vector<std::size_t>{0, 0}}
-        };
+            parameters::BondParameterClassification{std::vector<std::size_t>{0, 0}}};
 
         const auto charges = calculate_delre(*delre, molecule, parameter_set, classification);
 

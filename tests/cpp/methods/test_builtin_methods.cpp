@@ -39,6 +39,7 @@ auto main() -> int {
     const auto* gdac = registry.find("gdac");
     const auto* charge2 = registry.find("charge2");
     const auto* delre = registry.find("delre");
+    const auto* mgc = registry.find("mgc");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
@@ -48,11 +49,12 @@ auto main() -> int {
     assert(gdac != nullptr);
     assert(charge2 != nullptr);
     assert(delre != nullptr);
+    assert(mgc != nullptr);
 
     const auto method_names = registry.names();
 
     assert((method_names == std::vector<std::string>{"charge2", "delre", "dummy", "formal", "gdac",
-                                                     "mpeoe", "peoe", "veem"}));
+                                                     "mgc", "mpeoe", "peoe", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
@@ -166,6 +168,21 @@ auto main() -> int {
     assert(delre->requires_parameters());
     assert(delre->option_schema().empty());
 
+    assert(mgc->id() == std::string_view{"mgc"});
+    assert(mgc->metadata().name == std::string_view{"MGC"});
+    assert(mgc->metadata().full_name == std::string_view{"Molecular Graph Charge"});
+    assert(mgc->metadata().publication.has_value());
+    assert(mgc->metadata().priority == 70);
+
+    assert(mgc->requirements().bond_graph);
+    assert(mgc->requirements().bond_orders);
+    assert(mgc->requirements().element_properties);
+    assert(!mgc->requires_parameters());
+    assert(mgc->option_schema().empty());
+    assert(mgc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    assert(mgc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(mgc->requirements().resources.reject_large_without_reduction);
+
     const auto water = chargefw::test::make_water();
 
     const auto dummy_charges = calculate(*dummy, water);
@@ -183,6 +200,15 @@ auto main() -> int {
     assert(veem_charges[2] > 0.0);
     assert(std::abs(veem_charges[1] - veem_charges[2]) < 1.0e-12);
     assert(std::abs(veem_charges.total()) < 1.0e-12);
+
+    const auto mgc_charges = calculate(*mgc, water);
+
+    assert(mgc_charges.size() == water.atom_count());
+    assert(mgc_charges[0] < 0.0);
+    assert(mgc_charges[1] > 0.0);
+    assert(mgc_charges[2] > 0.0);
+    assert(std::abs(mgc_charges[1] - mgc_charges[2]) < 1.0e-12);
+    assert(std::abs(mgc_charges.total()) < 1.0e-12);
 
     const auto charged_pair = chargefw::test::make_formally_charged_pair();
 
