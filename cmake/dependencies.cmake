@@ -8,4 +8,12 @@ function(chargefw_setup_dependencies)
   )
 
   FetchContent_MakeAvailable(nlohmann_json)
+
+  FetchContent_Declare(
+          eigen
+          SYSTEM
+          URL https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.gz
+  )
+
+  FetchContent_MakeAvailable(eigen)
 endfunction()

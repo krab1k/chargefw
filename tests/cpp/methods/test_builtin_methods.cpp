@@ -38,6 +38,7 @@ auto main() -> int {
     const auto* mpeoe = registry.find("mpeoe");
     const auto* gdac = registry.find("gdac");
     const auto* charge2 = registry.find("charge2");
+    const auto* delre = registry.find("delre");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
@@ -46,19 +47,14 @@ auto main() -> int {
     assert(mpeoe != nullptr);
     assert(gdac != nullptr);
     assert(charge2 != nullptr);
+    assert(delre != nullptr);
 
     const auto method_names = registry.names();
 
-    assert((method_names == std::vector<std::string>{"charge2", "dummy", "formal", "gdac", "mpeoe",
-                                                     "peoe", "veem"}));
+    assert((method_names == std::vector<std::string>{"charge2", "delre", "dummy", "formal", "gdac",
+                                                     "mpeoe", "peoe", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
-    assert(formal->id() == std::string_view{"formal"});
-    assert(veem->id() == std::string_view{"veem"});
-    assert(peoe->id() == std::string_view{"peoe"});
-    assert(mpeoe->id() == std::string_view{"mpeoe"});
-    assert(gdac->id() == std::string_view{"gdac"});
-
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
     assert(dummy->metadata().full_name == std::string_view{"Dummy zero charges"});
     assert(!dummy->metadata().publication.has_value());
@@ -67,6 +63,7 @@ auto main() -> int {
     assert(!dummy->requires_parameters());
     assert(dummy->option_schema().empty());
 
+    assert(formal->id() == std::string_view{"formal"});
     assert(formal->metadata().name == std::string_view{"Formal"});
     assert(formal->metadata().full_name == std::string_view{"Formal atomic charges"});
     assert(!formal->metadata().publication.has_value());
@@ -75,6 +72,7 @@ auto main() -> int {
     assert(!formal->requires_parameters());
     assert(formal->option_schema().empty());
 
+    assert(veem->id() == std::string_view{"veem"});
     assert(veem->metadata().name == std::string_view{"VEEM"});
     assert(veem->metadata().full_name == std::string_view{"Valence Electrons Equalization Method"});
     assert(veem->metadata().publication.has_value());
@@ -149,6 +147,24 @@ auto main() -> int {
     assert(charge2->requirements().atom_parameters.size() == 3);
     assert(charge2->requires_parameters());
     assert(charge2->option_schema().size() == 1);
+
+    assert(delre->id() == std::string_view{"delre"});
+    assert(delre->metadata().name == std::string_view{"DelRe"});
+    assert(delre->metadata().full_name == std::string_view{"Method of Del Re"});
+    assert(delre->metadata().publication.has_value());
+    assert(delre->metadata().priority == 130);
+
+    assert(delre->requirements().bond_graph);
+    assert(delre->requirements().requires_atom_parameters());
+    assert(delre->requirements().requires_bond_parameters());
+    assert(!delre->requirements().requires_common_parameters());
+    assert(delre->requirements().atom_parameters.size() == 1);
+    assert(delre->requirements().bond_parameters.size() == 3);
+    assert(delre->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    assert(delre->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(delre->requirements().resources.reject_large_without_reduction);
+    assert(delre->requires_parameters());
+    assert(delre->option_schema().empty());
 
     const auto water = chargefw::test::make_water();
 

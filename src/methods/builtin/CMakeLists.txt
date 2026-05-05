@@ -14,4 +14,6 @@ target_sources(chargefw_core
         gdac.cpp
         charge2.h
         charge2.cpp
+        delre.h
+        delre.cpp
 )

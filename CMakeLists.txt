@@ -45,6 +45,7 @@ target_include_directories(chargefw_core
 target_link_libraries(chargefw_core
   PRIVATE
     nlohmann_json::nlohmann_json
+    Eigen3::Eigen
 )
 
 configure_file(
