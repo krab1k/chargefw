@@ -59,3 +59,7 @@ chargefw_add_test(test_denr
 chargefw_add_test(test_kcm
         test_kcm.cpp
 )
+
+chargefw_add_test(test_qeq
+        test_qeq.cpp
+)
