@@ -4,6 +4,7 @@
 
 #include <chargefw/core/periodic_table.h>
 #include <chargefw/parameters/models/parameter_view.h>
+#include <math.h>
 
 #include <cstddef>
 #include <stdexcept>
@@ -104,8 +105,7 @@ auto Charge2Method::calculate(const CalculationInput& input) const -> charges::A
             for (const auto bonded_index : one_bond_apart) {
                 const auto& bonded = molecule.atom(bonded_index);
 
-                double a;
-
+                double a = 0.0;
                 if (table.element(atom.atomic_number()).period == 2 &&
                     table.element(bonded.atomic_number()).period == 2) {
                     a = a1;

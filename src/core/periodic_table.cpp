@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace chargefw::core {
 
@@ -31,7 +32,7 @@ auto PeriodicTable::elements() const noexcept -> std::span<const Element> {
 auto PeriodicTable::element(const int atomic_number) const -> const Element& {
     const auto all_elements = elements();
 
-    if (atomic_number <= 0 || atomic_number > static_cast<int>(all_elements.size())) {
+    if (atomic_number <= 0 || std::cmp_greater(atomic_number, all_elements.size())) {
         throw std::out_of_range{"atomic number is outside the bundled periodic table"};
     }
 
@@ -61,7 +62,7 @@ auto PeriodicTable::element(const std::string_view symbol) const -> const Elemen
 auto PeriodicTable::contains(const int atomic_number) const noexcept -> bool {
     const auto all_elements = elements();
 
-    return atomic_number > 0 && atomic_number <= static_cast<int>(all_elements.size()) &&
+    return atomic_number > 0 && std::cmp_less_equal(atomic_number, all_elements.size()) &&
            all_elements[static_cast<std::size_t>(atomic_number - 1)].atomic_number == atomic_number;
 }
 

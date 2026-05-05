@@ -51,7 +51,7 @@ class AtomParameterMethod final : public methods::Method {
         return {};
     }
 
-    [[nodiscard]] auto calculate(const methods::CalculationInput&) const
+    [[nodiscard]] auto calculate(const methods::CalculationInput& /* unused */) const
         -> chargefw::charges::AtomicCharges override {
         return chargefw::charges::AtomicCharges{std::vector<double>{}};
     }
