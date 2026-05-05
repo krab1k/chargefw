@@ -1,6 +1,6 @@
-#include <chargefw/parameters/io/parameter_set_io.h>
-#include <chargefw/parameters/io/parameter_data_paths.h>
 #include <chargefw/core/periodic_table.h>
+#include <chargefw/parameters/io/parameter_data_paths.h>
+#include <chargefw/parameters/io/parameter_set_io.h>
 
 #include <nlohmann/json.hpp>
 
@@ -574,6 +574,11 @@ auto load_default_parameter_sets() -> std::vector<ParameterSet> {
 
     for (const auto& directory : default_parameter_directories()) {
         append_parameter_sets_from_directory_if_present(parameter_sets, ids, directory);
+    }
+
+    if (parameter_sets.empty()) {
+        throw std::invalid_argument{"no parameter sets were loaded; set CHARGEFW_PARAMETER_DIR or "
+                                    "install bundled parameters"};
     }
 
     return parameter_sets;
