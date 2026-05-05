@@ -3,6 +3,8 @@
 #include <utility>
 #include <vector>
 
+namespace chargefw::features {
+
 auto breadth_first_distances(const std::vector<std::vector<std::size_t>>& adjacency,
                              const std::size_t source,
                              const std::optional<std::size_t> max_distance) -> std::vector<int> {
@@ -18,7 +20,7 @@ auto breadth_first_distances(const std::vector<std::vector<std::size_t>>& adjace
 
         const auto current_distance = distances[current];
 
-        if (max_distance.has_value() && std::cmp_greater_equal(current_distance ,*max_distance)) {
+        if (max_distance.has_value() && std::cmp_greater_equal(current_distance, *max_distance)) {
             continue;
         }
 
@@ -34,3 +36,5 @@ auto breadth_first_distances(const std::vector<std::vector<std::size_t>>& adjace
 
     return distances;
 }
+
+} // namespace chargefw::features
