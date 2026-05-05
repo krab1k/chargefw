@@ -5,6 +5,7 @@
 #include "methods/builtin/denr.h"
 #include "methods/builtin/dummy.h"
 #include "methods/builtin/eem.h"
+#include "methods/builtin/eqeq.h"
 #include "methods/builtin/formal.h"
 #include "methods/builtin/gdac.h"
 #include "methods/builtin/kcm.h"
@@ -41,6 +42,7 @@ auto make_builtin_methods() -> std::vector<std::unique_ptr<Method>> {
     methods.push_back(std::make_unique<builtin::EEMMethod>());
     methods.push_back(std::make_unique<builtin::SMPQEqMethod>());
     methods.push_back(std::make_unique<builtin::SFKEEMMethod>());
+    methods.push_back(std::make_unique<builtin::EQeqMethod>());
 
     return methods;
 }

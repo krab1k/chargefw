@@ -47,6 +47,7 @@ auto main() -> int {
     const auto* eem = registry.find("eem");
     const auto* smpqeq = registry.find("smpqeq");
     const auto* sfkeem = registry.find("sfkeem");
+    const auto* eqeq = registry.find("eqeq");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
@@ -64,13 +65,14 @@ auto main() -> int {
     assert(eem != nullptr);
     assert(smpqeq != nullptr);
     assert(sfkeem != nullptr);
+    assert(eqeq != nullptr);
 
     const auto method_names = registry.names();
 
-    assert(
-        (method_names == std::vector<std::string>{"charge2", "delre", "denr", "dummy", "eem",
-                                                  "formal", "gdac", "kcm", "mgc", "mpeoe", "peoe",
-                                                  "qeq", "sfkeem", "smpqeq", "tsef", "veem"}));
+    assert((method_names == std::vector<std::string>{"charge2", "delre", "denr", "dummy", "eem",
+                                                     "eqeq", "formal", "gdac", "kcm", "mgc",
+                                                     "mpeoe", "peoe", "qeq", "sfkeem", "smpqeq",
+                                                     "tsef", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
@@ -337,6 +339,25 @@ auto main() -> int {
     assert(sfkeem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(sfkeem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(sfkeem->requirements().resources.reject_large_without_reduction);
+
+    assert(eqeq->id() == std::string_view{"eqeq"});
+    assert(eqeq->metadata().name == std::string_view{"EQeq"});
+    assert(eqeq->metadata().full_name == std::string_view{"Extended Charge Equilibration Method"});
+    assert(eqeq->metadata().publication.has_value());
+    assert(eqeq->metadata().priority == 150);
+
+    assert(eqeq->requirements().coordinates);
+    assert(eqeq->requirements().formal_charges);
+    assert(eqeq->requirements().element_properties);
+    assert(!eqeq->requirements().requires_common_parameters());
+    assert(!eqeq->requirements().requires_atom_parameters());
+    assert(!eqeq->requirements().requires_bond_parameters());
+    assert(!eqeq->requires_parameters());
+    assert(eqeq->option_schema().empty());
+
+    assert(eqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    assert(eqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(eqeq->requirements().resources.reject_large_without_reduction);
 
     const auto water = chargefw::test::make_water();
 

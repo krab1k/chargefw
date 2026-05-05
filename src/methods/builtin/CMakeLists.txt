@@ -32,4 +32,6 @@ target_sources(chargefw_core
         smpqeq.cpp
         sfkeem.h
         sfkeem.cpp
+        eqeq.h
+        eqeq.cpp
 )
