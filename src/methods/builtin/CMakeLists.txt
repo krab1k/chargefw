@@ -36,4 +36,6 @@ target_sources(chargefw_core
         eqeq.cpp
         eqeqc.h
         eqeqc.cpp
+        abeem.h
+        abeem.cpp
 )

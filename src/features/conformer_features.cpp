@@ -1,3 +1,4 @@
+#include <chargefw/core/position.h>
 #include <chargefw/features/conformer_features.h>
 
 #include <cmath>
@@ -35,19 +36,12 @@ auto ConformerFeatures::position(const std::size_t atom_index) const -> const co
 
 auto ConformerFeatures::squared_distance(const std::size_t first_atom_index,
                                          const std::size_t second_atom_index) const -> double {
-    const auto& [x1, y1, z1] = position(first_atom_index);
-    const auto& [x2, y2, z2] = position(second_atom_index);
-
-    const auto dx = x1 - x2;
-    const auto dy = y1 - y2;
-    const auto dz = z1 - z2;
-
-    return dx * dx + dy * dy + dz * dz;
+    return core::squared_distance(position(first_atom_index), position(second_atom_index));
 }
 
 auto ConformerFeatures::distance(const std::size_t first_atom_index,
                                  const std::size_t second_atom_index) const -> double {
-    return std::sqrt(squared_distance(first_atom_index, second_atom_index));
+    return core::distance(position(first_atom_index), position(second_atom_index));
 }
 
 auto ConformerFeatures::neighbor_indices_within(const std::size_t atom_index,

@@ -49,6 +49,7 @@ auto main() -> int {
     const auto* sfkeem = registry.find("sfkeem");
     const auto* eqeq = registry.find("eqeq");
     const auto* eqeqc = registry.find("eqeqc");
+    const auto* abeem = registry.find("abeem");
 
     assert(dummy != nullptr);
     assert(formal != nullptr);
@@ -68,12 +69,13 @@ auto main() -> int {
     assert(sfkeem != nullptr);
     assert(eqeq != nullptr);
     assert(eqeqc != nullptr);
+    assert(abeem != nullptr);
 
     const auto method_names = registry.names();
 
-    assert((method_names == std::vector<std::string>{"charge2", "delre", "denr", "dummy", "eem",
-                                                     "eqeq", "eqeqc", "formal", "gdac", "kcm",
-                                                     "mgc", "mpeoe", "peoe", "qeq", "sfkeem",
+    assert((method_names == std::vector<std::string>{"abeem", "charge2", "delre", "denr", "dummy",
+                                                     "eem", "eqeq", "eqeqc", "formal", "gdac",
+                                                     "kcm", "mgc", "mpeoe", "peoe", "qeq", "sfkeem",
                                                      "smpqeq", "tsef", "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
@@ -382,6 +384,30 @@ auto main() -> int {
     assert(eqeqc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eqeqc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(eqeqc->requirements().resources.reject_large_without_reduction);
+
+    assert(abeem->id() == std::string_view{"abeem"});
+    assert(abeem->metadata().name == std::string_view{"ABEEM"});
+    assert(abeem->metadata().full_name ==
+           std::string_view{"Atom-Bond Electronegativity Equalization Method"});
+    assert(abeem->metadata().publication.has_value());
+    assert(abeem->metadata().priority == 190);
+
+    assert(abeem->requirements().bond_graph);
+    assert(abeem->requirements().coordinates);
+    assert(abeem->requirements().formal_charges);
+    assert(abeem->requirements().element_properties);
+    assert(abeem->requirements().requires_common_parameters());
+    assert(abeem->requirements().requires_atom_parameters());
+    assert(abeem->requirements().requires_bond_parameters());
+    assert(abeem->requirements().common_parameters.size() == 1);
+    assert(abeem->requirements().atom_parameters.size() == 3);
+    assert(abeem->requirements().bond_parameters.size() == 4);
+    assert(abeem->requires_parameters());
+    assert(abeem->option_schema().empty());
+
+    assert(abeem->requirements().resources.time == methods::ComplexityTerm::atoms_plus_bonds_cubed);
+    assert(abeem->requirements().resources.memory == methods::ComplexityTerm::atoms_plus_bonds_squared);
+    assert(abeem->requirements().resources.reject_large_without_reduction);
 
     const auto water = chargefw::test::make_water();
 

@@ -8,4 +8,9 @@ struct Position {
     double z = 0.0;
 };
 
+[[nodiscard]] auto squared_distance(const Position& first, const Position& second) noexcept
+    -> double;
+
+[[nodiscard]] auto distance(const Position& first, const Position& second) noexcept -> double;
+
 } // namespace chargefw::core

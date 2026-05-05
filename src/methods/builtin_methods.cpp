@@ -18,6 +18,7 @@
 #include "methods/builtin/tsef.h"
 #include "methods/builtin/veem.h"
 #include "methods/builtin/eqeqc.h"
+#include "methods/builtin/abeem.h"
 
 #include <memory>
 #include <vector>
@@ -45,6 +46,7 @@ auto make_builtin_methods() -> std::vector<std::unique_ptr<Method>> {
     methods.push_back(std::make_unique<builtin::SFKEEMMethod>());
     methods.push_back(std::make_unique<builtin::EQeqMethod>());
     methods.push_back(std::make_unique<builtin::EQeqCMethod>());
+    methods.push_back(std::make_unique<builtin::ABEEMMethod>());
 
     return methods;
 }
