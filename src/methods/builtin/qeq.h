@@ -2,6 +2,8 @@
 
 #include <chargefw/methods/method.h>
 
+#include <array>
+
 namespace chargefw::methods::builtin {
 
 class QEqMethod final : public Method {

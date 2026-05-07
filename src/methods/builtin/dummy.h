@@ -5,7 +5,7 @@
 namespace chargefw::methods::builtin {
 
 class DummyMethod final : public Method {
-public:
+  public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
         static constexpr MethodMetadata metadata{.id = "dummy",
                                                  .name = "Dummy method",

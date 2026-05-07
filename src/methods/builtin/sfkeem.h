@@ -5,7 +5,7 @@
 namespace chargefw::methods::builtin {
 
 class SFKEEMMethod final : public Method {
-public:
+  public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
         static constexpr MethodMetadata metadata{
             .id = "sfkeem",
