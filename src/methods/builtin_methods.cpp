@@ -1,11 +1,13 @@
 #include "methods/builtin_methods.h"
 
+#include "methods/builtin/abeem.h"
 #include "methods/builtin/charge2.h"
 #include "methods/builtin/delre.h"
 #include "methods/builtin/denr.h"
 #include "methods/builtin/dummy.h"
 #include "methods/builtin/eem.h"
 #include "methods/builtin/eqeq.h"
+#include "methods/builtin/eqeqc.h"
 #include "methods/builtin/formal.h"
 #include "methods/builtin/gdac.h"
 #include "methods/builtin/kcm.h"
@@ -17,8 +19,6 @@
 #include "methods/builtin/smpqeq.h"
 #include "methods/builtin/tsef.h"
 #include "methods/builtin/veem.h"
-#include "methods/builtin/eqeqc.h"
-#include "methods/builtin/abeem.h"
 
 #include <memory>
 #include <vector>

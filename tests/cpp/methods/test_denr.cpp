@@ -30,17 +30,18 @@ auto atom_key(const int atomic_number) -> parameters::AtomParameterKey {
 }
 
 auto make_parameter_set() -> parameters::ParameterSet {
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-denr", .method_id = "denr", .name = "Test DENR parameters"},
-        parameters::CommonParameters{
-            {{.name = "step", .value = 0.1}, {.name = "iterations", .value = 100.0}}},
-        parameters::AtomParameters{{{.key = atom_key(1),
-                                     .parameters = {{.name = "electronegativity", .value = 1.0},
-                                                    {.name = "hardness", .value = 1.0}}},
-                                    {.key = atom_key(8),
-                                     .parameters = {{.name = "electronegativity", .value = 2.0},
-                                                    {.name = "hardness", .value = 1.0}}}}}};
+    const parameters::ParameterSetMetadata metadata{
+        .id = "test-denr", .method_id = "denr", .name = "Test DENR parameters"};
+    const parameters::CommonParameters common{};
+    const parameters::AtomParameters atom{
+        {{.key = atom_key(1),
+          .parameters = {{.name = "electronegativity", .value = 1.0},
+                         {.name = "hardness", .value = 1.0}}},
+         {.key = atom_key(8),
+          .parameters = {{.name = "electronegativity", .value = 2.0},
+                         {.name = "hardness", .value = 1.0}}}}};
+
+    return parameters::ParameterSet{metadata, common, atom};
 }
 
 } // namespace
@@ -58,13 +59,17 @@ auto main() -> int {
     const std::vector<const methods::Method*> candidate_methods{denr};
     const std::vector parameter_sets{make_parameter_set()};
 
-    const auto applicability =
+    auto applicability =
         methods::find_applicable_methods(prepared, candidate_methods, parameter_sets);
 
     assert(applicability.applicable.size() == 1);
     assert(applicability.rejected.empty());
 
-    const auto charge_set = methods::calculate_charges(applicability.applicable.front(), prepared);
+    auto& selected = applicability.applicable.front();
+    selected.method_options.set("step", 0.1);
+    selected.method_options.set("iterations", 100);
+
+    const auto charge_set = methods::calculate_charges(selected, prepared);
     const auto& charges = charge_set.assignment(0).charges;
 
     assert(charge_set.method_id() == std::string_view{"denr"});

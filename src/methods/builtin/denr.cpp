@@ -13,6 +13,7 @@ namespace chargefw::methods::builtin {
 auto DENRMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto& molecule = input.molecule();
     const auto& parameters = input.parameters();
+    const auto& options = input.method_options();
 
     const auto n = static_cast<Eigen::Index>(molecule.atom_count());
 
@@ -45,15 +46,15 @@ auto DENRMethod::calculate(const CalculationInput& input) const -> charges::Atom
         L(j, i) -= 1.0;
     }
 
-    const auto dt = parameters.common("step");
-    const auto iterations = static_cast<int>(parameters.common("iterations"));
+    const auto dt = options.get<double>("step");
+    const auto iterations = options.get<int>("iterations");
 
     if (dt <= 0.0) {
-        throw std::logic_error{"DENR common parameter 'step' must be positive"};
+        throw std::invalid_argument{"DENR option 'step' must be positive"};
     }
 
     if (iterations < 0) {
-        throw std::logic_error{"DENR common parameter 'iterations' must be non-negative"};
+        throw std::invalid_argument{"DENR option 'iterations' must be non-negative"};
     }
 
     const Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n, n);

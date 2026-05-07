@@ -2,6 +2,8 @@
 
 #include <chargefw/methods/method.h>
 
+#include <array>
+
 namespace chargefw::methods::builtin {
 
 class DENRMethod final : public Method {
@@ -20,7 +22,6 @@ class DENRMethod final : public Method {
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
         requirements.bond_graph = true;
-        requirements.common_parameters = {"step", "iterations"};
         requirements.atom_parameters = {"electronegativity", "hardness"};
         requirements.resources.time = ComplexityTerm::atoms_cubed;
         requirements.resources.memory = ComplexityTerm::atoms_squared;
@@ -30,7 +31,19 @@ class DENRMethod final : public Method {
 
     [[nodiscard]] auto option_schema() const noexcept
         -> std::span<const MethodOptionSpec> override {
-        return {};
+        static const std::array option_schema{
+            MethodOptionSpec{.id = "step",
+                             .description = "DENR relaxation step size",
+                             .type = MethodOptionType::floating_point,
+                             .default_value = 0.1,
+                             .choices = {}},
+            MethodOptionSpec{.id = "iterations",
+                             .description = "Number of DENR iterations",
+                             .type = MethodOptionType::integer,
+                             .default_value = 3,
+                             .choices = {}}};
+
+        return {option_schema.data(), option_schema.size()};
     }
 
     [[nodiscard]] auto calculate(const CalculationInput& input) const

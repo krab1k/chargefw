@@ -9,6 +9,7 @@
 #include <cmath>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 namespace features = chargefw::features;
@@ -213,13 +214,20 @@ auto main() -> int {
     assert(denr->metadata().priority == 50);
 
     assert(denr->requirements().bond_graph);
-    assert(denr->requirements().requires_common_parameters());
+    assert(!denr->requirements().requires_common_parameters());
     assert(denr->requirements().requires_atom_parameters());
     assert(!denr->requirements().requires_bond_parameters());
-    assert(denr->requirements().common_parameters.size() == 2);
+    assert(denr->requirements().common_parameters.empty());
     assert(denr->requirements().atom_parameters.size() == 2);
     assert(denr->requires_parameters());
-    assert(denr->option_schema().empty());
+    const auto denr_option_schema = denr->option_schema();
+    assert(denr_option_schema.size() == 2);
+    assert(denr_option_schema[0].id == std::string_view{"step"});
+    assert(denr_option_schema[0].type == methods::MethodOptionType::floating_point);
+    assert(std::get<double>(denr_option_schema[0].default_value) == 0.1);
+    assert(denr_option_schema[1].id == std::string_view{"iterations"});
+    assert(denr_option_schema[1].type == methods::MethodOptionType::integer);
+    assert(std::get<int>(denr_option_schema[1].default_value) == 3);
 
     assert(denr->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(denr->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
@@ -406,7 +414,8 @@ auto main() -> int {
     assert(abeem->option_schema().empty());
 
     assert(abeem->requirements().resources.time == methods::ComplexityTerm::atoms_plus_bonds_cubed);
-    assert(abeem->requirements().resources.memory == methods::ComplexityTerm::atoms_plus_bonds_squared);
+    assert(abeem->requirements().resources.memory ==
+           methods::ComplexityTerm::atoms_plus_bonds_squared);
     assert(abeem->requirements().resources.reject_large_without_reduction);
 
     const auto water = chargefw::test::make_water();
