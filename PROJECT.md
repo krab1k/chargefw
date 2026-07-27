@@ -97,11 +97,11 @@ parameter priority per method, and prints charges. It is not yet a user-facing f
 
 ## Implemented methods and parameters
 
-The current registry contains 19 methods:
+The current registry contains 20 methods:
 
 ```text
 abeem, charge2, delre, denr, dummy, eem, eqeq, eqeqc, formal, gdac,
-kcm, mgc, mpeoe, peoe, qeq, sfkeem, smpqeq, tsef, veem
+kcm, mgc, mpeoe, peoe, qeq, sfkeem, smpqeq, sqe, tsef, veem
 ```
 
 Bundled JSON parameter sets cover these parameterized methods and variants. `data/parameters/`
@@ -109,14 +109,15 @@ is installed under `share/chargefw/parameters`.
 
 ### Compatibility gap with ChargeFW2
 
-The archived ChargeFW2 registry contains the same 19 methods plus:
+The archived ChargeFW2 registry contains the current methods plus:
 
 ```text
-sqe, sqeq0, sqeqp
+sqeq0, sqeqp
 ```
 
-It also contains nine corresponding SQE-family parameter files. Method and parameter parity is a
-release-blocking compatibility objective because ACC III highlights SQE+qp.
+It also contains nine corresponding SQE-family parameter files. The three `sqe` Schindler 2021
+parameter sets have been migrated; the remaining six belong to `sqeq0` and `sqeqp`. Method and
+parameter parity is a release-blocking compatibility objective because ACC III highlights SQE+qp.
 
 ## ChargeFW2 research summary
 
@@ -137,6 +138,18 @@ has useful production behavior, but combines concerns that are intentionally sep
 The new implementation must preserve validated scientific behavior before making intentional
 improvements. Compatibility fixtures should use identical topology, coordinates, formal charge,
 options, and parameter data.
+
+### SQE-family research
+
+ChargeFW2 implements the SQE family with a signed bond-incidence matrix `T`. SQE solves
+`(T A Tᵀ + diag(kappa)) p = T b`, then returns `q = Tᵀ p`, where `A` contains atom hardness on the
+diagonal and the Gaussian-width Coulomb interaction `erf(d / sqrt(2 wi² + 2 wj²)) / d` off the
+diagonal, and `b = -electronegativity`. SQE therefore conserves zero total charge within each
+connected component. `sqeq0` adds formal charges as initial charges; `sqeqp` uses parameterized
+`q0` after uniformly correcting its total to the molecular formal charge. All require coordinates,
+atom parameters `electronegativity`, `hardness`, and `width`, plus bond parameter `kappa`; SQE
+does not itself use formal charges. The archived implementation does not explicitly diagnose
+singular or ill-conditioned transfer systems.
 
 ## Product direction
 

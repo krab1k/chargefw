@@ -64,6 +64,10 @@ chargefw_add_test(test_qeq
         test_qeq.cpp
 )
 
+chargefw_add_test(test_sqe
+        test_sqe.cpp
+)
+
 chargefw_add_test(test_eem
         test_eem.cpp
 )

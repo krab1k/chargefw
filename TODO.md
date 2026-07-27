@@ -26,16 +26,17 @@ explicit at every public calculation boundary.
 
 ## Method parity and scientific validation
 
-- [ ] Inventory ChargeFW2's `sqe`, `sqeq0`, and `sqeqp` algorithms, required inputs, options,
+- [x] Inventory ChargeFW2's `sqe`, `sqeq0`, and `sqeqp` algorithms, required inputs, options,
   failure modes, and all nine associated parameter files without modifying `old/`.
-- [ ] Implement `sqe` as a stateless method with explicit requirements, prerequisite diagnostics,
+- [x] Implement `sqe` as a stateless method with explicit requirements, prerequisite diagnostics,
   calculation options, and parameter lookup through `ParameterView`.
 - [ ] Implement `sqeq0` with ChargeFW2-compatible initial-formal-charge behavior and explicit
   diagnostics for unsupported or invalid input.
 - [ ] Implement `sqeqp` with ChargeFW2-compatible parameterized initial-charge behavior and
   explicit diagnostics for incomplete parameter coverage.
 - [ ] Migrate the nine archived SQE-family parameter sets to bundled JSON with source attribution,
-  schema validation, and stable identifiers.
+  schema validation, and stable identifiers. The three `sqe` sets are migrated; six `sqeq0` and
+  `sqeqp` sets remain.
 - [ ] Build a reusable ChargeFW2 comparison fixture that runs old and new methods from identical
   topology, formal charges, conformers, options, and parameter data.
 - [ ] Add numerical parity cases for every migrated method and parameter set, including neutral,
@@ -50,7 +51,9 @@ explicit at every public calculation boundary.
 ## Parameters, applicability, and diagnostics
 
 - [ ] Define schema-versioning and compatibility rules for parameter JSON, including method ID,
-  parameter-set identity, priority, provenance, and element/type coverage.
+  parameter-set identity, priority, provenance, and element/type coverage. Until then, maintain
+  consistency with bundled data: omit optional explicit `metadata.id` values and let the loader
+  derive IDs from the method and parameter-set name.
 - [ ] Add loader tests for malformed JSON, missing required fields, incompatible schema versions,
   duplicate identities, invalid numeric values, and actionable error messages.
 - [ ] Test immutable parameter classification across repeated classifications and concurrent
