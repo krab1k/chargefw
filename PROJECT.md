@@ -1,5 +1,9 @@
 # ChargeFW Project Guide
 
+This document is the source of truth for ChargeFW's technical state, compatibility context, and
+product roadmap. Read [AGENTS.md](AGENTS.md) for implementation rules, [TODO.md](TODO.md) for
+actionable deliverables, and [README.md](README.md) for build and test commands.
+
 ## Purpose
 
 ChargeFW is a C++23 framework for empirical partial atomic-charge calculation. It provides a
@@ -134,132 +138,16 @@ The new implementation must preserve validated scientific behavior before making
 improvements. Compatibility fixtures should use identical topology, coordinates, formal charge,
 options, and parameter data.
 
-## Development priorities
+## Product direction
 
-### Near-term: credible core release
+The release sequence is: establish scientific and parameter parity with ChargeFW2; expose a stable
+request/result and provenance boundary; provide package, CLI, and JSON interfaces over that
+boundary; then add adapters only when they serve an actual consumer. ACC III adoption remains
+method-by-method and is gated by demonstrated parity.
 
-1. Implement SQE, SQE+q0, and SQE+qp with archived parameter-set parity.
-2. Build a ChargeFW2-to-ChargeFW numerical compatibility suite for every method and parameter set.
-3. Document numerical tolerances and intentional behavioral deviations.
-4. Add a high-level calculation request/result facade and selection policy outside the demo CLI.
-5. Add CMake package export (`find_package(chargefw CONFIG REQUIRED)`).
-6. Replace the demo with a real CLI and JSON result/provenance output.
-
-### Integration layer, driven by actual users
-
-1. Optional RDKit adapter: SMILES, SDF/MOL V2000/V3000, Mol2, hydrogen/conformer preparation.
-2. SDF batch streaming with bounded memory, record-level errors, and deterministic output order.
-3. Optional Gemmi adapter: PDB/mmCIF with explicit component/model/altloc/bond policies.
-4. Python bindings once the native request/result boundary is stable.
-5. ACC III shadow comparison, then method-by-method adoption only after parity is established.
-
-### Future work; do not pre-build
-
-- cutoff/cover redesign after parity, benchmarks, and an explicit execution-policy contract;
-- WebAssembly JSON API only if a browser consumer needs local calculation;
-- MCP server only as an adapter over stable JSON/library APIs;
-- ML/GNN model adapters as optional estimators, not a dependency of `chargefw_core`;
-- custom parsers only where optional RDKit/Gemmi adapters are unsuitable.
-
-## Build requirements
-
-- CMake 3.27 or newer;
-- Ninja;
-- GCC or Clang with C++23 support;
-- internet access on first configure if Eigen 5.0.1 or nlohmann/json 3.12.0 are not installed;
-- optional: `ccache`, `clang-tidy`.
-
-CMake finds `Eigen3` and `nlohmann_json` first, then downloads them with `FetchContent` when
-absent. Tests and CLI are enabled by default.
-
-## CMake presets and commands
-
-All commands are run from the repository root.
-
-### Debug build and tests
-
-```bash
-cmake --preset gcc-debug
-cmake --build --preset gcc-debug
-ctest --preset gcc-debug
-```
-
-The configured build directory is `build/gcc-debug`. To run an individual test after building:
-
-```bash
-ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
-```
-
-### Release build
-
-```bash
-cmake --preset gcc-release
-cmake --build --preset gcc-release
-```
-
-This preset disables tests and writes to `build/gcc-release`.
-
-### Clang, sanitizers, and clang-tidy
-
-```bash
-# Clang debug build
-cmake --preset clang-debug
-cmake --build --preset clang-debug
-
-# AddressSanitizer + UndefinedBehaviorSanitizer and test suite
-cmake --preset clang-asan
-cmake --build --preset clang-asan
-ctest --preset clang-asan
-
-# clang-tidy during compilation; clang-tidy must be installed
-cmake --preset clang-tidy
-cmake --build --preset clang-tidy
-```
-
-### Local install and demo executable
-
-`CMakeUserPresets.json` provides a local install preset:
-
-```bash
-cmake --preset clion-local
-cmake --build build/clion-local
-cmake --install build/clion-local
-
-# Run from the build tree
-CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/clion-local/apps/chargefw/chargefw
-
-# Or after installation
-_install/bin/chargefw
-```
-
-The build-tree executable needs `CHARGEFW_PARAMETER_DIR` because bundled data is installed rather
-than copied beside it. The installed executable locates its installed parameter directory
-automatically. The existing `_install/` directory is local development output and is ignored by
-Git.
-
-### Configure options
-
-Useful cache options:
-
-```bash
-cmake --preset gcc-debug -DCHARGEFW_BUILD_TESTS=OFF
-cmake --preset gcc-debug -DCHARGEFW_BUILD_CLI=OFF
-cmake --preset gcc-debug -DCHARGEFW_ENABLE_CCACHE=OFF
-cmake --preset clang-debug -DCHARGEFW_ENABLE_SANITIZERS=ON
-cmake --preset clang-debug -DCHARGEFW_ENABLE_CLANG_TIDY=ON
-```
-
-## Validation expectations
-
-For any scientific-method change:
-
-1. Add focused unit/regression tests.
-2. Run the narrowest related test executable or CTest regex.
-3. Run `ctest --preset gcc-debug` before considering the change complete.
-4. Run `ctest --preset clang-asan` for memory-sensitive, feature-cache, parser/adapter, or
-   numerical changes where practical.
-5. For migrated ChargeFW2 behavior, add a parity fixture rather than relying on manual output
-   comparison.
+The executable delivery checklist, validation criteria, and explicitly deferred work are maintained
+in [TODO.md](TODO.md). In particular, cutoff/cover redesign, WebAssembly, MCP, ML/GNN adapters,
+and custom parsers must not be pre-built ahead of validated need.
 
 ## Scientific and integration principles
 

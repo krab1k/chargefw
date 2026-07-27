@@ -1,13 +1,25 @@
 # ChargeFW
 
-ChargeFW is a C++23 framework for empirical partial atomic-charge calculation. It is currently a
-library-first project with a demonstration executable; it is not yet a general-purpose command-line
-tool for molecular files or SMILES.
+ChargeFW is a C++23, library-first framework for empirical partial atomic-charge calculation.
+It is a modern successor to ChargeFW2, the engine used by Atomic Charge Calculator III (ACC III).
 
-The demo constructs two water conformers in code, loads the bundled parameter sets, finds
-applicable methods, and prints calculated atomic charges.
+The project currently provides a toolkit-neutral molecular core, built-in empirical methods,
+parameter-set loading and classification, applicability checks, and structured charge results. The
+`chargefw` executable is a water demonstration; it does not yet accept molecular files or SMILES.
 
-For architecture, method coverage, and development plans, see [PROJECT.md](PROJECT.md).
+## Documentation map
+
+Read the document appropriate to the task instead of duplicating information between them:
+
+| Document | Audience | Source of truth for |
+| --- | --- | --- |
+| [README.md](README.md) | Users and contributors | Prerequisites, first build, demo, and tests. |
+| [PROJECT.md](PROJECT.md) | Maintainers and designers | Current architecture, method coverage, compatibility context, and product roadmap. |
+| [AGENTS.md](AGENTS.md) | AI agents and implementers | Repository boundaries, architectural constraints, coding rules, and change discipline. |
+| [TODO.md](TODO.md) | Maintainers and planners | Categorized, actionable deliverables toward a production-quality charge-calculation tool. |
+
+For implementation work, read [AGENTS.md](AGENTS.md) first, then the relevant section of
+[PROJECT.md](PROJECT.md), and use [TODO.md](TODO.md) to identify scoped deliverables.
 
 ## Requirements
 
@@ -20,95 +32,55 @@ For architecture, method coverage, and development plans, see [PROJECT.md](PROJE
 CMake first looks for Eigen3 and nlohmann/json on the system, then obtains them with
 `FetchContent` if needed.
 
-## Configure and build
+## Build, run, and test
 
-Run these commands from the repository root:
+Run commands from the repository root:
 
 ```bash
+# Configure and build the debug configuration.
 cmake --preset gcc-debug
 cmake --build --preset gcc-debug
-```
 
-This creates a debug build in `build/gcc-debug`. Tests and the demonstration executable are
-enabled by default.
+# Run the complete debug test suite.
+ctest --preset gcc-debug
 
-To build a release configuration:
-
-```bash
-cmake --preset gcc-release
-cmake --build --preset gcc-release
-```
-
-The release preset writes to `build/gcc-release` and disables tests.
-
-## Run the demonstration
-
-The build-tree executable needs the location of the bundled parameter data:
-
-```bash
+# Run the fixed-input water demonstration from the build tree.
 CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw
 ```
 
-The program reports the loaded methods and parameter sets, then prints charge assignments for the
-applicable methods. Its input is fixed water data compiled into the executable; command-line input
-files and SMILES are not supported yet.
-
-## Install and run
-
-The local preset installs to `_install` in the repository:
+Run an individual test after building:
 
 ```bash
+ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
+```
+
+The demo loads bundled parameter sets, identifies applicable methods, and prints charge
+assignments for two water conformers constructed in code.
+
+## Other configurations
+
+```bash
+# Optimized build; tests are disabled by this preset.
+cmake --preset gcc-release
+cmake --build --preset gcc-release
+
+# AddressSanitizer + UndefinedBehaviorSanitizer build and tests.
+cmake --preset clang-asan
+cmake --build --preset clang-asan
+ctest --preset clang-asan
+
+# Local installation to _install.
 cmake --preset clion-local
 cmake --build build/clion-local
 cmake --install build/clion-local
 _install/bin/chargefw
 ```
 
-The installed executable finds the installed parameter directory automatically.
+The installed executable locates its parameter directory automatically. The build-tree executable
+requires `CHARGEFW_PARAMETER_DIR` as shown above. For the complete product plan, see
+[PROJECT.md](PROJECT.md).
 
-To choose a different install location, configure with a custom `CMAKE_INSTALL_PREFIX`:
-
-```bash
-cmake --preset gcc-release -DCMAKE_INSTALL_PREFIX=/path/to/install
-cmake --build --preset gcc-release
-cmake --install build/gcc-release
-```
-
-## Test
-
-```bash
-ctest --preset gcc-debug
-```
-
-Run one test by name after building:
-
-```bash
-ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
-```
-
-## Automatic C++ formatting before commit
-
-The repository includes a [pre-commit](https://pre-commit.com/) hook that formats staged C++ files
-with `clang-format` and the repository's `.clang-format` configuration. Install `pre-commit` and
-`clang-format`, then enable the hook once per clone:
-
-```bash
-pre-commit install
-```
-
-Future `git commit` commands automatically format the affected C++ files. Run it manually across
-the repository with:
-
-```bash
-pre-commit run --all-files
-```
-
-Commit `.pre-commit-config.yaml` so all contributors use the same formatting hook; the generated
-`.git/hooks/pre-commit` file remains local.
-
-## Useful configuration options
-
-Pass options when configuring a preset:
+Configure options can be passed to a preset, for example:
 
 ```bash
 cmake --preset gcc-debug -DCHARGEFW_BUILD_TESTS=OFF
@@ -118,30 +90,14 @@ cmake --preset clang-debug -DCHARGEFW_ENABLE_SANITIZERS=ON
 cmake --preset clang-debug -DCHARGEFW_ENABLE_CLANG_TIDY=ON
 ```
 
-Available project options:
+## Formatting
 
-| Option | Default | Purpose |
-| --- | --- | --- |
-| `CHARGEFW_BUILD_TESTS` | `ON` | Build the CTest suite. |
-| `CHARGEFW_BUILD_CLI` | `ON` | Build the `chargefw` demonstration executable. |
-| `CHARGEFW_ENABLE_CCACHE` | `ON` | Use `ccache` when it is available. |
-| `CHARGEFW_ENABLE_WARNINGS` | `ON` | Enable project compiler warnings. |
-| `CHARGEFW_ENABLE_SANITIZERS` | `OFF` | Enable AddressSanitizer and UndefinedBehaviorSanitizer. |
-| `CHARGEFW_ENABLE_CLANG_TIDY` | `OFF` | Run clang-tidy during compilation. |
-
-## Additional build presets
+The optional [pre-commit](https://pre-commit.com/) hook formats staged C++ files using the
+repository `.clang-format` configuration:
 
 ```bash
-# Clang debug build
-cmake --preset clang-debug
-cmake --build --preset clang-debug
-
-# Clang build with AddressSanitizer and UndefinedBehaviorSanitizer
-cmake --preset clang-asan
-cmake --build --preset clang-asan
-ctest --preset clang-asan
-
-# Run clang-tidy during compilation (clang-tidy must be installed)
-cmake --preset clang-tidy
-cmake --build --preset clang-tidy
+pre-commit install
 ```
+
+Run `pre-commit run --all-files` to format all applicable files. Commit
+`.pre-commit-config.yaml`, not the generated `.git/hooks/pre-commit` file.

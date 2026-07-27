@@ -1,14 +1,21 @@
 # ChargeFW Development Guide
 
-## Mission
+## Required reading and document ownership
 
-ChargeFW is a modern C++23 framework for empirical partial atomic-charge calculation. It is a
-clean, library-first successor to the application-oriented ChargeFW2 engine used by Atomic Charge
-Calculator III (ACC III). Preserve published method definitions and make preparation, parameter
-selection, calculation, diagnostics, and integration explicit and reproducible.
+Read this file before making changes. Then read the relevant sections of:
 
-The core must remain independent of file formats, RDKit, Gemmi, Python, GUI frameworks, web
-services, and MCP. Those belong in optional adapters or applications.
+1. [PROJECT.md](PROJECT.md) for the current architecture, method coverage, compatibility goals,
+   and product direction;
+2. [TODO.md](TODO.md) for actionable, categorized deliverables and completion criteria;
+3. [README.md](README.md) for the supported build, test, installation, and formatting commands.
+
+Keep these documents distinct: this file defines implementation rules; `PROJECT.md` defines the
+technical/project state; `TODO.md` tracks work; and `README.md` is the concise entry point. Update
+the owning document when a change makes its content stale rather than duplicating it elsewhere.
+
+When implementation changes architecture, supported methods, compatibility status, build/run/test
+commands, installation behavior, public workflow, or planned deliverables, update the relevant
+owned document in the same change. Do not leave documentation updates as an implicit follow-up.
 
 ## Repository map
 
@@ -21,10 +28,8 @@ src/methods/       Method interface, registry, applicability, built-ins
 src/charges/       Charge result types and validation
 apps/chargefw/     CLI application (currently a water demonstration)
 tests/cpp/         CTest executables and test support
-data/parameters/   Bundled empirical parameter sets
 cmake/             Dependencies, tooling, warnings, sanitizers, install rules
 old/               Archived ChargeFW2 reference implementation; do not modify casually
-PROJECT.md         Current state, migration goals, development roadmap, and commands
 ```
 
 ## Architectural rules
@@ -38,72 +43,44 @@ PROJECT.md         Current state, migration goals, development roadmap, and comm
   Do not mutate molecules while evaluating parameter sets.
 - Methods are stateless algorithms. Pass options, geometry, and parameter data through
   `methods::CalculationInput`; do not store mutable request-specific state in a `Method`.
-- Keep applicability explicit. New requirements, limitations, and failures must be represented by
-  `MethodRequirements`, prerequisite issues, and `ApplicabilityResult`, not hidden fallback logic.
-- Preserve atom ordering and conformer identity in every calculation and output boundary.
+- Keep applicability explicit. Model requirements, limitations, and failures with
+  `MethodRequirements`, prerequisite issues, and `ApplicabilityResult`; do not hide fallback
+  behavior.
+- Preserve atom ordering and conformer identity at every calculation and output boundary.
 - Never silently change protonation, geometry, parameter set, method, cutoff/cover policy, or
   charge correction. Report the selected policy and diagnostics.
-- Keep method implementations faithful to their cited publications. Framework changes must not
-  quietly change the reference/full calculation.
+- Keep methods faithful to their cited publications. Framework changes must not quietly alter the
+  reference/full calculation.
+- Keep the core independent of file formats, RDKit, Gemmi, Python, GUI frameworks, web services,
+  and MCP. Put those concerns in optional adapters or applications.
 
 ## ChargeFW2 compatibility
 
-`old/` is the practical compatibility reference and contains 22 methods. The new registry
-currently contains 19. Before claiming method parity, implement and validate:
-
-- `sqe` (Split-charge Equilibration);
-- `sqeq0` (SQE with initial formal charges);
-- `sqeqp` (SQE with parameterized initial charges);
-- their nine archived parameter sets.
-
-For every migrated method, compare new and old implementations using identical molecule graphs,
-formal charges, coordinates, options, and parameter files. Record intentional deviations and
-numerical tolerances in tests or dedicated compatibility fixtures.
-
-ChargeFW2 has application-coupled `full`, `cutoff`, and `cover` execution modes. Reproduce and
-test compatible behavior before replacing it with a more general execution-policy abstraction.
+`old/` is the compatibility reference. Do not modify it except for an explicitly requested
+compatibility fixture or reference fix. For every migrated method, compare the new and archived
+implementations with identical graphs, formal charges, coordinates, options, and parameter files.
+Record intentional deviations and numerical tolerances in tests or dedicated compatibility
+fixtures. See [PROJECT.md](PROJECT.md#compatibility-gap-with-chargefw2) and
+[TODO.md](TODO.md#method-parity-and-scientific-validation) for the current parity scope.
 
 ## Change discipline
 
-1. Read `PROJECT.md` and relevant public headers before designing a change.
+1. Read relevant public headers and the applicable `PROJECT.md` section before designing a change.
 2. Prefer the smallest coherent change; keep unrelated formatting out of diffs.
 3. Add or update focused tests for behavior changes, especially numerical and applicability cases.
-4. Validate the narrowest target first, then run the relevant CTest preset.
+4. Run the narrowest relevant target first, then the applicable CTest preset from `README.md`.
 5. Do not add heavyweight dependencies, public APIs, broad rewrites, destructive commands, or
    automatic chemistry policies without explicit approval.
-6. Do not modify `old/` except for an explicitly requested compatibility fixture or reference fix.
+6. Keep implementation changes and TODO completion synchronized: check an item only when its
+   stated deliverable and validation are complete.
 
 ## C++ conventions
 
-- C++23; public headers live in `include/chargefw/`.
+- Use C++23. Public headers live in `include/chargefw/` and public type names remain under
+  `chargefw::{core,features,parameters,methods,charges}`.
 - Follow `.clang-format`: LLVM-derived, four spaces, 100-column limit, left-attached pointers and
   references.
-- Use value ownership for domain data, `std::span` for read-only views, and explicit non-owning
-  references/pointers where lifetime is guaranteed by the caller.
-- Use exceptions for invalid inputs and calculation failures; preserve actionable context in error
-  messages.
-- Keep public type names under `chargefw::{core,features,parameters,methods,charges}`.
-- Avoid global mutable state. This library is intended for concurrent and embedded use.
-
-## Build and test commands
-
-Use CMake presets from the repository root:
-
-```bash
-# Debug build and full test suite
-cmake --preset gcc-debug
-cmake --build --preset gcc-debug
-ctest --preset gcc-debug
-
-# Sanitizer build and tests
-cmake --preset clang-asan
-cmake --build --preset clang-asan
-ctest --preset clang-asan
-
-# Static analysis build (requires clang-tidy)
-cmake --preset clang-tidy
-cmake --build --preset clang-tidy
-```
-
-See `PROJECT.md` for the full command reference, current known limitations, and development
-priorities.
+- Prefer value ownership for domain data, `std::span` for read-only views, and explicit
+  non-owning references/pointers when the caller guarantees lifetime.
+- Use exceptions for invalid inputs and calculation failures; preserve actionable error context.
+- Avoid global mutable state. The library must be suitable for concurrent and embedded use.
