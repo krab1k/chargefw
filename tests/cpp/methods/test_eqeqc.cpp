@@ -34,10 +34,9 @@ auto make_parameter_set() -> parameters::ParameterSet {
         parameters::ParameterSetMetadata{
             .id = "test-eqeqc", .method_id = "eqeqc", .name = "Test EQeq+C parameters"},
         parameters::CommonParameters{{{.name = "alpha", .value = 1.0}}},
-        parameters::AtomParameters{{{.key = atom_key(1),
-                                     .parameters = {{.name = "Dz", .value = 0.1}}},
-                                    {.key = atom_key(8),
-                                     .parameters = {{.name = "Dz", .value = 0.2}}}}}};
+        parameters::AtomParameters{
+            {{.key = atom_key(1), .parameters = {{.name = "Dz", .value = 0.1}}},
+             {.key = atom_key(8), .parameters = {{.name = "Dz", .value = 0.2}}}}}};
 }
 
 auto assert_close(const double actual, const double expected) -> void {

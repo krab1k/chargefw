@@ -14,4 +14,4 @@ auto all_pairs_bond_distances(const std::vector<std::vector<std::size_t>>& adjac
 
 auto is_connected(const std::vector<std::vector<std::size_t>>& adjacency) -> bool;
 
-}
+} // namespace chargefw::features

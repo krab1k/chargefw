@@ -16,18 +16,15 @@ namespace {
     return atom.atomic_number() == 1;
 }
 
-[[nodiscard]] auto atom_denominator(
-    const parameters::AtomParameterAccessor& parameter_a,
-    const parameters::AtomParameterAccessor& parameter_b,
-    const std::size_t atom_index
-) -> double {
+[[nodiscard]] auto atom_denominator(const parameters::AtomParameterAccessor& parameter_a,
+                                    const parameters::AtomParameterAccessor& parameter_b,
+                                    const std::size_t atom_index) -> double {
     return parameter_a[atom_index] + parameter_b[atom_index];
 }
 
 } // namespace
 
-auto MPEOEMethod::calculate(const CalculationInput& input) const
-    -> charges::AtomicCharges {
+auto MPEOEMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto iterations = input.method_options().get<int>("iters");
 
     if (iterations <= 0) {
@@ -51,8 +48,7 @@ auto MPEOEMethod::calculate(const CalculationInput& input) const
         const auto alpha = iteration + 1;
         for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
             electronegativities[atom_index] =
-                parameter_b[atom_index] * charges[atom_index] +
-                parameter_a[atom_index];
+                parameter_b[atom_index] * charges[atom_index] + parameter_a[atom_index];
         }
 
         for (std::size_t bond_index = 0; bond_index < molecule.bond_count(); ++bond_index) {
@@ -71,14 +67,14 @@ auto MPEOEMethod::calculate(const CalculationInput& input) const
 
             const auto& lower_atom = molecule.atom(lower_atom_index);
 
-            const auto denominator = is_hydrogen(lower_atom)
-                ? hydrogen_plus
-                : atom_denominator(parameter_a, parameter_b, lower_atom_index);
+            const auto denominator =
+                is_hydrogen(lower_atom)
+                    ? hydrogen_plus
+                    : atom_denominator(parameter_a, parameter_b, lower_atom_index);
 
-            const auto difference =
-                std::pow(parameter_f[bond_index], alpha) *
-                (higher_electronegativity - lower_electronegativity) /
-                denominator;
+            const auto difference = std::pow(parameter_f[bond_index], alpha) *
+                                    (higher_electronegativity - lower_electronegativity) /
+                                    denominator;
 
             charges[lower_atom_index] += difference;
             charges[higher_atom_index] -= difference;
