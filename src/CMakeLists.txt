@@ -1,5 +1,6 @@
 add_subdirectory(core)
 add_subdirectory(features)
 add_subdirectory(charges)
+add_subdirectory(calculation)
 add_subdirectory(methods)
 add_subdirectory(parameters)

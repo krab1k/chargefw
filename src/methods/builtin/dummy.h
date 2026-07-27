@@ -11,7 +11,7 @@ class DummyMethod final : public Method {
                                                  .name = "Dummy method",
                                                  .full_name = "Dummy zero charges",
                                                  .publication = std::nullopt,
-                                                 .priority = 10};
+                                                 .priority = 0};
 
         return metadata;
     }

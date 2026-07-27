@@ -54,8 +54,8 @@ Run an individual test after building:
 ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 ```
 
-The demo loads bundled parameter sets, identifies applicable methods, and prints charge
-assignments for two water conformers constructed in code.
+The demo loads bundled parameter sets, autodetects the highest-priority applicable method and
+parameter set, and prints charge assignments for two water conformers constructed in code.
 
 ## Other configurations
 

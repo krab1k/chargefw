@@ -10,9 +10,10 @@ explicit at every public calculation boundary.
 
 ## Release foundation and public workflow
 
-- [ ] Define a high-level calculation request facade that accepts a prepared molecule collection,
-  candidate methods, parameter sets, conformer selection, and explicit selection policy without
-  moving request-specific state into `methods::Method`.
+- [x] Define a high-level autodetect calculation facade that accepts a prepared molecule
+  collection, candidate methods, and parameter sets without moving request-specific state into
+  `methods::Method`; it selects the highest-priority applicable method and parameter set with
+  deterministic ID tie-breaking.
 - [ ] Define the corresponding result facade with atom-indexed charges and complete provenance:
   method identifier, parameter-set identity and version, options, conformer, selected policy,
   approximation policy, warnings, and applicability diagnostics.

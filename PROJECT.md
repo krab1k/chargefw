@@ -91,9 +91,16 @@ const auto& selected = applicability.applicable.front();
 const charges::ChargeSet result = methods::calculate_charges(selected, prepared);
 ```
 
+For normal application use, `calculation::calculate()` provides autodetection over the supplied
+method and parameter candidates. It selects the applicable candidate with the highest method
+priority, then the highest parameter-set priority. Ties are resolved deterministically by method ID
+and parameter-set ID. Higher priorities therefore denote maintainer-curated automatic preference,
+not a universal scientific quality ranking. The result retains applicability diagnostics when no
+candidate can be calculated.
+
 The current `chargefw` executable is a **water demonstration**. It builds two water conformers in
-code, loads bundled parameter sets, identifies applicable methods, chooses the lowest numeric
-parameter priority per method, and prints charges. It is not yet a user-facing file/SMILES CLI.
+code, loads bundled parameter sets, autodetects the highest-priority applicable method and parameter
+set, and prints charges. It is not yet a user-facing file/SMILES CLI.
 
 ### Calculation granularity
 
