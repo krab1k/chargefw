@@ -95,6 +95,14 @@ The current `chargefw` executable is a **water demonstration**. It builds two wa
 code, loads bundled parameter sets, identifies applicable methods, chooses the lowest numeric
 parameter priority per method, and prints charges. It is not yet a user-facing file/SMILES CLI.
 
+### Calculation granularity
+
+The smallest calculation unit is one molecule and zero or one selected conformer. A molecule
+without a conformer remains valid for methods that do not require geometry; geometry-dependent
+methods report it as inapplicable. Collection-wide and all-conformer execution are caller-level
+iteration over these units. Future batch helpers must preserve molecule and conformer order and
+report results for each unit independently.
+
 ## Implemented methods and parameters
 
 The current registry contains 22 methods:

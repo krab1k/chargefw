@@ -49,10 +49,9 @@ explicit at every public calculation boundary.
 
 ## Parameters, applicability, and diagnostics
 
-- [ ] Define schema-versioning and compatibility rules for parameter JSON, including method ID,
-  parameter-set identity, priority, provenance, and element/type coverage. Until then, maintain
-  consistency with bundled data: omit optional explicit `metadata.id` values and let the loader
-  derive IDs from the method and parameter-set name.
+- [ ] Define schema-versioning and compatibility rules for parameter JSON if ChargeFW begins
+  accepting externally distributed parameter data. Bundled parameter sets remain developer-managed;
+  their IDs may be derived from method and name when `metadata.id` is omitted.
 - [ ] Add loader tests for malformed JSON, missing required fields, incompatible schema versions,
   duplicate identities, invalid numeric values, and actionable error messages.
 - [ ] Test immutable parameter classification across repeated classifications and concurrent
