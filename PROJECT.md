@@ -110,6 +110,23 @@ methods report it as inapplicable. Collection-wide and all-conformer execution a
 iteration over these units. Future batch helpers must preserve molecule and conformer order and
 report results for each unit independently.
 
+### Calculation selection and result contract
+
+`calculation::calculate()` evaluates all supplied method and parameter-set candidates, then selects
+the applicable candidate with the highest method priority, followed by parameter-set priority.
+Equal priorities are resolved deterministically by method ID and then parameter-set ID in
+lexicographic order. A successful result contains one `charges::ChargeSet`; its owned method ID and
+optional parameter-set ID identify the candidate actually used. `CalculationResult::applicability`
+retains the considered applicable and rejected candidates for diagnostics.
+
+`ChargeSet` preserves calculation targets as `ChargeAssignment` entries. For geometry-dependent
+methods, it contains one assignment for every conformer of every input molecule, each identified by
+its molecule index and conformer index. For geometry-independent methods, it contains one
+assignment per molecule and no conformer index. Each assignment's atomic-charge vector follows the
+source molecule's atom order. If no candidate is applicable, `CalculationResult` contains no
+`ChargeSet` and retains applicability diagnostics; calculation failures after selection are reported
+as failures rather than silently treated as inapplicability.
+
 ## Implemented methods and parameters
 
 The current registry contains 22 methods:

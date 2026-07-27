@@ -17,9 +17,11 @@ explicit at every public calculation boundary.
 - [ ] Define the corresponding result facade with atom-indexed charges and complete provenance:
   method identifier, parameter-set identity and version, options, conformer, selected policy,
   approximation policy, warnings, and applicability diagnostics.
-- [ ] Specify deterministic candidate ranking and selection rules, including tie-breaking and the
+- [x] Specify deterministic candidate ranking and selection rules, including tie-breaking and the
   behavior when no candidate is applicable; expose an application override rather than silently
-  choosing a fallback.
+  choosing a fallback. The current calculation facade selects the highest-priority applicable
+  candidate deterministically and retains applicability diagnostics; caller-directed selection
+  remains part of the stable request/result facade work.
 - [ ] Add focused API tests for request validation, no-applicable-method outcomes, multiple
   conformers, atom-order preservation, deterministic selection, and provenance completeness.
 - [ ] Document the stable request/result boundary and designate it as the sole foundation for
