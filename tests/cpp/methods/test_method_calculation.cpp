@@ -1,4 +1,5 @@
 #include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule_collection.h>
@@ -139,13 +140,6 @@ class GeometryMethod final : public methods::Method {
     }
 };
 
-auto atom_key(const int atomic_number,
-              const parameters::AtomParameterClassificationKind classification, std::string type)
-    -> parameters::AtomParameterKey {
-    return {
-        .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
-}
-
 auto make_collection() -> core::MoleculeCollection {
     std::vector molecules{chargefw::test::make_water(),
                           chargefw::test::make_formally_charged_pair()};
@@ -159,14 +153,17 @@ auto make_parameter_set() -> parameters::ParameterSet {
             .id = "test-parameters", .method_id = "atom-parameter-test", .name = "Test parameters"},
         {},
         parameters::AtomParameters{
-            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+            {{.key = chargefw::test::atom_key(
+                  1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
               .parameters = {{.name = "value", .value = 1.0}}},
-             {.key =
-                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+             {.key = chargefw::test::atom_key(
+                  8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
               .parameters = {{.name = "value", .value = 2.0}}},
-             {.key = atom_key(7, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+             {.key = chargefw::test::atom_key(7, parameters::AtomParameterClassificationKind::PLAIN,
+                                              "*"),
               .parameters = {{.name = "value", .value = 3.0}}},
-             {.key = atom_key(17, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+             {.key = chargefw::test::atom_key(
+                  17, parameters::AtomParameterClassificationKind::PLAIN, "*"),
               .parameters = {{.name = "value", .value = 4.0}}}}}};
 }
 

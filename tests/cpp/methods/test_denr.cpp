@@ -1,4 +1,5 @@
 #include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
@@ -23,21 +24,15 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto atom_key(const int atomic_number) -> parameters::AtomParameterKey {
-    return {.atomic_number = atomic_number,
-            .classification = parameters::AtomParameterClassificationKind::PLAIN,
-            .type = "*"};
-}
-
 auto make_parameter_set() -> parameters::ParameterSet {
     const parameters::ParameterSetMetadata metadata{
         .id = "test-denr", .method_id = "denr", .name = "Test DENR parameters"};
     const parameters::CommonParameters common{};
     const parameters::AtomParameters atom{
-        {{.key = atom_key(1),
+        {{.key = chargefw::test::plain_atom_key(1),
           .parameters = {{.name = "electronegativity", .value = 1.0},
                          {.name = "hardness", .value = 1.0}}},
-         {.key = atom_key(8),
+         {.key = chargefw::test::plain_atom_key(8),
           .parameters = {{.name = "electronegativity", .value = 2.0},
                          {.name = "hardness", .value = 1.0}}}}};
 

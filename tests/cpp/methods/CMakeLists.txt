@@ -22,6 +22,10 @@ chargefw_add_test(test_method_calculation
         test_method_calculation.cpp
 )
 
+chargefw_add_test(test_calculation_input
+        test_calculation_input.cpp
+)
+
 chargefw_add_test(test_peoe
         test_peoe.cpp
 )

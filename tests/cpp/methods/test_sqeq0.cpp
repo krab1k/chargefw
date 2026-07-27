@@ -1,4 +1,5 @@
 #include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
@@ -23,35 +24,21 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto atom_key(const int atomic_number) -> parameters::AtomParameterKey {
-    return {.atomic_number = atomic_number,
-            .classification = parameters::AtomParameterClassificationKind::PLAIN,
-            .type = "*"};
-}
-
-auto bond_key(const int first_atomic_number, const int second_atomic_number)
-    -> parameters::BondParameterKey {
-    return {.first_atom = atom_key(first_atomic_number),
-            .second_atom = atom_key(second_atomic_number),
-            .bond = {.classification = parameters::BondParameterClassificationKind::BOND_ORDER,
-                     .type = "1"}};
-}
-
 auto make_parameter_set() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
             .id = "test-sqeq0", .method_id = "sqeq0", .name = "Test SQE+q0 parameters"},
         {},
-        parameters::AtomParameters{{{.key = atom_key(1),
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
                                      .parameters = {{.name = "electronegativity", .value = 4.5280},
                                                     {.name = "hardness", .value = 13.8904},
                                                     {.name = "width", .value = 1.0}}},
-                                    {.key = atom_key(8),
+                                    {.key = chargefw::test::plain_atom_key(8),
                                      .parameters = {{.name = "electronegativity", .value = 8.741},
                                                     {.name = "hardness", .value = 13.364},
                                                     {.name = "width", .value = 1.0}}}}},
-        parameters::BondParameters{
-            {{.key = bond_key(1, 8), .parameters = {{.name = "kappa", .value = 1.0}}}}}};
+        parameters::BondParameters{{{.key = chargefw::test::single_bond_key(1, 8),
+                                     .parameters = {{.name = "kappa", .value = 1.0}}}}}};
 }
 
 } // namespace

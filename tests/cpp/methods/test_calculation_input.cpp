@@ -1,11 +1,12 @@
 #include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
 #include <chargefw/features/conformer_features.h>
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method_options.h>
+#include <chargefw/parameters/classification/parameter_classification.h>
 #include <chargefw/parameters/models/atom_parameters.h>
-#include <chargefw/parameters/models/parameter_classification.h>
 #include <chargefw/parameters/models/parameter_key.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
@@ -24,13 +25,6 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto atom_key(const int atomic_number,
-              const parameters::AtomParameterClassificationKind classification, std::string type)
-    -> parameters::AtomParameterKey {
-    return {
-        .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
-}
-
 auto make_water_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{.id = "test-water-parameters",
@@ -38,10 +32,11 @@ auto make_water_parameters() -> parameters::ParameterSet {
                                          .name = "Test water parameters"},
         {},
         parameters::AtomParameters{
-            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+            {{.key = chargefw::test::atom_key(
+                  1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
               .parameters = {{.name = "value", .value = 1.0}}},
-             {.key =
-                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+             {.key = chargefw::test::atom_key(
+                  8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
               .parameters = {{.name = "value", .value = 2.0}}}}}};
 }
 

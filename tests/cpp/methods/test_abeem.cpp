@@ -1,4 +1,5 @@
 #include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
@@ -24,16 +25,10 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto atom_key(const int atomic_number) -> parameters::AtomParameterKey {
-    return {.atomic_number = atomic_number,
-            .classification = parameters::AtomParameterClassificationKind::PLAIN,
-            .type = "*"};
-}
-
 auto bond_key(const int first_atomic_number, const int second_atomic_number)
     -> parameters::BondParameterKey {
-    return {.first_atom = atom_key(first_atomic_number),
-            .second_atom = atom_key(second_atomic_number),
+    return {.first_atom = chargefw::test::plain_atom_key(first_atomic_number),
+            .second_atom = chargefw::test::plain_atom_key(second_atomic_number),
             .bond = {.classification = parameters::BondParameterClassificationKind::PLAIN,
                      .type = "*"}};
 }
@@ -43,11 +38,11 @@ auto make_parameter_set() -> parameters::ParameterSet {
         parameters::ParameterSetMetadata{
             .id = "test-abeem", .method_id = "abeem", .name = "Test ABEEM parameters"},
         parameters::CommonParameters{{{.name = "k", .value = 1.0}}},
-        parameters::AtomParameters{{{.key = atom_key(1),
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
                                      .parameters = {{.name = "a", .value = 1.0},
                                                     {.name = "b", .value = 10.0},
                                                     {.name = "c", .value = 0.5}}},
-                                    {.key = atom_key(8),
+                                    {.key = chargefw::test::plain_atom_key(8),
                                      .parameters = {{.name = "a", .value = 2.0},
                                                     {.name = "b", .value = 10.0},
                                                     {.name = "c", .value = 0.5}}}}},

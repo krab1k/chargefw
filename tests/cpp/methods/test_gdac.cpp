@@ -1,4 +1,5 @@
 #include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
 #include <chargefw/features/conformer_features.h>
 #include <chargefw/features/prepared_molecule.h>
@@ -24,23 +25,17 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto atom_key(const int atomic_number,
-              const parameters::AtomParameterClassificationKind classification, std::string type)
-    -> parameters::AtomParameterKey {
-    return {
-        .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
-}
-
 auto make_test_gdac_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
             .id = "gdac-test", .method_id = "gdac", .name = "GDAC test parameters"},
         {},
         parameters::AtomParameters{
-            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+            {{.key = chargefw::test::atom_key(
+                  1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
               .parameters = {{.name = "A", .value = 7.0}, {.name = "B", .value = 20.0}}},
-             {.key =
-                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+             {.key = chargefw::test::atom_key(
+                  8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
               .parameters = {{.name = "A", .value = 12.0}, {.name = "B", .value = 10.0}}}}}};
 }
 

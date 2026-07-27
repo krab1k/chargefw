@@ -1,3 +1,5 @@
+#include "support/test_parameters.h"
+
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/molecule.h>
@@ -25,13 +27,6 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto atom_key(const int atomic_number) -> parameters::AtomParameterKey {
-    return parameters::AtomParameterKey{.atomic_number = atomic_number,
-                                        .classification =
-                                            parameters::AtomParameterClassificationKind::PLAIN,
-                                        .type = "*"};
-}
-
 auto make_hf() -> core::Molecule {
     std::vector atoms{core::Atom{1, 0, "H"}, core::Atom{9, 0, "F"}};
 
@@ -51,11 +46,11 @@ auto make_peoe_parameters() -> parameters::ParameterSet {
         parameters::ParameterSetMetadata{
             .id = "peoe-test-parameters", .method_id = "peoe", .name = "PEOE test parameters"},
         parameters::CommonParameters{{{.name = "dampH", .value = 20.02}}},
-        parameters::AtomParameters{{{.key = atom_key(1),
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
                                      .parameters = {{.name = "A", .value = 7.17},
                                                     {.name = "B", .value = 6.24},
                                                     {.name = "C", .value = -0.56}}},
-                                    {.key = atom_key(9),
+                                    {.key = chargefw::test::plain_atom_key(9),
                                      .parameters = {{.name = "A", .value = 12.06},
                                                     {.name = "B", .value = 13.85},
                                                     {.name = "C", .value = 3.98}}}}}};

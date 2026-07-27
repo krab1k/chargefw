@@ -1,4 +1,5 @@
 #include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
 #include <chargefw/charges/atomic_charges.h>
 #include <chargefw/core/molecule_collection.h>
@@ -57,13 +58,6 @@ class AtomParameterMethod final : public methods::Method {
     }
 };
 
-auto atom_key(const int atomic_number,
-              const parameters::AtomParameterClassificationKind classification, std::string type)
-    -> parameters::AtomParameterKey {
-    return {
-        .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
-}
-
 auto make_collection() -> core::MoleculeCollection {
     std::vector molecules{chargefw::test::make_water(),
                           chargefw::test::make_formally_charged_pair()};
@@ -78,7 +72,8 @@ auto make_wrong_method_parameters() -> parameters::ParameterSet {
                                          .name = "Wrong method parameters"},
         {},
         parameters::AtomParameters{
-            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+            {{.key = chargefw::test::atom_key(1, parameters::AtomParameterClassificationKind::PLAIN,
+                                              "*"),
               .parameters = {{.name = "value", .value = 1.0}}}}}};
 }
 
@@ -89,10 +84,11 @@ auto make_water_only_parameters() -> parameters::ParameterSet {
                                          .name = "Water only parameters"},
         {},
         parameters::AtomParameters{
-            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+            {{.key = chargefw::test::atom_key(
+                  1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
               .parameters = {{.name = "value", .value = 1.0}}},
-             {.key =
-                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+             {.key = chargefw::test::atom_key(
+                  8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
               .parameters = {{.name = "value", .value = 2.0}}}}}};
 }
 
@@ -103,14 +99,17 @@ auto make_collection_parameters() -> parameters::ParameterSet {
                                          .name = "Collection parameters"},
         {},
         parameters::AtomParameters{
-            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+            {{.key = chargefw::test::atom_key(
+                  1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
               .parameters = {{.name = "value", .value = 1.0}}},
-             {.key =
-                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+             {.key = chargefw::test::atom_key(
+                  8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
               .parameters = {{.name = "value", .value = 2.0}}},
-             {.key = atom_key(7, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+             {.key = chargefw::test::atom_key(7, parameters::AtomParameterClassificationKind::PLAIN,
+                                              "*"),
               .parameters = {{.name = "value", .value = 3.0}}},
-             {.key = atom_key(17, parameters::AtomParameterClassificationKind::PLAIN, "*"),
+             {.key = chargefw::test::atom_key(
+                  17, parameters::AtomParameterClassificationKind::PLAIN, "*"),
               .parameters = {{.name = "value", .value = 4.0}}}}}};
 }
 

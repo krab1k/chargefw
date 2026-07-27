@@ -1,4 +1,5 @@
 #include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
@@ -24,13 +25,6 @@ namespace {
 
 auto test_metadata() -> parameters::ParameterSetMetadata {
     return {.id = "test-parameters", .method_id = "test-method", .name = "Test parameters"};
-}
-
-auto atom_key(const int atomic_number,
-              const parameters::AtomParameterClassificationKind classification, std::string type)
-    -> parameters::AtomParameterKey {
-    return {
-        .atomic_number = atomic_number, .classification = classification, .type = std::move(type)};
 }
 
 auto bond_type_key(const parameters::BondParameterClassificationKind classification,
@@ -65,15 +59,16 @@ auto main() -> int {
         test_metadata(),
         {},
         parameters::AtomParameters{
-            {{.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
+            {{.key = chargefw::test::atom_key(
+                  1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
               .parameters = {{.name = "value", .value = 1.0}}},
-             {.key =
-                  atom_key(8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
+             {.key = chargefw::test::atom_key(
+                  8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
               .parameters = {{.name = "value", .value = 2.0}}}}},
         parameters::BondParameters{
-            {{.key = {.first_atom = atom_key(
+            {{.key = {.first_atom = chargefw::test::atom_key(
                           1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "O"),
-                      .second_atom = atom_key(
+                      .second_atom = chargefw::test::atom_key(
                           8, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "HH"),
                       .bond = bond_type_key(parameters::BondParameterClassificationKind::BOND_ORDER,
                                             "1")},
@@ -96,15 +91,17 @@ auto main() -> int {
         test_metadata(),
         {},
         parameters::AtomParameters{
-            {{.key =
-                  atom_key(6, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "ClFH"),
+            {{.key = chargefw::test::atom_key(
+                  6, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "ClFH"),
               .parameters = {{.name = "value", .value = 1.0}}},
-             {.key =
-                  atom_key(17, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "C"),
+             {.key = chargefw::test::atom_key(
+                  17, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "C"),
               .parameters = {{.name = "value", .value = 2.0}}},
-             {.key = atom_key(9, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "C"),
+             {.key = chargefw::test::atom_key(
+                  9, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "C"),
               .parameters = {{.name = "value", .value = 3.0}}},
-             {.key = atom_key(1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "C"),
+             {.key = chargefw::test::atom_key(
+                  1, parameters::AtomParameterClassificationKind::BONDED_ELEMENTS, "C"),
               .parameters = {{.name = "value", .value = 4.0}}}}}};
 
     const auto mixed_classification = classify(mixed, mixed_parameters);
