@@ -23,6 +23,7 @@ owned document in the same change. Do not leave documentation updates as an impl
 include/chargefw/  Public library API
 src/core/          Molecule, atom, bond, conformer, periodic table
 src/features/      Derived topology and conformer features
+src/calculation/   High-level applicability, selection, and execution facade
 src/parameters/    Parameter models, JSON I/O, classification
 src/methods/       Method interface, registry, applicability, built-ins
 src/charges/       Charge result types and validation
@@ -53,6 +54,8 @@ old/               Archived ChargeFW2 reference implementation; do not modify ca
   reference/full calculation.
 - Keep the core independent of file formats, RDKit, Gemmi, Python, GUI frameworks, web services,
   and MCP. Put those concerns in optional adapters or applications.
+- Make bindings and adapters translate representations into the native calculation facade; do not
+  duplicate applicability, selection, parameter, or scientific calculation policy in integrations.
 
 ## ChargeFW2 compatibility
 
@@ -77,7 +80,7 @@ fixtures. See [PROJECT.md](PROJECT.md#compatibility-gap-with-chargefw2) and
 ## C++ conventions
 
 - Use C++23. Public headers live in `include/chargefw/` and public type names remain under
-  `chargefw::{core,features,parameters,methods,charges}`.
+  `chargefw::{core,features,parameters,methods,charges,calculation}`.
 - Follow `.clang-format`: LLVM-derived, four spaces, 100-column limit, left-attached pointers and
   references.
 - Prefer value ownership for domain data, `std::span` for read-only views, and explicit
