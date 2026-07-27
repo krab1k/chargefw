@@ -106,7 +106,7 @@ select_best_priority_per_method(std::span<const methods::ApplicableMethod> appli
 
     for (const auto& candidate : applicable) {
         const auto existing = std::ranges::find_if(
-            selected, [&candidate](const methods::ApplicableMethod* selected_candidate) {
+            selected, [&candidate](const methods::ApplicableMethod* selected_candidate) -> bool {
                 return selected_candidate->method->id() == candidate.method->id();
             });
 

@@ -16,7 +16,6 @@ namespace {
 [[nodiscard]] auto order(const core::BondOrder bond_order) -> double {
     switch (bond_order) {
     case core::BondOrder::UNKNOWN:
-        return 1.0;
     case core::BondOrder::SINGLE:
         return 1.0;
     case core::BondOrder::DOUBLE:
