@@ -133,11 +133,14 @@ source molecule's atom order. If no candidate is applicable, `CalculationResult`
 `ChargeSet` and retains applicability diagnostics; calculation failures after selection are reported
 as failures rather than silently treated as inapplicability.
 
-The existing `CalculationRequest` is intentionally a low-level native view: it contains a prepared
-collection, method pointers, and spans over caller-owned parameter data. That is efficient for C++
-callers but is not the intended direct Python, JSON, or WebAssembly contract. Those integrations
-need a binding-friendly facade with straightforward ownership and selection inputs; it must compose
-the existing calculation path rather than reimplement selection or scientific behavior.
+`CalculationRequest` is intentionally a low-level native view: it contains a prepared collection,
+method pointers, and spans over caller-owned parameter data. `ApplicationCalculationRequest` is the
+binding-friendly owned facade: it accepts a native molecule collection, owns parameter sets, and
+selects registered methods and supplied parameter sets by optional IDs. Omitted IDs use the same
+deterministic automatic selection as the low-level path; explicit unavailable or inapplicable IDs
+fail rather than silently falling back. Method-specific options remain a low-level advanced-native
+feature until their application-facing policy is specified. All integrations must compose these
+calculation paths rather than reimplement selection or scientific behavior.
 
 ### Scalable execution policy
 

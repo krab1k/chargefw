@@ -15,9 +15,10 @@ acceptance criteria for each priority, not optional follow-up work.
   correction policies, radius, warnings, and applicability diagnostics.
 - [ ] Add explicit caller selection of method, parameter set, method options, and execution policy.
   Reject unavailable or unsupported selections rather than silently falling back.
-- [ ] Stabilize a binding-friendly request/result facade that does not expose `Method*`, `std::span`,
-  prepared-feature lifetimes, or parameter-storage lifetimes to adapters. Keep the existing
-  low-level facade available to native callers.
+- [x] Provide a binding-friendly owned request/result facade that does not expose `Method*`,
+  `std::span`, prepared-feature lifetimes, or parameter-storage lifetimes to adapters. Keep the
+  existing low-level facade available to advanced native callers; application-facing method options
+  remain deferred pending an explicit policy.
 - [ ] Introduce a reusable execution policy with explicit `full`, `cutoff(radius)`, and
   `cover(radius)` modes, method capability checks, and no implicit atom-count-based switching.
 - [ ] Build shared spatial-neighbor and fragment-mapping support outside `core::Molecule`; preserve

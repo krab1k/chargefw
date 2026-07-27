@@ -13,7 +13,9 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace calculation = chargefw::calculation;
@@ -91,6 +93,16 @@ auto make_parameter_set(std::string id, std::string method_id, const std::uint16
               .parameters = {{.name = "value", .value = 1.0}}}}}};
 }
 
+template <typename Callable> auto throws_invalid_argument(Callable&& callable) -> bool {
+    try {
+        std::forward<Callable>(callable)();
+    } catch (const std::invalid_argument&) {
+        return true;
+    }
+
+    return false;
+}
+
 } // namespace
 
 auto main() -> int {
@@ -140,6 +152,33 @@ auto main() -> int {
 
     assert(!no_result.calculated());
     assert(no_result.applicability.empty());
+
+    const auto application_result =
+        calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {},
+            .method_id = "formal",
+            .parameter_set_id = std::nullopt});
+
+    assert(application_result.calculated());
+    assert(application_result.charges->method_id() == std::string_view{"formal"});
+    assert(application_result.charges->size() == 1);
+
+    assert(throws_invalid_argument([] {
+        static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {},
+            .method_id = "missing",
+            .parameter_set_id = std::nullopt}));
+    }));
+
+    assert(throws_invalid_argument([] {
+        static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {},
+            .method_id = "formal",
+            .parameter_set_id = "missing"}));
+    }));
 
     return 0;
 }
