@@ -1,3 +1,5 @@
+#include "support/test_calculation.h"
+#include "support/test_molecules.h"
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/molecule.h>
@@ -100,6 +102,11 @@ auto main() -> int {
     assert(delre != nullptr);
 
     const auto parameter_set = make_parameter_set();
+
+    const auto workflow_charge_set = chargefw::test::calculate_method(
+        chargefw::test::make_two_conformer_water(), "delre", {parameter_set});
+    chargefw::test::assert_calculation_provenance(workflow_charge_set, "delre", "test-delre");
+    chargefw::test::assert_conformer_independent(workflow_charge_set);
 
     {
         const auto molecule = make_water_oxygen_first();

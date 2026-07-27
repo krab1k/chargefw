@@ -1,12 +1,10 @@
+#include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
-#include <chargefw/features/conformer_features.h>
 #include <chargefw/features/prepared_molecule.h>
-#include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
-#include <chargefw/parameters/classification/parameter_classifier.h>
 #include <chargefw/parameters/models/atom_parameters.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
@@ -54,22 +52,13 @@ auto main() -> int {
 
     const auto options = methods::make_default_options(gdac->option_schema());
 
-    const auto water = chargefw::test::make_water();
-    const features::PreparedMolecule prepared_water{water};
-    const features::ConformerFeatures geometry{water};
-
     const auto parameter_set = make_test_gdac_parameters();
+    const auto charge_set = chargefw::test::calculate_single_method(
+        chargefw::test::make_water(), "gdac", {parameter_set}, &options);
+    const auto& charges = charge_set.assignment(0).charges;
 
-    const auto classification =
-        parameters::classify_parameters(water, prepared_water.topology(), parameter_set);
-
-    const parameters::ParameterView parameter_view{parameter_set, classification};
-
-    const methods::CalculationInput input{prepared_water, options, &geometry, &parameter_view};
-
-    const auto charges = gdac->calculate(input);
-
-    assert(charges.size() == water.atom_count());
+    chargefw::test::assert_calculation_provenance(charge_set, "gdac", "gdac-test");
+    assert(charges.size() == 3);
     assert(charges[0] < 0.0);
     assert(charges[1] > 0.0);
     assert(charges[2] > 0.0);
@@ -87,25 +76,16 @@ auto main() -> int {
     assert(prerequisite_result.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
 
     const auto two_conformer_water = chargefw::test::make_two_conformer_water();
-    const features::PreparedMolecule prepared_two_conformer_water{two_conformer_water};
+    const auto two_conformer_charge_set =
+        chargefw::test::calculate_method(two_conformer_water, "gdac", {parameter_set}, &options);
 
-    const auto two_conformer_classification = parameters::classify_parameters(
-        two_conformer_water, prepared_two_conformer_water.topology(), parameter_set);
+    chargefw::test::assert_calculation_provenance(two_conformer_charge_set, "gdac", "gdac-test");
+    chargefw::test::assert_conformer_dependent(two_conformer_charge_set, 2);
 
-    const parameters::ParameterView two_conformer_parameter_view{parameter_set,
-                                                                 two_conformer_classification};
-
-    const features::ConformerFeatures first_geometry{two_conformer_water, 0};
-    const features::ConformerFeatures second_geometry{two_conformer_water, 1};
-
-    const methods::CalculationInput first_input{prepared_two_conformer_water, options,
-                                                &first_geometry, &two_conformer_parameter_view};
-
-    const methods::CalculationInput second_input{prepared_two_conformer_water, options,
-                                                 &second_geometry, &two_conformer_parameter_view};
-
-    const auto first_charges = gdac->calculate(first_input);
-    const auto second_charges = gdac->calculate(second_input);
+    const auto& first_assignment = two_conformer_charge_set.assignment(0);
+    const auto& second_assignment = two_conformer_charge_set.assignment(1);
+    const auto& first_charges = first_assignment.charges;
+    const auto& second_charges = second_assignment.charges;
 
     assert(first_charges.size() == two_conformer_water.atom_count());
     assert(second_charges.size() == two_conformer_water.atom_count());

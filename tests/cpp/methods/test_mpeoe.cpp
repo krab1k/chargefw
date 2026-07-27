@@ -1,23 +1,17 @@
+#include "support/test_calculation.h"
+
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/molecule.h>
-#include <chargefw/core/molecule_collection.h>
-#include <chargefw/features/prepared_molecule_collection.h>
-#include <chargefw/methods/method_applicability.h>
-#include <chargefw/methods/method_calculation.h>
-#include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
 #include <cassert>
 #include <cmath>
 #include <filesystem>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace core = chargefw::core;
-namespace features = chargefw::features;
-namespace methods = chargefw::methods;
 namespace parameters = chargefw::parameters;
 
 namespace {
@@ -37,12 +31,6 @@ auto make_methane() -> core::Molecule {
     return core::Molecule{std::move(atoms), std::move(bonds), {}, "methane"};
 }
 
-auto make_collection() -> core::MoleculeCollection {
-    std::vector molecules{make_methane()};
-
-    return core::MoleculeCollection{std::move(molecules), "test"};
-}
-
 auto load_mpeoe_parameters() -> std::vector<parameters::ParameterSet> {
     const auto path = std::filesystem::path{CHARGEFW_TEST_PARAMETER_DIR} / "MPEOE_original.json";
 
@@ -54,30 +42,10 @@ auto load_mpeoe_parameters() -> std::vector<parameters::ParameterSet> {
 } // namespace
 
 auto main() -> int {
-    const auto collection = make_collection();
-    const features::PreparedMoleculeCollection prepared{collection};
+    const auto charge_set =
+        chargefw::test::calculate_single_method(make_methane(), "mpeoe", load_mpeoe_parameters());
 
-    const auto& registry = methods::method_registry();
-    const auto* mpeoe = registry.find("mpeoe");
-
-    assert(mpeoe != nullptr);
-    assert(mpeoe->requires_parameters());
-
-    const std::vector<const methods::Method*> candidate_methods{mpeoe};
-
-    const auto parameter_sets = load_mpeoe_parameters();
-
-    const auto applicability =
-        methods::find_applicable_methods(prepared, candidate_methods, parameter_sets);
-
-    assert(applicability.applicable.size() == 1);
-    assert(applicability.rejected.empty());
-
-    const auto charge_set = methods::calculate_charges(applicability.applicable.front(), prepared);
-
-    assert(charge_set.method_id() == std::string_view{"mpeoe"});
-    assert(charge_set.parameter_set_id().has_value());
-    assert(*charge_set.parameter_set_id() == std::string_view{"MPEOE_original"});
+    chargefw::test::assert_calculation_provenance(charge_set, "mpeoe", "MPEOE_original");
     assert(charge_set.size() == 1);
 
     const auto& charges = charge_set.assignment(0).charges;
