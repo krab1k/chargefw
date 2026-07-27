@@ -69,16 +69,17 @@ cmake --preset clang-asan
 cmake --build --preset clang-asan
 ctest --preset clang-asan
 
-# Local installation to _install.
-cmake --preset clion-local
-cmake --build build/clion-local
-cmake --install build/clion-local
-_install/bin/chargefw
+# Local installation to _install, then test without an environment override.
+cmake --preset local-install
+cmake --build build/local-install
+cmake --install build/local-install
+env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw
 ```
 
-The installed executable locates its parameter directory automatically. The build-tree executable
-requires `CHARGEFW_PARAMETER_DIR` as shown above. For the complete product plan, see
-[PROJECT.md](PROJECT.md).
+The `_install` directory is a local installation staging area for testing installation behavior; it
+is not intended as a system-wide install location. The installed executable locates its parameter
+directory automatically. The build-tree executable requires `CHARGEFW_PARAMETER_DIR` as shown
+above. For the complete product plan, see [PROJECT.md](PROJECT.md).
 
 Configure options can be passed to a preset, for example:
 
