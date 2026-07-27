@@ -30,13 +30,13 @@ explicit at every public calculation boundary.
   failure modes, and all nine associated parameter files without modifying `old/`.
 - [x] Implement `sqe` as a stateless method with explicit requirements, prerequisite diagnostics,
   calculation options, and parameter lookup through `ParameterView`.
-- [ ] Implement `sqeq0` with ChargeFW2-compatible initial-formal-charge behavior and explicit
+- [x] Implement `sqeq0` with ChargeFW2-compatible initial-formal-charge behavior and explicit
   diagnostics for unsupported or invalid input.
 - [ ] Implement `sqeqp` with ChargeFW2-compatible parameterized initial-charge behavior and
   explicit diagnostics for incomplete parameter coverage.
 - [ ] Migrate the nine archived SQE-family parameter sets to bundled JSON with source attribution,
-  schema validation, and stable identifiers. The three `sqe` sets are migrated; six `sqeq0` and
-  `sqeqp` sets remain.
+  schema validation, and stable identifiers. The three `sqe` and three `sqeq0` sets are migrated;
+  three `sqeqp` sets remain.
 - [ ] Build a reusable ChargeFW2 comparison fixture that runs old and new methods from identical
   topology, formal charges, conformers, options, and parameter data.
 - [ ] Add numerical parity cases for every migrated method and parameter set, including neutral,

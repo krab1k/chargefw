@@ -28,6 +28,8 @@ target_sources(chargefw_core
         qeq.cpp
         sqe.h
         sqe.cpp
+        sqeq0.h
+        sqeq0.cpp
         eem.h
         eem.cpp
         smpqeq.h

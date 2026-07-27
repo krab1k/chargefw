@@ -46,6 +46,7 @@ auto main() -> int {
     const auto* tsef = registry.find("tsef");
     const auto* qeq = registry.find("qeq");
     const auto* sqe = registry.find("sqe");
+    const auto* sqeq0 = registry.find("sqeq0");
     const auto* eem = registry.find("eem");
     const auto* smpqeq = registry.find("smpqeq");
     const auto* sfkeem = registry.find("sfkeem");
@@ -67,6 +68,7 @@ auto main() -> int {
     assert(tsef != nullptr);
     assert(qeq != nullptr);
     assert(sqe != nullptr);
+    assert(sqeq0 != nullptr);
     assert(eem != nullptr);
     assert(smpqeq != nullptr);
     assert(sfkeem != nullptr);
@@ -76,10 +78,10 @@ auto main() -> int {
 
     const auto method_names = registry.names();
 
-    assert((method_names ==
-            std::vector<std::string>{"abeem", "charge2", "delre",  "denr", "dummy", "eem",   "eqeq",
-                                     "eqeqc", "formal",  "gdac",   "kcm",  "mgc",   "mpeoe", "peoe",
-                                     "qeq",   "sfkeem",  "smpqeq", "sqe",  "tsef",  "veem"}));
+    assert((method_names == std::vector<std::string>{
+                                "abeem", "charge2", "delre",  "denr", "dummy", "eem",   "eqeq",
+                                "eqeqc", "formal",  "gdac",   "kcm",  "mgc",   "mpeoe", "peoe",
+                                "qeq",   "sfkeem",  "smpqeq", "sqe",  "sqeq0", "tsef",  "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
@@ -310,6 +312,26 @@ auto main() -> int {
     assert(sqe->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqe->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
     assert(sqe->requirements().resources.reject_large_without_reduction);
+
+    assert(sqeq0->id() == std::string_view{"sqeq0"});
+    assert(sqeq0->metadata().name == std::string_view{"SQE+q0"});
+    assert(sqeq0->metadata().full_name ==
+           std::string_view{"Split-charge Equilibration with Initial Formal Charges"});
+    assert(sqeq0->metadata().publication.has_value());
+    assert(sqeq0->metadata().priority == 80);
+    assert(sqeq0->requirements().bond_graph);
+    assert(sqeq0->requirements().formal_charges);
+    assert(sqeq0->requirements().coordinates);
+    assert(sqeq0->requirements().requires_atom_parameters());
+    assert(sqeq0->requirements().requires_bond_parameters());
+    assert(!sqeq0->requirements().requires_common_parameters());
+    assert(sqeq0->requirements().atom_parameters.size() == 3);
+    assert(sqeq0->requirements().bond_parameters.size() == 1);
+    assert(sqeq0->requires_parameters());
+    assert(sqeq0->option_schema().empty());
+    assert(sqeq0->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
+    assert(sqeq0->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
+    assert(sqeq0->requirements().resources.reject_large_without_reduction);
 
     assert(eem->id() == std::string_view{"eem"});
     assert(eem->metadata().name == std::string_view{"EEM"});

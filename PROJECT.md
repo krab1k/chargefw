@@ -97,11 +97,11 @@ parameter priority per method, and prints charges. It is not yet a user-facing f
 
 ## Implemented methods and parameters
 
-The current registry contains 20 methods:
+The current registry contains 21 methods:
 
 ```text
 abeem, charge2, delre, denr, dummy, eem, eqeq, eqeqc, formal, gdac,
-kcm, mgc, mpeoe, peoe, qeq, sfkeem, smpqeq, sqe, tsef, veem
+kcm, mgc, mpeoe, peoe, qeq, sfkeem, smpqeq, sqe, sqeq0, tsef, veem
 ```
 
 Bundled JSON parameter sets cover these parameterized methods and variants. `data/parameters/`
@@ -112,12 +112,13 @@ is installed under `share/chargefw/parameters`.
 The archived ChargeFW2 registry contains the current methods plus:
 
 ```text
-sqeq0, sqeqp
+sqeqp
 ```
 
-It also contains nine corresponding SQE-family parameter files. The three `sqe` Schindler 2021
-parameter sets have been migrated; the remaining six belong to `sqeq0` and `sqeqp`. Method and
-parameter parity is a release-blocking compatibility objective because ACC III highlights SQE+qp.
+It also contains nine corresponding SQE-family parameter files. The three `sqe` and three `sqeq0`
+Schindler 2021 parameter sets have been migrated; the remaining three belong to `sqeqp`. Method
+and parameter parity is a release-blocking compatibility objective because ACC III highlights
+SQE+qp.
 
 ## ChargeFW2 research summary
 
@@ -148,8 +149,8 @@ diagonal, and `b = -electronegativity`. SQE therefore conserves zero total charg
 connected component. `sqeq0` adds formal charges as initial charges; `sqeqp` uses parameterized
 `q0` after uniformly correcting its total to the molecular formal charge. All require coordinates,
 atom parameters `electronegativity`, `hardness`, and `width`, plus bond parameter `kappa`; SQE
-does not itself use formal charges. The archived implementation does not explicitly diagnose
-singular or ill-conditioned transfer systems.
+does not itself use formal charges, while SQE+q0 requires them. The archived implementation does
+not explicitly diagnose singular or ill-conditioned transfer systems.
 
 ## Product direction
 
