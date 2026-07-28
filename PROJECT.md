@@ -234,6 +234,48 @@ broad SMILES/SDF/Mol2 workflows; optional Gemmi/Biopython adapters cover structu
 adapter translates to the same toolkit-neutral molecule and calculation contracts, so adding a
 format or package cannot introduce a separate selection or scientific-policy implementation.
 
+#### Adapter record contract
+
+Adapters exchange `adapters::ImportedMoleculeRecord` rather than attaching format state to
+`core::Molecule`. Each successful record owns its native molecule, source identity, source-to-native
+atom/conformer mapping, and non-fatal diagnostics. A mapping is explicit even when it is the identity
+mapping, so future RDKit, Gemmi, and Python adapters can preserve source order without adapter-
+specific result rules. An adapter may retain an opaque, format-tagged source payload when its writer
+must enrich an existing record rather than reconstruct it. The future Gemmi mmCIF writer will use
+this to preserve structural categories and append the `_sb_ncbr_partial_atomic_charges_meta` and
+`_sb_ncbr_partial_atomic_charges` loops from the archived exporter. Record failures use
+`adapters::MoleculeRecordError`, which retains identity, message, and optional source line so bounded
+stream readers can continue after malformed records. This deliberately defines no common file handle,
+property bag, hierarchy model, or chemistry repair policy: those remain adapter-specific until a
+concrete format requires them.
+
+#### Format and connectivity policy
+
+The native adapter scope is intentionally narrow: MOL/SDF is the dependency-free CLI input/output
+path, beginning with a documented V2000 subset and later adding V3000. It is not a general chemistry
+toolkit. RDKit support is optional and normally enters through the Python bridge; if a native RDKit
+adapter is later justified, it is a separately selected backend and never silently replaces the
+native SDF reader. PDB/mmCIF parsing and mmCIF charge export are Gemmi-only optional adapters; the
+project will not implement those formats itself. The Gemmi writer must preserve imported mmCIF
+content where possible and append the SB-NCBR charge dictionary/categories rather than reconstruct
+unrelated structural data.
+
+Structural adapters must select connectivity explicitly. Supported policies are `explicit` (PDB
+`CONECT`, mmCIF `_struct_conn`, and available chemical-component bond data), `ccd` (Chemical
+Component Dictionary templates resolved by component and atom name), and `distance` (opt-in
+perception from covalent radii and coordinates). A combined explicit-plus-CCD policy may use CCD for
+intra-component bonds and explicit records for inter-component links. Distance perception is never a
+silent fallback and inferred bond orders/provenance must be reported. Alternate locations likewise
+require an explicit deterministic policy; the initial selection order is blank alternate location,
+then `A`, with any broader fallback documented and reported. Adapters must preserve the selected
+source-to-native mapping and report omitted alternate locations.
+
+A method may not require topology directly, but parameter classification can require atomic
+environment or highest bond order. Import success therefore does not imply calculation applicability:
+the existing method/parameter prerequisite checks remain responsible for rejecting insufficient or
+unsupported topology. Every structural calculation/export result must retain the selected
+connectivity and alternate-location policies and their provenance.
+
 ### Packaging boundaries
 
 Native CMake installation and Python distribution are independent delivery paths over the same C++

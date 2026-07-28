@@ -39,7 +39,7 @@ acceptance criteria for each priority, not optional follow-up work.
 
 ## 2. Molecular I/O and C++ CLI
 
-- [ ] Define the shared import/export contract for record identity, source-to-native atom mapping,
+- [x] Define the shared import/export contract for record identity, source-to-native atom mapping,
   conformer mapping, diagnostics, unsupported chemistry, and explicit transformations. File-format
   and toolkit types remain outside `chargefw_core`.
 - [ ] Implement a bounded-memory native MOL/SDF stream adapter for the standalone CLI. Define the
