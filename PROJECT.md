@@ -251,14 +251,23 @@ concrete format requires them.
 
 #### Format and connectivity policy
 
-The native adapter scope is intentionally narrow: MOL/SDF is the dependency-free CLI input/output
-path, beginning with a documented V2000 subset and later adding V3000. It is not a general chemistry
-toolkit. RDKit support is optional and normally enters through the Python bridge; if a native RDKit
-adapter is later justified, it is a separately selected backend and never silently replaces the
-native SDF reader. PDB/mmCIF parsing and mmCIF charge export are Gemmi-only optional adapters; the
-project will not implement those formats itself. The Gemmi writer must preserve imported mmCIF
-content where possible and append the SB-NCBR charge dictionary/categories rather than reconstruct
-unrelated structural data.
+The native adapter scope is intentionally narrow: MOL/SDF and Tripos MOL2 are dependency-free CLI
+input/output paths. The initial MOL/SDF reader supports V2000 atom and bond blocks plus `M  CHG`
+formal-charge records, and
+V3000 CTAB `COUNTS`, `ATOM`, and `BOND` blocks with `CHG=` attributes. It accepts aromatic bond order
+and records ignored `CFG=` stereochemical attributes as diagnostics; it rejects query atoms, unknown
+elements, unsupported bond orders, unsupported V2000 properties, and unsupported V3000 attributes.
+`parse_mol()` handles one standalone MOL record through `M  END`; `SdfReader` adds bounded-memory
+multi-record framing and skips SDF data fields without interpreting them. `Mol2Reader` supports the
+MOL2 `MOLECULE`, `ATOM`, and `BOND` sections, standard element-prefixed atom types, and numeric and
+aromatic bond types. MOL2 partial-charge fields are ignored, never treated as formal charges, and
+reported once per record when nonzero values are present. It is not a general chemistry toolkit. RDKit
+support is optional and normally
+enters through the Python bridge; if a native RDKit adapter is later justified, it is a separately
+selected backend and never silently replaces the native SDF reader. PDB/mmCIF parsing and mmCIF
+charge export are Gemmi-only optional adapters; the project will not implement those formats itself.
+The Gemmi writer must preserve imported mmCIF content where possible and append the SB-NCBR charge
+dictionary/categories rather than reconstruct unrelated structural data.
 
 Structural adapters must select connectivity explicitly. Supported policies are `explicit` (PDB
 `CONECT`, mmCIF `_struct_conn`, and available chemical-component bond data), `ccd` (Chemical

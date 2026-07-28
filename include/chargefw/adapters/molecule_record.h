@@ -3,6 +3,7 @@
 #include <chargefw/core/molecule.h>
 
 #include <cstddef>
+#include <expected>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -54,6 +55,8 @@ struct MoleculeRecordError {
     std::string message;
     std::optional<std::size_t> line;
 };
+
+using MoleculeRecordResult = std::expected<ImportedMoleculeRecord, MoleculeRecordError>;
 
 [[nodiscard]] auto is_identity_mapping(const MoleculeRecordMapping& mapping,
                                        const core::Molecule& molecule) noexcept -> bool;

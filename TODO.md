@@ -42,7 +42,7 @@ acceptance criteria for each priority, not optional follow-up work.
 - [x] Define the shared import/export contract for record identity, source-to-native atom mapping,
   conformer mapping, diagnostics, unsupported chemistry, and explicit transformations. File-format
   and toolkit types remain outside `chargefw_core`.
-- [ ] Implement a bounded-memory native MOL/SDF stream adapter for the standalone CLI. Define the
+- [x] Implement a bounded-memory native MOL/SDF stream adapter for the standalone CLI. Define the
   supported V2000/V3000 subset, reject unsupported/query constructs clearly, preserve source order,
   and report malformed records independently.
 - [ ] Add SDF output that attaches partial charges and calculation provenance without changing
