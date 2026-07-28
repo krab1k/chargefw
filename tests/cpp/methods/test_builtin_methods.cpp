@@ -90,7 +90,7 @@ auto main() -> int {
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
     assert(dummy->metadata().full_name == std::string_view{"Dummy zero charges"});
     assert(!dummy->metadata().publication.has_value());
-    assert(dummy->metadata().priority == 10);
+    assert(dummy->metadata().priority == 0);
     assert(!dummy->requirements().formal_charges);
     assert(!dummy->requires_parameters());
     assert(dummy->option_schema().empty());
