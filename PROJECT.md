@@ -102,9 +102,10 @@ and parameter-set ID. Higher priorities therefore denote maintainer-curated auto
 not a universal scientific quality ranking. The result retains applicability diagnostics when no
 candidate can be calculated.
 
-The current `chargefw` executable is a **water demonstration**. It builds two water conformers in
-code, loads bundled parameter sets, autodetects the highest-priority applicable method and parameter
-set, and prints charges. It is not yet a user-facing file/SMILES CLI.
+The current `chargefw` executable is an **SDF demonstration**. It reads valid SDF records, reports
+and skips malformed records, loads bundled parameter sets, autodetects the highest-priority
+applicable method and parameter set, and prints charges. It is not yet a full user-facing
+file/SMILES CLI.
 
 ### Calculation granularity
 

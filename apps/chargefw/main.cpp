@@ -1,18 +1,17 @@
+#include <chargefw/adapters/native/sdf.h>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/charges/charge_collection.h>
-#include <chargefw/core/atom.h>
-#include <chargefw/core/bond.h>
-#include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
-#include <chargefw/core/position.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
 #include <exception>
+#include <fstream>
 #include <iostream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -22,33 +21,35 @@ namespace core = chargefw::core;
 namespace features = chargefw::features;
 namespace methods = chargefw::methods;
 namespace parameters = chargefw::parameters;
+namespace adapters = chargefw::adapters;
 
 namespace {
 
-auto make_water() -> core::Molecule {
-    std::vector atoms{core::Atom{8, 0, "O"}, core::Atom{1, 0, "H1"}, core::Atom{1, 0, "H2"}};
+auto read_collection(const std::string& input_path) -> core::MoleculeCollection {
+    std::ifstream input{input_path};
+    if (!input) {
+        throw std::runtime_error{"Unable to open input file: " + input_path};
+    }
 
-    std::vector bonds{core::Bond{0, 1, core::BondOrder::SINGLE},
-                      core::Bond{0, 2, core::BondOrder::SINGLE}};
+    adapters::native::sdf::SdfReader reader{input, input_path};
+    std::vector<core::Molecule> molecules;
 
-    std::vector positions_1{core::Position{.x = 0.0000, .y = 0.0000, .z = 0.0000},
-                            core::Position{.x = 0.9572, .y = 0.0000, .z = 0.0000},
-                            core::Position{.x = -0.2390, .y = 0.9270, .z = 0.0000}};
+    while (const auto record = reader.next()) {
+        if (!record->has_value()) {
+            const auto& error = record->error();
+            std::cerr << "Skipping record " << error.identity.record_index << ": " << error.message
+                      << '\n';
+            continue;
+        }
 
-    std::vector positions_2{core::Position{.x = 0.0000, .y = 0.0000, .z = 0.0000},
-                            core::Position{.x = 1.1000, .y = 0.0000, .z = 0.0000},
-                            core::Position{.x = -0.3000, .y = 1.0500, .z = 0.0000}};
+        molecules.push_back(std::move(record->value().molecule));
+    }
 
-    std::vector conformers{core::Conformer{std::move(positions_1), "model-1"},
-                           core::Conformer{std::move(positions_2), "model-2"}};
+    if (molecules.empty()) {
+        throw std::runtime_error{"No valid molecules found in input file: " + input_path};
+    }
 
-    return core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers), "water"};
-}
-
-auto make_collection() -> core::MoleculeCollection {
-    std::vector molecules{make_water()};
-
-    return core::MoleculeCollection{std::move(molecules), "demo"};
+    return core::MoleculeCollection{std::move(molecules), input_path};
 }
 
 auto method_pointers(const methods::MethodRegistry& registry)
@@ -91,9 +92,14 @@ auto print_charge_set(const charges::ChargeSet& charge_set) -> void {
 
 } // namespace
 
-auto main() -> int {
+auto main(int argc, char* argv[]) -> int {
     try {
-        const auto collection = make_collection();
+        if (argc != 2) {
+            std::cerr << "Usage: chargefw <input.sdf>\n";
+            return 1;
+        }
+
+        const auto collection = read_collection(argv[1]);
         const features::PreparedMoleculeCollection prepared_collection{collection};
 
         const auto parameter_sets = parameters::load_default_parameter_sets();
@@ -108,6 +114,7 @@ auto main() -> int {
 
         std::cout << "Loaded methods: " << candidates.size() << '\n';
         std::cout << "Loaded parameter sets: " << parameter_sets.size() << '\n';
+        std::cout << "Loaded molecules: " << collection.size() << '\n';
         std::cout << "Applicable candidates: " << result.applicability.applicable.size() << '\n';
 
         if (!result.calculated()) {

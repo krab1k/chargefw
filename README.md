@@ -4,8 +4,9 @@ ChargeFW is a C++23, library-first framework for empirical partial atomic-charge
 It is a modern successor to ChargeFW2, the engine used by Atomic Charge Calculator III (ACC III).
 
 The project currently provides a toolkit-neutral molecular core, built-in empirical methods,
-parameter-set loading and classification, applicability checks, and structured charge results. The
-`chargefw` executable is a water demonstration; it does not yet accept molecular files or SMILES.
+parameter-set loading and classification, applicability checks, structured charge results, and
+native MOL/SDF input adapters. The `chargefw` executable is a small SDF demonstration; it does not
+yet provide a full user-facing file/SMILES CLI.
 
 ## Documentation map
 
@@ -44,8 +45,8 @@ cmake --build --preset gcc-debug
 # Run the complete debug test suite.
 ctest --preset gcc-debug
 
-# Run the fixed-input water demonstration from the build tree.
-CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw
+# Run the SDF demonstration from the build tree.
+CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw tests/water.sdf
 ```
 
 Run an individual test after building:
@@ -54,8 +55,9 @@ Run an individual test after building:
 ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 ```
 
-The demo loads bundled parameter sets, autodetects the highest-priority applicable method and
-parameter set, and prints charge assignments for two water conformers constructed in code.
+The demo reads valid records from an SDF file, reports and skips malformed records, loads bundled
+parameter sets, autodetects the highest-priority applicable method and parameter set, and prints
+charge assignments.
 
 ## Other configurations
 
@@ -73,7 +75,7 @@ ctest --preset clang-asan
 cmake --preset local-install
 cmake --build build/local-install
 cmake --install build/local-install
-env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw
+env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw tests/water.sdf
 ```
 
 The `_install` directory is a local installation staging area for testing installation behavior; it
