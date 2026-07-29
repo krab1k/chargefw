@@ -1,6 +1,16 @@
 include(FetchContent)
 
 function(chargefw_setup_dependencies)
+    find_package(CLI11 2.6 CONFIG QUIET)
+    if(NOT TARGET CLI11::CLI11)
+        FetchContent_Declare(
+                cli11
+                SYSTEM
+                URL https://github.com/CLIUtils/CLI11/archive/refs/tags/v2.6.2.tar.gz
+        )
+        FetchContent_MakeAvailable(cli11)
+    endif()
+
     find_package(nlohmann_json 3.12 CONFIG QUIET)
     if(NOT TARGET nlohmann_json::nlohmann_json)
         FetchContent_Declare(

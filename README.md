@@ -45,7 +45,7 @@ cmake --build --preset gcc-debug
 # Run the complete debug test suite.
 ctest --preset gcc-debug
 
-# Run the SDF demonstration from the build tree.
+# Run the molecular-file demonstration from the build tree.
 CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw tests/water.sdf
 ```
 
@@ -55,9 +55,9 @@ Run an individual test after building:
 ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 ```
 
-The demo reads valid records from an SDF file, reports and skips malformed records, loads bundled
-parameter sets, autodetects the highest-priority applicable method and parameter set, and prints
-charge assignments.
+The demo accepts `.sdf`, `.mol`, and `.mol2` input files, selects the reader from the file
+extension, reports and skips malformed records, loads bundled parameter sets, autodetects the
+highest-priority applicable method and parameter set, and prints charge assignments.
 
 ## Other configurations
 

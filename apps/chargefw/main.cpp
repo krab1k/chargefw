@@ -1,3 +1,7 @@
+#include <CLI/CLI.hpp>
+#include <algorithm>
+#include <chargefw/adapters/native/mol.h>
+#include <chargefw/adapters/native/mol2.h>
 #include <chargefw/adapters/native/sdf.h>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/charges/charge_collection.h>
@@ -8,7 +12,9 @@
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
+#include <cctype>
 #include <exception>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -25,13 +31,8 @@ namespace adapters = chargefw::adapters;
 
 namespace {
 
-auto read_collection(const std::string& input_path) -> core::MoleculeCollection {
-    std::ifstream input{input_path};
-    if (!input) {
-        throw std::runtime_error{"Unable to open input file: " + input_path};
-    }
-
-    adapters::native::sdf::SdfReader reader{input, input_path};
+template <typename Reader>
+auto read_collection(Reader& reader, const std::string& input_path) -> core::MoleculeCollection {
     std::vector<core::Molecule> molecules;
 
     while (const auto record = reader.next()) {
@@ -50,6 +51,33 @@ auto read_collection(const std::string& input_path) -> core::MoleculeCollection 
     }
 
     return core::MoleculeCollection{std::move(molecules), input_path};
+}
+
+auto read_collection(const std::string& input_path) -> core::MoleculeCollection {
+    std::ifstream input{input_path};
+    if (!input) {
+        throw std::runtime_error{"Unable to open input file: " + input_path};
+    }
+
+    auto extension = std::filesystem::path{input_path}.extension().string();
+    std::ranges::transform(extension, extension.begin(), [](const unsigned char character) {
+        return static_cast<char>(std::tolower(character));
+    });
+    if (extension == ".sdf") {
+        adapters::native::sdf::SdfReader reader{input, input_path};
+        return read_collection(reader, input_path);
+    }
+    if (extension == ".mol") {
+        adapters::native::mol::MolReader reader{input, input_path};
+        return read_collection(reader, input_path);
+    }
+    if (extension == ".mol2") {
+        adapters::native::mol2::Mol2Reader reader{input, input_path};
+        return read_collection(reader, input_path);
+    }
+
+    throw std::runtime_error{"Unsupported input file type: " + extension +
+                             ". Supported types: .sdf, .mol, .mol2"};
 }
 
 auto method_pointers(const methods::MethodRegistry& registry)
@@ -94,12 +122,12 @@ auto print_charge_set(const charges::ChargeSet& charge_set) -> void {
 
 auto main(int argc, char* argv[]) -> int {
     try {
-        if (argc != 2) {
-            std::cerr << "Usage: chargefw <input.sdf>\n";
-            return 1;
-        }
+        CLI::App app{"Calculate empirical partial atomic charges from a molecular file."};
+        std::string input_path;
+        app.add_option("input", input_path, "Input .sdf, .mol, or .mol2 file")->required();
+        CLI11_PARSE(app, argc, argv);
 
-        const auto collection = read_collection(argv[1]);
+        const auto collection = read_collection(input_path);
         const features::PreparedMoleculeCollection prepared_collection{collection};
 
         const auto parameter_sets = parameters::load_default_parameter_sets();

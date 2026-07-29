@@ -10,6 +10,7 @@ set_target_properties(chargefw_cli
 target_link_libraries(chargefw_cli
         PRIVATE
         chargefw::core
+        CLI11::CLI11
 )
 
 install(TARGETS chargefw_cli

@@ -102,10 +102,10 @@ and parameter-set ID. Higher priorities therefore denote maintainer-curated auto
 not a universal scientific quality ranking. The result retains applicability diagnostics when no
 candidate can be calculated.
 
-The current `chargefw` executable is an **SDF demonstration**. It reads valid SDF records, reports
-and skips malformed records, loads bundled parameter sets, autodetects the highest-priority
-applicable method and parameter set, and prints charges. It is not yet a full user-facing
-file/SMILES CLI.
+The current `chargefw` executable is a molecular-file demonstration. It autodetects `.sdf`, `.mol`,
+and `.mol2` input from the file extension, reports and skips malformed records, loads bundled
+parameter sets, autodetects the highest-priority applicable method and parameter set, and prints
+charges. It is not yet a full user-facing file/SMILES CLI.
 
 ### Calculation granularity
 
