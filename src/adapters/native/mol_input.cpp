@@ -1,6 +1,6 @@
 #include <chargefw/adapters/native/mol_input.h>
 
-#include "common.h"
+#include "common_input.h"
 
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
@@ -24,6 +24,8 @@
 
 namespace chargefw::adapters::native::mol_input {
 namespace {
+
+namespace common = chargefw::adapters::native::common_input;
 
 constexpr std::string_view v30_prefix{"M  V30 "};
 

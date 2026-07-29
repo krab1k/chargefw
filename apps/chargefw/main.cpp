@@ -77,7 +77,7 @@ auto read_collection(const std::string& input_path) -> ImportedCollection {
     }
 
     auto extension = std::filesystem::path{input_path}.extension().string();
-    std::ranges::transform(extension, extension.begin(), [](const unsigned char character) {
+    std::ranges::transform(extension, extension.begin(), [](const unsigned char character) -> char {
         return static_cast<char>(std::tolower(character));
     });
     if (extension == ".sdf") {

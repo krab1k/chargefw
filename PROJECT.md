@@ -253,6 +253,10 @@ concrete format requires them.
 Native adapters are named by format and direction. The current `json_input`, `mol_input`,
 `sdf_input`, and `mol2_input` adapters import molecule records; `json_output::JsonWriter`
 serializes the format-neutral `ChargeResultDocument` used by the CLI and future integrations.
+`mol2_output::Mol2Writer` preserves a source MOL2 file while replacing or adding atom partial-charge
+fields for one selected record, or generates a basic MOL2 record from native graph and conformer
+data when the input is another format. Generated MOL2 uses element-symbol atom types and a single
+`CHARGEFW` substructure; it does not infer Tripos typing or source-specific substructure semantics.
 Additional writers must consume that export model rather than implementing calculation-result
 serialization in a front end.
 

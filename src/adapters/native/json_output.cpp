@@ -13,7 +13,6 @@ namespace {
 
 using Json = nlohmann::json;
 
-constexpr auto charge_decimal_places = 4;
 constexpr auto charge_scale = 10000.0;
 
 [[nodiscard]] auto rounded_charge(const double value) -> double {
@@ -35,7 +34,7 @@ constexpr auto charge_scale = 10000.0;
     }
 
     const auto identity =
-        std::ranges::all_of(values, [index = std::size_t{0}](const auto& value) mutable {
+        std::ranges::all_of(values, [index = std::size_t{0}](const auto& value) mutable -> bool {
             return value.has_value() && *value == index++;
         });
     if (identity) {

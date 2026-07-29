@@ -12,7 +12,7 @@
 #include <string_view>
 #include <vector>
 
-namespace chargefw::adapters::native::common {
+namespace chargefw::adapters::native::common_input {
 
 [[nodiscard]] auto read_line(std::istream& input, std::size_t& line, std::string_view record_name)
     -> std::string;
@@ -41,4 +41,4 @@ namespace chargefw::adapters::native::common {
                                std::optional<MoleculeRecordSource> source = {})
     -> ImportedMoleculeRecord;
 
-} // namespace chargefw::adapters::native::common
+} // namespace chargefw::adapters::native::common_input

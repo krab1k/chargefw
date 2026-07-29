@@ -1,6 +1,6 @@
 #include <chargefw/adapters/native/mol2_input.h>
 
-#include "common.h"
+#include "common_input.h"
 
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
@@ -22,6 +22,8 @@
 
 namespace chargefw::adapters::native::mol2_input {
 namespace {
+
+namespace common = chargefw::adapters::native::common_input;
 
 constexpr std::string_view molecule_marker{"@<TRIPOS>MOLECULE"};
 constexpr std::string_view atom_marker{"@<TRIPOS>ATOM"};

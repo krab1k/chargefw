@@ -1,4 +1,4 @@
-#include "common.h"
+#include "common_input.h"
 
 #include <chargefw/core/molecule.h>
 
@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-namespace chargefw::adapters::native::common {
+namespace chargefw::adapters::native::common_input {
 
 auto read_line(std::istream& input, std::size_t& line, const std::string_view record_name)
     -> std::string {
@@ -106,8 +106,8 @@ auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
         name = identity.record_id;
     }
 
-    const auto atom_mapping = identity_mapping(atoms.size());
-    const auto conformer_mapping = identity_mapping(conformers.size());
+    auto atom_mapping = identity_mapping(atoms.size());
+    auto conformer_mapping = identity_mapping(conformers.size());
 
     return ImportedMoleculeRecord{.molecule =
                                       core::Molecule{std::move(atoms), std::move(bonds),
@@ -119,4 +119,4 @@ auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
                                   .source = std::move(source)};
 }
 
-} // namespace chargefw::adapters::native::common
+} // namespace chargefw::adapters::native::common_input

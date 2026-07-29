@@ -57,6 +57,10 @@ acceptance criteria for each priority, not optional follow-up work.
 - [x] Establish directional native adapter names: `json_input`, `json_output`, `mol_input`,
   `sdf_input`, and `mol2_input`. Future format writers must consume the shared export envelope,
   not serialize calculation results in a front end.
+- [x] Add preservation-oriented MOL2 output that copies source bytes and replaces or adds selected
+  ATOM partial-charge fields without reconstructing unrelated sections, plus basic generated MOL2
+  output from native graph/conformer data when the source format is different. Generated output does
+  not infer Tripos atom types or substructure semantics.
 - [ ] Add SDF output that attaches partial charges and calculation provenance without changing
   formal charges, topology, coordinates, or source identifiers.
 - [ ] Add preservation-oriented writers for matching filesystem-backed inputs: copy source bytes and

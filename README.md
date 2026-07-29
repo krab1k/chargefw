@@ -71,7 +71,10 @@ native precision internally.
 
 Native adapter headers are explicitly directional: `json_input`, `mol_input`, `sdf_input`, and
 `mol2_input` read molecule records, while `json_output::JsonWriter` writes calculation-result
-documents.
+documents. `mol2_output::Mol2Writer` copies a MOL2 source file and changes only the selected atom
+partial-charge fields, adding optional MOL2 fields when a source atom has no charge field. It can
+also generate basic MOL2 output from native graph/conformer data using element-symbol atom types;
+it does not infer Tripos typing or source-specific substructure semantics.
 
 ChargeFW JSON input uses `"schema_version": "1.0"` and a `molecules` array. Each molecule has
 required `atoms` with `atomic_number` and `formal_charge`, optional indexed `bonds`, and optional
