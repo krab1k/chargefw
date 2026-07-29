@@ -1,5 +1,6 @@
 #include <CLI/CLI.hpp>
 #include <algorithm>
+#include <chargefw/adapters/native/json.h>
 #include <chargefw/adapters/native/mol.h>
 #include <chargefw/adapters/native/mol2.h>
 #include <chargefw/adapters/native/sdf.h>
@@ -75,9 +76,13 @@ auto read_collection(const std::string& input_path) -> core::MoleculeCollection 
         adapters::native::mol2::Mol2Reader reader{input, input_path};
         return read_collection(reader, input_path);
     }
+    if (extension == ".json") {
+        adapters::native::json::JsonReader reader{input, input_path};
+        return read_collection(reader, input_path);
+    }
 
     throw std::runtime_error{"Unsupported input file type: " + extension +
-                             ". Supported types: .sdf, .mol, .mol2"};
+                             ". Supported types: .sdf, .mol, .mol2, .json"};
 }
 
 auto method_pointers(const methods::MethodRegistry& registry)
@@ -124,7 +129,8 @@ auto main(int argc, char* argv[]) -> int {
     try {
         CLI::App app{"Calculate empirical partial atomic charges from a molecular file."};
         std::string input_path;
-        app.add_option("input", input_path, "Input .sdf, .mol, or .mol2 file")->required();
+        app.add_option("input", input_path, "Input .sdf, .mol, .mol2, or ChargeFW .json file")
+            ->required();
         CLI11_PARSE(app, argc, argv);
 
         const auto collection = read_collection(input_path);

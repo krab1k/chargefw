@@ -1,6 +1,8 @@
 target_sources(chargefw_core
         PRIVATE
         molecule_record.cpp
+        native/common.cpp
+        native/json.cpp
         native/mol.cpp
         native/mol2.cpp
         native/sdf.cpp
@@ -10,6 +12,7 @@ target_sources(chargefw_core
         ${PROJECT_SOURCE_DIR}/include
         FILES
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/molecule_record.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/json.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol2.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/sdf.h

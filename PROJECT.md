@@ -252,8 +252,12 @@ concrete format requires them.
 
 #### Format and connectivity policy
 
-The native adapter scope is intentionally narrow: MOL/SDF and Tripos MOL2 are dependency-free CLI
-input/output paths. The initial MOL/SDF reader supports V2000 atom and bond blocks plus `M  CHG`
+The native adapter scope is intentionally narrow: MOL/SDF, Tripos MOL2, and a versioned ChargeFW JSON
+document are dependency-free CLI input paths. JSON documents use `schema_version: "1.0"` and a
+`molecules` array. Each molecule has optional `id` and `name`, required `atoms` entries with
+`atomic_number` and `formal_charge`, optional indexed `bonds`, and optional conformers with coordinate
+triplets; atom names are intentionally excluded. Array order is authoritative for atom and conformer
+mapping, and connectivity is never inferred from coordinates. The initial MOL/SDF reader supports V2000 atom and bond blocks plus `M  CHG`
 formal-charge records, and
 V3000 CTAB `COUNTS`, `ATOM`, and `BOND` blocks with `CHG=` attributes. It accepts aromatic bond order
 and records ignored `CFG=` stereochemical attributes as diagnostics; it rejects query atoms, unknown

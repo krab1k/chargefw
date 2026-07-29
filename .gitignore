@@ -72,6 +72,6 @@ Testing/
 .idea
 
 # Local devel
-_install
+_*install
 old
 CMakeUserPresets.json

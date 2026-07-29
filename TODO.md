@@ -45,6 +45,9 @@ acceptance criteria for each priority, not optional follow-up work.
 - [x] Implement a bounded-memory native MOL/SDF stream adapter for the standalone CLI. Define the
   supported V2000/V3000 subset, reject unsupported/query constructs clearly, preserve source order,
   and report malformed records independently.
+- [x] Add a versioned native JSON molecule input adapter for the CLI. Preserve atom, bond, and
+  conformer ordering; require atomic numbers and formal charges; do not support atom names or infer
+  connectivity from coordinates.
 - [ ] Add SDF output that attaches partial charges and calculation provenance without changing
   formal charges, topology, coordinates, or source identifiers.
 - [ ] Replace the fixed-water demonstration with a user-facing C++ CLI over the application facade;

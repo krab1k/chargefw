@@ -5,7 +5,7 @@ It is a modern successor to ChargeFW2, the engine used by Atomic Charge Calculat
 
 The project currently provides a toolkit-neutral molecular core, built-in empirical methods,
 parameter-set loading and classification, applicability checks, structured charge results, and
-native MOL/SDF input adapters. The `chargefw` executable is a small SDF demonstration; it does not
+native MOL/SDF/MOL2 and JSON input adapters. The `chargefw` executable is a small file demonstration; it does not
 yet provide a full user-facing file/SMILES CLI.
 
 ## Documentation map
@@ -55,9 +55,13 @@ Run an individual test after building:
 ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 ```
 
-The demo accepts `.sdf`, `.mol`, and `.mol2` input files, selects the reader from the file
+The demo accepts `.sdf`, `.mol`, `.mol2`, and ChargeFW `.json` input files, selects the reader from the file
 extension, reports and skips malformed records, loads bundled parameter sets, autodetects the
 highest-priority applicable method and parameter set, and prints charge assignments.
+
+ChargeFW JSON input uses `"schema_version": "1.0"` and a `molecules` array. Each molecule has
+required `atoms` with `atomic_number` and `formal_charge`, optional indexed `bonds`, and optional
+conformers with coordinate triplets. Array order is preserved; bonds are never inferred from geometry.
 
 ## Other configurations
 
