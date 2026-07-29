@@ -18,6 +18,8 @@ class Method;
 namespace chargefw::calculation {
 
 struct CalculationRequest {
+    // Non-owning input; the referenced collection must outlive calculate().
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
     const features::PreparedMoleculeCollection& molecules;
     std::span<const methods::Method* const> candidate_methods;
     std::span<const parameters::ParameterSet> parameter_sets;
@@ -52,6 +54,7 @@ using ApplicationCalculationResult = CalculationResult;
 // Calculates an owned molecule collection using registered methods and caller-owned parameter data.
 // Omitted IDs enable deterministic automatic selection. Specified IDs restrict selection to the
 // exact method or parameter set; unavailable or inapplicable selections are reported as errors.
-[[nodiscard]] auto calculate(ApplicationCalculationRequest request) -> ApplicationCalculationResult;
+[[nodiscard]] auto calculate(const ApplicationCalculationRequest& request)
+    -> ApplicationCalculationResult;
 
 } // namespace chargefw::calculation

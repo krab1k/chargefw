@@ -42,7 +42,7 @@ auto read_collection(const std::string& input_path) -> core::MoleculeCollection 
             continue;
         }
 
-        molecules.push_back(std::move(record->value().molecule));
+        molecules.push_back(record->value().molecule);
     }
 
     if (molecules.empty()) {
@@ -122,7 +122,9 @@ auto main(int argc, char* argv[]) -> int {
             return 1;
         }
 
-        print_charge_set(*result.charges);
+        if (const auto& charges = result.charges) {
+            print_charge_set(*charges);
+        }
 
         return 0;
     } catch (const std::exception& error) {

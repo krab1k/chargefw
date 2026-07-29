@@ -297,7 +297,7 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
                 formal_charge = parse_int(std::string_view{attribute}.substr(4), "V3000 CHG value");
             } else if (attribute.starts_with("CFG=")) {
                 result.diagnostics.push_back(MoleculeRecordDiagnostic{
-                    "V3000 CFG stereochemical attribute was ignored", line});
+                    .message = "V3000 CFG stereochemical attribute was ignored", .line = line});
             } else {
                 throw std::runtime_error{"unsupported V3000 atom attribute '" + attribute + "'"};
             }
@@ -352,7 +352,7 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
     atom_mapping.reserve(atom_count);
 
     for (std::size_t index = 0; index < atom_count; ++index) {
-        atom_mapping.push_back(index);
+        atom_mapping.emplace_back(index);
     }
 
     return ImportedMoleculeRecord{
@@ -384,9 +384,9 @@ auto parse_mol(std::istream& input, MoleculeRecordIdentity identity)
 
         ParsedMolecule parsed;
 
-        if (counts.find("V2000") != std::string::npos) {
+        if (counts.contains("V2000")) {
             parsed = parse_v2000(input, counts, line);
-        } else if (counts.find("V3000") != std::string::npos) {
+        } else if (counts.contains("V3000")) {
             parsed = parse_v3000(input, line);
         } else {
             throw std::runtime_error{"unsupported MOL version"};

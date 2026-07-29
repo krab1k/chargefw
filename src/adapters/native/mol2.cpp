@@ -127,11 +127,8 @@ auto consume_to_next_molecule(std::istream& input) -> std::optional<std::string>
             throw std::runtime_error{"invalid MOL2 counts"};
         }
 
-        std::string section;
-
-        do {
-            section = read_line(input, line);
-        } while (section != atom_marker);
+        while (read_line(input, line) != atom_marker) {
+        }
 
         std::vector<core::Atom> atoms;
         std::vector<core::Position> positions;
@@ -218,16 +215,16 @@ auto consume_to_next_molecule(std::istream& input) -> std::optional<std::string>
         atom_mapping.reserve(atoms.size());
 
         for (std::size_t index = 0; index < atoms.size(); ++index) {
-            atom_mapping.push_back(index);
+            atom_mapping.emplace_back(index);
         }
 
         auto diagnostics = std::vector<MoleculeRecordDiagnostic>{};
 
         if (has_partial_charges) {
             diagnostics.push_back(MoleculeRecordDiagnostic{
-                "MOL2 partial charges were ignored; they are not formal charges and were not used "
-                "for calculation.",
-                std::nullopt});
+                .message = "MOL2 partial charges were ignored; they are not formal charges and "
+                           "were not used for calculation.",
+                .line = std::nullopt});
         }
 
         return ImportedMoleculeRecord{

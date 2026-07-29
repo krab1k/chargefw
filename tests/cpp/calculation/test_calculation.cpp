@@ -115,7 +115,9 @@ auto main() -> int {
     const auto result = calculation::calculate(calculation::CalculationRequest{
         .molecules = prepared, .candidate_methods = methods, .parameter_sets = parameters});
 
-    assert(result.calculated());
+    if (!result.charges.has_value()) {
+        return 1;
+    }
     assert(result.charges->method_id() == std::string_view{"higher"});
     assert(result.charges->size() == 1);
     assert(result.charges->assignment(0).charges[0] == 10.0);
@@ -128,7 +130,9 @@ auto main() -> int {
     const auto tied_result = calculation::calculate(calculation::CalculationRequest{
         .molecules = prepared, .candidate_methods = tied_methods, .parameter_sets = parameters});
 
-    assert(tied_result.calculated());
+    if (!tied_result.charges.has_value()) {
+        return 1;
+    }
     assert(tied_result.charges->method_id() == std::string_view{"alpha"});
     assert(tied_result.charges->assignment(0).charges[0] == 2.0);
 
@@ -142,7 +146,9 @@ auto main() -> int {
                                         .candidate_methods = parameterized_methods,
                                         .parameter_sets = parameter_sets});
 
-    assert(parameterized_result.calculated());
+    if (!parameterized_result.charges.has_value()) {
+        return 1;
+    }
     assert(parameterized_result.charges->method_id() == std::string_view{"parameterized"});
     assert(parameterized_result.charges->parameter_set_id() == std::string_view{"zeta"});
 
@@ -160,11 +166,13 @@ auto main() -> int {
             .method_id = "formal",
             .parameter_set_id = std::nullopt});
 
-    assert(application_result.calculated());
+    if (!application_result.charges.has_value()) {
+        return 1;
+    }
     assert(application_result.charges->method_id() == std::string_view{"formal"});
     assert(application_result.charges->size() == 1);
 
-    assert(throws_invalid_argument([] {
+    assert(throws_invalid_argument([] -> void {
         static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
@@ -172,7 +180,7 @@ auto main() -> int {
             .parameter_set_id = std::nullopt}));
     }));
 
-    assert(throws_invalid_argument([] {
+    assert(throws_invalid_argument([] -> void {
         static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},

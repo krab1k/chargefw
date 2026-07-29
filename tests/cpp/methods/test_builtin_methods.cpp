@@ -231,10 +231,12 @@ auto main() -> int {
     assert(denr_option_schema.size() == 2);
     assert(denr_option_schema[0].id == std::string_view{"step"});
     assert(denr_option_schema[0].type == methods::MethodOptionType::floating_point);
-    assert(std::get<double>(denr_option_schema[0].default_value) == 0.1);
+    assert(std::get_if<double>(&denr_option_schema[0].default_value) != nullptr);
+    assert(*std::get_if<double>(&denr_option_schema[0].default_value) == 0.1);
     assert(denr_option_schema[1].id == std::string_view{"iterations"});
     assert(denr_option_schema[1].type == methods::MethodOptionType::integer);
-    assert(std::get<int>(denr_option_schema[1].default_value) == 3);
+    assert(std::get_if<int>(&denr_option_schema[1].default_value) != nullptr);
+    assert(*std::get_if<int>(&denr_option_schema[1].default_value) == 3);
 
     assert(denr->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(denr->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);

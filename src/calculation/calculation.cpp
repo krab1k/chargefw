@@ -85,7 +85,7 @@ namespace {
     }
 
     const auto found = std::ranges::find_if(
-        request.parameter_sets, [&request](const parameters::ParameterSet& parameter_set) {
+        request.parameter_sets, [&request](const parameters::ParameterSet& parameter_set) -> bool {
             return parameter_set.id() == *request.parameter_set_id;
         });
 
@@ -114,7 +114,7 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
                              .applicability = std::move(applicability)};
 }
 
-auto calculate(ApplicationCalculationRequest request) -> ApplicationCalculationResult {
+auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalculationResult {
     const auto candidate_methods = application_methods(request);
     const auto parameter_sets = application_parameter_sets(request);
     const features::PreparedMoleculeCollection prepared{request.molecules};
