@@ -280,6 +280,19 @@ charge export are Gemmi-only optional adapters; the project will not implement t
 The Gemmi writer must preserve imported mmCIF content where possible and append the SB-NCBR charge
 dictionary/categories rather than reconstruct unrelated structural data.
 
+#### Preservation-oriented output
+
+When output format matches a filesystem-backed input, writers should transform a byte-for-byte copy
+of the source file rather than reconstructing a molecule document. Preservation means making only
+the smallest required format-specific edits: SDF writers append ChargeFW-owned data fields before
+the record delimiter; mmCIF writers append ChargeFW categories inside the selected `data_` block;
+MOL2 writers replace the existing ATOM partial-charge token or add the missing optional trailing
+fields required to attach a charge; and future PQR writers replace mapped atom charge values while
+retaining radii. A writer rejects only when it cannot safely locate or validate the selected source
+record/block and mapped atoms, never merely because an optional charge field is absent. Generated
+output is the explicit alternative for an output format that differs from input or lacks a readable
+source file.
+
 Structural adapters must select connectivity explicitly. Supported policies are `explicit` (PDB
 `CONECT`, mmCIF `_struct_conn`, and available chemical-component bond data), `ccd` (Chemical
 Component Dictionary templates resolved by component and atom name), and `distance` (opt-in

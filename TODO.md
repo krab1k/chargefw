@@ -59,6 +59,11 @@ acceptance criteria for each priority, not optional follow-up work.
   not serialize calculation results in a front end.
 - [ ] Add SDF output that attaches partial charges and calculation provenance without changing
   formal charges, topology, coordinates, or source identifiers.
+- [ ] Add preservation-oriented writers for matching filesystem-backed inputs: copy source bytes and
+  make only minimal format-specific edits. MOL2 replaces/adds optional ATOM charge fields; mmCIF
+  appends ChargeFW categories inside the selected data block; future PQR replaces mapped charges
+  while retaining radii. Reject only when record/block or atom mapping cannot be safely located and
+  validated; use generated output explicitly for other cases.
 - [ ] Replace the molecular-file demonstration with a user-facing C++ CLI over the application
   facade; retain the water workflow as a focused example or test. The current demo accepts
   MOL/SDF/MOL2/ChargeFW JSON input and writes JSON results, but lacks user-facing selection, batch,
