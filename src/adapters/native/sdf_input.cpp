@@ -1,11 +1,11 @@
-#include <chargefw/adapters/native/mol.h>
-#include <chargefw/adapters/native/sdf.h>
+#include <chargefw/adapters/native/mol_input.h>
+#include <chargefw/adapters/native/sdf_input.h>
 
 #include <istream>
 #include <string>
 #include <utility>
 
-namespace chargefw::adapters::native::sdf {
+namespace chargefw::adapters::native::sdf_input {
 namespace {
 
 auto consume_to_sdf_delimiter(std::istream& input) -> void {
@@ -30,9 +30,9 @@ auto SdfReader::next() -> std::optional<::chargefw::adapters::MoleculeRecordResu
 
     const auto identity =
         MoleculeRecordIdentity{.source = source_, .record_index = record_index_++, .record_id = {}};
-    auto result = mol::parse_mol(*input_, identity);
+    auto result = mol_input::parse_mol(*input_, identity);
     consume_to_sdf_delimiter(*input_);
     return result;
 }
 
-} // namespace chargefw::adapters::native::sdf
+} // namespace chargefw::adapters::native::sdf_input

@@ -1,4 +1,4 @@
-#include <chargefw/adapters/native/json.h>
+#include <chargefw/adapters/native/json_input.h>
 
 #include "common.h"
 
@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace chargefw::adapters::native::json {
+namespace chargefw::adapters::native::json_input {
 namespace {
 
 using Json = nlohmann::json;
@@ -237,4 +237,4 @@ auto JsonReader::next() -> std::optional<::chargefw::adapters::MoleculeRecordRes
                                                  .record_id = {}});
 }
 
-} // namespace chargefw::adapters::native::json
+} // namespace chargefw::adapters::native::json_input

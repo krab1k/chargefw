@@ -1,4 +1,4 @@
-#include <chargefw/adapters/native/mol.h>
+#include <chargefw/adapters/native/mol_input.h>
 
 #include "common.h"
 
@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-namespace chargefw::adapters::native::mol {
+namespace chargefw::adapters::native::mol_input {
 namespace {
 
 constexpr std::string_view v30_prefix{"M  V30 "};
@@ -333,4 +333,4 @@ auto MolReader::next() -> std::optional<::chargefw::adapters::MoleculeRecordResu
     return parse_mol(*input_, {.source = source_, .record_index = 0, .record_id = {}});
 }
 
-} // namespace chargefw::adapters::native::mol
+} // namespace chargefw::adapters::native::mol_input

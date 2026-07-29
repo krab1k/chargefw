@@ -7,7 +7,7 @@
 #include <optional>
 #include <string>
 
-namespace chargefw::adapters::native::mol2 {
+namespace chargefw::adapters::native::mol2_input {
 
 // Bounded-memory Tripos MOL2 reader. Each call consumes one @<TRIPOS>MOLECULE record. The reader
 // supports MOLECULE, ATOM, and BOND sections with standard atom types and numeric/aromatic bonds.
@@ -23,4 +23,4 @@ class Mol2Reader {
     std::size_t record_index_ = 0;
 };
 
-} // namespace chargefw::adapters::native::mol2
+} // namespace chargefw::adapters::native::mol2_input

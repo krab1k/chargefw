@@ -103,9 +103,9 @@ not a universal scientific quality ranking. The result retains applicability dia
 candidate can be calculated.
 
 The current `chargefw` executable is a molecular-file demonstration. It autodetects `.sdf`, `.mol`,
-and `.mol2` input from the file extension, reports and skips malformed records, loads bundled
-parameter sets, autodetects the highest-priority applicable method and parameter set, and prints
-charges. It is not yet a full user-facing file/SMILES CLI.
+`.mol2`, and ChargeFW `.json` input from the file extension, reports and skips malformed records,
+loads bundled parameter sets, autodetects the highest-priority applicable method and parameter set,
+and writes a versioned JSON result document. It is not yet a full user-facing file/SMILES CLI.
 
 ### Calculation granularity
 
@@ -249,6 +249,12 @@ this to preserve structural categories and append the `_sb_ncbr_partial_atomic_c
 stream readers can continue after malformed records. This deliberately defines no common file handle,
 property bag, hierarchy model, or chemistry repair policy: those remain adapter-specific until a
 concrete format requires them.
+
+Native adapters are named by format and direction. The current `json_input`, `mol_input`,
+`sdf_input`, and `mol2_input` adapters import molecule records; `json_output::JsonWriter`
+serializes the format-neutral `ChargeResultDocument` used by the CLI and future integrations.
+Additional writers must consume that export model rather than implementing calculation-result
+serialization in a front end.
 
 #### Format and connectivity policy
 

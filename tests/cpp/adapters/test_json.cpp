@@ -1,11 +1,11 @@
 #include <cassert>
-#include <chargefw/adapters/native/json.h>
+#include <chargefw/adapters/native/json_input.h>
 #include <chargefw/core/bond.h>
 
 #include <sstream>
 #include <string>
 
-namespace json = chargefw::adapters::native::json;
+namespace json = chargefw::adapters::native::json_input;
 
 auto main() -> int {
     {

@@ -9,7 +9,7 @@
 #include <optional>
 #include <string>
 
-namespace chargefw::adapters::native::json {
+namespace chargefw::adapters::native::json_input {
 
 // ChargeFW JSON reader for a version 1.0 molecule document. Each call returns the next molecule
 // record from the top-level `molecules` array. A null result denotes clean end-of-document; an
@@ -27,4 +27,4 @@ class JsonReader {
     std::size_t record_index_ = 0;
 };
 
-} // namespace chargefw::adapters::native::json
+} // namespace chargefw::adapters::native::json_input

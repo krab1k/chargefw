@@ -1,7 +1,7 @@
 #include <cassert>
-#include <chargefw/adapters/native/mol.h>
-#include <chargefw/adapters/native/mol2.h>
-#include <chargefw/adapters/native/sdf.h>
+#include <chargefw/adapters/native/mol2_input.h>
+#include <chargefw/adapters/native/mol_input.h>
+#include <chargefw/adapters/native/sdf_input.h>
 #include <chargefw/core/bond.h>
 #include <filesystem>
 #include <fstream>
@@ -9,9 +9,9 @@
 #include <string>
 
 namespace adapters = chargefw::adapters;
-namespace mol = chargefw::adapters::native::mol;
-namespace mol2 = chargefw::adapters::native::mol2;
-namespace sdf = chargefw::adapters::native::sdf;
+namespace mol = chargefw::adapters::native::mol_input;
+namespace mol2 = chargefw::adapters::native::mol2_input;
+namespace sdf = chargefw::adapters::native::sdf_input;
 
 namespace {
 

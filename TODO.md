@@ -10,9 +10,11 @@ acceptance criteria for each priority, not optional follow-up work.
 
 ## 1. Calculation contract and scalable execution
 
-- [ ] Complete the application result contract with atom-indexed charges and owned provenance:
-  method and parameter-set identity/version, effective options, calculation targets, execution and
-  correction policies, radius, warnings, and applicability diagnostics.
+- [ ] Complete the application result/export contract. The initial `ChargeResultDocument` and native
+  JSON writer retain record identity/mapping, selected method and optional parameter-set IDs, and
+  charge assignments; add owned method and parameter-set versions, effective options, calculation
+  targets, warnings, applicability diagnostics, record-scoped import/calculation failures, and later
+  execution/correction policies and radius.
 - [ ] Add explicit caller selection of method, parameter set, method options, and execution policy.
   Reject unavailable or unsupported selections rather than silently falling back.
 - [x] Provide a binding-friendly owned request/result facade that does not expose `Method*`,
@@ -39,25 +41,36 @@ acceptance criteria for each priority, not optional follow-up work.
 
 ## 2. Molecular I/O and C++ CLI
 
-- [x] Define the shared import/export contract for record identity, source-to-native atom mapping,
+- [x] Define the shared import/export foundation for record identity, source-to-native atom mapping,
   conformer mapping, diagnostics, unsupported chemistry, and explicit transformations. File-format
-  and toolkit types remain outside `chargefw_core`.
+  and toolkit types remain outside `chargefw_core`. `ChargeResultDocument` is the initial
+  format-neutral result envelope; complete failure/provenance coverage remains tracked in section 1.
 - [x] Implement a bounded-memory native MOL/SDF stream adapter for the standalone CLI. Define the
   supported V2000/V3000 subset, reject unsupported/query constructs clearly, preserve source order,
   and report malformed records independently.
 - [x] Add a versioned native JSON molecule input adapter for the CLI. Preserve atom, bond, and
   conformer ordering; require atomic numbers and formal charges; do not support atom names or infer
   connectivity from coordinates.
+- [x] Add an initial versioned native JSON result writer over the format-neutral result envelope.
+  It writes record identity/mapping, selected method and optional parameter-set IDs, assignments,
+  and diagnostics; partial-charge values are rounded to at most four decimal places.
+- [x] Establish directional native adapter names: `json_input`, `json_output`, `mol_input`,
+  `sdf_input`, and `mol2_input`. Future format writers must consume the shared export envelope,
+  not serialize calculation results in a front end.
 - [ ] Add SDF output that attaches partial charges and calculation provenance without changing
   formal charges, topology, coordinates, or source identifiers.
-- [ ] Replace the fixed-water demonstration with a user-facing C++ CLI over the application facade;
-  retain the water workflow as a focused example or test.
+- [ ] Replace the molecular-file demonstration with a user-facing C++ CLI over the application
+  facade; retain the water workflow as a focused example or test. The current demo accepts
+  MOL/SDF/MOL2/ChargeFW JSON input and writes JSON results, but lacks user-facing selection, batch,
+  and complete diagnostic behavior.
 - [ ] Expose molecule source, method/parameter selection, conformer selection, full/cutoff/cover
   policy, radius, and correction policy through explicit CLI options with reported defaults.
 - [ ] Add bounded batch execution with deterministic record order, configurable continue-on-error
   behavior, and memory use independent of total input record count.
-- [ ] Implement a stable JSON result format containing input identity, source mapping, assignments,
-  full provenance, approximation diagnostics, coverage, warnings, and errors.
+- [ ] Define and complete the stable JSON result schema: ordered entries for successful and failed
+  source records; owned import/calculation diagnostics; complete provenance; mapping semantics;
+  multi-conformer assignment semantics; precision/total-charge rules; and compatibility/versioning
+  rules. Add approximation diagnostics and coverage only with the corresponding execution policies.
 - [ ] Add parser and CLI integration tests for valid and malformed records, V2000/V3000 boundaries,
   mixed-success batches, all execution policies, deterministic output, and failure exit statuses.
 - [ ] Fuzz native molecular parsers and run sanitizer coverage before treating untrusted input as

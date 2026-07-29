@@ -55,9 +55,23 @@ Run an individual test after building:
 ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 ```
 
-The demo accepts `.sdf`, `.mol`, `.mol2`, and ChargeFW `.json` input files, selects the reader from the file
-extension, reports and skips malformed records, loads bundled parameter sets, autodetects the
-highest-priority applicable method and parameter set, and prints charge assignments.
+The demo accepts `.sdf`, `.mol`, `.mol2`, and ChargeFW `.json` input files, selects the reader from
+the file extension, reports and skips malformed records, loads bundled parameter sets, and
+autodetects the highest-priority applicable method and parameter set. It writes a versioned JSON
+result document to standard output, or to a file passed with `--output`.
+
+The JSON result uses `"schema_version": "1.0"` and retains one `results` entry for every successfully
+imported molecule. Each entry records input identity, explicit atom and conformer mappings, selected
+method and optional parameter-set IDs, atom-order-preserving charge assignments, and structured
+diagnostics. Native input adapters currently preserve atom and conformer order, so their mappings
+are reported as `{ "kind": "identity" }`.
+
+JSON partial-charge values are rounded to at most four decimal places; calculations retain their
+native precision internally.
+
+Native adapter headers are explicitly directional: `json_input`, `mol_input`, `sdf_input`, and
+`mol2_input` read molecule records, while `json_output::JsonWriter` writes calculation-result
+documents.
 
 ChargeFW JSON input uses `"schema_version": "1.0"` and a `molecules` array. Each molecule has
 required `atoms` with `atomic_number` and `formal_charge`, optional indexed `bonds`, and optional

@@ -1,19 +1,22 @@
 target_sources(chargefw_core
         PRIVATE
+        native/json_output.cpp
         molecule_record.cpp
         native/common.cpp
-        native/json.cpp
-        native/mol.cpp
-        native/mol2.cpp
-        native/sdf.cpp
+        native/json_input.cpp
+        native/mol_input.cpp
+        native/mol2_input.cpp
+        native/sdf_input.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
         ${PROJECT_SOURCE_DIR}/include
         FILES
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/molecule_record.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/json.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol2.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/sdf.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/charge_result_document.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/json_input.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/json_output.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol_input.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol2_input.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/sdf_input.h
 )

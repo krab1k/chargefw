@@ -7,7 +7,7 @@
 #include <optional>
 #include <string>
 
-namespace chargefw::adapters::native::mol {
+namespace chargefw::adapters::native::mol_input {
 
 // Parses exactly one MOL record. The record ends at M  END; a following SDF separator is not
 // consumed. V2000 atom/bond blocks plus M  CHG and the V3000 CTAB atom/bond subset are supported.
@@ -28,4 +28,4 @@ class MolReader {
     bool consumed_ = false;
 };
 
-} // namespace chargefw::adapters::native::mol
+} // namespace chargefw::adapters::native::mol_input

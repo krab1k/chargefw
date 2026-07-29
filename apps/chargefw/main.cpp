@@ -1,9 +1,10 @@
 #include <CLI/CLI.hpp>
 #include <algorithm>
-#include <chargefw/adapters/native/json.h>
-#include <chargefw/adapters/native/mol.h>
-#include <chargefw/adapters/native/mol2.h>
-#include <chargefw/adapters/native/sdf.h>
+#include <chargefw/adapters/native/json_input.h>
+#include <chargefw/adapters/native/json_output.h>
+#include <chargefw/adapters/native/mol2_input.h>
+#include <chargefw/adapters/native/mol_input.h>
+#include <chargefw/adapters/native/sdf_input.h>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule.h>
@@ -18,11 +19,12 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
-namespace charges = chargefw::charges;
 namespace calculation = chargefw::calculation;
 namespace core = chargefw::core;
 namespace features = chargefw::features;
@@ -32,9 +34,17 @@ namespace adapters = chargefw::adapters;
 
 namespace {
 
+struct ImportedCollection {
+    core::MoleculeCollection molecules;
+    std::vector<adapters::MoleculeRecordIdentity> identities;
+    std::vector<adapters::MoleculeRecordMapping> mappings;
+};
+
 template <typename Reader>
-auto read_collection(Reader& reader, const std::string& input_path) -> core::MoleculeCollection {
+auto read_collection(Reader& reader, const std::string& input_path) -> ImportedCollection {
     std::vector<core::Molecule> molecules;
+    std::vector<adapters::MoleculeRecordIdentity> identities;
+    std::vector<adapters::MoleculeRecordMapping> mappings;
 
     while (const auto record = reader.next()) {
         if (!record->has_value()) {
@@ -44,17 +54,23 @@ auto read_collection(Reader& reader, const std::string& input_path) -> core::Mol
             continue;
         }
 
-        molecules.push_back(record->value().molecule);
+        auto imported = std::move(record->value());
+        molecules.push_back(std::move(imported.molecule));
+        identities.push_back(std::move(imported.identity));
+        mappings.push_back(std::move(imported.mapping));
     }
 
     if (molecules.empty()) {
         throw std::runtime_error{"No valid molecules found in input file: " + input_path};
     }
 
-    return core::MoleculeCollection{std::move(molecules), input_path};
+    return ImportedCollection{.molecules =
+                                  core::MoleculeCollection{std::move(molecules), input_path},
+                              .identities = std::move(identities),
+                              .mappings = std::move(mappings)};
 }
 
-auto read_collection(const std::string& input_path) -> core::MoleculeCollection {
+auto read_collection(const std::string& input_path) -> ImportedCollection {
     std::ifstream input{input_path};
     if (!input) {
         throw std::runtime_error{"Unable to open input file: " + input_path};
@@ -65,19 +81,19 @@ auto read_collection(const std::string& input_path) -> core::MoleculeCollection 
         return static_cast<char>(std::tolower(character));
     });
     if (extension == ".sdf") {
-        adapters::native::sdf::SdfReader reader{input, input_path};
+        adapters::native::sdf_input::SdfReader reader{input, input_path};
         return read_collection(reader, input_path);
     }
     if (extension == ".mol") {
-        adapters::native::mol::MolReader reader{input, input_path};
+        adapters::native::mol_input::MolReader reader{input, input_path};
         return read_collection(reader, input_path);
     }
     if (extension == ".mol2") {
-        adapters::native::mol2::Mol2Reader reader{input, input_path};
+        adapters::native::mol2_input::Mol2Reader reader{input, input_path};
         return read_collection(reader, input_path);
     }
     if (extension == ".json") {
-        adapters::native::json::JsonReader reader{input, input_path};
+        adapters::native::json_input::JsonReader reader{input, input_path};
         return read_collection(reader, input_path);
     }
 
@@ -97,30 +113,19 @@ auto method_pointers(const methods::MethodRegistry& registry)
     return result;
 }
 
-auto print_charge_set(const charges::ChargeSet& charge_set) -> void {
-    std::cout << "method: " << charge_set.method_id();
-
-    if (charge_set.parameter_set_id().has_value()) {
-        std::cout << "  parameters: " << *charge_set.parameter_set_id();
+[[nodiscard]] auto result_document(const ImportedCollection& imported,
+                                   const calculation::CalculationResult& result)
+    -> adapters::ChargeResultDocument {
+    auto document = adapters::ChargeResultDocument{
+        .generator_name = "ChargeFW", .generator_version = "0.0.1", .records = {}};
+    document.records.reserve(imported.molecules.size());
+    for (std::size_t index = 0; index < imported.molecules.size(); ++index) {
+        document.records.push_back(
+            adapters::ChargeResultRecord{.identity = imported.identities[index],
+                                         .mapping = imported.mappings[index],
+                                         .charges = result.charges});
     }
-
-    std::cout << '\n';
-
-    for (const auto& assignment : charge_set.assignments()) {
-        std::cout << "  molecule " << assignment.target.molecule_index;
-
-        if (assignment.target.conformer_index.has_value()) {
-            std::cout << " conformer " << *assignment.target.conformer_index;
-        }
-
-        std::cout << " charges:";
-
-        for (const auto charge : assignment.charges.values()) {
-            std::cout << ' ' << charge;
-        }
-
-        std::cout << "  total=" << assignment.charges.total() << '\n';
-    }
+    return document;
 }
 
 } // namespace
@@ -129,12 +134,14 @@ auto main(int argc, char* argv[]) -> int {
     try {
         CLI::App app{"Calculate empirical partial atomic charges from a molecular file."};
         std::string input_path;
+        std::string output_path;
         app.add_option("input", input_path, "Input .sdf, .mol, .mol2, or ChargeFW .json file")
             ->required();
+        app.add_option("-o,--output", output_path, "Write JSON calculation result to this file");
         CLI11_PARSE(app, argc, argv);
 
-        const auto collection = read_collection(input_path);
-        const features::PreparedMoleculeCollection prepared_collection{collection};
+        const auto imported = read_collection(input_path);
+        const features::PreparedMoleculeCollection prepared_collection{imported.molecules};
 
         const auto parameter_sets = parameters::load_default_parameter_sets();
 
@@ -146,18 +153,19 @@ auto main(int argc, char* argv[]) -> int {
                                             .candidate_methods = candidates,
                                             .parameter_sets = parameter_sets});
 
-        std::cout << "Loaded methods: " << candidates.size() << '\n';
-        std::cout << "Loaded parameter sets: " << parameter_sets.size() << '\n';
-        std::cout << "Loaded molecules: " << collection.size() << '\n';
-        std::cout << "Applicable candidates: " << result.applicability.applicable.size() << '\n';
-
-        if (!result.calculated()) {
-            std::cerr << "No applicable method found\n";
-            return 1;
+        const auto output = result_document(imported, result);
+        if (output_path.empty()) {
+            adapters::native::json_output::JsonWriter{std::cout}.write(output);
+        } else {
+            std::ofstream output_file{output_path};
+            if (!output_file) {
+                throw std::runtime_error{"Unable to open output file: " + output_path};
+            }
+            adapters::native::json_output::JsonWriter{output_file}.write(output);
         }
 
-        if (const auto& charges = result.charges) {
-            print_charge_set(*charges);
+        if (!result.calculated()) {
+            return 1;
         }
 
         return 0;

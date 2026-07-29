@@ -1,4 +1,4 @@
-#include <chargefw/adapters/native/mol2.h>
+#include <chargefw/adapters/native/mol2_input.h>
 
 #include "common.h"
 
@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace chargefw::adapters::native::mol2 {
+namespace chargefw::adapters::native::mol2_input {
 namespace {
 
 constexpr std::string_view molecule_marker{"@<TRIPOS>MOLECULE"};
@@ -211,4 +211,4 @@ auto Mol2Reader::next() -> std::optional<::chargefw::adapters::MoleculeRecordRes
     return parse_record(*input_, identity);
 }
 
-} // namespace chargefw::adapters::native::mol2
+} // namespace chargefw::adapters::native::mol2_input
