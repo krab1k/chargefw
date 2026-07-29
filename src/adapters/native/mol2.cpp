@@ -178,8 +178,6 @@ auto consume_to_next_molecule(std::istream& input) -> std::optional<std::string>
             identity.record_id = name;
         }
 
-        const auto atom_mapping = common::identity_mapping(atoms.size());
-
         auto diagnostics = std::vector<MoleculeRecordDiagnostic>{};
 
         if (has_partial_charges) {
@@ -189,15 +187,9 @@ auto consume_to_next_molecule(std::istream& input) -> std::optional<std::string>
                 .line = std::nullopt});
         }
 
-        return ImportedMoleculeRecord{
-            .molecule = core::Molecule{std::move(atoms),
-                                       std::move(bonds),
-                                       {core::Conformer{std::move(positions), "input"}},
-                                       identity.record_id},
-            .identity = std::move(identity),
-            .mapping = {.atom_indices = atom_mapping, .conformer_indices = {0}},
-            .diagnostics = std::move(diagnostics),
-            .source = std::nullopt};
+        return common::make_record(std::move(atoms), std::move(bonds),
+                                   {core::Conformer{std::move(positions), "input"}},
+                                   std::move(identity), {}, std::move(diagnostics));
     } catch (const std::exception& error) {
         return std::unexpected(MoleculeRecordError{
             .identity = std::move(identity), .message = error.what(), .line = std::optional{line}});

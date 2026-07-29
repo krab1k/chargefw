@@ -1,5 +1,7 @@
 #include "common.h"
 
+#include <chargefw/core/molecule.h>
+
 #include <charconv>
 #include <sstream>
 #include <stdexcept>
@@ -94,6 +96,27 @@ auto identity_mapping(const std::size_t count) -> std::vector<std::optional<std:
     }
 
     return mapping;
+}
+
+auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
+                 std::vector<core::Conformer> conformers, MoleculeRecordIdentity identity,
+                 std::string name, std::vector<MoleculeRecordDiagnostic> diagnostics,
+                 std::optional<MoleculeRecordSource> source) -> ImportedMoleculeRecord {
+    if (name.empty()) {
+        name = identity.record_id;
+    }
+
+    const auto atom_mapping = identity_mapping(atoms.size());
+    const auto conformer_mapping = identity_mapping(conformers.size());
+
+    return ImportedMoleculeRecord{.molecule =
+                                      core::Molecule{std::move(atoms), std::move(bonds),
+                                                     std::move(conformers), std::move(name)},
+                                  .identity = std::move(identity),
+                                  .mapping = {.atom_indices = std::move(atom_mapping),
+                                              .conformer_indices = std::move(conformer_mapping)},
+                                  .diagnostics = std::move(diagnostics),
+                                  .source = std::move(source)};
 }
 
 } // namespace chargefw::adapters::native::common

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <chargefw/adapters/molecule_record.h>
+#include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
+#include <chargefw/core/conformer.h>
 
 #include <cstddef>
 #include <istream>
@@ -31,5 +33,12 @@ namespace chargefw::adapters::native::common {
 [[nodiscard]] auto numeric_bond_order(int value) -> core::BondOrder;
 
 [[nodiscard]] auto identity_mapping(std::size_t count) -> std::vector<std::optional<std::size_t>>;
+
+[[nodiscard]] auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
+                               std::vector<core::Conformer> conformers,
+                               MoleculeRecordIdentity identity, std::string name = {},
+                               std::vector<MoleculeRecordDiagnostic> diagnostics = {},
+                               std::optional<MoleculeRecordSource> source = {})
+    -> ImportedMoleculeRecord;
 
 } // namespace chargefw::adapters::native::common

@@ -197,16 +197,8 @@ auto require_array(const Json& value, const std::string& context) -> void {
             }
         }
 
-        const auto atom_mapping = common::identity_mapping(atoms.size());
-        const auto conformer_mapping = common::identity_mapping(conformers.size());
-
-        return ImportedMoleculeRecord{
-            .molecule = core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers),
-                                       name.empty() ? identity.record_id : std::move(name)},
-            .identity = std::move(identity),
-            .mapping = {.atom_indices = atom_mapping, .conformer_indices = conformer_mapping},
-            .diagnostics = {},
-            .source = std::nullopt};
+        return common::make_record(std::move(atoms), std::move(bonds), std::move(conformers),
+                                   std::move(identity), std::move(name));
     } catch (const std::exception& error) {
         return std::unexpected(MoleculeRecordError{
             .identity = std::move(identity), .message = error.what(), .line = std::nullopt});

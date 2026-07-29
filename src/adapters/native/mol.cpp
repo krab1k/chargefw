@@ -281,16 +281,9 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
 
 [[nodiscard]] auto make_record(ParsedMolecule parsed, MoleculeRecordIdentity identity)
     -> ImportedMoleculeRecord {
-    const auto atom_count = parsed.atoms.size();
-    return ImportedMoleculeRecord{
-        .molecule = core::Molecule{std::move(parsed.atoms),
-                                   std::move(parsed.bonds),
-                                   {core::Conformer{std::move(parsed.positions), "input"}},
-                                   identity.record_id},
-        .identity = std::move(identity),
-        .mapping = {.atom_indices = common::identity_mapping(atom_count), .conformer_indices = {0}},
-        .diagnostics = std::move(parsed.diagnostics),
-        .source = std::nullopt};
+    return common::make_record(std::move(parsed.atoms), std::move(parsed.bonds),
+                               {core::Conformer{std::move(parsed.positions), "input"}},
+                               std::move(identity), {}, std::move(parsed.diagnostics));
 }
 
 } // namespace
