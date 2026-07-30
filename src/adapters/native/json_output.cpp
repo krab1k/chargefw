@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <ostream>
+#include <print>
 #include <stdexcept>
 #include <string>
 
@@ -110,12 +111,12 @@ auto JsonWriter::write(const ChargeResultDocument& document) const -> void {
         records.push_back(record_json(document.records[index], index));
     }
 
-    *output_ << Json{{"schema_version", "1.0"},
-                     {"generator",
-                      {{"name", document.generator_name}, {"version", document.generator_version}}},
-                     {"results", std::move(records)}}
-                    .dump(2)
-             << '\n';
+    std::print(*output_, "{}\n",
+               Json{{"schema_version", "1.0"},
+                    {"generator",
+                     {{"name", document.generator_name}, {"version", document.generator_version}}},
+                    {"results", std::move(records)}}
+                   .dump(2));
 }
 
 } // namespace chargefw::adapters::native::json_output

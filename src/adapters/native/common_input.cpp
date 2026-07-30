@@ -87,6 +87,16 @@ auto numeric_bond_order(const int value) -> core::BondOrder {
     }
 }
 
+auto bond_order(const std::string_view value, const ::chargefw::adapters::native::BondFormat format)
+    -> core::BondOrder {
+    if (format == ::chargefw::adapters::native::BondFormat::mol2 && value == "ar") {
+        return core::BondOrder::AROMATIC;
+    }
+    return numeric_bond_order(parse_int(
+        value, format == ::chargefw::adapters::native::BondFormat::mol ? "MOL bond order"
+                                                                       : "MOL2 bond type"));
+}
+
 auto identity_mapping(const std::size_t count) -> std::vector<std::optional<std::size_t>> {
     std::vector<std::optional<std::size_t>> mapping;
     mapping.reserve(count);

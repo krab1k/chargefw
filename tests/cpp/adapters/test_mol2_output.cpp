@@ -10,6 +10,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <print>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -45,10 +46,11 @@ auto main() -> int {
     {
         const auto source =
             std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "build" / "mol2_without_charges.mol2";
-        auto input = std::ostringstream{};
-        input << "@<TRIPOS>MOLECULE\nminimal\n2 0 0 0 0\nSMALL\nNO_CHARGES\n\n"
-              << "@<TRIPOS>ATOM\n1 C1 0 0 0 C.3\n2 H1 1 0 0 H\n@<TRIPOS>BOND\n";
-        std::ofstream{source} << input.str();
+        auto input = std::ofstream{source};
+        std::print(input, "@<TRIPOS>MOLECULE\nminimal\n2 0 0 0 0\nSMALL\n"
+                          "NO_CHARGES\n\n@<TRIPOS>ATOM\n1 C1 0 0 0 C.3\n"
+                          "2 H1 1 0 0 H\n@<TRIPOS>BOND\n");
+        input.close();
 
         auto output = std::ostringstream{};
         mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), 0,

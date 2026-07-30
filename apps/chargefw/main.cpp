@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <print>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -49,8 +50,8 @@ auto read_collection(Reader& reader, const std::string& input_path) -> ImportedC
     while (const auto record = reader.next()) {
         if (!record->has_value()) {
             const auto& error = record->error();
-            std::cerr << "Skipping record " << error.identity.record_index << ": " << error.message
-                      << '\n';
+            std::print(std::cerr, "Skipping record {}: {}\n", error.identity.record_index,
+                       error.message);
             continue;
         }
 
@@ -170,7 +171,7 @@ auto main(int argc, char* argv[]) -> int {
 
         return 0;
     } catch (const std::exception& error) {
-        std::cerr << "Fatal error: " << error.what() << '\n';
+        std::print(std::cerr, "Fatal error: {}\n", error.what());
         return 1;
     }
 }

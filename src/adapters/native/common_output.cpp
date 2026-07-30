@@ -3,8 +3,7 @@
 #include <chargefw/core/periodic_table.h>
 
 #include <cmath>
-#include <iomanip>
-#include <sstream>
+#include <format>
 #include <stdexcept>
 #include <string>
 
@@ -16,9 +15,7 @@ constexpr auto charge_scale = 10000.0;
 } // namespace
 
 auto formatted_charge(const double value) -> std::string {
-    auto output = std::ostringstream{};
-    output << std::fixed << std::setprecision(4) << std::round(value * charge_scale) / charge_scale;
-    return output.str();
+    return std::format("{:.4f}", std::round(value * charge_scale) / charge_scale);
 }
 
 auto generated_atom_name(const core::Atom& atom, const std::size_t index) -> std::string {
@@ -28,11 +25,12 @@ auto generated_atom_name(const core::Atom& atom, const std::size_t index) -> std
     return std::string{core::element_symbol(atom.atomic_number())} + std::to_string(index + 1);
 }
 
-auto mol2_atom_type(const core::Atom& atom) -> std::string {
+auto atom_element_symbol(const core::Atom& atom) -> std::string {
     return std::string{core::element_symbol(atom.atomic_number())};
 }
 
-auto mol2_bond_type(const core::BondOrder order) -> std::string {
+auto bond_type(const core::BondOrder order, const ::chargefw::adapters::native::BondFormat format)
+    -> std::string_view {
     switch (order) {
     case core::BondOrder::SINGLE:
         return "1";
@@ -41,11 +39,13 @@ auto mol2_bond_type(const core::BondOrder order) -> std::string {
     case core::BondOrder::TRIPLE:
         return "3";
     case core::BondOrder::AROMATIC:
-        return "ar";
+        return format == ::chargefw::adapters::native::BondFormat::mol ? "4" : "ar";
     case core::BondOrder::UNKNOWN:
         break;
     }
-    throw std::invalid_argument{"cannot write MOL2 unknown bond order"};
+    throw std::invalid_argument{format == ::chargefw::adapters::native::BondFormat::mol
+                                    ? "cannot write MOL/SDF unknown bond order"
+                                    : "cannot write MOL2 unknown bond order"};
 }
 
 auto validate_assignment(const charges::AtomicCharges& charges, const std::size_t atom_count)

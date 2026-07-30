@@ -85,8 +85,7 @@ auto parse_v2000(std::istream& input, const std::string_view counts, std::size_t
             common::fixed_field(bond_line, 0, 3, "V2000 bond atom"), "V2000 bond atom");
         const auto second = common::parse_trimmed_int(
             common::fixed_field(bond_line, 3, 3, "V2000 bond atom"), "V2000 bond atom");
-        const auto order = common::parse_trimmed_int(
-            common::fixed_field(bond_line, 6, 3, "V2000 bond order"), "V2000 bond order");
+        const auto order = common::trim(common::fixed_field(bond_line, 6, 3, "V2000 bond order"));
 
         if (first <= 0 || second <= 0 || first > atom_count || second > atom_count) {
             throw std::runtime_error{"V2000 bond references an unknown atom"};
@@ -94,7 +93,7 @@ auto parse_v2000(std::istream& input, const std::string_view counts, std::size_t
 
         result.bonds.emplace_back(static_cast<std::size_t>(first - 1),
                                   static_cast<std::size_t>(second - 1),
-                                  common::numeric_bond_order(order));
+                                  common::bond_order(order, BondFormat::mol));
     }
 
     while (true) {
@@ -267,9 +266,8 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
             throw std::runtime_error{"V3000 bond references an unknown atom"};
         }
 
-        result.bonds.emplace_back(
-            first->second, second->second,
-            common::numeric_bond_order(common::parse_int(bond[1], "V3000 bond order")));
+        result.bonds.emplace_back(first->second, second->second,
+                                  common::bond_order(bond[1], BondFormat::mol));
     }
 
     if (v30_payload(read_v30_line(input, line)) != "END BOND" ||

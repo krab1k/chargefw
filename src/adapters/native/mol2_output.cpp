@@ -3,9 +3,11 @@
 #include "common_output.h"
 
 #include <cstddef>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <ostream>
+#include <print>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -38,15 +40,15 @@ constexpr std::string_view bond_marker{"@<TRIPOS>BOND"};
         fields.push_back(common_output::formatted_charge(charge));
     }
 
-    auto output = std::ostringstream{};
+    auto output = std::string{};
     for (std::size_t index = 0; index < fields.size(); ++index) {
         if (index != 0) {
-            output << ' ';
+            output += ' ';
         }
-        output << fields[index];
+        output += fields[index];
     }
-    output << ending;
-    return output.str();
+    output += ending;
+    return output;
 }
 
 } // namespace
@@ -100,9 +102,10 @@ auto Mol2Writer::write_preserving_source(const std::string& source_path,
             if (atom_index == assignment.charges.size()) {
                 throw std::runtime_error{"MOL2 atom count exceeds charge assignment"};
             }
-            *output_ << patch_atom_line(content, assignment.charges.at(atom_index++), ending);
+            std::print(*output_, "{}",
+                       patch_atom_line(content, assignment.charges.at(atom_index++), ending));
         } else {
-            *output_ << line;
+            std::print(*output_, "{}", line);
         }
         line_start = next_line_start;
     }
@@ -133,25 +136,25 @@ auto Mol2Writer::write_generated(const core::Molecule& molecule,
             "MOL2 conformer coordinate count does not match molecule atom count"};
     }
 
-    *output_ << "@<TRIPOS>MOLECULE\n"
-             << (molecule.name().empty() ? "chargefw" : molecule.name()) << '\n'
-             << molecule.atom_count() << ' ' << molecule.bond_count() << " 0 0 0\nSMALL\n"
-             << "USER_CHARGES\n\n@<TRIPOS>ATOM\n";
+    std::print(*output_,
+               "@<TRIPOS>MOLECULE\n{}\n{} {} 0 0 0\nSMALL\nUSER_CHARGES\n\n@<TRIPOS>ATOM\n",
+               molecule.name().empty() ? "chargefw" : molecule.name(), molecule.atom_count(),
+               molecule.bond_count());
     for (std::size_t index = 0; index < molecule.atom_count(); ++index) {
         const auto& atom = molecule.atom(index);
         const auto& position = conformer[index];
-        *output_ << index + 1 << ' ' << common_output::generated_atom_name(atom, index) << ' '
-                 << position.x << ' ' << position.y << ' ' << position.z << ' '
-                 << common_output::mol2_atom_type(atom) << " 1 CHARGEFW "
-                 << common_output::formatted_charge(assignment.charges[index]) << '\n';
+        std::print(*output_, "{} {} {} {} {} {} 1 CHARGEFW {}\n", index + 1,
+                   common_output::generated_atom_name(atom, index), position.x, position.y,
+                   position.z, common_output::atom_element_symbol(atom),
+                   common_output::formatted_charge(assignment.charges[index]));
     }
 
-    *output_ << "@<TRIPOS>BOND\n";
+    std::print(*output_, "@<TRIPOS>BOND\n");
     for (std::size_t index = 0; index < molecule.bond_count(); ++index) {
         const auto& bond = molecule.bond(index);
-        *output_ << index + 1 << ' ' << bond.first_atom_index() + 1 << ' '
-                 << bond.second_atom_index() + 1 << ' '
-                 << common_output::mol2_bond_type(bond.order()) << '\n';
+        std::print(*output_, "{} {} {} {}\n", index + 1, bond.first_atom_index() + 1,
+                   bond.second_atom_index() + 1,
+                   common_output::bond_type(bond.order(), BondFormat::mol2));
     }
 }
 

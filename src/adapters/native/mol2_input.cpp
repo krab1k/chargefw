@@ -41,26 +41,6 @@ constexpr std::string_view bond_marker{"@<TRIPOS>BOND"};
     return symbol;
 }
 
-[[nodiscard]] auto bond_order(const std::string_view type) -> core::BondOrder {
-    if (type == "1") {
-        return core::BondOrder::SINGLE;
-    }
-
-    if (type == "2") {
-        return core::BondOrder::DOUBLE;
-    }
-
-    if (type == "3") {
-        return core::BondOrder::TRIPLE;
-    }
-
-    if (type == "ar") {
-        return core::BondOrder::AROMATIC;
-    }
-
-    throw std::runtime_error{"unsupported MOL2 bond type '" + std::string{type} + "'"};
-}
-
 auto consume_to_next_molecule(std::istream& input) -> std::optional<std::string> {
     std::string line;
 
@@ -173,7 +153,8 @@ auto consume_to_next_molecule(std::istream& input) -> std::optional<std::string>
                 throw std::runtime_error{"MOL2 bond references an unknown atom"};
             }
 
-            bonds.emplace_back(first->second, second->second, bond_order(type));
+            bonds.emplace_back(first->second, second->second,
+                               common::bond_order(type, BondFormat::mol2));
         }
 
         if (identity.record_id.empty()) {

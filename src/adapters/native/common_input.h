@@ -5,6 +5,8 @@
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 
+#include "bond_format.h"
+
 #include <cstddef>
 #include <istream>
 #include <optional>
@@ -31,6 +33,9 @@ namespace chargefw::adapters::native::common_input {
                                std::string_view field) -> std::string_view;
 
 [[nodiscard]] auto numeric_bond_order(int value) -> core::BondOrder;
+
+[[nodiscard]] auto bond_order(std::string_view value,
+                              ::chargefw::adapters::native::BondFormat format) -> core::BondOrder;
 
 [[nodiscard]] auto identity_mapping(std::size_t count) -> std::vector<std::optional<std::size_t>>;
 
