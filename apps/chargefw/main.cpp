@@ -3,8 +3,10 @@
 #include <chargefw/adapters/native/json_input.h>
 #include <chargefw/adapters/native/json_output.h>
 #include <chargefw/adapters/native/mol2_input.h>
+#include <chargefw/adapters/native/mol2_output.h>
 #include <chargefw/adapters/native/mol_input.h>
 #include <chargefw/adapters/native/sdf_input.h>
+#include <chargefw/adapters/native/sdf_output.h>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule.h>
@@ -14,6 +16,7 @@
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
+#include <array>
 #include <cctype>
 #include <exception>
 #include <filesystem>
@@ -27,6 +30,7 @@
 #include <vector>
 
 namespace calculation = chargefw::calculation;
+namespace charges = chargefw::charges;
 namespace core = chargefw::core;
 namespace features = chargefw::features;
 namespace methods = chargefw::methods;
@@ -36,13 +40,17 @@ namespace adapters = chargefw::adapters;
 namespace {
 
 struct ImportedCollection {
+    enum class Format { sdf, mol, mol2, json };
+
     core::MoleculeCollection molecules;
     std::vector<adapters::MoleculeRecordIdentity> identities;
     std::vector<adapters::MoleculeRecordMapping> mappings;
+    Format format;
 };
 
 template <typename Reader>
-auto read_collection(Reader& reader, const std::string& input_path) -> ImportedCollection {
+auto read_collection(Reader& reader, const std::string& input_path,
+                     const ImportedCollection::Format format) -> ImportedCollection {
     std::vector<core::Molecule> molecules;
     std::vector<adapters::MoleculeRecordIdentity> identities;
     std::vector<adapters::MoleculeRecordMapping> mappings;
@@ -61,7 +69,8 @@ auto read_collection(Reader& reader, const std::string& input_path) -> ImportedC
     return ImportedCollection{.molecules =
                                   core::MoleculeCollection{std::move(molecules), input_path},
                               .identities = std::move(identities),
-                              .mappings = std::move(mappings)};
+                              .mappings = std::move(mappings),
+                              .format = format};
 }
 
 auto read_collection(const std::string& input_path) -> ImportedCollection {
@@ -76,23 +85,101 @@ auto read_collection(const std::string& input_path) -> ImportedCollection {
     });
     if (extension == ".sdf") {
         adapters::native::sdf_input::SdfReader reader{input, input_path};
-        return read_collection(reader, input_path);
+        return read_collection(reader, input_path, ImportedCollection::Format::sdf);
     }
     if (extension == ".mol") {
         adapters::native::mol_input::MolReader reader{input, input_path};
-        return read_collection(reader, input_path);
+        return read_collection(reader, input_path, ImportedCollection::Format::mol);
     }
     if (extension == ".mol2") {
         adapters::native::mol2_input::Mol2Reader reader{input, input_path};
-        return read_collection(reader, input_path);
+        return read_collection(reader, input_path, ImportedCollection::Format::mol2);
     }
     if (extension == ".json") {
         adapters::native::json_input::JsonReader reader{input, input_path};
-        return read_collection(reader, input_path);
+        return read_collection(reader, input_path, ImportedCollection::Format::json);
     }
 
     throw std::runtime_error{"Unsupported input file type: " + extension +
                              ". Supported types: .sdf, .mol, .mol2, .json"};
+}
+
+[[nodiscard]] auto assignments_by_molecule(const charges::ChargeSet& charge_set,
+                                           const std::size_t molecule_count)
+    -> std::vector<charges::ChargeAssignment> {
+    auto result = std::vector<charges::ChargeAssignment>{};
+    result.reserve(molecule_count);
+    for (std::size_t molecule_index = 0; molecule_index < molecule_count; ++molecule_index) {
+        const auto found =
+            std::ranges::find_if(charge_set.assignments(),
+                                 [molecule_index](const charges::ChargeAssignment& assignment) {
+                                     return assignment.target.molecule_index == molecule_index;
+                                 });
+        if (found == charge_set.assignments().end()) {
+            throw std::runtime_error{"No charge assignment for molecule " +
+                                     std::to_string(molecule_index)};
+        }
+        const auto remaining = charge_set.assignments().subspan(
+            static_cast<std::size_t>(std::distance(charge_set.assignments().begin(), found)) + 1);
+        const auto duplicate = std::ranges::find_if(
+            remaining, [molecule_index](const charges::ChargeAssignment& assignment) {
+                return assignment.target.molecule_index == molecule_index;
+            });
+        if (duplicate != remaining.end()) {
+            throw std::runtime_error{
+                "Molecular output does not support multiple conformer assignments per molecule"};
+        }
+        result.push_back(*found);
+    }
+    return result;
+}
+
+auto write_json(const std::filesystem::path& path, const adapters::ChargeResultDocument& document)
+    -> void {
+    auto output = std::ofstream{path};
+    if (!output) {
+        throw std::runtime_error{"Unable to open output file: " + path.string()};
+    }
+    adapters::native::json_output::JsonWriter{output}.write(document);
+}
+
+auto write_mol2(const std::filesystem::path& path, const std::string& input_path,
+                const ImportedCollection& imported,
+                const std::span<const charges::ChargeAssignment> assignments) -> void {
+    auto output = std::ofstream{path, std::ios::binary};
+    if (!output) {
+        throw std::runtime_error{"Unable to open output file: " + path.string()};
+    }
+    auto writer = adapters::native::mol2_output::Mol2Writer{output};
+    if (imported.format == ImportedCollection::Format::mol2) {
+        writer.write_preserving_source(input_path, assignments);
+        return;
+    }
+    for (std::size_t index = 0; index < imported.molecules.size(); ++index) {
+        writer.write_generated(imported.molecules[index], assignments[index]);
+    }
+}
+
+auto write_sdf(const std::filesystem::path& path, const std::string& input_path,
+               const ImportedCollection& imported,
+               const std::span<const charges::ChargeAssignment> assignments) -> void {
+    auto output = std::ofstream{path, std::ios::binary};
+    if (!output) {
+        throw std::runtime_error{"Unable to open output file: " + path.string()};
+    }
+    auto writer = adapters::native::sdf_output::SdfWriter{output};
+    const auto properties = std::array{adapters::native::sdf_output::ChargeProperty{
+        .charge_type_id = 1, .assignments = assignments}};
+    if (imported.format == ImportedCollection::Format::sdf) {
+        writer.write_preserving_source(input_path, properties);
+        return;
+    }
+    for (std::size_t index = 0; index < imported.molecules.size(); ++index) {
+        const auto property = std::array{adapters::native::sdf_output::ChargeProperty{
+            .charge_type_id = 1, .assignments = assignments.subspan(index, 1)}};
+        writer.write_generated(imported.molecules[index], property,
+                               adapters::native::sdf_output::MolFormat::v2000);
+    }
 }
 
 auto method_pointers(const methods::MethodRegistry& registry)
@@ -128,10 +215,12 @@ auto main(int argc, char* argv[]) -> int {
     try {
         CLI::App app{"Calculate empirical partial atomic charges from a molecular file."};
         std::string input_path;
-        std::string output_path;
+        std::string output_directory;
         app.add_option("input", input_path, "Input .sdf, .mol, .mol2, or ChargeFW .json file")
             ->required();
-        app.add_option("-o,--output", output_path, "Write JSON calculation result to this file");
+        app.add_option("output", output_directory,
+                       "Output directory for .json, .sdf, and .mol2 files")
+            ->required();
         CLI11_PARSE(app, argc, argv);
 
         const auto imported = read_collection(input_path);
@@ -147,20 +236,40 @@ auto main(int argc, char* argv[]) -> int {
                                             .candidate_methods = candidates,
                                             .parameter_sets = parameter_sets});
 
-        const auto output = result_document(imported, result);
-        if (output_path.empty()) {
-            adapters::native::json_output::JsonWriter{std::cout}.write(output);
-        } else {
-            std::ofstream output_file{output_path};
-            if (!output_file) {
-                throw std::runtime_error{"Unable to open output file: " + output_path};
-            }
-            adapters::native::json_output::JsonWriter{output_file}.write(output);
-        }
-
         if (!result.calculated()) {
+            adapters::native::json_output::JsonWriter{std::cout}.write(
+                result_document(imported, result));
             return 1;
         }
+
+        if (imported.format == ImportedCollection::Format::json &&
+            std::ranges::any_of(imported.molecules.molecules(), [](const core::Molecule& molecule) {
+                return molecule.conformer_count() > 1;
+            })) {
+            throw std::runtime_error{
+                "JSON input with multiple conformers cannot be written to SDF or MOL2"};
+        }
+
+        const auto directory = std::filesystem::path{output_directory};
+        std::error_code directory_error;
+        std::filesystem::create_directories(directory, directory_error);
+        if (directory_error) {
+            throw std::runtime_error{"Unable to create output directory: " + directory.string() +
+                                     ": " + directory_error.message()};
+        }
+        if (!std::filesystem::is_directory(directory)) {
+            throw std::runtime_error{"Output path is not a directory: " + directory.string()};
+        }
+        const auto input_name = std::filesystem::path{input_path}.stem();
+        const auto prefix = directory / (input_name.string() + ".chargefw");
+        const auto output = result_document(imported, result);
+        write_json(prefix.string() + ".json", output);
+        const auto assignments =
+            assignments_by_molecule(*result.charges, imported.molecules.size());
+        write_sdf(prefix.string() + ".sdf", input_path, imported, assignments);
+        write_mol2(prefix.string() + ".mol2", input_path, imported, assignments);
+        std::println("Wrote {}, {}, and {}", prefix.string() + ".json", prefix.string() + ".sdf",
+                     prefix.string() + ".mol2");
 
         return 0;
     } catch (const std::exception& error) {

@@ -32,12 +32,12 @@ endfunction()
 
 if(CHARGEFW_BUILD_CLI)
     add_test(
-            NAME test_chargefw_cli_json
+            NAME test_chargefw_cli_outputs
             COMMAND ${CMAKE_COMMAND}
                     -DCHARGEFW_CLI=$<TARGET_FILE:chargefw_cli>
                     -DCHARGEFW_PARAMETER_DIR=${PROJECT_SOURCE_DIR}/data/parameters
                     -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/water.sdf
-                    -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_json.cmake
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_outputs.cmake
     )
 endif()
 

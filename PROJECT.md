@@ -104,9 +104,12 @@ candidate can be calculated.
 
 The current `chargefw` executable is a molecular-file demonstration. It autodetects `.sdf`, `.mol`,
 `.mol2`, and ChargeFW `.json` input from the file extension, rejects the entire input on the first
-malformed record,
-loads bundled parameter sets, autodetects the highest-priority applicable method and parameter set,
-and writes a versioned JSON result document. It is not yet a full user-facing file/SMILES CLI.
+malformed record, loads bundled parameter sets, autodetects the highest-priority applicable method
+and parameter set, and writes compatible JSON, SDF, and MOL2 outputs. Same-format SDF and MOL2
+outputs preserve the source; other molecular outputs are generated. The required output-directory
+argument is created when absent, and output filenames use `<input-stem>.chargefw`. JSON molecules
+with multiple conformers are rejected because one record cannot currently represent all assignments
+consistently. It is not yet a full user-facing file/SMILES CLI.
 
 ### Calculation granularity
 

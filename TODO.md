@@ -73,8 +73,8 @@ acceptance criteria for each priority, not optional follow-up work.
   validated; use generated output explicitly for other cases.
 - [ ] Replace the molecular-file demonstration with a user-facing C++ CLI over the application
   facade; retain the water workflow as a focused example or test. The current demo accepts
-  MOL/SDF/MOL2/ChargeFW JSON input and writes JSON results, but lacks user-facing selection, batch,
-  and complete diagnostic behavior.
+  MOL/SDF/MOL2/ChargeFW JSON input and writes compatible JSON/SDF/MOL2 results, but lacks user-facing
+  selection, multi-conformer molecular output, batch controls, and complete diagnostic behavior.
 - [ ] Expose molecule source, method/parameter selection, conformer selection, full/cutoff/cover
   policy, radius, and correction policy through explicit CLI options with reported defaults.
 - [ ] Add bounded batch execution with deterministic record order and memory use independent of

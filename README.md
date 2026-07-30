@@ -46,7 +46,7 @@ cmake --build --preset gcc-debug
 ctest --preset gcc-debug
 
 # Run the molecular-file demonstration from the build tree.
-CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw tests/water.sdf
+CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw tests/water.sdf output
 ```
 
 Run an individual test after building:
@@ -57,8 +57,12 @@ ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 
 The demo accepts `.sdf`, `.mol`, `.mol2`, and ChargeFW `.json` input files, selects the reader from
 the file extension, rejects the entire input on the first malformed record, loads bundled parameter
-sets, and autodetects the highest-priority applicable method and parameter set. It writes a versioned JSON
-result document to standard output, or to a file passed with `--output`.
+sets, and autodetects the highest-priority applicable method and parameter set. A successful run writes
+compatible `.json`, `.sdf`, and `.mol2` outputs in the required output-directory argument, creating
+the directory when necessary. Output filenames use `<input-stem>.chargefw`, for example
+`water.chargefw.sdf`. Same-format SDF and MOL2 outputs preserve the input source; other formats are
+generated from native molecule data. JSON input containing a molecule with multiple conformers is
+rejected for these molecular outputs.
 
 The JSON result uses `"schema_version": "1.0"` and retains one `results` entry for every successfully
 imported molecule. Each entry records input identity, explicit atom and conformer mappings, selected
@@ -100,7 +104,7 @@ ctest --preset clang-asan
 cmake --preset local-install
 cmake --build build/local-install
 cmake --install build/local-install
-env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw tests/water.sdf
+env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw tests/water.sdf output
 ```
 
 The `_install` directory is a local installation staging area for testing installation behavior; it
