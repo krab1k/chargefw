@@ -4,10 +4,7 @@
 
 #include <algorithm>
 #include <charconv>
-#include <cmath>
 #include <cstddef>
-#include <format>
-#include <fstream>
 #include <optional>
 #include <ostream>
 #include <print>
@@ -30,11 +27,6 @@ struct Line {
     std::string_view ending;
     std::size_t end = 0;
 };
-
-[[nodiscard]] auto formatted_charge(const double value) -> std::string {
-    constexpr auto charge_scale = 10000.0;
-    return std::format("{:.4f}", std::round(value * charge_scale) / charge_scale);
-}
 
 auto validate_property_ids(const std::span<const ChargeProperty> properties) -> void {
     auto ids = std::unordered_set<std::size_t>{};
@@ -137,7 +129,7 @@ auto write_charge_property(const ChargeProperty& property,
         if (index != 0) {
             std::print(output, " ");
         }
-        std::print(output, "{}", formatted_charge(assignment.charges[index]));
+        std::print(output, "{}", common_output::formatted_charge(assignment.charges[index]));
     }
     std::print(output, "{}{}", ending, ending);
 }
@@ -227,20 +219,13 @@ auto write_preserving_records(std::istream& input, std::ostream& output,
                 "generated SDF output requires one assignment per charge property"};
         }
         const auto& assignment = property.assignments.front();
-        common_output::validate_assignment(assignment.charges, molecule.atom_count());
-        if (!assignment.target.conformer_index.has_value()) {
-            throw std::invalid_argument{
-                "generated SDF output requires conformer-specific assignments"};
-        }
+        static_cast<void>(common_output::assignment_conformer(molecule, assignment, "SDF"));
         if (conformer_index.has_value() && conformer_index != assignment.target.conformer_index) {
             throw std::invalid_argument{
                 "generated SDF charge properties must reference the same conformer"};
         }
         conformer_index = assignment.target.conformer_index;
         result.push_back(std::addressof(assignment));
-    }
-    if (*conformer_index >= molecule.conformer_count()) {
-        throw std::invalid_argument{"charge assignment references an unavailable conformer"};
     }
     return result;
 }
@@ -318,10 +303,7 @@ SdfWriter::SdfWriter(std::ostream& output) : output_{std::addressof(output)} {}
 auto SdfWriter::write_preserving_source(const std::string& source_path,
                                         const std::span<const ChargeProperty> properties,
                                         const WriteMode mode) const -> void {
-    auto input = std::ifstream{source_path, std::ios::binary};
-    if (!input) {
-        throw std::runtime_error{"unable to open SDF source file: " + source_path};
-    }
+    auto input = common_output::open_source_file(source_path, "SDF");
     write_preserving_records(input, *output_, properties, mode);
 }
 
@@ -336,12 +318,8 @@ auto SdfWriter::write_generated(const core::Molecule& molecule,
                                 const std::span<const ChargeProperty> properties,
                                 const MolFormat format) const -> void {
     const auto assignments = generated_assignments(properties, molecule);
-    const auto conformer_index = *assignments.front()->target.conformer_index;
-    const auto& conformer = molecule.conformer(conformer_index);
-    if (conformer.size() != molecule.atom_count()) {
-        throw std::invalid_argument{
-            "SDF conformer coordinate count does not match molecule atom count"};
-    }
+    const auto& conformer =
+        common_output::assignment_conformer(molecule, *assignments.front(), "SDF");
 
     if (format == MolFormat::v2000) {
         write_v2000(molecule, conformer, *output_);
