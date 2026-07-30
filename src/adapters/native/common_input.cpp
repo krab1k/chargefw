@@ -110,8 +110,8 @@ auto identity_mapping(const std::size_t count) -> std::vector<std::optional<std:
 
 auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
                  std::vector<core::Conformer> conformers, MoleculeRecordIdentity identity,
-                 std::string name, std::vector<MoleculeRecordDiagnostic> diagnostics,
-                 std::optional<MoleculeRecordSource> source) -> ImportedMoleculeRecord {
+                 std::string name, std::vector<MoleculeRecordDiagnostic> diagnostics)
+    -> ImportedMoleculeRecord {
     if (name.empty()) {
         name = identity.record_id;
     }
@@ -125,8 +125,7 @@ auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
                                   .identity = std::move(identity),
                                   .mapping = {.atom_indices = std::move(atom_mapping),
                                               .conformer_indices = std::move(conformer_mapping)},
-                                  .diagnostics = std::move(diagnostics),
-                                  .source = std::move(source)};
+                                  .diagnostics = std::move(diagnostics)};
 }
 
 } // namespace chargefw::adapters::native::common_input

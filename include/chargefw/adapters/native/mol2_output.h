@@ -4,18 +4,26 @@
 #include <chargefw/core/molecule.h>
 
 #include <iosfwd>
+#include <span>
 #include <string>
 
 namespace chargefw::adapters::native::mol2_output {
 
-// Copies a MOL2 source file while replacing or adding the partial-charge field for atom records in
-// the selected molecule record. All unrelated source bytes are retained.
+// Copies a MOL2 source record while replacing or adding partial-charge fields. All unrelated source
+// bytes are retained.
 class Mol2Writer {
   public:
     explicit Mol2Writer(std::ostream& output);
 
-    auto write_preserving_source(const std::string& source_path, std::size_t record_index,
-                                 const charges::ChargeAssignment& assignment) const -> void;
+    // Streams a MOL2 file once, preserving every record and patching assignments by molecule index.
+    auto write_preserving_source(const std::string& source_path,
+                                 std::span<const charges::ChargeAssignment> assignments) const
+        -> void;
+
+    // Preserves MOL2 source bytes while patching assignments by molecule index.
+    auto write_preserving_buffer(std::string_view source,
+                                 std::span<const charges::ChargeAssignment> assignments) const
+        -> void;
 
     // Generates a MOL2 record from native graph and conformer data. Generated atom types are
     // element symbols only; no Tripos typing or substructure inference is performed.

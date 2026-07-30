@@ -181,9 +181,9 @@ auto Mol2Reader::next() -> std::optional<ImportedMoleculeRecord> {
     std::string line;
     while (std::getline(*input_, line)) {
         if (line == molecule_marker) {
-            const auto identity = MoleculeRecordIdentity{
-                .source = source_, .record_index = record_index_++, .record_id = {}};
-            return parse_record(*input_, identity);
+            return parse_record(*input_, MoleculeRecordIdentity{.source = source_,
+                                                                .record_index = record_index_++,
+                                                                .record_id = {}});
         }
     }
 

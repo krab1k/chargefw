@@ -25,15 +25,5 @@ auto main() -> int {
                                                      .conformer_indices = {}};
     assert(!adapters::is_identity_mapping(incomplete, water));
 
-    const adapters::ImportedMoleculeRecord imported{
-        .molecule = chargefw::test::make_water(),
-        .identity = {.source = "input.cif", .record_index = 0, .record_id = "example"},
-        .mapping = identity,
-        .diagnostics = {},
-        .source = adapters::MoleculeRecordSource{.format = "mmcif", .payload = "data_example\n"}};
-    assert(imported.source.has_value());
-    assert(imported.source->format == "mmcif");
-    assert(imported.source->payload == "data_example\n");
-
     return 0;
 }

@@ -29,13 +29,21 @@ namespace {
             .charges = charges::AtomicCharges{std::move(values)}};
 }
 
+[[nodiscard]] auto assignment(const std::size_t molecule_index, std::vector<double> values)
+    -> charges::ChargeAssignment {
+    return {.target = {.molecule_index = molecule_index, .conformer_index = 0},
+            .charges = charges::AtomicCharges{std::move(values)}};
+}
+
 } // namespace
 
 auto main() -> int {
     {
         auto output = std::ostringstream{};
-        mol2_output::Mol2Writer{output}.write_preserving_source(
-            fixture("charged_aromatic.mol2").string(), 0, assignment({-0.87654, 0.43827, 0.43827}));
+        auto input = std::ifstream{fixture("charged_aromatic.mol2"), std::ios::binary};
+        const auto source = std::string{std::istreambuf_iterator<char>{input}, {}};
+        const auto assignments = std::vector{assignment({-0.87654, 0.43827, 0.43827})};
+        mol2_output::Mol2Writer{output}.write_preserving_buffer(source, assignments);
         const auto text = output.str();
         assert(text.contains("7 N1 0.0000 0.0000 0.0000 N.4 1 LIG -0.8765"));
         assert(text.contains("9 C1 1.0000 0.0000 0.0000 C.ar 1 LIG 0.4383"));
@@ -53,11 +61,30 @@ auto main() -> int {
         input.close();
 
         auto output = std::ostringstream{};
-        mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), 0,
-                                                                assignment({-0.1, 0.1}));
+        const auto assignments = std::vector{assignment({-0.1, 0.1})};
+        mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), assignments);
         const auto text = output.str();
         assert(text.contains("1 C1 0 0 0 C.3 1 UNL -0.1000"));
         assert(text.contains("2 H1 1 0 0 H 1 UNL 0.1000"));
+        std::filesystem::remove(source);
+    }
+
+    {
+        const auto source = std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "build" /
+                            "mol2_batch_preserving.mol2";
+        auto input = std::ofstream{source};
+        std::print(input, "preamble\n@<TRIPOS>MOLECULE\nfirst\n1 0 0 0 0\nSMALL\nNO_CHARGES\n"
+                          "@<TRIPOS>ATOM\n1 C1 0 0 0 C.3\n@<TRIPOS>BOND\n"
+                          "@<TRIPOS>MOLECULE\nsecond\n1 0 0 0 0\nSMALL\nUSER_CHARGES\n"
+                          "@<TRIPOS>ATOM\n1 O1 0 0 0 O.3 1 UNL 0.0000\n@<TRIPOS>BOND\n");
+        input.close();
+
+        auto output = std::ostringstream{};
+        const auto assignments = std::vector{assignment(0, {-0.1}), assignment(1, {0.2})};
+        mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), assignments);
+        assert(output.str().contains("1 C1 0 0 0 C.3 1 UNL -0.1000"));
+        assert(output.str().contains("1 O1 0 0 0 O.3 1 UNL 0.2000"));
+        assert(output.str().contains("preamble\n"));
         std::filesystem::remove(source);
     }
 
@@ -72,8 +99,8 @@ auto main() -> int {
         input.close();
 
         auto output = std::ostringstream{};
-        mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), 0,
-                                                                assignment({-0.1}));
+        const auto assignments = std::vector{assignment({-0.1})};
+        mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), assignments);
         assert(output.str() == "@<TRIPOS>MOLECULE\r\nminimal\r\n1 0 0 0 0\r\nSMALL\r\n"
                                "USER_CHARGES\r\n\r\n@<TRIPOS>ATOM\r\n"
                                "  1\tC1   0.0  0.0\t0.0  C.3  1 LIG   -0.1000   # retained\r\n"

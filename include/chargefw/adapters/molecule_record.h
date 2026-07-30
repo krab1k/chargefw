@@ -17,14 +17,6 @@ struct MoleculeRecordIdentity {
     std::string record_id;
 };
 
-// Preserved source material used by a format-specific writer to enrich an existing record without
-// reconstructing its hierarchy or unrelated categories. The adapter owns the representation and
-// format; the shared contract only retains the opaque payload.
-struct MoleculeRecordSource {
-    std::string format;
-    std::string payload;
-};
-
 // Maps a source atom or conformer index to its preserved native index. A missing value represents
 // an explicitly omitted source item; adapters must not use it to silently reorder chemistry.
 struct MoleculeRecordMapping {
@@ -44,7 +36,6 @@ struct ImportedMoleculeRecord {
     MoleculeRecordIdentity identity;
     MoleculeRecordMapping mapping;
     std::vector<MoleculeRecordDiagnostic> diagnostics;
-    std::optional<MoleculeRecordSource> source;
 };
 
 [[nodiscard]] auto is_identity_mapping(const MoleculeRecordMapping& mapping,

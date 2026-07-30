@@ -3,12 +3,11 @@
 #include "common_output.h"
 
 #include <cstddef>
-#include <format>
 #include <fstream>
-#include <iterator>
 #include <optional>
 #include <ostream>
 #include <print>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -23,21 +22,17 @@ constexpr std::string_view bond_marker{"@<TRIPOS>BOND"};
 [[nodiscard]] auto field_range(const std::string_view value, const std::size_t field_index)
     -> std::optional<std::pair<std::size_t, std::size_t>> {
     std::size_t position = 0;
-
-    for (std::size_t current_index = 0; current_index <= field_index; ++current_index) {
+    for (std::size_t index = 0; index <= field_index; ++index) {
         position = value.find_first_not_of(" \t", position);
         if (position == std::string_view::npos) {
             return std::nullopt;
         }
-
         const auto end = value.find_first_of(" \t", position);
-        if (current_index == field_index) {
+        if (index == field_index) {
             return std::pair{position, end == std::string_view::npos ? value.size() : end};
         }
-
         position = end;
     }
-
     return std::nullopt;
 }
 
@@ -47,87 +42,149 @@ constexpr std::string_view bond_marker{"@<TRIPOS>BOND"};
         throw std::runtime_error{"invalid MOL2 atom record while writing charges"};
     }
 
-    const auto formatted_charge = common_output::formatted_charge(charge);
-    auto output = std::string{content};
-
-    const auto charge_range = field_range(content, 8);
-    if (!charge_range.has_value()) {
-        output += " 1 UNL ";
-        output += formatted_charge;
+    auto result = std::string{content};
+    const auto formatted = common_output::formatted_charge(charge);
+    if (const auto range = field_range(content, 8); range.has_value()) {
+        result.replace(range->first, range->second - range->first, formatted);
     } else {
-        const auto [charge_begin, charge_end] = *charge_range;
-        output.replace(charge_begin, charge_end - charge_begin, formatted_charge);
+        result += " 1 UNL ";
+        result += formatted;
+    }
+    result += ending;
+    return result;
+}
+
+[[nodiscard]] auto line_content(const std::string_view line) -> std::string_view {
+    if (line.ends_with("\r\n")) {
+        return line.substr(0, line.size() - 2);
+    }
+    if (line.ends_with('\n')) {
+        return line.substr(0, line.size() - 1);
+    }
+    return line;
+}
+
+[[nodiscard]] auto line_ending(const std::string_view line) -> std::string_view {
+    if (line.ends_with("\r\n")) {
+        return "\r\n";
+    }
+    return line.ends_with('\n') ? "\n" : "";
+}
+
+[[nodiscard]] auto next_line(std::istream& input) -> std::optional<std::string> {
+    std::string line;
+    if (!std::getline(input, line)) {
+        return std::nullopt;
+    }
+    line += '\n';
+    return line;
+}
+
+auto write_record(const std::string_view record, const charges::ChargeAssignment* assignment,
+                  std::ostream& output) -> void {
+    if (assignment == nullptr) {
+        std::print(output, "{}", record);
+        return;
     }
 
-    output += ending;
-    return output;
+    bool in_atom_section = false;
+    std::size_t atom_index = 0;
+    std::size_t start = 0;
+    while (start < record.size()) {
+        const auto newline = record.find('\n', start);
+        const auto end = newline == std::string_view::npos ? record.size() : newline + 1;
+        const auto line = record.substr(start, end - start);
+        const auto content = line_content(line);
+
+        if (content == atom_marker) {
+            in_atom_section = true;
+        } else if (content == bond_marker) {
+            if (atom_index != assignment->charges.size()) {
+                throw std::runtime_error{"MOL2 atom count does not match charge assignment"};
+            }
+            in_atom_section = false;
+        }
+
+        if (in_atom_section && !content.empty() && content.front() != '@') {
+            if (atom_index == assignment->charges.size()) {
+                throw std::runtime_error{"MOL2 atom count exceeds charge assignment"};
+            }
+            std::print(
+                output, "{}",
+                patch_atom_line(content, assignment->charges[atom_index++], line_ending(line)));
+        } else {
+            std::print(output, "{}", line);
+        }
+        start = end;
+    }
+
+    if (atom_index != assignment->charges.size()) {
+        throw std::runtime_error{"MOL2 atom count does not match charge assignment"};
+    }
+}
+
+auto write_preserving_records(std::istream& input, std::ostream& output,
+                              const std::span<const charges::ChargeAssignment> assignments)
+    -> void {
+    std::size_t record_index = 0;
+    std::size_t assignment_index = 0;
+    auto pending = next_line(input);
+
+    while (pending.has_value()) {
+        if (line_content(*pending) != molecule_marker) {
+            std::print(output, "{}", *pending);
+            pending = next_line(input);
+            continue;
+        }
+
+        auto record = std::move(*pending);
+        pending.reset();
+        while (const auto line = next_line(input)) {
+            if (line_content(*line) == molecule_marker) {
+                pending = *line;
+                break;
+            }
+            record += *line;
+        }
+
+        if (assignment_index < assignments.size() &&
+            assignments[assignment_index].target.molecule_index < record_index) {
+            throw std::invalid_argument{"MOL2 assignments are not ordered by molecule index"};
+        }
+
+        const auto* assignment = static_cast<const charges::ChargeAssignment*>(nullptr);
+        if (assignment_index < assignments.size() &&
+            assignments[assignment_index].target.molecule_index == record_index) {
+            assignment = std::addressof(assignments[assignment_index++]);
+        }
+        write_record(record, assignment, output);
+        ++record_index;
+    }
+
+    if (assignment_index != assignments.size()) {
+        throw std::invalid_argument{"MOL2 assignment references an unavailable molecule record"};
+    }
 }
 
 } // namespace
 
 Mol2Writer::Mol2Writer(std::ostream& output) : output_{std::addressof(output)} {}
 
-auto Mol2Writer::write_preserving_source(const std::string& source_path,
-                                         const std::size_t record_index,
-                                         const charges::ChargeAssignment& assignment) const
-    -> void {
+auto Mol2Writer::write_preserving_source(
+    const std::string& source_path,
+    const std::span<const charges::ChargeAssignment> assignments) const -> void {
     auto input = std::ifstream{source_path, std::ios::binary};
     if (!input) {
         throw std::runtime_error{"unable to open MOL2 source file: " + source_path};
     }
+    write_preserving_records(input, *output_, assignments);
+}
 
-    std::size_t current_record = 0;
-    bool selected_record = false;
-    bool in_atom_section = false;
-    std::size_t atom_index = 0;
-    const auto source = std::string{std::istreambuf_iterator<char>{input}, {}};
-    std::size_t line_start = 0;
-    while (line_start < source.size()) {
-        const auto line_end = source.find('\n', line_start);
-        const auto has_newline = line_end != std::string::npos;
-        const auto next_line_start = has_newline ? line_end + 1 : source.size();
-        const auto line_size = next_line_start - line_start;
-        const auto line = std::string_view{source}.substr(line_start, line_size);
-        auto ending = std::string_view{};
-        if (has_newline) {
-            ending = line.ends_with("\r\n") ? "\r\n" : "\n";
-        }
-        const auto content = line.substr(0, line.size() - std::string_view{ending}.size());
-
-        if (content == molecule_marker) {
-            if (selected_record && atom_index != assignment.charges.size()) {
-                throw std::runtime_error{"MOL2 atom count does not match charge assignment"};
-            }
-            selected_record = current_record++ == record_index;
-            in_atom_section = false;
-            atom_index = 0;
-        } else if (selected_record && content == atom_marker) {
-            in_atom_section = true;
-        } else if (selected_record && content == bond_marker) {
-            if (atom_index != assignment.charges.size()) {
-                throw std::runtime_error{"MOL2 atom count does not match charge assignment"};
-            }
-            in_atom_section = false;
-        }
-
-        if (selected_record && in_atom_section && !content.empty() && content.front() != '@') {
-            if (atom_index == assignment.charges.size()) {
-                throw std::runtime_error{"MOL2 atom count exceeds charge assignment"};
-            }
-            std::print(*output_, "{}",
-                       patch_atom_line(content, assignment.charges.at(atom_index++), ending));
-        } else {
-            std::print(*output_, "{}", line);
-        }
-        line_start = next_line_start;
-    }
-
-    if (!selected_record) {
-        throw std::runtime_error{"MOL2 record index not found in source file"};
-    }
-    if (atom_index != assignment.charges.size()) {
-        throw std::runtime_error{"MOL2 atom count does not match charge assignment"};
-    }
+auto Mol2Writer::write_preserving_buffer(
+    const std::string_view source,
+    const std::span<const charges::ChargeAssignment> assignments) const -> void {
+    auto input = std::istringstream{std::string{source}};
+    write_preserving_records(input, *output_, assignments);
 }
 
 auto Mol2Writer::write_generated(const core::Molecule& molecule,
