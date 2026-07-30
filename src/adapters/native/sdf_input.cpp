@@ -23,7 +23,7 @@ auto consume_to_sdf_delimiter(std::istream& input) -> void {
 SdfReader::SdfReader(std::istream& input, std::string source)
     : input_{std::addressof(input)}, source_{std::move(source)} {}
 
-auto SdfReader::next() -> std::optional<::chargefw::adapters::MoleculeRecordResult> {
+auto SdfReader::next() -> std::optional<ImportedMoleculeRecord> {
     if (input_->peek() == std::char_traits<char>::eof()) {
         return std::nullopt;
     }

@@ -2,17 +2,17 @@
 
 #include <chargefw/adapters/molecule_record.h>
 
-#include <expected>
 #include <istream>
 #include <optional>
 #include <string>
 
 namespace chargefw::adapters::native::mol_input {
 
-// Parses exactly one MOL record. The record ends at M  END; a following SDF separator is not
-// consumed. V2000 atom/bond blocks plus M  CHG and the V3000 CTAB atom/bond subset are supported.
+// Parses exactly one MOL record and throws on invalid input. The record ends at M  END; a following
+// SDF separator is not consumed. V2000 atom/bond blocks plus M  CHG and the V3000 CTAB atom/bond
+// subset are supported.
 [[nodiscard]] auto parse_mol(std::istream& input, MoleculeRecordIdentity identity)
-    -> ::chargefw::adapters::MoleculeRecordResult;
+    -> ImportedMoleculeRecord;
 
 // Stateful single-record counterpart to SdfReader. The first call parses the MOL record and later
 // calls return clean end-of-file.
@@ -20,7 +20,7 @@ class MolReader {
   public:
     explicit MolReader(std::istream& input, std::string source = {});
 
-    [[nodiscard]] auto next() -> std::optional<::chargefw::adapters::MoleculeRecordResult>;
+    [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 
   private:
     std::istream* input_;

@@ -103,7 +103,8 @@ not a universal scientific quality ranking. The result retains applicability dia
 candidate can be calculated.
 
 The current `chargefw` executable is a molecular-file demonstration. It autodetects `.sdf`, `.mol`,
-`.mol2`, and ChargeFW `.json` input from the file extension, reports and skips malformed records,
+`.mol2`, and ChargeFW `.json` input from the file extension, rejects the entire input on the first
+malformed record,
 loads bundled parameter sets, autodetects the highest-priority applicable method and parameter set,
 and writes a versioned JSON result document. It is not yet a full user-facing file/SMILES CLI.
 

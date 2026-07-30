@@ -3,7 +3,6 @@
 #include <chargefw/core/molecule.h>
 
 #include <cstddef>
-#include <expected>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -47,16 +46,6 @@ struct ImportedMoleculeRecord {
     std::vector<MoleculeRecordDiagnostic> diagnostics;
     std::optional<MoleculeRecordSource> source;
 };
-
-// A record-scoped import failure. Stream adapters should return this and continue when their caller
-// requests it, rather than discarding successful neighboring records.
-struct MoleculeRecordError {
-    MoleculeRecordIdentity identity;
-    std::string message;
-    std::optional<std::size_t> line;
-};
-
-using MoleculeRecordResult = std::expected<ImportedMoleculeRecord, MoleculeRecordError>;
 
 [[nodiscard]] auto is_identity_mapping(const MoleculeRecordMapping& mapping,
                                        const core::Molecule& molecule) noexcept -> bool;

@@ -2,6 +2,7 @@
 #include <chargefw/adapters/native/json_input.h>
 #include <chargefw/core/bond.h>
 
+#include <exception>
 #include <sstream>
 #include <string>
 
@@ -42,8 +43,7 @@ auto main() -> int {
         auto reader = json::JsonReader{input, "water.json"};
         const auto result = reader.next();
         assert(result.has_value());
-        assert(result->has_value());
-        const auto& record = result->value();
+        const auto& record = *result;
         assert(record.identity.source == "water.json");
         assert(record.identity.record_index == 0);
         assert(record.identity.record_id == "water-1");
@@ -80,15 +80,13 @@ auto main() -> int {
 }
 )json"};
         auto reader = json::JsonReader{input};
-        const auto first = reader.next();
-        const auto second = reader.next();
-        assert(first.has_value());
-        assert(!first->has_value());
-        assert(first->error().identity.record_index == 0);
-        assert(second.has_value());
-        assert(second->has_value());
-        assert(second->value().identity.record_id == "valid");
-        assert(!reader.next().has_value());
+        auto rejected = false;
+        try {
+            [[maybe_unused]] const auto result = reader.next();
+        } catch (const std::exception&) {
+            rejected = true;
+        }
+        assert(rejected);
     }
 
     {

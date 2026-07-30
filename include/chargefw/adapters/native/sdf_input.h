@@ -10,12 +10,12 @@
 namespace chargefw::adapters::native::sdf_input {
 
 // Bounded-memory SDF reader. Each call consumes at most one SDF record. A null result denotes clean
-// end-of-file; an unexpected result denotes one malformed record and the next call starts later.
+// end-of-file; invalid input throws and terminates import.
 class SdfReader {
   public:
     explicit SdfReader(std::istream& input, std::string source = {});
 
-    [[nodiscard]] auto next() -> std::optional<::chargefw::adapters::MoleculeRecordResult>;
+    [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 
   private:
     std::istream* input_;

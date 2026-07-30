@@ -56,8 +56,28 @@ auto main() -> int {
         mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), 0,
                                                                 assignment({-0.1, 0.1}));
         const auto text = output.str();
-        assert(text.contains("1 C1 0 0 0 C.3 1 CHARGEFW -0.1000"));
-        assert(text.contains("2 H1 1 0 0 H 1 CHARGEFW 0.1000"));
+        assert(text.contains("1 C1 0 0 0 C.3 1 UNL -0.1000"));
+        assert(text.contains("2 H1 1 0 0 H 1 UNL 0.1000"));
+        std::filesystem::remove(source);
+    }
+
+    {
+        const auto source = std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "build" /
+                            "mol2_preserved_spacing.mol2";
+        auto input = std::ofstream{source, std::ios::binary};
+        std::print(input, "@<TRIPOS>MOLECULE\r\nminimal\r\n1 0 0 0 0\r\nSMALL\r\n"
+                          "USER_CHARGES\r\n\r\n@<TRIPOS>ATOM\r\n"
+                          "  1\tC1   0.0  0.0\t0.0  C.3  1 LIG   0.1234   # retained\r\n"
+                          "@<TRIPOS>BOND\r\n");
+        input.close();
+
+        auto output = std::ostringstream{};
+        mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), 0,
+                                                                assignment({-0.1}));
+        assert(output.str() == "@<TRIPOS>MOLECULE\r\nminimal\r\n1 0 0 0 0\r\nSMALL\r\n"
+                               "USER_CHARGES\r\n\r\n@<TRIPOS>ATOM\r\n"
+                               "  1\tC1   0.0  0.0\t0.0  C.3  1 LIG   -0.1000   # retained\r\n"
+                               "@<TRIPOS>BOND\r\n");
         std::filesystem::remove(source);
     }
 

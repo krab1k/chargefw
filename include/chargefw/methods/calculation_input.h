@@ -32,6 +32,7 @@ class CalculationInput {
     [[nodiscard]] auto topology() const noexcept -> const features::TopologyFeatures&;
 
     [[nodiscard]] auto method_options() const noexcept -> const MethodOptions&;
+
     [[nodiscard]] auto target_charge() const noexcept -> double;
 
     [[nodiscard]] auto has_geometry() const noexcept -> bool;

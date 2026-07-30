@@ -6,13 +6,12 @@
 #include <format>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <ostream>
 #include <print>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace chargefw::adapters::native::mol2_output {
 namespace {
@@ -20,33 +19,46 @@ namespace {
 constexpr std::string_view molecule_marker{"@<TRIPOS>MOLECULE"};
 constexpr std::string_view atom_marker{"@<TRIPOS>ATOM"};
 constexpr std::string_view bond_marker{"@<TRIPOS>BOND"};
+
+[[nodiscard]] auto field_range(const std::string_view value, const std::size_t field_index)
+    -> std::optional<std::pair<std::size_t, std::size_t>> {
+    std::size_t position = 0;
+
+    for (std::size_t current_index = 0; current_index <= field_index; ++current_index) {
+        position = value.find_first_not_of(" \t", position);
+        if (position == std::string_view::npos) {
+            return std::nullopt;
+        }
+
+        const auto end = value.find_first_of(" \t", position);
+        if (current_index == field_index) {
+            return std::pair{position, end == std::string_view::npos ? value.size() : end};
+        }
+
+        position = end;
+    }
+
+    return std::nullopt;
+}
+
 [[nodiscard]] auto patch_atom_line(const std::string_view content, const double charge,
                                    const std::string_view ending) -> std::string {
-    auto fields = std::vector<std::string>{};
-    auto input = std::istringstream{std::string{content}};
-    for (auto field = std::string{}; input >> field;) {
-        fields.push_back(std::move(field));
-    }
-    if (fields.size() < 6) {
+    if (!field_range(content, 5).has_value()) {
         throw std::runtime_error{"invalid MOL2 atom record while writing charges"};
     }
 
-    if (fields.size() >= 9) {
-        fields[8] = common_output::formatted_charge(charge);
+    const auto formatted_charge = common_output::formatted_charge(charge);
+    auto output = std::string{content};
+
+    const auto charge_range = field_range(content, 8);
+    if (!charge_range.has_value()) {
+        output += " 1 UNL ";
+        output += formatted_charge;
     } else {
-        while (fields.size() < 8) {
-            fields.emplace_back(fields.size() == 6 ? "1" : "CHARGEFW");
-        }
-        fields.push_back(common_output::formatted_charge(charge));
+        const auto [charge_begin, charge_end] = *charge_range;
+        output.replace(charge_begin, charge_end - charge_begin, formatted_charge);
     }
 
-    auto output = std::string{};
-    for (std::size_t index = 0; index < fields.size(); ++index) {
-        if (index != 0) {
-            output += ' ';
-        }
-        output += fields[index];
-    }
     output += ending;
     return output;
 }

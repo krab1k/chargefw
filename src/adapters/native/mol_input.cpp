@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
-#include <expected>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -288,43 +287,35 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
 
 } // namespace
 
-auto parse_mol(std::istream& input, MoleculeRecordIdentity identity)
-    -> ::chargefw::adapters::MoleculeRecordResult {
+auto parse_mol(std::istream& input, MoleculeRecordIdentity identity) -> ImportedMoleculeRecord {
     std::size_t line = 0;
 
-    try {
-        const auto name = common::read_line(input, line, "MOL");
-        static_cast<void>(common::read_line(input, line, "MOL"));
-        static_cast<void>(common::read_line(input, line, "MOL"));
-        const auto counts = common::read_line(input, line, "MOL");
+    const auto name = common::read_line(input, line, "MOL");
+    static_cast<void>(common::read_line(input, line, "MOL"));
+    static_cast<void>(common::read_line(input, line, "MOL"));
+    const auto counts = common::read_line(input, line, "MOL");
 
-        if (identity.record_id.empty()) {
-            identity.record_id = name;
-        }
-
-        ParsedMolecule parsed;
-
-        if (counts.contains("V2000")) {
-            parsed = parse_v2000(input, counts, line);
-        } else if (counts.contains("V3000")) {
-            parsed = parse_v3000(input, line);
-        } else {
-            throw std::runtime_error{"unsupported MOL version"};
-        }
-
-        return make_record(std::move(parsed), std::move(identity));
-    } catch (const std::exception& error) {
-        return std::unexpected(
-            MoleculeRecordError{.identity = std::move(identity),
-                                .message = error.what(),
-                                .line = line == 0 ? std::nullopt : std::optional{line}});
+    if (identity.record_id.empty()) {
+        identity.record_id = name;
     }
+
+    ParsedMolecule parsed;
+
+    if (counts.contains("V2000")) {
+        parsed = parse_v2000(input, counts, line);
+    } else if (counts.contains("V3000")) {
+        parsed = parse_v3000(input, line);
+    } else {
+        throw std::runtime_error{"unsupported MOL version"};
+    }
+
+    return make_record(std::move(parsed), std::move(identity));
 }
 
 MolReader::MolReader(std::istream& input, std::string source)
     : input_{std::addressof(input)}, source_{std::move(source)} {}
 
-auto MolReader::next() -> std::optional<::chargefw::adapters::MoleculeRecordResult> {
+auto MolReader::next() -> std::optional<ImportedMoleculeRecord> {
     if (consumed_ || input_->peek() == std::char_traits<char>::eof()) {
         return std::nullopt;
     }

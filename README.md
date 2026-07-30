@@ -56,8 +56,8 @@ ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 ```
 
 The demo accepts `.sdf`, `.mol`, `.mol2`, and ChargeFW `.json` input files, selects the reader from
-the file extension, reports and skips malformed records, loads bundled parameter sets, and
-autodetects the highest-priority applicable method and parameter set. It writes a versioned JSON
+the file extension, rejects the entire input on the first malformed record, loads bundled parameter
+sets, and autodetects the highest-priority applicable method and parameter set. It writes a versioned JSON
 result document to standard output, or to a file passed with `--output`.
 
 The JSON result uses `"schema_version": "1.0"` and retains one `results` entry for every successfully

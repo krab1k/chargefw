@@ -15,7 +15,7 @@ class Mol2Reader {
   public:
     explicit Mol2Reader(std::istream& input, std::string source = {});
 
-    [[nodiscard]] auto next() -> std::optional<::chargefw::adapters::MoleculeRecordResult>;
+    [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 
   private:
     std::istream* input_;

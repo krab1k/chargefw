@@ -48,21 +48,14 @@ auto read_collection(Reader& reader, const std::string& input_path) -> ImportedC
     std::vector<adapters::MoleculeRecordMapping> mappings;
 
     while (const auto record = reader.next()) {
-        if (!record->has_value()) {
-            const auto& error = record->error();
-            std::print(std::cerr, "Skipping record {}: {}\n", error.identity.record_index,
-                       error.message);
-            continue;
-        }
-
-        auto imported = std::move(record->value());
+        auto imported = std::move(*record);
         molecules.push_back(std::move(imported.molecule));
         identities.push_back(std::move(imported.identity));
         mappings.push_back(std::move(imported.mapping));
     }
 
     if (molecules.empty()) {
-        throw std::runtime_error{"No valid molecules found in input file: " + input_path};
+        throw std::runtime_error{"No molecules found in input file: " + input_path};
     }
 
     return ImportedCollection{.molecules =

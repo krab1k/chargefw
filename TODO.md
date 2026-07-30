@@ -74,8 +74,9 @@ acceptance criteria for each priority, not optional follow-up work.
   and complete diagnostic behavior.
 - [ ] Expose molecule source, method/parameter selection, conformer selection, full/cutoff/cover
   policy, radius, and correction policy through explicit CLI options with reported defaults.
-- [ ] Add bounded batch execution with deterministic record order, configurable continue-on-error
-  behavior, and memory use independent of total input record count.
+- [ ] Add bounded batch execution with deterministic record order and memory use independent of
+  total input record count. Reject the entire input on the first malformed record; calculation
+  failures remain distinct from input validation failures.
 - [ ] Define and complete the stable JSON result schema: ordered entries for successful and failed
   source records; owned import/calculation diagnostics; complete provenance; mapping semantics;
   multi-conformer assignment semantics; precision/total-charge rules; and compatibility/versioning
