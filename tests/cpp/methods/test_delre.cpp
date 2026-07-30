@@ -84,7 +84,8 @@ auto calculate_delre(const methods::Method& method, const core::Molecule& molecu
     const features::PreparedMolecule prepared{molecule};
     const auto method_options = methods::make_default_options(method.option_schema());
     const parameters::ParameterView parameter_view{parameter_set, classification};
-    const methods::CalculationInput input{prepared, method_options, nullptr, &parameter_view};
+    const methods::CalculationInput input{
+        prepared, method_options, core::total_formal_charge(molecule), nullptr, &parameter_view};
 
     return method.calculate(input);
 }

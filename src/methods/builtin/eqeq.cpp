@@ -90,7 +90,7 @@ auto EQeqMethod::calculate(const CalculationInput& input) const -> charges::Atom
     matrix.row(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
     matrix.col(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
     matrix(n, n) = 0.0;
-    rhs(n) = core::total_formal_charge(molecule);
+    rhs(n) = input.target_charge();
 
     const Eigen::VectorXd q = matrix.partialPivLu().solve(rhs).head(n);
 

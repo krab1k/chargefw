@@ -1,5 +1,6 @@
 #include <chargefw/methods/method_calculation.h>
 
+#include <chargefw/core/molecule.h>
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/parameters/classification/parameter_classification.h>
@@ -119,6 +120,7 @@ auto validate_coordinate_targets(const ApplicableMethod& selected,
     auto geometry = make_geometry_if_required(*selected.method, molecule, conformer_index);
 
     const CalculationInput input{molecule, selected.method_options,
+                                 core::total_formal_charge(molecule.molecule()),
                                  geometry ? std::addressof(*geometry) : nullptr};
 
     auto atomic_charges = selected.method->calculate(input);
@@ -139,6 +141,7 @@ auto validate_coordinate_targets(const ApplicableMethod& selected,
     auto geometry = make_geometry_if_required(*selected.method, molecule, conformer_index);
 
     const CalculationInput input{molecule, selected.method_options,
+                                 core::total_formal_charge(molecule.molecule()),
                                  geometry ? std::addressof(*geometry) : nullptr, &parameter_view};
 
     auto atomic_charges = selected.method->calculate(input);

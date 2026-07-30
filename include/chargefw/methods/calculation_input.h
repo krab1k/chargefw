@@ -13,15 +13,15 @@ namespace chargefw::methods {
 class CalculationInput {
   public:
     CalculationInput(const features::PreparedMolecule& prepared_molecule,
-                     const MethodOptions& method_options,
+                     const MethodOptions& method_options, double target_charge,
                      const features::ConformerFeatures* geometry = nullptr,
                      const parameters::ParameterView* parameters = nullptr);
 
-    CalculationInput(features::PreparedMolecule&&, const MethodOptions&,
+    CalculationInput(features::PreparedMolecule&&, const MethodOptions&, double,
                      const features::ConformerFeatures* = nullptr,
                      const parameters::ParameterView* = nullptr) = delete;
 
-    CalculationInput(const features::PreparedMolecule&, MethodOptions&&,
+    CalculationInput(const features::PreparedMolecule&, MethodOptions&&, double,
                      const features::ConformerFeatures* = nullptr,
                      const parameters::ParameterView* = nullptr) = delete;
 
@@ -32,6 +32,7 @@ class CalculationInput {
     [[nodiscard]] auto topology() const noexcept -> const features::TopologyFeatures&;
 
     [[nodiscard]] auto method_options() const noexcept -> const MethodOptions&;
+    [[nodiscard]] auto target_charge() const noexcept -> double;
 
     [[nodiscard]] auto has_geometry() const noexcept -> bool;
 
@@ -48,6 +49,7 @@ class CalculationInput {
   private:
     std::reference_wrapper<const features::PreparedMolecule> prepared_molecule_;
     std::reference_wrapper<const MethodOptions> method_options_;
+    double target_charge_;
     const features::ConformerFeatures* geometry_ = nullptr;
     const parameters::ParameterView* parameters_ = nullptr;
 };

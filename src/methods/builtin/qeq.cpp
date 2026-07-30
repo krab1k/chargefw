@@ -101,7 +101,7 @@ auto QEqMethod::calculate(const CalculationInput& input) const -> charges::Atomi
     A.row(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
     A.col(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
     A(n, n) = 0.0;
-    b(n) = core::total_formal_charge(molecule);
+    b(n) = input.target_charge();
 
     const Eigen::VectorXd q = A.partialPivLu().solve(b).head(n);
 

@@ -82,7 +82,7 @@ auto SMPQEqMethod::calculate(const CalculationInput& input) const -> charges::At
         A.row(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
         A.col(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
         A(n, n) = 0.0;
-        b(n) = core::total_formal_charge(molecule);
+        b(n) = input.target_charge();
 
         b = A.partialPivLu().solve(b);
     }

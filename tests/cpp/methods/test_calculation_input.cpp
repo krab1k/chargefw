@@ -47,12 +47,13 @@ auto main() -> int {
     const features::PreparedMolecule prepared_water{water};
     const methods::MethodOptions options;
 
-    const methods::CalculationInput basic_input{prepared_water, options};
+    const methods::CalculationInput basic_input{prepared_water, options, -1.5};
 
     assert(&basic_input.prepared_molecule() == &prepared_water);
     assert(&basic_input.molecule() == &water);
     assert(&basic_input.topology() == &prepared_water.topology());
     assert(&basic_input.method_options() == &options);
+    assert(basic_input.target_charge() == -1.5);
 
     assert(!basic_input.has_geometry());
     assert(basic_input.geometry_if_available() == nullptr);
@@ -82,7 +83,7 @@ auto main() -> int {
 
     const features::ConformerFeatures geometry{water};
 
-    const methods::CalculationInput geometry_input{prepared_water, options, &geometry};
+    const methods::CalculationInput geometry_input{prepared_water, options, 0.0, &geometry};
 
     assert(geometry_input.has_geometry());
     assert(geometry_input.geometry_if_available() == &geometry);
@@ -95,7 +96,7 @@ auto main() -> int {
 
     const parameters::ParameterView parameter_view{parameter_set, classification};
 
-    const methods::CalculationInput parameter_input{prepared_water, options, nullptr,
+    const methods::CalculationInput parameter_input{prepared_water, options, 0.0, nullptr,
                                                     &parameter_view};
 
     assert(parameter_input.has_parameters());

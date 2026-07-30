@@ -7,11 +7,11 @@
 namespace chargefw::methods {
 
 CalculationInput::CalculationInput(const features::PreparedMolecule& prepared_molecule,
-                                   const MethodOptions& method_options,
+                                   const MethodOptions& method_options, const double target_charge,
                                    const features::ConformerFeatures* geometry,
                                    const parameters::ParameterView* parameters)
-    : prepared_molecule_{prepared_molecule}, method_options_{method_options}, geometry_{geometry},
-      parameters_{parameters} {}
+    : prepared_molecule_{prepared_molecule}, method_options_{method_options},
+      target_charge_{target_charge}, geometry_{geometry}, parameters_{parameters} {}
 auto CalculationInput::prepared_molecule() const noexcept -> const features::PreparedMolecule& {
     return prepared_molecule_.get();
 }
@@ -26,6 +26,10 @@ auto CalculationInput::topology() const noexcept -> const features::TopologyFeat
 
 auto CalculationInput::method_options() const noexcept -> const MethodOptions& {
     return method_options_.get();
+}
+
+auto CalculationInput::target_charge() const noexcept -> double {
+    return target_charge_;
 }
 
 auto CalculationInput::has_geometry() const noexcept -> bool {
