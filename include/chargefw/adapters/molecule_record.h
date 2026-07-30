@@ -38,7 +38,4 @@ struct ImportedMoleculeRecord {
     std::vector<MoleculeRecordDiagnostic> diagnostics;
 };
 
-[[nodiscard]] auto is_identity_mapping(const MoleculeRecordMapping& mapping,
-                                       const core::Molecule& molecule) noexcept -> bool;
-
 } // namespace chargefw::adapters

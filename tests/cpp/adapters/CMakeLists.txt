@@ -1,7 +1,3 @@
-chargefw_add_test(test_molecule_record
-        test_molecule_record.cpp
-)
-
 chargefw_add_test(test_mol
         test_mol.cpp
 )

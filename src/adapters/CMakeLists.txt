@@ -1,7 +1,6 @@
 target_sources(chargefw_core
         PRIVATE
         native/json_output.cpp
-        molecule_record.cpp
         native/common_input.cpp
         native/common_output.cpp
         native/json_input.cpp
