@@ -129,5 +129,19 @@ auto main() -> int {
 
     assert(rejected_bad_charge_count);
 
+    bool rejected_out_of_order_targets = false;
+    try {
+        charges::validate_charge_collection(
+            molecules, charges::ChargeCollection{{charges::ChargeSet{
+                           "dummy",
+                           {{.target = charges::ChargeTarget{.molecule_index = 1},
+                             .charges = charges::AtomicCharges{{1.0, -1.0}}},
+                            {.target = charges::ChargeTarget{.molecule_index = 0},
+                             .charges = charges::AtomicCharges{{-0.8, 0.4, 0.4}}}}}}});
+    } catch (const std::invalid_argument&) {
+        rejected_out_of_order_targets = true;
+    }
+    assert(rejected_out_of_order_targets);
+
     return 0;
 }

@@ -57,6 +57,49 @@ auto validate_assignment(const core::MoleculeCollection& molecules,
     validate_charge_count(molecules, assignment, charge_set_index, assignment_index);
 }
 
+auto validate_assignment_order(const core::MoleculeCollection& molecules,
+                               const ChargeSet& charge_set, const std::size_t charge_set_index)
+    -> void {
+    auto assignment_index = std::size_t{0};
+    for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
+        if (assignment_index == charge_set.size()) {
+            throw std::invalid_argument{make_context(charge_set_index, assignment_index) +
+                                        "missing target molecule"};
+        }
+
+        const auto& first_target = charge_set.assignment(assignment_index).target;
+        if (first_target.molecule_index != molecule_index) {
+            throw std::invalid_argument{make_context(charge_set_index, assignment_index) +
+                                        "target molecule order does not match the collection"};
+        }
+
+        if (!first_target.conformer_index.has_value()) {
+            ++assignment_index;
+            continue;
+        }
+
+        for (std::size_t conformer_index = 0;
+             conformer_index < molecules[molecule_index].conformer_count(); ++conformer_index) {
+            if (assignment_index == charge_set.size()) {
+                throw std::invalid_argument{make_context(charge_set_index, assignment_index) +
+                                            "missing target conformer"};
+            }
+            const auto& target = charge_set.assignment(assignment_index).target;
+            if (target.molecule_index != molecule_index ||
+                target.conformer_index != conformer_index) {
+                throw std::invalid_argument{make_context(charge_set_index, assignment_index) +
+                                            "target conformer order does not match the molecule"};
+            }
+            ++assignment_index;
+        }
+    }
+
+    if (assignment_index != charge_set.size()) {
+        throw std::invalid_argument{make_context(charge_set_index, assignment_index) +
+                                    "unexpected extra target"};
+    }
+}
+
 } // namespace
 
 auto validate_charge_collection(const core::MoleculeCollection& collection,
@@ -66,6 +109,7 @@ auto validate_charge_collection(const core::MoleculeCollection& collection,
     for (std::size_t charge_set_index = 0; charge_set_index < charge_sets.size();
          ++charge_set_index) {
         const auto assignments = charge_sets[charge_set_index].assignments();
+        validate_assignment_order(collection, charge_sets[charge_set_index], charge_set_index);
 
         for (std::size_t assignment_index = 0; assignment_index < assignments.size();
              ++assignment_index) {

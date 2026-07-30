@@ -127,7 +127,6 @@ auto write_preserving_records(std::istream& input, std::ostream& output,
                               const std::span<const charges::ChargeAssignment> assignments)
     -> void {
     std::size_t record_index = 0;
-    std::size_t assignment_index = 0;
     auto pending = next_line(input);
 
     while (pending.has_value()) {
@@ -147,22 +146,20 @@ auto write_preserving_records(std::istream& input, std::ostream& output,
             record += *line;
         }
 
-        if (assignment_index < assignments.size() &&
-            assignments[assignment_index].target.molecule_index < record_index) {
-            throw std::invalid_argument{"MOL2 assignments are not ordered by molecule index"};
+        if (record_index >= assignments.size()) {
+            throw std::invalid_argument{"MOL2 source has more records than charge assignments"};
         }
 
-        const auto* assignment = static_cast<const charges::ChargeAssignment*>(nullptr);
-        if (assignment_index < assignments.size() &&
-            assignments[assignment_index].target.molecule_index == record_index) {
-            assignment = std::addressof(assignments[assignment_index++]);
+        const auto& assignment = assignments[record_index];
+        if (assignment.target.molecule_index != record_index) {
+            throw std::invalid_argument{"MOL2 assignment order does not match source record order"};
         }
-        write_record(record, assignment, output);
+        write_record(record, std::addressof(assignment), output);
         ++record_index;
     }
 
-    if (assignment_index != assignments.size()) {
-        throw std::invalid_argument{"MOL2 assignment references an unavailable molecule record"};
+    if (record_index != assignments.size()) {
+        throw std::invalid_argument{"MOL2 source has fewer records than charge assignments"};
     }
 }
 
