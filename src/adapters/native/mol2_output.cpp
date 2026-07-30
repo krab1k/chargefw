@@ -155,7 +155,7 @@ auto Mol2Writer::write_generated(const core::Molecule& molecule,
     for (std::size_t index = 0; index < molecule.atom_count(); ++index) {
         const auto& atom = molecule.atom(index);
         const auto& position = conformer[index];
-        std::print(*output_, "{} {} {} {} {} {} 1 CHARGEFW {}\n", index + 1,
+        std::print(*output_, "{} {} {} {} {} {} 1 UNL {}\n", index + 1,
                    common_output::generated_atom_name(atom, index), position.x, position.y,
                    position.z, common_output::atom_element_symbol(atom),
                    common_output::formatted_charge(assignment.charges[index]));

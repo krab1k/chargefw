@@ -49,6 +49,7 @@ auto read_to_atom_section(std::istream& input, std::size_t& line) -> void {
         if (section == molecule_marker) {
             throw std::runtime_error{"missing MOL2 ATOM section"};
         }
+        // Skip unrelated MOL2 sections: this adapter reads only MOLECULE, ATOM, and BOND data.
     }
 }
 

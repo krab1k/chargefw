@@ -94,8 +94,8 @@ auto main() -> int {
                                                         assignment({-0.97533, 0.48766, 0.48767}));
         const auto text = output.str();
         assert(text.contains("@<TRIPOS>MOLECULE\nwater\n3 2 0 0 0\nSMALL\nUSER_CHARGES\n"));
-        assert(text.contains("1 O1 0 0 0 O 1 CHARGEFW -0.9753"));
-        assert(text.contains("2 H2 0.9 0 0 H 1 CHARGEFW 0.4877"));
+        assert(text.contains("1 O1 0 0 0 O 1 UNL -0.9753"));
+        assert(text.contains("2 H2 0.9 0 0 H 1 UNL 0.4877"));
         assert(text.contains("@<TRIPOS>BOND\n1 1 2 1\n2 1 3 1\n"));
     }
 
