@@ -61,8 +61,11 @@ acceptance criteria for each priority, not optional follow-up work.
   ATOM partial-charge fields without reconstructing unrelated sections, plus basic generated MOL2
   output from native graph/conformer data when the source format is different. Generated output does
   not infer Tripos atom types or substructure semantics.
-- [ ] Add SDF output that attaches partial charges and calculation provenance without changing
-  formal charges, topology, coordinates, or source identifiers.
+- [x] Add preservation-oriented SDF charge output with replace and append modes. Atom-order charge
+  vectors are stored in numbered `CHARGEFW_CHARGES_<type-id>` properties without changing formal
+  charges, topology, coordinates, source identifiers, or unrelated data fields. Complete calculation
+  provenance remains part of the application result/export contract in section 1. Generated output
+  supports explicit V2000 or V3000 selection while preservation mode retains the source MOL version.
 - [ ] Add preservation-oriented writers for matching filesystem-backed inputs: copy source bytes and
   make only minimal format-specific edits. MOL2 replaces/adds optional ATOM charge fields; mmCIF
   appends ChargeFW categories inside the selected data block; future PQR replaces mapped charges

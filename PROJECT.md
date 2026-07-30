@@ -258,6 +258,11 @@ serializes the format-neutral `ChargeResultDocument` used by the CLI and future 
 fields for one selected record, or generates a basic MOL2 record from native graph and conformer
 data when the input is another format. Generated MOL2 uses element-symbol atom types and a single
 `CHARGEFW` substructure; it does not infer Tripos typing or source-specific substructure semantics.
+`sdf_output::SdfWriter` preserves source SDF records and writes atom-order charge vectors as numbered
+`CHARGEFW_CHARGES_<type-id>` data fields. Replace mode removes existing fields with that owned prefix
+before writing the new set; append mode retains existing fields and adds another set. It can also
+generate an explicit V2000 or V3000 SDF record from native graph and conformer data, preserving
+formal charges in the MOL representation and partial charges in SDF properties.
 Additional writers must consume that export model rather than implementing calculation-result
 serialization in a front end.
 

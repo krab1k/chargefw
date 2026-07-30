@@ -75,6 +75,10 @@ documents. `mol2_output::Mol2Writer` copies a MOL2 source file and changes only 
 partial-charge fields, adding optional MOL2 fields when a source atom has no charge field. It can
 also generate basic MOL2 output from native graph/conformer data using element-symbol atom types;
 it does not infer Tripos typing or source-specific substructure semantics.
+`sdf_output::SdfWriter` copies SDF source records and writes atom-order charge vectors as numbered
+`CHARGEFW_CHARGES_<type-id>` properties. Replace mode removes existing ChargeFW charge properties;
+append mode retains them before adding the new properties. Generated SDF output requires an explicit
+V2000 or V3000 selection; preservation mode retains the source record's MOL version.
 
 ChargeFW JSON input uses `"schema_version": "1.0"` and a `molecules` array. Each molecule has
 required `atoms` with `atomic_number` and `formal_charge`, optional indexed `bonds`, and optional

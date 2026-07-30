@@ -49,6 +49,17 @@ auto main() -> int {
         assert(text.contains("9 C1 1.0000 0.0000 0.0000 C.ar 1 LIG 0.4383"));
         assert(text.contains("11 O1 2.0000 0.0000 0.0000 O.2 1 LIG 0.4383"));
         assert(text.contains("@<TRIPOS>BOND\n1 7 9 ar\n2 9 11 2\n"));
+
+        auto expected = source;
+        const auto first_charge = expected.find("0.2500", expected.find("1 LIG"));
+        expected.replace(first_charge, std::string_view{"0.2500"}.size(), "-0.8765");
+        const auto second_charge =
+            expected.find("0.0000", expected.find("1 LIG", first_charge + 1));
+        expected.replace(second_charge, std::string_view{"0.0000"}.size(), "0.4383");
+        const auto third_charge =
+            expected.find("0.0000", expected.find("1 LIG", second_charge + 1));
+        expected.replace(third_charge, std::string_view{"0.0000"}.size(), "0.4383");
+        assert(text == expected);
     }
 
     {

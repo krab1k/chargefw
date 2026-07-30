@@ -9,6 +9,7 @@ target_sources(chargefw_core
         native/mol2_input.cpp
         native/mol2_output.cpp
         native/sdf_input.cpp
+        native/sdf_output.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
@@ -22,4 +23,5 @@ target_sources(chargefw_core
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol2_input.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol2_output.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/sdf_input.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/sdf_output.h
 )
