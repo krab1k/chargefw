@@ -34,9 +34,9 @@ auto trim(const std::string_view value) -> std::string_view {
 
 auto parse_int(const std::string_view value, const std::string_view field) -> int {
     int result = 0;
-    const auto [end, error] = std::from_chars(value.begin(), value.end(), result);
+    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), result);
 
-    if (error != std::errc{} || end != value.end()) {
+    if (error != std::errc{} || end != value.data() + value.size()) {
         throw std::runtime_error{"invalid " + std::string{field}};
     }
 
