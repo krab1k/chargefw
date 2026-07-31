@@ -23,6 +23,7 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_COMPILER": "/usr/bin/g++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON",
         "CHARGEFW_BUILD_TESTS": "OFF",
         "CHARGEFW_ENABLE_WARNINGS": "ON"
       }

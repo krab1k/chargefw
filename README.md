@@ -91,7 +91,7 @@ conformers with coordinate triplets. Array order is preserved; bonds are never i
 ## Other configurations
 
 ```bash
-# Optimized build; tests are disabled by this preset.
+# Optimized LTO build; tests are disabled by this preset.
 cmake --preset gcc-release
 cmake --build --preset gcc-release
 
@@ -105,6 +105,13 @@ cmake --preset local-install
 cmake --build build/local-install
 cmake --install build/local-install
 env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw tests/fixtures/synthetic/sdf/water.sdf output
+```
+
+Use `--strip` when installing a release artifact for distribution while retaining symbols in the
+build tree:
+
+```bash
+cmake --install build/local-release --strip
 ```
 
 The `_install` directory is a local installation staging area for testing installation behavior; it
