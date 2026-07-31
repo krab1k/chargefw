@@ -46,7 +46,7 @@ cmake --build --preset gcc-debug
 ctest --preset gcc-debug
 
 # Run the molecular-file demonstration from the build tree.
-CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw tests/water.sdf output
+CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
 Run an individual test after building:
@@ -104,7 +104,7 @@ ctest --preset clang-asan
 cmake --preset local-install
 cmake --build build/local-install
 cmake --install build/local-install
-env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw tests/water.sdf output
+env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
 The `_install` directory is a local installation staging area for testing installation behavior; it

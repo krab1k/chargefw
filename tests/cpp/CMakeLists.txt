@@ -36,7 +36,7 @@ if(CHARGEFW_BUILD_CLI)
             COMMAND ${CMAKE_COMMAND}
                     -DCHARGEFW_CLI=$<TARGET_FILE:chargefw_cli>
                     -DCHARGEFW_PARAMETER_DIR=${PROJECT_SOURCE_DIR}/data/parameters
-                    -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/water.sdf
+                    -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/water.sdf
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_outputs.cmake
     )
 endif()

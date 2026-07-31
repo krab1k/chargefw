@@ -24,7 +24,7 @@ namespace {
 
 auto main() -> int {
     {
-        std::ifstream input{fixture("mol/charged_v2000.mol")};
+        std::ifstream input{fixture("synthetic/mol/v2000/charged_atoms.mol")};
         auto reader = mol::MolReader{input, "charged_v2000.mol"};
         const auto result = reader.next();
         if (!result.has_value()) {
@@ -42,7 +42,7 @@ auto main() -> int {
     }
 
     {
-        std::ifstream input{fixture("mol/charged_v3000.mol")};
+        std::ifstream input{fixture("synthetic/mol/v3000/charged_atoms.mol")};
         const auto result = mol::parse_mol(
             input, {.source = "charged_v3000.mol", .record_index = 0, .record_id = {}});
         assert(result.molecule.atom_count() == 2);
@@ -50,11 +50,11 @@ auto main() -> int {
         assert(result.molecule.atom(1).formal_charge() == -1);
         assert(result.molecule.bond(0).first_atom_index() == 0);
         assert(result.molecule.bond(0).second_atom_index() == 1);
-        assert(result.diagnostics.size() == 1);
+        assert(result.diagnostics.empty());
     }
 
     {
-        std::ifstream input{fixture("mol2/charged_aromatic.mol2")};
+        std::ifstream input{fixture("synthetic/mol2/aromatic.mol2")};
         auto reader = mol2::Mol2Reader{input, "charged_aromatic.mol2"};
         const auto result = reader.next();
         if (!result.has_value()) {
@@ -72,7 +72,7 @@ auto main() -> int {
     }
 
     {
-        std::ifstream input{fixture("mol2/malformed_then_valid.mol2")};
+        std::ifstream input{fixture("synthetic/mol2/malformed_then_valid.mol2")};
         auto reader = mol2::Mol2Reader{input, "malformed_then_valid.mol2"};
         auto rejected = false;
         try {
@@ -84,7 +84,7 @@ auto main() -> int {
     }
 
     {
-        std::ifstream input{fixture("mol2/missing_atom_section_then_valid.mol2")};
+        std::ifstream input{fixture("synthetic/mol2/missing_atom_section_then_valid.mol2")};
         auto reader = mol2::Mol2Reader{input, "missing_atom_section_then_valid.mol2"};
         auto rejected = false;
         try {
@@ -96,7 +96,7 @@ auto main() -> int {
     }
 
     {
-        std::ifstream input{fixture("sdf/malformed_then_water.sdf")};
+        std::ifstream input{fixture("synthetic/sdf/malformed_then_water.sdf")};
         auto reader = sdf::SdfReader{input, "malformed_then_water.sdf"};
         auto rejected = false;
         try {
@@ -108,8 +108,7 @@ auto main() -> int {
     }
 
     {
-        std::ifstream input{std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "tests" /
-                            "water.sdf"};
+        std::ifstream input{fixture("synthetic/sdf/water.sdf")};
         auto reader = sdf::SdfReader{input, "water.sdf"};
         const auto result = reader.next();
         if (!result.has_value()) {
@@ -122,8 +121,7 @@ auto main() -> int {
     }
 
     {
-        std::ifstream input{std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "tests" /
-                            "set500.sdf"};
+        std::ifstream input{fixture("synthetic/sdf/many_records.sdf")};
         auto reader = sdf::SdfReader{input, "set500.sdf"};
         std::size_t count = 0;
 
@@ -135,8 +133,7 @@ auto main() -> int {
     }
 
     {
-        std::ifstream input{std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "tests" /
-                            "set_v3000.sdf"};
+        std::ifstream input{fixture("synthetic/sdf/v3000.sdf")};
         auto reader = sdf::SdfReader{input, "set_v3000.sdf"};
         const auto result = reader.next();
         if (!result.has_value()) {
@@ -145,6 +142,20 @@ auto main() -> int {
         const auto& v3000_record = *result;
         assert(v3000_record.molecule.atom_count() == 36);
         assert(v3000_record.molecule.bond_count() == 38);
+    }
+
+    {
+        std::ifstream input{fixture("corpus/sdf/heme/ideal.sdf")};
+        auto reader = sdf::SdfReader{input, "HEM_ideal.sdf"};
+        const auto result = reader.next();
+        if (!result.has_value()) {
+            return 1;
+        }
+        const auto& hem_record = *result;
+        assert(hem_record.molecule.atom_count() == 75);
+        assert(hem_record.molecule.bond_count() == 80);
+        assert(hem_record.diagnostics.empty());
+        assert(!reader.next().has_value());
     }
 
     return 0;

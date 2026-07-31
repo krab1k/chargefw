@@ -271,6 +271,11 @@ serialization in a front end.
 
 #### Format and connectivity policy
 
+Test molecular files are organized under `tests/fixtures/`: small hand-authored cases belong in
+`synthetic/<format>/`, while intact real-world inputs belong in `corpus/<format>/<subject>/` with a
+short provenance note. Future PDB and mmCIF fixtures should use this same format-first structure,
+with subdirectories for scenarios such as multi-model, multi-component, and alternate locations.
+
 The native adapter scope is intentionally narrow: MOL/SDF, Tripos MOL2, and a versioned ChargeFW JSON
 document are dependency-free CLI input paths. JSON documents use `schema_version: "1.0"` and a
 `molecules` array. Each molecule has optional `id` and `name`, required `atoms` entries with

@@ -21,7 +21,7 @@ namespace charges = chargefw::charges;
 namespace {
 
 [[nodiscard]] auto fixture(const std::string_view name) -> std::filesystem::path {
-    return std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "tests" / "fixtures" / "mol2" / name;
+    return std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "tests" / "fixtures" / name;
 }
 
 [[nodiscard]] auto assignment(std::vector<double> values) -> charges::ChargeAssignment {
@@ -40,7 +40,7 @@ namespace {
 auto main() -> int {
     {
         auto output = std::ostringstream{};
-        auto input = std::ifstream{fixture("charged_aromatic.mol2"), std::ios::binary};
+        auto input = std::ifstream{fixture("synthetic/mol2/aromatic.mol2"), std::ios::binary};
         const auto source = std::string{std::istreambuf_iterator<char>{input}, {}};
         const auto assignments = std::vector{assignment({-0.87654, 0.43827, 0.43827})};
         mol2_output::Mol2Writer{output}.write_preserving_buffer(source, assignments);
