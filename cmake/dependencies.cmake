@@ -30,4 +30,15 @@ function(chargefw_setup_dependencies)
         )
         FetchContent_MakeAvailable(eigen)
     endif()
+
+    find_package(gemmi 0.7.4 CONFIG QUIET)
+    if(NOT TARGET gemmi::headers)
+        set(BUILD_GEMMI_PROGRAM OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(
+                gemmi
+                SYSTEM
+                URL https://github.com/project-gemmi/gemmi/archive/refs/tags/v0.7.4.tar.gz
+        )
+        FetchContent_MakeAvailable(gemmi)
+    endif()
 endfunction()

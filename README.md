@@ -27,10 +27,10 @@ For implementation work, read [AGENTS.md](AGENTS.md) first, then the relevant se
 - CMake 3.27 or newer
 - Ninja
 - GCC or Clang with C++23 support
-- Internet access on the first configure when Eigen 5.0.1 and nlohmann/json 3.12.0 are not
-  already available to CMake
+- Internet access on the first configure when Gemmi 0.7.4, Eigen 5.0.1, and nlohmann/json 3.12.0
+  are not already available to CMake
 
-CMake first looks for Eigen3 and nlohmann/json on the system, then obtains them with
+CMake first looks for Gemmi, Eigen3, and nlohmann/json on the system, then obtains them with
 `FetchContent` if needed.
 
 ## Build, run, and test
