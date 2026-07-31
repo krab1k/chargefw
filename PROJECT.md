@@ -221,7 +221,8 @@ PDB/mmCIF handling when a structural-biology consumer requires it. The initial G
 imports compatible PDB models as conformers of one native molecule, selects blank altlocs before
 `A` and then the first occurrence, supports all-records, polymers-and-ligands (water excluded),
 and polymers (HETATM excluded) selection modes, and deliberately leaves connectivity empty pending
-an explicit bond-adding policy.
+an explicit bond-adding policy. The mmCIF adapter treats each coordinate-bearing `data_` block as a
+separate molecule record; compatible models within a block become conformers.
 
 Open Babel, MDAnalysis, MDTraj, and OpenFF may receive thin convenience bridges when concrete
 workflows justify them. They should normally convert through the toolkit-neutral Python boundary
@@ -260,7 +261,7 @@ concrete format requires them.
 
 Native adapters are named by format and direction. The current `json_input`, `mol_input`,
 `sdf_input`, `mol2_input`, and Gemmi-backed `pdb_input` adapters import molecule records;
-`json_output::JsonWriter`
+`mmcif_input` imports each coordinate-bearing mmCIF `data_` block as a record; `json_output::JsonWriter`
 serializes the format-neutral `ChargeResultDocument` used by the CLI and future integrations.
 `mol2_output::Mol2Writer` preserves a source MOL2 file while replacing or adding atom partial-charge
 fields for one selected record, or generates a basic MOL2 record from native graph and conformer
@@ -304,7 +305,9 @@ charge export are Gemmi-only optional adapters; the project will not implement t
 formal charges, and coordinates. It selects blank alternate locations before `A`, then the first
 occurrence, supports all-records, polymers-and-ligands (water excluded), and polymers
 (HETATM excluded) selection modes, and does not import PDB connectivity until an explicit
-bond-adding policy is available.
+bond-adding policy is available. `mmcif_input` applies the same selection and alternate-location
+rules, represents compatible models inside one `data_` block as conformers, and returns separate
+records for separate coordinate-bearing `data_` blocks.
 The Gemmi writer must preserve imported mmCIF content where possible and append the SB-NCBR charge
 dictionary/categories rather than reconstruct unrelated structural data.
 

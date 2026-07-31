@@ -4,7 +4,8 @@
 #include <sstream>
 #include <string>
 
-namespace pdb = chargefw::adapters::gemmi::pdb_input;
+namespace gemmi_adapter = chargefw::adapters::gemmi;
+namespace pdb = gemmi_adapter::pdb_input;
 
 auto main() -> int {
     std::istringstream input{R"pdb(HEADER    TEST PDB
@@ -60,7 +61,7 @@ HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O
 END
 )pdb"};
         auto ligands_reader =
-            pdb::PdbReader{ligands_input, {}, pdb::RecordSelection::polymers_and_ligands};
+            pdb::PdbReader{ligands_input, {}, gemmi_adapter::RecordSelection::polymers_and_ligands};
         assert(ligands_reader.next()->molecule.atom_count() == 2);
 
         std::istringstream polymers_input{
@@ -69,7 +70,8 @@ HETATM    2  C1  LIG A   2       1.000   0.000   0.000  1.00 20.00           C
 HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O  
 END
 )pdb"};
-        auto polymers_reader = pdb::PdbReader{polymers_input, {}, pdb::RecordSelection::polymers};
+        auto polymers_reader =
+            pdb::PdbReader{polymers_input, {}, gemmi_adapter::RecordSelection::polymers};
         assert(polymers_reader.next()->molecule.atom_count() == 1);
     }
 

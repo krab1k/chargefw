@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chargefw/adapters/gemmi/input_options.h>
 #include <chargefw/adapters/molecule_record.h>
 
 #include <istream>
@@ -7,12 +8,6 @@
 #include <string>
 
 namespace chargefw::adapters::gemmi::pdb_input {
-
-enum class RecordSelection {
-    all,
-    polymers_and_ligands,
-    polymers,
-};
 
 // Reads a PDB structure through Gemmi. The first PDB MODEL defines atom topology and each model
 // becomes a conformer after validating the same atom sequence. Selection can retain all records,
@@ -22,7 +17,8 @@ enum class RecordSelection {
 class PdbReader {
   public:
     explicit PdbReader(std::istream& input, std::string source = {},
-                       RecordSelection selection = RecordSelection::all);
+                       ::chargefw::adapters::gemmi::RecordSelection selection =
+                           ::chargefw::adapters::gemmi::RecordSelection::all);
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 
