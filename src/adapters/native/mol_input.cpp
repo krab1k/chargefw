@@ -228,11 +228,6 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
             if (attribute.starts_with("CHG=")) {
                 formal_charge =
                     common::parse_int(std::string_view{attribute}.substr(4), "V3000 CHG value");
-            } else if (attribute.starts_with("CFG=")) {
-                result.diagnostics.push_back(MoleculeRecordDiagnostic{
-                    .message = "V3000 CFG stereochemical attribute was ignored", .line = line});
-            } else {
-                throw std::runtime_error{"unsupported V3000 atom attribute '" + attribute + "'"};
             }
         }
 
@@ -265,8 +260,12 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
             throw std::runtime_error{"V3000 bond references an unknown atom"};
         }
 
-        result.bonds.emplace_back(first->second, second->second,
-                                  common::bond_order(bond[1], BondFormat::mol));
+        const auto order = common::parse_int(bond[1], "V3000 bond order");
+        if (order == 9 || order == 10) {
+            continue;
+        }
+
+        result.bonds.emplace_back(first->second, second->second, common::numeric_bond_order(order));
     }
 
     if (v30_payload(read_v30_line(input, line)) != "END BOND" ||
