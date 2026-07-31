@@ -47,7 +47,7 @@ target_link_libraries(chargefw_core
   PRIVATE
     nlohmann_json::nlohmann_json
     Eigen3::Eigen
-    gemmi::headers
+    gemmi::gemmi_cpp
 )
 
 configure_file(

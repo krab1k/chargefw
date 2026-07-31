@@ -32,8 +32,9 @@ function(chargefw_setup_dependencies)
     endif()
 
     find_package(gemmi 0.7.4 CONFIG QUIET)
-    if(NOT TARGET gemmi::headers)
+    if(NOT TARGET gemmi::gemmi_cpp)
         set(BUILD_GEMMI_PROGRAM OFF CACHE BOOL "" FORCE)
+        set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
         FetchContent_Declare(
                 gemmi
                 SYSTEM

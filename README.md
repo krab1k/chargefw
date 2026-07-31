@@ -74,11 +74,16 @@ JSON partial-charge values are rounded to at most four decimal places; calculati
 native precision internally.
 
 Native adapter headers are explicitly directional: `json_input`, `mol_input`, `sdf_input`, and
-`mol2_input` read molecule records, while `json_output::JsonWriter` writes calculation-result
-documents. `mol2_output::Mol2Writer` copies a MOL2 source file and changes only the selected atom
-partial-charge fields, adding optional MOL2 fields when a source atom has no charge field. It can
-also generate basic MOL2 output from native graph/conformer data using element-symbol atom types;
-it does not infer Tripos typing or source-specific substructure semantics.
+`mol2_input` read molecule records; `gemmi/pdb_input` is the Gemmi-backed PDB reader; and
+`json_output::JsonWriter` writes calculation-result documents. The PDB reader maps all compatible
+PDB `MODEL` records to conformers of one molecule, selects one altloc per atom (blank, then `A`,
+then first occurrence), supports all-records, polymers-and-ligands (water excluded), and polymers
+(HETATM excluded) selection modes, and does not import or infer bonds. `mol2_output::Mol2Writer`
+copies a MOL2
+source file and changes only the selected atom partial-charge fields, adding optional MOL2 fields
+when a source atom has no charge field. It can also generate basic MOL2 output from native
+graph/conformer data using element-symbol atom types; it does not infer Tripos typing or
+source-specific substructure semantics.
 `sdf_output::SdfWriter` copies SDF source records and writes atom-order charge vectors as numbered
 `CHARGEFW_CHARGES_<type-id>` properties. Replace mode removes existing ChargeFW charge properties;
 append mode retains them before adding the new properties. Generated SDF output requires an explicit

@@ -217,7 +217,11 @@ simulation workflows possible without package-specific bindings. Biopython is a 
 adapter for structural-biology object models, but coordinates and hierarchy do not guarantee a
 complete chemical graph or bond orders; its connectivity, model, component, and alternate-location
 policies must therefore be explicit. Gemmi is the preferred optional native C++ candidate for
-PDB/mmCIF handling when a structural-biology consumer requires it.
+PDB/mmCIF handling when a structural-biology consumer requires it. The initial Gemmi PDB adapter
+imports compatible PDB models as conformers of one native molecule, selects blank altlocs before
+`A` and then the first occurrence, supports all-records, polymers-and-ligands (water excluded),
+and polymers (HETATM excluded) selection modes, and deliberately leaves connectivity empty pending
+an explicit bond-adding policy.
 
 Open Babel, MDAnalysis, MDTraj, and OpenFF may receive thin convenience bridges when concrete
 workflows justify them. They should normally convert through the toolkit-neutral Python boundary
@@ -255,7 +259,8 @@ property bag, hierarchy model, or chemistry repair policy: those remain adapter-
 concrete format requires them.
 
 Native adapters are named by format and direction. The current `json_input`, `mol_input`,
-`sdf_input`, and `mol2_input` adapters import molecule records; `json_output::JsonWriter`
+`sdf_input`, `mol2_input`, and Gemmi-backed `pdb_input` adapters import molecule records;
+`json_output::JsonWriter`
 serializes the format-neutral `ChargeResultDocument` used by the CLI and future integrations.
 `mol2_output::Mol2Writer` preserves a source MOL2 file while replacing or adding atom partial-charge
 fields for one selected record, or generates a basic MOL2 record from native graph and conformer
@@ -295,6 +300,11 @@ support is optional and normally
 enters through the Python bridge; if a native RDKit adapter is later justified, it is a separately
 selected backend and never silently replaces the native SDF reader. PDB/mmCIF parsing and mmCIF
 charge export are Gemmi-only optional adapters; the project will not implement those formats itself.
+`pdb_input` treats compatible PDB models as conformers of one molecule, retaining atom names,
+formal charges, and coordinates. It selects blank alternate locations before `A`, then the first
+occurrence, supports all-records, polymers-and-ligands (water excluded), and polymers
+(HETATM excluded) selection modes, and does not import PDB connectivity until an explicit
+bond-adding policy is available.
 The Gemmi writer must preserve imported mmCIF content where possible and append the SB-NCBR charge
 dictionary/categories rather than reconstruct unrelated structural data.
 

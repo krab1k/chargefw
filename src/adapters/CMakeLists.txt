@@ -9,6 +9,7 @@ target_sources(chargefw_core
         native/mol2_output.cpp
         native/sdf_input.cpp
         native/sdf_output.cpp
+        gemmi/pdb_input.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
@@ -16,6 +17,7 @@ target_sources(chargefw_core
         FILES
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/molecule_record.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/charge_result_document.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/pdb_input.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/json_input.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/json_output.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol_input.h
