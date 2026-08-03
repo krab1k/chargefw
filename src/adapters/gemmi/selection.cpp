@@ -99,9 +99,8 @@ auto SelectedModel::atom_index_by_serial(const int serial) const -> std::optiona
     return found->second;
 }
 
-auto atom_index(const SelectedResidue& residue, const std::string_view name)
-    -> std::optional<std::size_t> {
-    for (const auto& [atom_name, index] : residue.atom_indices) {
+auto SelectedResidue::find_atom(const std::string_view name) const -> std::optional<std::size_t> {
+    for (const auto& [atom_name, index] : atom_indices) {
         if (atom_name == name) {
             return index;
         }

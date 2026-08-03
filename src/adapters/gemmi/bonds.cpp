@@ -99,8 +99,8 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
             continue;
         }
 
-        const auto first = selection::atom_index(previous, previous_atom);
-        const auto second = selection::atom_index(current, current_atom);
+        const auto first = previous.find_atom(previous_atom);
+        const auto second = current.find_atom(current_atom);
         if (first.has_value() && second.has_value()) {
             add_bond(bonds, *first, *second, core::BondOrder::SINGLE);
         }
@@ -132,8 +132,8 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
         }
 
         for (const auto& template_bond : component_template->bonds) {
-            const auto first = selection::atom_index(residue, template_bond.first);
-            const auto second = selection::atom_index(residue, template_bond.second);
+            const auto first = residue.find_atom(template_bond.first);
+            const auto second = residue.find_atom(template_bond.second);
             if (first.has_value() && second.has_value()) {
                 add_bond(result, *first, *second, template_bond.order);
             }
@@ -196,8 +196,8 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
             if (residue.residue->name != component) {
                 continue;
             }
-            const auto first = selection::atom_index(residue, first_name);
-            const auto second = selection::atom_index(residue, second_name);
+            const auto first = residue.find_atom(first_name);
+            const auto second = residue.find_atom(second_name);
             if (first.has_value() && second.has_value()) {
                 add_bond(result, *first, *second, order);
             }
