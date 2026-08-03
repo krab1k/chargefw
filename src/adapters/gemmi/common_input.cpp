@@ -25,35 +25,21 @@ struct ModelAtoms {
     std::vector<core::Position> positions;
 };
 
-[[nodiscard]] auto selected_atoms(const ::gemmi::Model& model, const RecordSelection selection)
-    -> ModelAtoms {
+[[nodiscard]] auto model_atoms(const selection::SelectedModel& model) -> ModelAtoms {
     ModelAtoms result;
+    result.atoms.reserve(model.atoms().size());
+    result.positions.reserve(model.atoms().size());
 
-    for (const auto& chain : model.chains) {
-        for (const auto& residue : chain.residues) {
-            if (!::chargefw::adapters::gemmi::selection::include_residue(residue, selection)) {
-                continue;
-            }
-
-            for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
-                if (!::chargefw::adapters::gemmi::selection::is_first_named_atom(residue, index)) {
-                    continue;
-                }
-
-                const auto& selected =
-                    ::chargefw::adapters::gemmi::selection::select_altloc(residue, index);
-
-                const auto atomic_number = selected.element.atomic_number();
-                if (atomic_number <= 0) {
-                    throw std::runtime_error{"structural atom '" + selected.name +
-                                             "' has no known element"};
-                }
-
-                result.atoms.emplace_back(atomic_number, selected.charge, selected.name);
-                result.positions.push_back(
-                    core::Position{.x = selected.pos.x, .y = selected.pos.y, .z = selected.pos.z});
-            }
+    for (const auto& selected_atom : model.atoms()) {
+        const auto& atom = *selected_atom.atom;
+        const auto atomic_number = atom.element.atomic_number();
+        if (atomic_number <= 0) {
+            throw std::runtime_error{"structural atom '" + atom.name + "' has no known element"};
         }
+
+        result.atoms.emplace_back(atomic_number, atom.charge, atom.name);
+        result.positions.push_back(
+            core::Position{.x = atom.pos.x, .y = atom.pos.y, .z = atom.pos.z});
     }
 
     if (result.atoms.empty()) {
@@ -92,14 +78,16 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
 
     const auto selected_model =
         ::chargefw::adapters::gemmi::selection::SelectedModel{structure.models.front(), selection};
-    auto first = selected_atoms(structure.models.front(), selection);
+    auto first = model_atoms(selected_model);
     std::vector<core::Conformer> conformers;
     conformers.reserve(structure.models.size());
     conformers.emplace_back(std::move(first.positions),
                             std::to_string(structure.models.front().num));
 
     for (std::size_t index = 1; index < structure.models.size(); ++index) {
-        auto model = selected_atoms(structure.models[index], selection);
+        const auto selected = ::chargefw::adapters::gemmi::selection::SelectedModel{
+            structure.models[index], selection};
+        auto model = model_atoms(selected);
         validate_topology(first.atoms, model.atoms);
         conformers.emplace_back(std::move(model.positions),
                                 std::to_string(structure.models[index].num));
