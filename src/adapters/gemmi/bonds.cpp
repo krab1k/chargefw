@@ -158,13 +158,13 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
     add_structure_connections(result, structure, selected);
 
     for (const auto& [serial, partners] : structure.conect_map) {
-        const auto first = selected.atom_index(serial);
+        const auto first = selected.atom_index_by_serial(serial);
         if (!first.has_value()) {
             continue;
         }
 
         for (const auto partner : partners) {
-            const auto second = selected.atom_index(partner);
+            const auto second = selected.atom_index_by_serial(partner);
             if (second.has_value()) {
                 add_bond(result, *first, *second, core::BondOrder::SINGLE);
             }

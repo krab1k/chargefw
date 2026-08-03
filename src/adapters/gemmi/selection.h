@@ -35,7 +35,7 @@ class SelectedModel {
     [[nodiscard]] auto atoms() const -> const std::vector<const ::gemmi::Atom*>&;
     [[nodiscard]] auto residues() const -> const std::vector<SelectedResidue>&;
     [[nodiscard]] auto atom_index(const ::gemmi::Atom* atom) const -> std::optional<std::size_t>;
-    [[nodiscard]] auto atom_index(int serial) const -> std::optional<std::size_t>;
+    [[nodiscard]] auto atom_index_by_serial(int serial) const -> std::optional<std::size_t>;
 
   private:
     std::vector<const ::gemmi::Atom*> atoms_;

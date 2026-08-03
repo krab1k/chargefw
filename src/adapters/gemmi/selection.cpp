@@ -88,7 +88,7 @@ auto SelectedModel::atom_index(const ::gemmi::Atom* atom) const -> std::optional
     return found->second;
 }
 
-auto SelectedModel::atom_index(const int serial) const -> std::optional<std::size_t> {
+auto SelectedModel::atom_index_by_serial(const int serial) const -> std::optional<std::size_t> {
     const auto found = serial_indices_.find(serial);
     if (found == serial_indices_.end()) {
         return std::nullopt;
