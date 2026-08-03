@@ -14,8 +14,7 @@
 namespace chargefw::adapters::gemmi::mmcif_input {
 
 MmcifReader::MmcifReader(std::istream& input, std::string source,
-                         const ::chargefw::adapters::gemmi::RecordSelection selection,
-                         const ::chargefw::adapters::gemmi::BondStrategy bond_strategy) {
+                         const ::chargefw::adapters::gemmi::InputOptions options) {
     std::string contents{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     if (input.bad()) {
         throw std::runtime_error{"failed to read mmCIF input"};
@@ -32,7 +31,7 @@ MmcifReader::MmcifReader(std::istream& input, std::string source,
             structure,
             MoleculeRecordIdentity{
                 .source = source, .record_index = records_.size(), .record_id = block.name},
-            selection, bond_strategy, std::addressof(block),
+            options.selection, options.bond_strategy, std::addressof(block),
             structure.name.empty() ? block.name : structure.name));
     }
 

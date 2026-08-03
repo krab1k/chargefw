@@ -16,10 +16,7 @@ namespace chargefw::adapters::gemmi::mmcif_input {
 class MmcifReader {
   public:
     explicit MmcifReader(std::istream& input, std::string source = {},
-                         ::chargefw::adapters::gemmi::RecordSelection selection =
-                             ::chargefw::adapters::gemmi::RecordSelection::all,
-                         ::chargefw::adapters::gemmi::BondStrategy bond_strategy =
-                             ::chargefw::adapters::gemmi::BondStrategy::none);
+                         ::chargefw::adapters::gemmi::InputOptions options = {});
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 

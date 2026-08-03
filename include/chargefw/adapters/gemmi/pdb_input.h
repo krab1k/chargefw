@@ -18,10 +18,7 @@ namespace chargefw::adapters::gemmi::pdb_input {
 class PdbReader {
   public:
     explicit PdbReader(std::istream& input, std::string source = {},
-                       ::chargefw::adapters::gemmi::RecordSelection selection =
-                           ::chargefw::adapters::gemmi::RecordSelection::all,
-                       ::chargefw::adapters::gemmi::BondStrategy bond_strategy =
-                           ::chargefw::adapters::gemmi::BondStrategy::none);
+                       ::chargefw::adapters::gemmi::InputOptions options = {});
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 

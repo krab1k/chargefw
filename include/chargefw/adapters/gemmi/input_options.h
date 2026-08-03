@@ -15,4 +15,9 @@ enum class BondStrategy {
     hybrid,
 };
 
+struct InputOptions {
+    RecordSelection selection = RecordSelection::all;
+    BondStrategy bond_strategy = BondStrategy::none;
+};
+
 } // namespace chargefw::adapters::gemmi

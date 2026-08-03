@@ -61,8 +61,8 @@ HETATM    2  C1  LIG A   2       1.000   0.000   0.000  1.00 20.00           C
 HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O  
 END
 )pdb"};
-        auto ligands_reader =
-            pdb::PdbReader{ligands_input, {}, gemmi_adapter::RecordSelection::polymers_and_ligands};
+        auto ligands_reader = pdb::PdbReader{
+            ligands_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers_and_ligands}};
         assert(ligands_reader.next()->molecule.atom_count() == 2);
 
         std::istringstream polymers_input{
@@ -71,8 +71,8 @@ HETATM    2  C1  LIG A   2       1.000   0.000   0.000  1.00 20.00           C
 HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O  
 END
 )pdb"};
-        auto polymers_reader =
-            pdb::PdbReader{polymers_input, {}, gemmi_adapter::RecordSelection::polymers};
+        auto polymers_reader = pdb::PdbReader{
+            polymers_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers}};
         assert(polymers_reader.next()->molecule.atom_count() == 1);
     }
 
@@ -97,8 +97,7 @@ END
 )pdb";
         const auto read_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
             std::istringstream strategy_stream{strategy_input};
-            auto reader =
-                pdb::PdbReader{strategy_stream, {}, gemmi_adapter::RecordSelection::all, strategy};
+            auto reader = pdb::PdbReader{strategy_stream, {}, {.bond_strategy = strategy}};
             return reader.next()->molecule.bond_count();
         };
 
@@ -117,8 +116,7 @@ END
 )pdb";
         const auto read_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
             std::istringstream duplicate_stream{duplicate_input};
-            auto reader =
-                pdb::PdbReader{duplicate_stream, {}, gemmi_adapter::RecordSelection::all, strategy};
+            auto reader = pdb::PdbReader{duplicate_stream, {}, {.bond_strategy = strategy}};
             return reader.next()->molecule.bond_count();
         };
 

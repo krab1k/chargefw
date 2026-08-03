@@ -108,8 +108,8 @@ HETATM 2 C C1 . LIG A 2 ? 1.0 0.0 0.0 1.0 20.0 0 2 LIG A C1 1
 HETATM 3 O O . HOH A 3 ? 2.0 0.0 0.0 1.0 20.0 0 3 HOH A O 1
 #
 )cif"};
-    auto filtered =
-        mmcif::MmcifReader{filtered_input, {}, gemmi_adapter::RecordSelection::polymers};
+    auto filtered = mmcif::MmcifReader{
+        filtered_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers}};
     assert(filtered.next()->molecule.atom_count() == 1);
 
     const auto strategy_input = R"cif(data_connectivity
@@ -163,8 +163,7 @@ link1 covale A LIG 1 O1 B LIG 1 C2
 )cif";
     const auto read_strategy = [&](const gemmi_adapter::BondStrategy strategy) {
         std::istringstream strategy_stream{strategy_input};
-        auto strategy_reader =
-            mmcif::MmcifReader{strategy_stream, {}, gemmi_adapter::RecordSelection::all, strategy};
+        auto strategy_reader = mmcif::MmcifReader{strategy_stream, {}, {.bond_strategy = strategy}};
         return strategy_reader.next()->molecule;
     };
 
@@ -210,8 +209,7 @@ ALA N CA SING
 )cif";
     const auto read_duplicate_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
         std::istringstream duplicate_stream{duplicate_input};
-        auto reader =
-            mmcif::MmcifReader{duplicate_stream, {}, gemmi_adapter::RecordSelection::all, strategy};
+        auto reader = mmcif::MmcifReader{duplicate_stream, {}, {.bond_strategy = strategy}};
         return reader.next()->molecule.bond_count();
     };
 
