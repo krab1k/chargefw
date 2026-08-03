@@ -261,15 +261,16 @@ specific result rules. An adapter may retain an opaque, format-tagged source pay
 must enrich an existing record rather than reconstruct it. The future Gemmi mmCIF writer will use
 this to preserve structural categories and append the `_sb_ncbr_partial_atomic_charges_meta` and
 `_sb_ncbr_partial_atomic_charges` loops from the archived exporter. Record failures use
-`adapters::MoleculeRecordError`, which retains identity, message, and optional source line so bounded
-stream readers can continue after malformed records. This deliberately defines no common file handle,
-property bag, hierarchy model, or chemistry repair policy: those remain adapter-specific until a
-concrete format requires them.
+`adapters::MoleculeRecordError`, which retains identity, message, and optional source line for
+reporting the first malformed record before terminating import. This deliberately defines no common
+file handle, property bag, hierarchy model, or chemistry repair policy: those remain adapter-specific
+until a concrete format requires them.
 
 Native adapters are named by format and direction. The current `json_input`, `mol_input`,
 `sdf_input`, `mol2_input`, and Gemmi-backed `pdb_input` adapters import molecule records;
-`mmcif_input` imports each coordinate-bearing mmCIF `data_` block as a record; `json_output::JsonWriter`
-serializes the format-neutral `ChargeResultDocument` used by the CLI and future integrations.
+`mmcif_input` parses the Gemmi CIF document eagerly and lazily converts each coordinate-bearing
+mmCIF `data_` block as a record; `json_output::JsonWriter` serializes the format-neutral
+`ChargeResultDocument` used by the CLI and future integrations.
 `mol2_output::Mol2Writer` preserves a source MOL2 file while replacing or adding atom partial-charge
 fields for one selected record, or generates a basic MOL2 record from native graph and conformer
 data when the input is another format. Generated MOL2 uses element-symbol atom types and a single
