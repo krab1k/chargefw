@@ -1,5 +1,7 @@
 #include <chargefw/adapters/gemmi/pdb_input.h>
 
+#include "bonds.h"
+#include "selection.h"
 #include "structure_import.h"
 
 #include <gemmi/pdb.hpp>
@@ -21,10 +23,12 @@ PdbReader::PdbReader(std::istream& input, std::string source,
 
     const auto structure = ::gemmi::read_pdb_string(contents, source);
     const auto name = structure.name.empty() ? source : structure.name;
+    const auto selected = selection::SelectedModel{structure.models.front(), options.selection};
+    auto explicit_bonds = bonds::explicit_pdb(structure, selected);
     record_ = structure_import::make_record(
         structure,
         MoleculeRecordIdentity{.source = std::move(source), .record_index = 0, .record_id = name},
-        options.selection, options.bond_strategy, nullptr, name);
+        options.selection, options.bond_strategy, std::move(explicit_bonds), name);
 }
 
 auto PdbReader::next() -> std::optional<ImportedMoleculeRecord> {

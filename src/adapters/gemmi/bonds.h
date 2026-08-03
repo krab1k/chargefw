@@ -15,8 +15,13 @@ class Block;
 
 namespace chargefw::adapters::gemmi::bonds {
 
-[[nodiscard]] auto assign(const ::gemmi::Structure& structure,
-                          const selection::SelectedModel& model, BondStrategy strategy,
-                          ::gemmi::cif::Block* mmcif_block = nullptr) -> std::vector<core::Bond>;
+[[nodiscard]] auto assign(const selection::SelectedModel& model, BondStrategy strategy,
+                          std::vector<core::Bond> explicit_bonds = {}) -> std::vector<core::Bond>;
+
+[[nodiscard]] auto explicit_pdb(const ::gemmi::Structure& structure,
+                                const selection::SelectedModel& model) -> std::vector<core::Bond>;
+
+[[nodiscard]] auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& block,
+                                  const selection::SelectedModel& model) -> std::vector<core::Bond>;
 
 } // namespace chargefw::adapters::gemmi::bonds

@@ -147,8 +147,9 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
     return result;
 }
 
-[[nodiscard]] auto assign_explicit_pdb_bonds(const ::gemmi::Structure& structure,
-                                             const selection::SelectedModel& selected)
+} // namespace
+
+auto explicit_pdb(const ::gemmi::Structure& structure, const selection::SelectedModel& selected)
     -> std::vector<core::Bond> {
     if (structure.models.empty()) {
         return {};
@@ -174,10 +175,8 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
     return result;
 }
 
-[[nodiscard]] auto assign_explicit_mmcif_bonds(const ::gemmi::Structure& structure,
-                                               ::gemmi::cif::Block& block,
-                                               const selection::SelectedModel& selected)
-    -> std::vector<core::Bond> {
+auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& block,
+                    const selection::SelectedModel& selected) -> std::vector<core::Bond> {
     if (structure.models.empty()) {
         return {};
     }
@@ -209,11 +208,8 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
     return result;
 }
 
-} // namespace
-
-auto assign(const ::gemmi::Structure& structure, const selection::SelectedModel& model,
-            const BondStrategy strategy, ::gemmi::cif::Block* const mmcif_block)
-    -> std::vector<core::Bond> {
+auto assign(const selection::SelectedModel& model, const BondStrategy strategy,
+            std::vector<core::Bond> explicit_bonds) -> std::vector<core::Bond> {
     if (strategy == BondStrategy::none) {
         return {};
     }
@@ -224,9 +220,6 @@ auto assign(const ::gemmi::Structure& structure, const selection::SelectedModel&
     }
 
     if (strategy == BondStrategy::explicit_bonds || strategy == BondStrategy::hybrid) {
-        const auto explicit_bonds =
-            mmcif_block == nullptr ? assign_explicit_pdb_bonds(structure, model)
-                                   : assign_explicit_mmcif_bonds(structure, *mmcif_block, model);
         for (const auto& bond : explicit_bonds) {
             add_bond(result, bond.first_atom_index(), bond.second_atom_index(), bond.order());
         }

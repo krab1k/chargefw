@@ -1,5 +1,7 @@
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 
+#include "bonds.h"
+#include "selection.h"
 #include "structure_import.h"
 
 #include <gemmi/cif.hpp>
@@ -27,11 +29,13 @@ MmcifReader::MmcifReader(std::istream& input, std::string source,
         }
 
         const auto structure = ::gemmi::make_structure_from_block(block);
+        const auto selected = selection::SelectedModel{structure.models.front(), options.selection};
+        auto explicit_bonds = bonds::explicit_mmcif(structure, block, selected);
         records_.push_back(structure_import::make_record(
             structure,
             MoleculeRecordIdentity{
                 .source = source, .record_index = records_.size(), .record_id = block.name},
-            options.selection, options.bond_strategy, std::addressof(block),
+            options.selection, options.bond_strategy, std::move(explicit_bonds),
             structure.name.empty() ? block.name : structure.name));
     }
 

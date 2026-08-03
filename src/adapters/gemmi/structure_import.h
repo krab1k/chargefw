@@ -5,18 +5,15 @@
 
 #include <gemmi/model.hpp>
 
-namespace gemmi::cif {
-class Block;
-}
-
 #include <cstddef>
 #include <string>
+#include <vector>
 
 namespace chargefw::adapters::gemmi::structure_import {
 
 [[nodiscard]] auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                                RecordSelection selection, BondStrategy bond_strategy,
-                               ::gemmi::cif::Block* mmcif_block = nullptr, std::string name = {})
+                               std::vector<core::Bond> explicit_bonds = {}, std::string name = {})
     -> ImportedMoleculeRecord;
 
 } // namespace chargefw::adapters::gemmi::structure_import

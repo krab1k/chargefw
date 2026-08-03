@@ -69,7 +69,7 @@ auto validate_topology(const std::vector<core::Atom>& reference,
 
 auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                  const RecordSelection selection, const BondStrategy bond_strategy,
-                 ::gemmi::cif::Block* const mmcif_block, std::string name)
+                 std::vector<core::Bond> explicit_bonds, std::string name)
     -> ImportedMoleculeRecord {
     if (structure.models.empty()) {
         throw std::runtime_error{"structural input contains no models"};
@@ -96,8 +96,8 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
         name = structure.name;
     }
 
-    auto bonds = ::chargefw::adapters::gemmi::bonds::assign(structure, selected_model,
-                                                            bond_strategy, mmcif_block);
+    auto bonds = ::chargefw::adapters::gemmi::bonds::assign(selected_model, bond_strategy,
+                                                            std::move(explicit_bonds));
 
     return native_common::make_record(std::move(first.atoms), std::move(bonds),
                                       std::move(conformers), std::move(identity), std::move(name));
