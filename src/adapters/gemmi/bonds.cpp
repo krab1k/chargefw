@@ -61,6 +61,27 @@ void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std
     return std::nullopt;
 }
 
+void add_structure_connections(std::vector<core::Bond>& bonds, const ::gemmi::Structure& structure,
+                               const selection::SelectedModel& selected) {
+    if (structure.models.empty()) {
+        return;
+    }
+
+    const auto& model = structure.models.front();
+    for (const auto& connection : structure.connections) {
+        if (connection.type != ::gemmi::Connection::Covale &&
+            connection.type != ::gemmi::Connection::Disulf) {
+            continue;
+        }
+
+        const auto first = selected_atom_index(model, selected, connection.partner1);
+        const auto second = selected_atom_index(model, selected, connection.partner2);
+        if (first.has_value() && second.has_value()) {
+            add_bond(bonds, *first, *second, core::BondOrder::SINGLE);
+        }
+    }
+}
+
 void add_sequential_bonds(std::vector<core::Bond>& bonds,
                           const std::span<const selection::SelectedResidue> residues,
                           const component_templates::ComponentKind kind,
@@ -133,21 +154,8 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
         return {};
     }
 
-    const auto& model = structure.models.front();
     std::vector<core::Bond> result;
-
-    for (const auto& connection : structure.connections) {
-        if (connection.type != ::gemmi::Connection::Covale &&
-            connection.type != ::gemmi::Connection::Disulf) {
-            continue;
-        }
-
-        const auto first = selected_atom_index(model, selected, connection.partner1);
-        const auto second = selected_atom_index(model, selected, connection.partner2);
-        if (first.has_value() && second.has_value()) {
-            add_bond(result, *first, *second, core::BondOrder::SINGLE);
-        }
-    }
+    add_structure_connections(result, structure, selected);
 
     for (const auto& [serial, partners] : structure.conect_map) {
         const auto first = selected.atom_index(serial);
@@ -174,7 +182,6 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
         return {};
     }
 
-    const auto& model = structure.models.front();
     const auto& residues = selected.residues();
     std::vector<core::Bond> result;
 
@@ -197,18 +204,7 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
         }
     }
 
-    for (const auto& connection : structure.connections) {
-        if (connection.type != ::gemmi::Connection::Covale &&
-            connection.type != ::gemmi::Connection::Disulf) {
-            continue;
-        }
-
-        const auto first = selected_atom_index(model, selected, connection.partner1);
-        const auto second = selected_atom_index(model, selected, connection.partner2);
-        if (first.has_value() && second.has_value()) {
-            add_bond(result, *first, *second, core::BondOrder::SINGLE);
-        }
-    }
+    add_structure_connections(result, structure, selected);
 
     return result;
 }
