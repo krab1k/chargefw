@@ -108,5 +108,24 @@ END
         assert(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 10);
     }
 
+    {
+        const auto duplicate_input =
+            R"pdb(ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 20.00           N
+ATOM      2  CA  ALA A   1       1.450   0.000   0.000  1.00 20.00           C
+CONECT    1    2
+END
+)pdb";
+        const auto read_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
+            std::istringstream duplicate_stream{duplicate_input};
+            auto reader =
+                pdb::PdbReader{duplicate_stream, {}, gemmi_adapter::RecordSelection::all, strategy};
+            return reader.next()->molecule.bond_count();
+        };
+
+        assert(read_bond_count(gemmi_adapter::BondStrategy::templates) == 1);
+        assert(read_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 1);
+        assert(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 1);
+    }
+
     return 0;
 }

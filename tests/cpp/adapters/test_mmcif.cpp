@@ -175,5 +175,49 @@ link1 covale A LIG 1 O1 B LIG 1 C2
     assert(explicit_molecule.bond(1).order() == chargefw::core::BondOrder::SINGLE);
     assert(read_strategy(gemmi_adapter::BondStrategy::hybrid).bond_count() == 3);
 
+    const auto duplicate_input = R"cif(data_duplicate
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1 N N . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A N 1
+ATOM 2 C CA . ALA A 1 ? 1.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+ALA N CA SING
+#
+)cif";
+    const auto read_duplicate_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
+        std::istringstream duplicate_stream{duplicate_input};
+        auto reader =
+            mmcif::MmcifReader{duplicate_stream, {}, gemmi_adapter::RecordSelection::all, strategy};
+        return reader.next()->molecule.bond_count();
+    };
+
+    assert(read_duplicate_bond_count(gemmi_adapter::BondStrategy::templates) == 1);
+    assert(read_duplicate_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 1);
+    assert(read_duplicate_bond_count(gemmi_adapter::BondStrategy::hybrid) == 1);
+
     return 0;
 }
