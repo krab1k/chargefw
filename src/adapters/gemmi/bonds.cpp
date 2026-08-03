@@ -16,16 +16,6 @@
 namespace chargefw::adapters::gemmi::bonds {
 namespace {
 
-struct ResidueAtoms {
-    const ::gemmi::Residue* residue;
-    std::vector<std::pair<std::string, std::size_t>> atom_indices;
-};
-
-struct SelectedAtom {
-    const ::gemmi::Atom* atom;
-    std::size_t index;
-};
-
 void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std::size_t second,
               const core::BondOrder order) {
     if (first == second) {
@@ -42,86 +32,13 @@ void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std
     bonds.emplace_back(first, second, order);
 }
 
-[[nodiscard]] auto selected_residue_atoms(const ::gemmi::Model& model,
-                                          const RecordSelection selection)
-    -> std::vector<ResidueAtoms> {
-    std::vector<ResidueAtoms> result;
-    std::size_t atom_index = 0;
-
-    for (const auto& chain : model.chains) {
-        for (const auto& residue : chain.residues) {
-            if (!selection::include_residue(residue, selection)) {
-                continue;
-            }
-
-            ResidueAtoms selected{.residue = std::addressof(residue), .atom_indices = {}};
-            for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
-                if (!selection::is_first_named_atom(residue, index)) {
-                    continue;
-                }
-
-                const auto& chosen = selection::select_altloc(residue, index);
-                selected.atom_indices.emplace_back(chosen.name, atom_index++);
-            }
-            result.push_back(std::move(selected));
-        }
-    }
-
-    return result;
-}
-
-[[nodiscard]] auto atom_index(const ResidueAtoms& residue, const std::string_view name)
-    -> std::optional<std::size_t> {
-    for (const auto& [atom_name, index] : residue.atom_indices) {
-        if (atom_name == name) {
-            return index;
-        }
-    }
-    return std::nullopt;
-}
-
-[[nodiscard]] auto selected_atoms(const ::gemmi::Model& model, const RecordSelection selection)
-    -> std::vector<SelectedAtom> {
-    std::vector<SelectedAtom> result;
-    std::size_t atom_index = 0;
-
-    for (const auto& chain : model.chains) {
-        for (const auto& residue : chain.residues) {
-            if (!selection::include_residue(residue, selection)) {
-                continue;
-            }
-
-            for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
-                if (!selection::is_first_named_atom(residue, index)) {
-                    continue;
-                }
-
-                const auto& chosen = selection::select_altloc(residue, index);
-                result.push_back({.atom = std::addressof(chosen), .index = atom_index++});
-            }
-        }
-    }
-
-    return result;
-}
-
-[[nodiscard]] auto selected_atom_index(const std::vector<SelectedAtom>& atoms,
-                                       const ::gemmi::Atom* atom) -> std::optional<std::size_t> {
-    for (const auto& selected : atoms) {
-        if (selected.atom == atom) {
-            return selected.index;
-        }
-    }
-    return std::nullopt;
-}
-
 [[nodiscard]] auto selected_atom_index(const ::gemmi::Model& model,
-                                       const std::vector<SelectedAtom>& atoms,
+                                       const selection::SelectedModel& selected,
                                        const ::gemmi::AtomAddress& address)
     -> std::optional<std::size_t> {
     const auto cra = model.find_cra(address);
     if (cra.atom != nullptr) {
-        return selected_atom_index(atoms, cra.atom);
+        return selected.atom_index(cra.atom);
     }
 
     for (const auto& chain : model.chains) {
@@ -136,7 +53,7 @@ void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std
             for (const auto& atom : residue.atoms) {
                 if (atom.name == address.atom_name &&
                     (address.altloc == '\0' || atom.altloc == address.altloc)) {
-                    return selected_atom_index(atoms, std::addressof(atom));
+                    return selected.atom_index(std::addressof(atom));
                 }
             }
         }
@@ -159,7 +76,7 @@ void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std
 }
 
 void add_sequential_bonds(std::vector<core::Bond>& bonds,
-                          const std::span<const ResidueAtoms> residues,
+                          const std::span<const selection::SelectedResidue> residues,
                           const component_templates::ComponentKind kind,
                           const std::string_view previous_atom,
                           const std::string_view current_atom) {
@@ -174,8 +91,8 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
             continue;
         }
 
-        const auto first = atom_index(previous, previous_atom);
-        const auto second = atom_index(current, current_atom);
+        const auto first = selection::atom_index(previous, previous_atom);
+        const auto second = selection::atom_index(current, current_atom);
         if (first.has_value() && second.has_value()) {
             add_bond(bonds, *first, *second, core::BondOrder::SINGLE);
         }
@@ -195,11 +112,10 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
     return core::BondOrder::UNKNOWN;
 }
 
-[[nodiscard]] auto assign_template_bonds(const ::gemmi::Model& model,
-                                         const RecordSelection selection)
+[[nodiscard]] auto assign_template_bonds(const selection::SelectedModel& model)
     -> std::vector<core::Bond> {
     std::vector<core::Bond> result;
-    const auto residues = selected_residue_atoms(model, selection);
+    const auto& residues = model.residues();
 
     for (const auto& residue : residues) {
         const auto component_template = component_templates::find(residue.residue->name);
@@ -208,8 +124,8 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
         }
 
         for (const auto& template_bond : component_template->bonds) {
-            const auto first = atom_index(residue, template_bond.first);
-            const auto second = atom_index(residue, template_bond.second);
+            const auto first = selection::atom_index(residue, template_bond.first);
+            const auto second = selection::atom_index(residue, template_bond.second);
             if (first.has_value() && second.has_value()) {
                 add_bond(result, *first, *second, template_bond.order);
             }
@@ -225,14 +141,13 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
 }
 
 [[nodiscard]] auto assign_explicit_pdb_bonds(const ::gemmi::Structure& structure,
-                                             const RecordSelection selection)
+                                             const selection::SelectedModel& selected)
     -> std::vector<core::Bond> {
     if (structure.models.empty()) {
         return {};
     }
 
     const auto& model = structure.models.front();
-    const auto atoms = selected_atoms(model, selection);
     std::vector<core::Bond> result;
 
     for (const auto& connection : structure.connections) {
@@ -241,8 +156,8 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
             continue;
         }
 
-        const auto first = selected_atom_index(model, atoms, connection.partner1);
-        const auto second = selected_atom_index(model, atoms, connection.partner2);
+        const auto first = selected_atom_index(model, selected, connection.partner1);
+        const auto second = selected_atom_index(model, selected, connection.partner2);
         if (first.has_value() && second.has_value()) {
             add_bond(result, *first, *second, core::BondOrder::SINGLE);
         }
@@ -254,7 +169,7 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
             continue;
         }
 
-        const auto first = selected_atom_index(atoms, first_atom);
+        const auto first = selected.atom_index(first_atom);
         if (!first.has_value()) {
             continue;
         }
@@ -262,7 +177,7 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
         for (const auto partner : partners) {
             const auto* second_atom = atom_by_serial(model, partner);
             const auto second =
-                second_atom == nullptr ? std::nullopt : selected_atom_index(atoms, second_atom);
+                second_atom == nullptr ? std::nullopt : selected.atom_index(second_atom);
             if (second.has_value()) {
                 add_bond(result, *first, *second, core::BondOrder::SINGLE);
             }
@@ -274,14 +189,14 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
 
 [[nodiscard]] auto assign_explicit_mmcif_bonds(const ::gemmi::Structure& structure,
                                                ::gemmi::cif::Block& block,
-                                               const RecordSelection selection)
+                                               const selection::SelectedModel& selected)
     -> std::vector<core::Bond> {
     if (structure.models.empty()) {
         return {};
     }
 
     const auto& model = structure.models.front();
-    const auto residues = selected_residue_atoms(model, selection);
+    const auto& residues = selected.residues();
     std::vector<core::Bond> result;
 
     auto component_bonds =
@@ -295,23 +210,22 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
             if (residue.residue->name != component) {
                 continue;
             }
-            const auto first = atom_index(residue, first_name);
-            const auto second = atom_index(residue, second_name);
+            const auto first = selection::atom_index(residue, first_name);
+            const auto second = selection::atom_index(residue, second_name);
             if (first.has_value() && second.has_value()) {
                 add_bond(result, *first, *second, order);
             }
         }
     }
 
-    const auto atoms = selected_atoms(model, selection);
     for (const auto& connection : structure.connections) {
         if (connection.type != ::gemmi::Connection::Covale &&
             connection.type != ::gemmi::Connection::Disulf) {
             continue;
         }
 
-        const auto first = selected_atom_index(model, atoms, connection.partner1);
-        const auto second = selected_atom_index(model, atoms, connection.partner2);
+        const auto first = selected_atom_index(model, selected, connection.partner1);
+        const auto second = selected_atom_index(model, selected, connection.partner2);
         if (first.has_value() && second.has_value()) {
             add_bond(result, *first, *second, core::BondOrder::SINGLE);
         }
@@ -322,7 +236,7 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
 
 } // namespace
 
-auto assign(const ::gemmi::Structure& structure, const RecordSelection selection,
+auto assign(const ::gemmi::Structure& structure, const selection::SelectedModel& model,
             const BondStrategy strategy, ::gemmi::cif::Block* const mmcif_block)
     -> std::vector<core::Bond> {
     if (strategy == BondStrategy::none) {
@@ -331,16 +245,13 @@ auto assign(const ::gemmi::Structure& structure, const RecordSelection selection
 
     std::vector<core::Bond> result;
     if (strategy == BondStrategy::templates || strategy == BondStrategy::hybrid) {
-        if (!structure.models.empty()) {
-            result = assign_template_bonds(structure.models.front(), selection);
-        }
+        result = assign_template_bonds(model);
     }
 
     if (strategy == BondStrategy::explicit_bonds || strategy == BondStrategy::hybrid) {
         const auto explicit_bonds =
-            mmcif_block == nullptr
-                ? assign_explicit_pdb_bonds(structure, selection)
-                : assign_explicit_mmcif_bonds(structure, *mmcif_block, selection);
+            mmcif_block == nullptr ? assign_explicit_pdb_bonds(structure, model)
+                                   : assign_explicit_mmcif_bonds(structure, *mmcif_block, model);
         for (const auto& bond : explicit_bonds) {
             add_bond(result, bond.first_atom_index(), bond.second_atom_index(), bond.order());
         }

@@ -90,6 +90,8 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
         throw std::runtime_error{"structural input contains no models"};
     }
 
+    const auto selected_model =
+        ::chargefw::adapters::gemmi::selection::SelectedModel{structure.models.front(), selection};
     auto first = selected_atoms(structure.models.front(), selection);
     std::vector<core::Conformer> conformers;
     conformers.reserve(structure.models.size());
@@ -107,8 +109,8 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
         name = structure.name;
     }
 
-    auto bonds = ::chargefw::adapters::gemmi::bonds::assign(structure, selection, bond_strategy,
-                                                            mmcif_block);
+    auto bonds = ::chargefw::adapters::gemmi::bonds::assign(structure, selected_model,
+                                                            bond_strategy, mmcif_block);
 
     return native_common::make_record(std::move(first.atoms), std::move(bonds),
                                       std::move(conformers), std::move(identity), std::move(name));
