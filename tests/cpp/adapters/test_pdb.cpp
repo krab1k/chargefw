@@ -1,5 +1,6 @@
 #include <cassert>
 #include <chargefw/adapters/gemmi/pdb_input.h>
+#include <chargefw/core/bond.h>
 
 #include <sstream>
 #include <string>
@@ -73,6 +74,28 @@ END
         auto polymers_reader =
             pdb::PdbReader{polymers_input, {}, gemmi_adapter::RecordSelection::polymers};
         assert(polymers_reader.next()->molecule.atom_count() == 1);
+    }
+
+    {
+        std::istringstream template_input{
+            R"pdb(ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 20.00           N  
+ATOM      2  CA  ALA A   1       1.450   0.000   0.000  1.00 20.00           C  
+ATOM      3  C   ALA A   1       2.450   1.000   0.000  1.00 20.00           C  
+ATOM      4  O   ALA A   1       3.450   1.000   0.000  1.00 20.00           O  
+ATOM      5  CB  ALA A   1       1.450  -1.000   0.000  1.00 20.00           C  
+ATOM      6  N   GLY A   2       2.200   2.200   0.000  1.00 20.00           N  
+ATOM      7  CA  GLY A   2       3.200   3.200   0.000  1.00 20.00           C  
+ATOM      8  C   GLY A   2       4.200   3.200   0.000  1.00 20.00           C  
+ATOM      9  O   GLY A   2       5.200   3.200   0.000  1.00 20.00           O  
+END
+)pdb"};
+        auto reader = pdb::PdbReader{template_input,
+                                     {},
+                                     gemmi_adapter::RecordSelection::all,
+                                     gemmi_adapter::BondStrategy::templates};
+        const auto record = reader.next();
+        assert(record->molecule.bond_count() == 8);
+        assert(record->molecule.bond(3).order() == chargefw::core::BondOrder::DOUBLE);
     }
 
     return 0;

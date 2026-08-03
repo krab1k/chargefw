@@ -13,7 +13,8 @@
 namespace chargefw::adapters::gemmi::pdb_input {
 
 PdbReader::PdbReader(std::istream& input, std::string source,
-                     const ::chargefw::adapters::gemmi::RecordSelection selection) {
+                     const ::chargefw::adapters::gemmi::RecordSelection selection,
+                     const ::chargefw::adapters::gemmi::BondStrategy bond_strategy) {
     std::string contents{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     if (input.bad()) {
         throw std::runtime_error{"failed to read PDB input"};
@@ -24,7 +25,7 @@ PdbReader::PdbReader(std::istream& input, std::string source,
     record_ = common_input::make_record(
         structure,
         MoleculeRecordIdentity{.source = std::move(source), .record_index = 0, .record_id = name},
-        selection, name);
+        selection, bond_strategy, name);
 }
 
 auto PdbReader::next() -> std::optional<ImportedMoleculeRecord> {

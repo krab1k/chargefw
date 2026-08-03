@@ -9,7 +9,9 @@ target_sources(chargefw_core
         native/mol2_output.cpp
         native/sdf_input.cpp
         native/sdf_output.cpp
+        gemmi/bonds.cpp
         gemmi/common_input.cpp
+        gemmi/component_templates.cpp
         gemmi/mmcif_input.cpp
         gemmi/pdb_input.cpp
         PUBLIC

@@ -1,15 +1,17 @@
 #include "common_input.h"
 
+#include "bonds.h"
+
 #include "adapters/native/common_input.h"
 
 #include <chargefw/core/atom.h>
+#include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/position.h>
 
 #include <cstddef>
 #include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace chargefw::adapters::gemmi::common_input {
@@ -113,7 +115,8 @@ auto validate_topology(const std::vector<core::Atom>& reference,
 } // namespace
 
 auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
-                 const RecordSelection selection, std::string name) -> ImportedMoleculeRecord {
+                 const RecordSelection selection, const BondStrategy bond_strategy,
+                 std::string name) -> ImportedMoleculeRecord {
     if (structure.models.empty()) {
         throw std::runtime_error{"structural input contains no models"};
     }
@@ -135,8 +138,14 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
         name = structure.name;
     }
 
-    return native_common::make_record(std::move(first.atoms), {}, std::move(conformers),
-                                      std::move(identity), std::move(name));
+    std::vector<core::Bond> bonds;
+    if (bond_strategy == BondStrategy::templates) {
+        bonds = ::chargefw::adapters::gemmi::bonds::assign_template_bonds(structure.models.front(),
+                                                                          selection);
+    }
+
+    return native_common::make_record(std::move(first.atoms), std::move(bonds),
+                                      std::move(conformers), std::move(identity), std::move(name));
 }
 
 } // namespace chargefw::adapters::gemmi::common_input

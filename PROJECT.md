@@ -220,9 +220,16 @@ policies must therefore be explicit. Gemmi is the preferred optional native C++ 
 PDB/mmCIF handling when a structural-biology consumer requires it. The initial Gemmi PDB adapter
 imports compatible PDB models as conformers of one native molecule, selects blank altlocs before
 `A` and then the first occurrence, supports all-records, polymers-and-ligands (water excluded),
-and polymers (HETATM excluded) selection modes, and deliberately leaves connectivity empty pending
-an explicit bond-adding policy. The mmCIF adapter treats each coordinate-bearing `data_` block as a
+and polymers (HETATM excluded) selection modes. Its default bond strategy leaves connectivity empty;
+the opt-in template strategy uses a compact CCD-derived standard-amino-acid catalog and sequential
+peptide-backbone links. The mmCIF adapter treats each coordinate-bearing `data_` block as a
 separate molecule record; compatible models within a block become conformers.
+
+An exploratory full-CCD packed-template benchmark represented 50,782 components and 2,523,648
+bonds as pooled atom names, a flat bond table, and a sorted component index. The optimized stripped
+lookup executable was about 1 MB, but compiling the generated 41 MB C++ source was demanding. This
+keeps a separately loadable full-CCD provider viable while compact built-in templates remain the
+normal path.
 
 Open Babel, MDAnalysis, MDTraj, and OpenFF may receive thin convenience bridges when concrete
 workflows justify them. They should normally convert through the toolkit-neutral Python boundary

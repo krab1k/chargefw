@@ -79,8 +79,9 @@ structural readers; and `json_output::JsonWriter` writes calculation-result docu
 reader maps all compatible PDB `MODEL` records to conformers of one molecule. The mmCIF reader maps
 each coordinate-bearing `data_` block to one molecule record and models in that block to conformers.
 Both select one altloc per atom (blank, then `A`, then first occurrence), support all-records,
-polymers-and-ligands (water excluded), and polymers (HETATM excluded) selection modes, and do not
-import or infer bonds. `mol2_output::Mol2Writer` copies a MOL2
+polymers-and-ligands (water excluded), and polymers (HETATM excluded) selection modes. Their default
+bond strategy imports no bonds; `templates` adds CCD-derived standard amino-acid bonds and sequential
+peptide backbone links. `mol2_output::Mol2Writer` copies a MOL2
 source file and changes only the selected atom partial-charge fields, adding optional MOL2 fields
 when a source atom has no charge field. It can also generate basic MOL2 output from native
 graph/conformer data using element-symbol atom types; it does not infer Tripos typing or

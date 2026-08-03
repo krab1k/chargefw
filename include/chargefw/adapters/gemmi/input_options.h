@@ -8,4 +8,10 @@ enum class RecordSelection {
     polymers,
 };
 
+enum class BondStrategy {
+    none,
+    explicit_bonds,
+    templates,
+};
+
 } // namespace chargefw::adapters::gemmi
