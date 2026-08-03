@@ -5,33 +5,55 @@
 
 #include <gemmi/cif.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <optional>
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 namespace chargefw::adapters::gemmi::bonds {
 namespace {
 
-void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std::size_t second,
-              const core::BondOrder order) {
-    if (first == second) {
-        return;
-    }
-
-    for (const auto& bond : bonds) {
-        if ((bond.first_atom_index() == first && bond.second_atom_index() == second) ||
-            (bond.first_atom_index() == second && bond.second_atom_index() == first)) {
+class BondAccumulator {
+  public:
+    void add(const std::size_t first, const std::size_t second, const core::BondOrder order) {
+        if (first == second) {
             return;
+        }
+
+        const auto key = BondKey{std::min(first, second), std::max(first, second)};
+        if (seen_.insert(key).second) {
+            bonds_.emplace_back(first, second, order);
         }
     }
 
-    bonds.emplace_back(first, second, order);
-}
+    [[nodiscard]] auto take() -> std::vector<core::Bond> {
+        return std::move(bonds_);
+    }
+
+  private:
+    struct BondKey {
+        std::size_t first;
+        std::size_t second;
+
+        [[nodiscard]] auto operator==(const BondKey&) const -> bool = default;
+    };
+
+    struct BondKeyHash {
+        [[nodiscard]] auto operator()(const BondKey& key) const noexcept -> std::size_t {
+            return std::hash<std::size_t>{}(key.first) ^
+                   (std::hash<std::size_t>{}(key.second) << 1U);
+        }
+    };
+
+    std::vector<core::Bond> bonds_;
+    std::unordered_set<BondKey, BondKeyHash> seen_;
+};
 
 [[nodiscard]] auto selected_atom_index(const ::gemmi::Model& model,
                                        const selection::SelectedModel& selected,
@@ -62,7 +84,7 @@ void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std
     return std::nullopt;
 }
 
-void add_structure_connections(std::vector<core::Bond>& bonds, const ::gemmi::Structure& structure,
+void add_structure_connections(BondAccumulator& bonds, const ::gemmi::Structure& structure,
                                const selection::SelectedModel& selected) {
     if (structure.models.empty()) {
         return;
@@ -78,12 +100,12 @@ void add_structure_connections(std::vector<core::Bond>& bonds, const ::gemmi::St
         const auto first = selected_atom_index(model, selected, connection.partner1);
         const auto second = selected_atom_index(model, selected, connection.partner2);
         if (first.has_value() && second.has_value()) {
-            add_bond(bonds, *first, *second, core::BondOrder::SINGLE);
+            bonds.add(*first, *second, core::BondOrder::SINGLE);
         }
     }
 }
 
-void add_sequential_bonds(std::vector<core::Bond>& bonds,
+void add_sequential_bonds(BondAccumulator& bonds,
                           const std::span<const selection::SelectedResidue> residues,
                           const component_templates::ComponentKind kind,
                           const std::string_view previous_atom,
@@ -102,7 +124,7 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
         const auto first = previous.find_atom(previous_atom);
         const auto second = current.find_atom(current_atom);
         if (first.has_value() && second.has_value()) {
-            add_bond(bonds, *first, *second, core::BondOrder::SINGLE);
+            bonds.add(*first, *second, core::BondOrder::SINGLE);
         }
     }
 }
@@ -122,7 +144,7 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
 
 [[nodiscard]] auto assign_template_bonds(const selection::SelectedModel& model)
     -> std::vector<core::Bond> {
-    std::vector<core::Bond> result;
+    BondAccumulator result;
     const auto& residues = model.residues();
 
     for (const auto& residue : residues) {
@@ -135,7 +157,7 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
             const auto first = residue.find_atom(template_bond.first);
             const auto second = residue.find_atom(template_bond.second);
             if (first.has_value() && second.has_value()) {
-                add_bond(result, *first, *second, template_bond.order);
+                result.add(*first, *second, template_bond.order);
             }
         }
     }
@@ -145,7 +167,7 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
     add_sequential_bonds(result, residues, component_templates::ComponentKind::nucleotide, "O3'",
                          "P");
 
-    return result;
+    return result.take();
 }
 
 } // namespace
@@ -156,7 +178,7 @@ auto explicit_pdb(const ::gemmi::Structure& structure, const selection::Selected
         return {};
     }
 
-    std::vector<core::Bond> result;
+    BondAccumulator result;
     add_structure_connections(result, structure, selected);
 
     for (const auto& [serial, partners] : structure.conect_map) {
@@ -168,12 +190,12 @@ auto explicit_pdb(const ::gemmi::Structure& structure, const selection::Selected
         for (const auto partner : partners) {
             const auto second = selected.atom_index_by_serial(partner);
             if (second.has_value()) {
-                add_bond(result, *first, *second, core::BondOrder::SINGLE);
+                result.add(*first, *second, core::BondOrder::SINGLE);
             }
         }
     }
 
-    return result;
+    return result.take();
 }
 
 auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& block,
@@ -183,7 +205,7 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
     }
 
     const auto& residues = selected.residues();
-    std::vector<core::Bond> result;
+    BondAccumulator result;
 
     auto component_bonds =
         block.find("_chem_comp_bond.", {"comp_id", "atom_id_1", "atom_id_2", "value_order"});
@@ -199,14 +221,14 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
             const auto first = residue.find_atom(first_name);
             const auto second = residue.find_atom(second_name);
             if (first.has_value() && second.has_value()) {
-                add_bond(result, *first, *second, order);
+                result.add(*first, *second, order);
             }
         }
     }
 
     add_structure_connections(result, structure, selected);
 
-    return result;
+    return result.take();
 }
 
 auto assign(const selection::SelectedModel& model, const BondStrategy strategy,
@@ -219,12 +241,17 @@ auto assign(const selection::SelectedModel& model, const BondStrategy strategy,
     case BondStrategy::explicit_bonds:
         return explicit_bonds;
     case BondStrategy::hybrid: {
-        auto bonds = assign_template_bonds(model);
+        BondAccumulator bonds;
         for (const auto& bond : explicit_bonds) {
-            add_bond(bonds, bond.first_atom_index(), bond.second_atom_index(), bond.order());
+            bonds.add(bond.first_atom_index(), bond.second_atom_index(), bond.order());
         }
 
-        return bonds;
+        // Explicit connectivity overrides a conflicting template bond order.
+        for (const auto& bond : assign_template_bonds(model)) {
+            bonds.add(bond.first_atom_index(), bond.second_atom_index(), bond.order());
+        }
+
+        return bonds.take();
     }
     }
 

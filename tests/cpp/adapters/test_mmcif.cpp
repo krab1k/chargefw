@@ -204,18 +204,23 @@ _chem_comp_bond.comp_id
 _chem_comp_bond.atom_id_1
 _chem_comp_bond.atom_id_2
 _chem_comp_bond.value_order
-ALA N CA SING
+ALA N CA DOUB
 #
 )cif";
-    const auto read_duplicate_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
+    const auto read_duplicate_bond = [&](const gemmi_adapter::BondStrategy strategy) {
         std::istringstream duplicate_stream{duplicate_input};
         auto reader = mmcif::MmcifReader{duplicate_stream, {}, {.bond_strategy = strategy}};
-        return reader.next()->molecule.bond_count();
+        const auto molecule = reader.next()->molecule;
+        assert(molecule.bond_count() == 1);
+        return molecule.bond(0);
     };
 
-    assert(read_duplicate_bond_count(gemmi_adapter::BondStrategy::templates) == 1);
-    assert(read_duplicate_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 1);
-    assert(read_duplicate_bond_count(gemmi_adapter::BondStrategy::hybrid) == 1);
+    assert(read_duplicate_bond(gemmi_adapter::BondStrategy::templates).order() ==
+           chargefw::core::BondOrder::SINGLE);
+    assert(read_duplicate_bond(gemmi_adapter::BondStrategy::explicit_bonds).order() ==
+           chargefw::core::BondOrder::DOUBLE);
+    assert(read_duplicate_bond(gemmi_adapter::BondStrategy::hybrid).order() ==
+           chargefw::core::BondOrder::DOUBLE);
 
     return 0;
 }
