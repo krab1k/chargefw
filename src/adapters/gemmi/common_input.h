@@ -5,6 +5,10 @@
 
 #include <gemmi/model.hpp>
 
+namespace gemmi::cif {
+class Block;
+}
+
 #include <cstddef>
 #include <string>
 
@@ -12,7 +16,7 @@ namespace chargefw::adapters::gemmi::common_input {
 
 [[nodiscard]] auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                                RecordSelection selection, BondStrategy bond_strategy,
-                               bool pdb_connectivity = false, std::string name = {})
+                               ::gemmi::cif::Block* mmcif_block = nullptr, std::string name = {})
     -> ImportedMoleculeRecord;
 
 } // namespace chargefw::adapters::gemmi::common_input

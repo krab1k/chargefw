@@ -5,6 +5,10 @@
 
 #include <gemmi/model.hpp>
 
+namespace gemmi::cif {
+class Block;
+}
+
 #include <vector>
 
 namespace chargefw::adapters::gemmi::bonds {
@@ -14,5 +18,10 @@ namespace chargefw::adapters::gemmi::bonds {
 
 [[nodiscard]] auto assign_explicit_pdb_bonds(const ::gemmi::Structure& structure,
                                              RecordSelection selection) -> std::vector<core::Bond>;
+
+[[nodiscard]] auto assign_explicit_mmcif_bonds(const ::gemmi::Structure& structure,
+                                               ::gemmi::cif::Block& block,
+                                               RecordSelection selection)
+    -> std::vector<core::Bond>;
 
 } // namespace chargefw::adapters::gemmi::bonds

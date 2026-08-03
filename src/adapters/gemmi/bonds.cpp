@@ -2,6 +2,8 @@
 
 #include "component_templates.h"
 
+#include <gemmi/cif.hpp>
+
 #include <cstddef>
 #include <optional>
 #include <span>
@@ -235,6 +237,19 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
     }
 }
 
+[[nodiscard]] auto bond_order(const std::string_view value) -> core::BondOrder {
+    if (value == "SING") {
+        return core::BondOrder::SINGLE;
+    }
+    if (value == "DOUB") {
+        return core::BondOrder::DOUBLE;
+    }
+    if (value == "TRIP") {
+        return core::BondOrder::TRIPLE;
+    }
+    return core::BondOrder::UNKNOWN;
+}
+
 } // namespace
 
 auto assign_template_bonds(const ::gemmi::Model& model, const RecordSelection selection)
@@ -306,6 +321,52 @@ auto assign_explicit_pdb_bonds(const ::gemmi::Structure& structure, const Record
             if (second.has_value()) {
                 add_bond(result, *first, *second, core::BondOrder::SINGLE);
             }
+        }
+    }
+
+    return result;
+}
+
+auto assign_explicit_mmcif_bonds(const ::gemmi::Structure& structure, ::gemmi::cif::Block& block,
+                                 const RecordSelection selection) -> std::vector<core::Bond> {
+    if (structure.models.empty()) {
+        return {};
+    }
+
+    const auto& model = structure.models.front();
+    const auto residues = selected_residue_atoms(model, selection);
+    std::vector<core::Bond> result;
+
+    auto component_bonds =
+        block.find("_chem_comp_bond.", {"comp_id", "atom_id_1", "atom_id_2", "value_order"});
+    for (const auto row : component_bonds) {
+        const std::string_view component{row[0]};
+        const std::string_view first_name{row[1]};
+        const std::string_view second_name{row[2]};
+        const auto order = bond_order(row[3]);
+        for (const auto& residue : residues) {
+            if (residue.residue->name != component) {
+                continue;
+            }
+            const auto first = atom_index(residue, first_name);
+            const auto second = atom_index(residue, second_name);
+            if (first.has_value() && second.has_value()) {
+                add_bond(result, *first, *second, order);
+            }
+        }
+    }
+
+    const auto atoms = selected_atoms(model, selection);
+    for (const auto& connection : structure.connections) {
+        if (connection.type != ::gemmi::Connection::Covale &&
+            connection.type != ::gemmi::Connection::Disulf) {
+            continue;
+        }
+
+        const auto first = selected_atom_index(model, atoms, connection.partner1);
+        const auto second = selected_atom_index(model, atoms, connection.partner2);
+        if (first.has_value() && second.has_value()) {
+            add_bond(result, *first, *second, core::BondOrder::SINGLE);
         }
     }
 

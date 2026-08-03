@@ -21,9 +21,8 @@ MmcifReader::MmcifReader(std::istream& input, std::string source,
         throw std::runtime_error{"failed to read mmCIF input"};
     }
 
-    const auto document =
-        ::gemmi::cif::read_memory(contents.data(), contents.size(), source.c_str());
-    for (const auto& block : document.blocks) {
+    auto document = ::gemmi::cif::read_memory(contents.data(), contents.size(), source.c_str());
+    for (auto& block : document.blocks) {
         if (!block.has_tag("_atom_site.id")) {
             continue;
         }
@@ -33,7 +32,8 @@ MmcifReader::MmcifReader(std::istream& input, std::string source,
             structure,
             MoleculeRecordIdentity{
                 .source = source, .record_index = records_.size(), .record_id = block.name},
-            selection, bond_strategy, false, structure.name.empty() ? block.name : structure.name));
+            selection, bond_strategy, std::addressof(block),
+            structure.name.empty() ? block.name : structure.name));
     }
 
     if (records_.empty()) {

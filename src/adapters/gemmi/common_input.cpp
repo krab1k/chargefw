@@ -116,7 +116,8 @@ auto validate_topology(const std::vector<core::Atom>& reference,
 
 auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                  const RecordSelection selection, const BondStrategy bond_strategy,
-                 const bool pdb_connectivity, std::string name) -> ImportedMoleculeRecord {
+                 ::gemmi::cif::Block* const mmcif_block, std::string name)
+    -> ImportedMoleculeRecord {
     if (structure.models.empty()) {
         throw std::runtime_error{"structural input contains no models"};
     }
@@ -143,10 +144,13 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
         bonds = ::chargefw::adapters::gemmi::bonds::assign_template_bonds(structure.models.front(),
                                                                           selection);
     }
-    if ((bond_strategy == BondStrategy::explicit_bonds || bond_strategy == BondStrategy::hybrid) &&
-        pdb_connectivity) {
+    if (bond_strategy == BondStrategy::explicit_bonds || bond_strategy == BondStrategy::hybrid) {
         const auto explicit_bonds =
-            ::chargefw::adapters::gemmi::bonds::assign_explicit_pdb_bonds(structure, selection);
+            mmcif_block == nullptr
+                ? ::chargefw::adapters::gemmi::bonds::assign_explicit_pdb_bonds(structure,
+                                                                                selection)
+                : ::chargefw::adapters::gemmi::bonds::assign_explicit_mmcif_bonds(
+                      structure, *mmcif_block, selection);
         for (const auto& bond : explicit_bonds) {
             bool duplicate = false;
             for (const auto& existing : bonds) {
