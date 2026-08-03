@@ -23,7 +23,7 @@ parameter, and compatibility research.
 
 ```text
 External inputs and front ends                    Only the demo CLI exists today
-    (planned: Python/NumPy, Python RDKit, SDF, Gemmi, JSON/WASM)
+    (current: native molecular I/O and Gemmi; planned: Python/NumPy, RDKit, JSON/WASM)
                               |
                               v
 core::MoleculeCollection
@@ -213,17 +213,25 @@ is also a separate, explicit mutation operation; partial charges must never repl
 ### Other integrations
 
 NumPy-style arrays form the toolkit-neutral Python interchange and make custom scientific, ML, and
-simulation workflows possible without package-specific bindings. Biopython is a useful secondary
-adapter for structural-biology object models, but coordinates and hierarchy do not guarantee a
-complete chemical graph or bond orders; its connectivity, model, component, and alternate-location
-policies must therefore be explicit. Gemmi is the preferred optional native C++ candidate for
-PDB/mmCIF handling when a structural-biology consumer requires it. The initial Gemmi PDB adapter
-imports compatible PDB models as conformers of one native molecule, selects blank altlocs before
-`A` and then the first occurrence, supports all-records, polymers-and-ligands (water excluded),
-and polymers (HETATM excluded) selection modes. Its default bond strategy leaves connectivity empty;
-the opt-in template strategy uses a compact CCD-derived standard-amino-acid catalog and sequential
-peptide-backbone links. The mmCIF adapter treats each coordinate-bearing `data_` block as a
-separate molecule record; compatible models within a block become conformers.
+simulation workflows possible without package-specific bindings. Biopython remains a possible
+secondary adapter for structural-biology object models, but coordinates and hierarchy do not
+guarantee a complete chemical graph or bond orders; it must map onto explicit connectivity, model,
+component, and alternate-location policies. Gemmi 0.7.4 currently backs native PDB and mmCIF readers in
+`chargefw_core`. The PDB reader maps compatible models to conformers of one molecule; the mmCIF
+reader parses the CIF document eagerly, then converts each coordinate-bearing `data_` block lazily
+to a separate record, with compatible models in that block represented as conformers. Both readers
+preserve selected atom order, atom names, formal charges, conformer identity, and record identity.
+They select blank alternate locations before `A` and then the first occurrence, and support
+all-records, polymers-and-ligands (water excluded), and polymers (HETATM excluded) selection modes.
+
+Connectivity is an explicit input option with four strategies: `none` (the default), `templates`,
+`explicit_bonds`, and `hybrid`. The compact built-in CCD-derived template catalog covers standard
+amino acids, standard RNA/DNA nucleotide names, and water, and adds sequential peptide C-N and
+nucleotide O3'-P links. PDB explicit connectivity reads `CONECT` plus covalent/disulfide Gemmi
+connections; mmCIF explicit connectivity reads local `_chem_comp_bond` rows plus covalent/disulfide
+`_struct_conn` connections. `hybrid` combines explicit and template connectivity, deduplicating atom
+pairs and retaining an explicit bond order on conflicts. Distance-based perception and an external
+full-CCD provider are not implemented.
 
 An exploratory full-CCD packed-template benchmark represented 50,782 components and 2,523,648
 bonds as pooled atom names, a flat bond table, and a sorted component index. The optimized stripped
@@ -256,7 +264,7 @@ format or package cannot introduce a separate selection or scientific-policy imp
 Adapters exchange `adapters::ImportedMoleculeRecord` rather than attaching format state to
 `core::Molecule`. Each successful record owns its native molecule, source identity, source-to-native
 atom/conformer mapping, and non-fatal diagnostics. A mapping is explicit even when it is the identity
-mapping, so future RDKit, Gemmi, and Python adapters can preserve source order without adapter-
+mapping, so Gemmi and future RDKit and Python adapters can preserve source order without adapter-
 specific result rules. An adapter may retain an opaque, format-tagged source payload when its writer
 must enrich an existing record rather than reconstruct it. The future Gemmi mmCIF writer will use
 this to preserve structural categories and append the `_sb_ncbr_partial_atomic_charges_meta` and
@@ -291,7 +299,8 @@ short provenance note. Future PDB and mmCIF fixtures should use this same format
 with subdirectories for scenarios such as multi-model, multi-component, and alternate locations.
 
 The native adapter scope is intentionally narrow: MOL/SDF, Tripos MOL2, and a versioned ChargeFW JSON
-document are dependency-free CLI input paths. JSON documents use `schema_version: "1.0"` and a
+document are dependency-free CLI input paths; Gemmi-backed PDB/mmCIF readers are library APIs but are
+not yet wired into the demo CLI. JSON documents use `schema_version: "1.0"` and a
 `molecules` array. Each molecule has optional `id` and `name`, required `atoms` entries with
 `atomic_number` and `formal_charge`, optional indexed `bonds`, and optional conformers with coordinate
 triplets; atom names are intentionally excluded. Array order is authoritative for atom and conformer
@@ -307,15 +316,16 @@ aromatic bond types. MOL2 partial-charge fields are ignored, never treated as fo
 reported once per record when nonzero values are present. It is not a general chemistry toolkit. RDKit
 support is optional and normally
 enters through the Python bridge; if a native RDKit adapter is later justified, it is a separately
-selected backend and never silently replaces the native SDF reader. PDB/mmCIF parsing and mmCIF
-charge export are Gemmi-only optional adapters; the project will not implement those formats itself.
+selected backend and never silently replaces the native SDF reader. PDB/mmCIF parsing uses
+Gemmi-backed adapters; future mmCIF charge export will also be Gemmi-backed. The project will not
+implement those formats itself.
 `pdb_input` treats compatible PDB models as conformers of one molecule, retaining atom names,
 formal charges, and coordinates. It selects blank alternate locations before `A`, then the first
 occurrence, supports all-records, polymers-and-ligands (water excluded), and polymers
-(HETATM excluded) selection modes, and does not import PDB connectivity until an explicit
-bond-adding policy is available. `mmcif_input` applies the same selection and alternate-location
+(HETATM excluded) selection modes. `mmcif_input` applies the same selection and alternate-location
 rules, represents compatible models inside one `data_` block as conformers, and returns separate
-records for separate coordinate-bearing `data_` blocks.
+records for separate coordinate-bearing `data_` blocks. Both readers expose `none`, `templates`,
+`explicit_bonds`, and `hybrid` connectivity strategies as described above.
 The Gemmi writer must preserve imported mmCIF content where possible and append the SB-NCBR charge
 dictionary/categories rather than reconstruct unrelated structural data.
 
@@ -332,15 +342,14 @@ record/block and mapped atoms, never merely because an optional charge field is 
 output is the explicit alternative for an output format that differs from input or lacks a readable
 source file.
 
-Structural adapters must select connectivity explicitly. Supported policies are `explicit` (PDB
-`CONECT`, mmCIF `_struct_conn`, and available chemical-component bond data), `ccd` (Chemical
-Component Dictionary templates resolved by component and atom name), and `distance` (opt-in
-perception from covalent radii and coordinates). A combined explicit-plus-CCD policy may use CCD for
-intra-component bonds and explicit records for inter-component links. Distance perception is never a
-silent fallback and inferred bond orders/provenance must be reported. Alternate locations likewise
-require an explicit deterministic policy; the initial selection order is blank alternate location,
-then `A`, with any broader fallback documented and reported. Adapters must preserve the selected
-source-to-native mapping and report omitted alternate locations.
+Structural adapters must select connectivity explicitly. The implemented policies are `none`,
+`templates`, `explicit_bonds`, and `hybrid`; the latter combines compact built-in component templates
+for intra-component and sequential polymer bonds with explicit PDB/mmCIF records. A future
+distance-perception policy may infer connectivity from covalent radii and coordinates, but it must be
+opt-in, never a fallback, and must report inferred bond orders and provenance. Alternate locations
+likewise use an explicit deterministic policy: blank alternate location, then `A`, then the first
+occurrence. Adapters preserve selected native ordering; omitted-altloc mapping and diagnostics remain
+to be completed.
 
 A method may not require topology directly, but parameter classification can require atomic
 environment or highest bond order. Import success therefore does not imply calculation applicability:

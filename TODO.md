@@ -66,11 +66,10 @@ acceptance criteria for each priority, not optional follow-up work.
   charges, topology, coordinates, source identifiers, or unrelated data fields. Complete calculation
   provenance remains part of the application result/export contract in section 1. Generated output
   supports explicit V2000 or V3000 selection while preservation mode retains the source MOL version.
-- [ ] Add preservation-oriented writers for matching filesystem-backed inputs: copy source bytes and
-  make only minimal format-specific edits. MOL2 replaces/adds optional ATOM charge fields; mmCIF
-  appends ChargeFW categories inside the selected data block; future PQR replaces mapped charges
-  while retaining radii. Reject only when record/block or atom mapping cannot be safely located and
-  validated; use generated output explicitly for other cases.
+- [ ] Add a preservation-oriented Gemmi mmCIF writer. Retain imported CIF content and append the
+  SB-NCBR partial-charge metadata and charge categories inside the selected coordinate-bearing data
+  block. Reject only when the block or atom mapping cannot be safely located and validated. MOL2 and
+  SDF preservation are complete; future PQR output should be tracked when its adapter is scoped.
 - [ ] Replace the molecular-file demonstration with a user-facing C++ CLI over the application
   facade; retain the water workflow as a focused example or test. The current demo accepts
   MOL/SDF/MOL2/ChargeFW JSON input and writes compatible JSON/SDF/MOL2 results, but lacks user-facing
@@ -86,6 +85,15 @@ acceptance criteria for each priority, not optional follow-up work.
   rules. Add approximation diagnostics and coverage only with the corresponding execution policies.
 - [ ] Add parser and CLI integration tests for valid and malformed records, V2000/V3000 boundaries,
   mixed-success batches, all execution policies, deterministic output, and failure exit statuses.
+- [ ] Complete structural-import provenance and mapping. Report selection, altloc, and bond strategy;
+  represent omitted alternate locations in source-to-native mapping and diagnostics; and retain
+  enough opaque mmCIF source state for preservation-oriented export.
+- [ ] Harden Gemmi structural readers with fixture-backed PDB/mmCIF coverage for empty inputs and
+  models, incompatible model atom sequences, unknown elements, insertion codes and chain breaks,
+  alternate-location omissions, filtered records, explicit/template/hybrid bond conflicts, and
+  malformed or partially usable multi-block mmCIF input.
+- [ ] Decide whether Gemmi remains a required `chargefw_core` dependency or becomes an optional
+  adapter target. Keep PDB/mmCIF support and its headers/install behavior consistent with that choice.
 - [ ] Fuzz native molecular parsers and run sanitizer coverage before treating untrusted input as
   supported.
 
@@ -106,9 +114,9 @@ acceptance criteria for each priority, not optional follow-up work.
 - [ ] Keep RDKit chemistry preparation separate from calculation. Any sanitization, hydrogen
   addition/removal, protonation, conformer generation, or optimization helper must be opt-in and
   provenance-recorded.
-- [ ] Add a Biopython convenience adapter once a concrete structural-biology workflow defines
-  connectivity, component, model, and alternate-location policies; use optional Gemmi support where
-  native PDB/mmCIF handling is required.
+- [ ] Add a Biopython convenience adapter once a concrete structural-biology workflow defines how it
+  maps onto the existing Gemmi reader's connectivity, component, model, and alternate-location
+  policies without duplicating native calculation behavior.
 - [ ] Add a separately built C++ `RDKit::ROMol` adapter only for a demonstrated native consumer;
   never make RDKit's C++ ABI a dependency of `chargefw_core` or Python wheels.
 
