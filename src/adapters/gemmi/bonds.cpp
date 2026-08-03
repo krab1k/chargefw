@@ -195,9 +195,8 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
     return core::BondOrder::UNKNOWN;
 }
 
-} // namespace
-
-auto assign_template_bonds(const ::gemmi::Model& model, const RecordSelection selection)
+[[nodiscard]] auto assign_template_bonds(const ::gemmi::Model& model,
+                                         const RecordSelection selection)
     -> std::vector<core::Bond> {
     std::vector<core::Bond> result;
     const auto residues = selected_residue_atoms(model, selection);
@@ -225,7 +224,8 @@ auto assign_template_bonds(const ::gemmi::Model& model, const RecordSelection se
     return result;
 }
 
-auto assign_explicit_pdb_bonds(const ::gemmi::Structure& structure, const RecordSelection selection)
+[[nodiscard]] auto assign_explicit_pdb_bonds(const ::gemmi::Structure& structure,
+                                             const RecordSelection selection)
     -> std::vector<core::Bond> {
     if (structure.models.empty()) {
         return {};
@@ -272,8 +272,10 @@ auto assign_explicit_pdb_bonds(const ::gemmi::Structure& structure, const Record
     return result;
 }
 
-auto assign_explicit_mmcif_bonds(const ::gemmi::Structure& structure, ::gemmi::cif::Block& block,
-                                 const RecordSelection selection) -> std::vector<core::Bond> {
+[[nodiscard]] auto assign_explicit_mmcif_bonds(const ::gemmi::Structure& structure,
+                                               ::gemmi::cif::Block& block,
+                                               const RecordSelection selection)
+    -> std::vector<core::Bond> {
     if (structure.models.empty()) {
         return {};
     }
@@ -312,6 +314,35 @@ auto assign_explicit_mmcif_bonds(const ::gemmi::Structure& structure, ::gemmi::c
         const auto second = selected_atom_index(model, atoms, connection.partner2);
         if (first.has_value() && second.has_value()) {
             add_bond(result, *first, *second, core::BondOrder::SINGLE);
+        }
+    }
+
+    return result;
+}
+
+} // namespace
+
+auto assign(const ::gemmi::Structure& structure, const RecordSelection selection,
+            const BondStrategy strategy, ::gemmi::cif::Block* const mmcif_block)
+    -> std::vector<core::Bond> {
+    if (strategy == BondStrategy::none) {
+        return {};
+    }
+
+    std::vector<core::Bond> result;
+    if (strategy == BondStrategy::templates || strategy == BondStrategy::hybrid) {
+        if (!structure.models.empty()) {
+            result = assign_template_bonds(structure.models.front(), selection);
+        }
+    }
+
+    if (strategy == BondStrategy::explicit_bonds || strategy == BondStrategy::hybrid) {
+        const auto explicit_bonds =
+            mmcif_block == nullptr
+                ? assign_explicit_pdb_bonds(structure, selection)
+                : assign_explicit_mmcif_bonds(structure, *mmcif_block, selection);
+        for (const auto& bond : explicit_bonds) {
+            add_bond(result, bond.first_atom_index(), bond.second_atom_index(), bond.order());
         }
     }
 

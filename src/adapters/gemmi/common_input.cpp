@@ -107,34 +107,8 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
         name = structure.name;
     }
 
-    std::vector<core::Bond> bonds;
-    if (bond_strategy == BondStrategy::templates || bond_strategy == BondStrategy::hybrid) {
-        bonds = ::chargefw::adapters::gemmi::bonds::assign_template_bonds(structure.models.front(),
-                                                                          selection);
-    }
-    if (bond_strategy == BondStrategy::explicit_bonds || bond_strategy == BondStrategy::hybrid) {
-        const auto explicit_bonds =
-            mmcif_block == nullptr
-                ? ::chargefw::adapters::gemmi::bonds::assign_explicit_pdb_bonds(structure,
-                                                                                selection)
-                : ::chargefw::adapters::gemmi::bonds::assign_explicit_mmcif_bonds(
-                      structure, *mmcif_block, selection);
-        for (const auto& bond : explicit_bonds) {
-            bool duplicate = false;
-            for (const auto& existing : bonds) {
-                if ((existing.first_atom_index() == bond.first_atom_index() &&
-                     existing.second_atom_index() == bond.second_atom_index()) ||
-                    (existing.first_atom_index() == bond.second_atom_index() &&
-                     existing.second_atom_index() == bond.first_atom_index())) {
-                    duplicate = true;
-                    break;
-                }
-            }
-            if (!duplicate) {
-                bonds.push_back(bond);
-            }
-        }
-    }
+    auto bonds = ::chargefw::adapters::gemmi::bonds::assign(structure, selection, bond_strategy,
+                                                            mmcif_block);
 
     return native_common::make_record(std::move(first.atoms), std::move(bonds),
                                       std::move(conformers), std::move(identity), std::move(name));
