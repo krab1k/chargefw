@@ -2,7 +2,6 @@
 
 #include <chargefw/core/bond.h>
 
-#include <array>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -19,7 +18,6 @@ enum class ComponentKind {
     amino_acid,
     nucleotide,
     water,
-    other,
 };
 
 struct ComponentTemplate {
