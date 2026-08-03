@@ -1,6 +1,7 @@
 #include "selection.h"
 
 namespace chargefw::adapters::gemmi::selection {
+namespace {
 
 auto include_residue(const ::gemmi::Residue& residue, const RecordSelection selection) -> bool {
     switch (selection) {
@@ -46,6 +47,8 @@ auto select_altloc(const ::gemmi::Residue& residue, const std::size_t first_atom
 
     return *selected;
 }
+
+} // namespace
 
 SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection selection) {
     std::size_t atom_index = 0;
