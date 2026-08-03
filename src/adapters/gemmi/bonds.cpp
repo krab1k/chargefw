@@ -12,6 +12,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -142,6 +143,17 @@ void add_sequential_bonds(BondAccumulator& bonds,
     return core::BondOrder::UNKNOWN;
 }
 
+void add_component_bonds(BondAccumulator& result, const selection::SelectedResidue& residue,
+                         const std::span<const component_templates::BondTemplate> bonds) {
+    for (const auto& bond : bonds) {
+        const auto first = residue.find_atom(bond.first);
+        const auto second = residue.find_atom(bond.second);
+        if (first.has_value() && second.has_value()) {
+            result.add(*first, *second, bond.order);
+        }
+    }
+}
+
 [[nodiscard]] auto assign_template_bonds(const selection::SelectedModel& model)
     -> std::vector<core::Bond> {
     BondAccumulator result;
@@ -153,13 +165,7 @@ void add_sequential_bonds(BondAccumulator& bonds,
             continue;
         }
 
-        for (const auto& template_bond : component_template->bonds) {
-            const auto first = residue.find_atom(template_bond.first);
-            const auto second = residue.find_atom(template_bond.second);
-            if (first.has_value() && second.has_value()) {
-                result.add(*first, *second, template_bond.order);
-            }
-        }
+        add_component_bonds(result, residue, component_template->bonds);
     }
 
     add_sequential_bonds(result, residues, component_templates::ComponentKind::amino_acid, "C",
@@ -207,22 +213,20 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
     const auto& residues = selected.residues();
     BondAccumulator result;
 
-    auto component_bonds =
+    std::unordered_map<std::string_view, std::vector<component_templates::BondTemplate>>
+        component_bonds;
+    auto rows =
         block.find("_chem_comp_bond.", {"comp_id", "atom_id_1", "atom_id_2", "value_order"});
-    for (const auto row : component_bonds) {
+    for (const auto row : rows) {
         const std::string_view component{row[0]};
-        const std::string_view first_name{row[1]};
-        const std::string_view second_name{row[2]};
-        const auto order = bond_order(row[3]);
-        for (const auto& residue : residues) {
-            if (residue.residue->name != component) {
-                continue;
-            }
-            const auto first = residue.find_atom(first_name);
-            const auto second = residue.find_atom(second_name);
-            if (first.has_value() && second.has_value()) {
-                result.add(*first, *second, order);
-            }
+        component_bonds[component].emplace_back(component_templates::BondTemplate{
+            .first = row[1], .second = row[2], .order = bond_order(row[3])});
+    }
+
+    for (const auto& residue : residues) {
+        const auto found = component_bonds.find(residue.residue->name);
+        if (found != component_bonds.end()) {
+            add_component_bonds(result, residue, found->second);
         }
     }
 
