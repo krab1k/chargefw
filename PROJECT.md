@@ -260,9 +260,10 @@ coordinates and return record-scoped errors without silently repairing chemistry
 retain the source mapping and attach charges and provenance without changing molecular semantics.
 
 The native SDF path is not intended to become a universal chemistry toolkit. Python RDKit provides
-broad SMILES/SDF/Mol2 workflows; optional Gemmi/Biopython adapters cover structural biology. Each
-adapter translates to the same toolkit-neutral molecule and calculation contracts, so adding a
-format or package cannot introduce a separate selection or scientific-policy implementation.
+broad SMILES/SDF/Mol2 workflows; the required Gemmi adapter and future optional Biopython adapters
+cover structural biology. Each adapter translates to the same toolkit-neutral molecule and
+calculation contracts, so adding a format or package cannot introduce a separate selection or
+scientific-policy implementation.
 
 #### Adapter record contract
 

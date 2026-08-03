@@ -21,6 +21,9 @@ owned document in the same change. Do not leave documentation updates as an impl
 
 ```text
 include/chargefw/  Public library API
+                   (`adapters/{native,gemmi}/all.h` are per-backend convenience umbrella
+                   headers for applications; library code should continue to include only the
+                   individual headers it uses)
 src/core/          Molecule, atom, bond, conformer, periodic table
 src/features/      Derived topology and conformer features
 src/calculation/   High-level applicability, selection, and execution facade

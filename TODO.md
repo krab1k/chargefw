@@ -94,8 +94,8 @@ acceptance criteria for each priority, not optional follow-up work.
   models, incompatible model atom sequences, unknown elements, insertion codes and chain breaks,
   alternate-location omissions, filtered records, explicit/template/hybrid bond conflicts, and
   malformed or partially usable multi-block mmCIF input.
-- [ ] Decide whether Gemmi remains a required `chargefw_core` dependency or becomes an optional
-  adapter target. Keep PDB/mmCIF support and its headers/install behavior consistent with that choice.
+- [x] Keep Gemmi as a required `chargefw_core` dependency. PDB/mmCIF support and its public
+  headers, including the Gemmi adapter umbrella, are installed with the core library.
 - [ ] Fuzz native molecular parsers and run sanitizer coverage before treating untrusted input as
   supported.
 

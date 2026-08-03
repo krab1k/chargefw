@@ -1,14 +1,7 @@
 #include <CLI/CLI.hpp>
 #include <algorithm>
-#include <chargefw/adapters/gemmi/mmcif_input.h>
-#include <chargefw/adapters/gemmi/pdb_input.h>
-#include <chargefw/adapters/native/json_input.h>
-#include <chargefw/adapters/native/json_output.h>
-#include <chargefw/adapters/native/mol2_input.h>
-#include <chargefw/adapters/native/mol2_output.h>
-#include <chargefw/adapters/native/mol_input.h>
-#include <chargefw/adapters/native/sdf_input.h>
-#include <chargefw/adapters/native/sdf_output.h>
+#include <chargefw/adapters/gemmi/all.h>
+#include <chargefw/adapters/native/all.h>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule.h>
