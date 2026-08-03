@@ -47,16 +47,16 @@ constexpr ComponentTemplateEntry templates[]{
 
 } // namespace
 
-auto find(const std::string_view component) -> std::optional<ComponentTemplate> {
+auto find(const std::string_view component) -> const ComponentTemplate* {
     const auto entry =
         std::lower_bound(std::begin(templates), std::end(templates), component,
                          [](const ComponentTemplateEntry& candidate, const std::string_view id) {
                              return candidate.component < id;
                          });
     if (entry != std::end(templates) && entry->component == component) {
-        return entry->component_template;
+        return std::addressof(entry->component_template);
     }
-    return std::nullopt;
+    return nullptr;
 }
 
 } // namespace chargefw::adapters::gemmi::component_templates

@@ -51,6 +51,17 @@ auto select_altloc(const ::gemmi::Residue& residue, const std::size_t first_atom
 } // namespace
 
 SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection selection) {
+    std::size_t atom_count = 0;
+    for (const auto& chain : model.chains) {
+        for (const auto& residue : chain.residues) {
+            atom_count += residue.atoms.size();
+        }
+    }
+    atoms_.reserve(atom_count);
+    residues_.reserve(model.chains.size());
+    atom_indices_.reserve(atom_count);
+    serial_indices_.reserve(atom_count);
+
     std::size_t atom_index = 0;
     for (const auto& chain : model.chains) {
         for (const auto& residue : chain.residues) {
@@ -59,6 +70,7 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
             }
 
             SelectedResidue selected{.residue = std::addressof(residue), .atom_indices = {}};
+            selected.atom_indices.reserve(residue.atoms.size());
             for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
                 if (!is_first_named_atom(residue, index)) {
                     continue;

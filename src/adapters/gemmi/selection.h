@@ -16,11 +16,12 @@ namespace chargefw::adapters::gemmi::selection {
 
 struct SelectedResidue {
     const ::gemmi::Residue* residue;
-    std::vector<std::pair<std::string, std::size_t>> atom_indices;
+    std::vector<std::pair<std::string_view, std::size_t>> atom_indices;
 
     [[nodiscard]] auto find_atom(std::string_view name) const -> std::optional<std::size_t>;
 };
 
+// Borrows a Gemmi model and its atoms. The model must outlive this view and remain unmodified.
 class SelectedModel {
   public:
     explicit SelectedModel(const ::gemmi::Model& model, RecordSelection selection);

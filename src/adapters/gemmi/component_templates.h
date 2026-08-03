@@ -2,7 +2,6 @@
 
 #include <chargefw/core/bond.h>
 
-#include <optional>
 #include <span>
 #include <string_view>
 
@@ -25,6 +24,6 @@ struct ComponentTemplate {
     std::span<const BondTemplate> bonds;
 };
 
-[[nodiscard]] auto find(std::string_view component) -> std::optional<ComponentTemplate>;
+[[nodiscard]] auto find(std::string_view component) -> const ComponentTemplate*;
 
 } // namespace chargefw::adapters::gemmi::component_templates
