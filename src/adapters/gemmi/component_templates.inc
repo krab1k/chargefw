@@ -1,4 +1,5 @@
-// Generated from data/components.cif.gz using Gemmi. Do not edit.
+// Bond templates for standard biological components, generated once from data/components.cif.gz.
+// The supported component set is intentionally stable; regenerate only when it is deliberately changed.
 
 // amino_acid templates
 constexpr std::array<BondTemplate, 12> ala_bonds{{
@@ -763,4 +764,3 @@ constexpr std::array<BondTemplate, 2> hoh_bonds{{
     {"O", "H1", core::BondOrder::SINGLE},
     {"O", "H2", core::BondOrder::SINGLE},
 }};
-
