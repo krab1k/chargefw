@@ -1,6 +1,6 @@
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 
-#include "common_input.h"
+#include "structure_import.h"
 
 #include <gemmi/cif.hpp>
 #include <gemmi/mmcif.hpp>
@@ -28,7 +28,7 @@ MmcifReader::MmcifReader(std::istream& input, std::string source,
         }
 
         const auto structure = ::gemmi::make_structure_from_block(block);
-        records_.push_back(common_input::make_record(
+        records_.push_back(structure_import::make_record(
             structure,
             MoleculeRecordIdentity{
                 .source = source, .record_index = records_.size(), .record_id = block.name},

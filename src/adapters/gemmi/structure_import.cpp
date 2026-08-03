@@ -1,4 +1,4 @@
-#include "common_input.h"
+#include "structure_import.h"
 
 #include "bonds.h"
 #include "selection.h"
@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace chargefw::adapters::gemmi::common_input {
+namespace chargefw::adapters::gemmi::structure_import {
 namespace {
 
 namespace native_common = chargefw::adapters::native::common_input;
@@ -104,4 +104,4 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
                                       std::move(conformers), std::move(identity), std::move(name));
 }
 
-} // namespace chargefw::adapters::gemmi::common_input
+} // namespace chargefw::adapters::gemmi::structure_import

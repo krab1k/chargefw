@@ -1,6 +1,6 @@
 #include <chargefw/adapters/gemmi/pdb_input.h>
 
-#include "common_input.h"
+#include "structure_import.h"
 
 #include <gemmi/pdb.hpp>
 
@@ -22,7 +22,7 @@ PdbReader::PdbReader(std::istream& input, std::string source,
 
     const auto structure = ::gemmi::read_pdb_string(contents, source);
     const auto name = structure.name.empty() ? source : structure.name;
-    record_ = common_input::make_record(
+    record_ = structure_import::make_record(
         structure,
         MoleculeRecordIdentity{.source = std::move(source), .record_index = 0, .record_id = name},
         selection, bond_strategy, nullptr, name);
