@@ -61,20 +61,6 @@ void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std
     return std::nullopt;
 }
 
-[[nodiscard]] auto atom_by_serial(const ::gemmi::Model& model, const int serial)
-    -> const ::gemmi::Atom* {
-    for (const auto& chain : model.chains) {
-        for (const auto& residue : chain.residues) {
-            for (const auto& atom : residue.atoms) {
-                if (atom.serial == serial) {
-                    return std::addressof(atom);
-                }
-            }
-        }
-    }
-    return nullptr;
-}
-
 void add_sequential_bonds(std::vector<core::Bond>& bonds,
                           const std::span<const selection::SelectedResidue> residues,
                           const component_templates::ComponentKind kind,
@@ -164,20 +150,13 @@ void add_sequential_bonds(std::vector<core::Bond>& bonds,
     }
 
     for (const auto& [serial, partners] : structure.conect_map) {
-        const auto* first_atom = atom_by_serial(model, serial);
-        if (first_atom == nullptr) {
-            continue;
-        }
-
-        const auto first = selected.atom_index(first_atom);
+        const auto first = selected.atom_index(serial);
         if (!first.has_value()) {
             continue;
         }
 
         for (const auto partner : partners) {
-            const auto* second_atom = atom_by_serial(model, partner);
-            const auto second =
-                second_atom == nullptr ? std::nullopt : selected.atom_index(second_atom);
+            const auto second = selected.atom_index(partner);
             if (second.has_value()) {
                 add_bond(result, *first, *second, core::BondOrder::SINGLE);
             }

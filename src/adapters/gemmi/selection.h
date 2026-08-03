@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -39,10 +40,13 @@ class SelectedModel {
     [[nodiscard]] auto atoms() const -> const std::vector<SelectedAtom>&;
     [[nodiscard]] auto residues() const -> const std::vector<SelectedResidue>&;
     [[nodiscard]] auto atom_index(const ::gemmi::Atom* atom) const -> std::optional<std::size_t>;
+    [[nodiscard]] auto atom_index(int serial) const -> std::optional<std::size_t>;
 
   private:
     std::vector<SelectedAtom> atoms_;
     std::vector<SelectedResidue> residues_;
+    std::unordered_map<const ::gemmi::Atom*, std::size_t> atom_indices_;
+    std::unordered_map<int, std::size_t> serial_indices_;
 };
 
 [[nodiscard]] auto atom_index(const SelectedResidue& residue, std::string_view name)
