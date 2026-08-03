@@ -62,7 +62,7 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
                 }
 
                 const auto& atom = select_altloc(residue, index);
-                atoms_.push_back({.atom = std::addressof(atom), .index = atom_index});
+                atoms_.push_back(std::addressof(atom));
                 selected.atom_indices.emplace_back(atom.name, atom_index);
                 atom_indices_.emplace(std::addressof(atom), atom_index);
                 serial_indices_.emplace(atom.serial, atom_index++);
@@ -72,7 +72,7 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
     }
 }
 
-auto SelectedModel::atoms() const -> const std::vector<SelectedAtom>& {
+auto SelectedModel::atoms() const -> const std::vector<const ::gemmi::Atom*>& {
     return atoms_;
 }
 

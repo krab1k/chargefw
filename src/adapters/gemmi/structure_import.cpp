@@ -30,16 +30,15 @@ struct ModelAtoms {
     result.atoms.reserve(model.atoms().size());
     result.positions.reserve(model.atoms().size());
 
-    for (const auto& selected_atom : model.atoms()) {
-        const auto& atom = *selected_atom.atom;
-        const auto atomic_number = atom.element.atomic_number();
+    for (const auto* atom : model.atoms()) {
+        const auto atomic_number = atom->element.atomic_number();
         if (atomic_number <= 0) {
-            throw std::runtime_error{"structural atom '" + atom.name + "' has no known element"};
+            throw std::runtime_error{"structural atom '" + atom->name + "' has no known element"};
         }
 
-        result.atoms.emplace_back(atomic_number, atom.charge, atom.name);
+        result.atoms.emplace_back(atomic_number, atom->charge, atom->name);
         result.positions.push_back(
-            core::Position{.x = atom.pos.x, .y = atom.pos.y, .z = atom.pos.z});
+            core::Position{.x = atom->pos.x, .y = atom->pos.y, .z = atom->pos.z});
     }
 
     if (result.atoms.empty()) {
