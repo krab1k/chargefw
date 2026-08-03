@@ -1,6 +1,7 @@
 #include "bonds.h"
 
 #include "component_templates.h"
+#include "selection.h"
 
 #include <gemmi/cif.hpp>
 
@@ -24,20 +25,6 @@ struct SelectedAtom {
     const ::gemmi::Atom* atom;
     std::size_t index;
 };
-
-[[nodiscard]] auto include_residue(const ::gemmi::Residue& residue, const RecordSelection selection)
-    -> bool {
-    switch (selection) {
-    case RecordSelection::all:
-        return true;
-    case RecordSelection::polymers_and_ligands:
-        return residue.het_flag != 'H' || residue.name != "HOH";
-    case RecordSelection::polymers:
-        return residue.het_flag != 'H';
-    }
-
-    return false;
-}
 
 void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std::size_t second,
               const core::BondOrder order) {
@@ -63,39 +50,18 @@ void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std
 
     for (const auto& chain : model.chains) {
         for (const auto& residue : chain.residues) {
-            if (!include_residue(residue, selection)) {
+            if (!selection::include_residue(residue, selection)) {
                 continue;
             }
 
             ResidueAtoms selected{.residue = std::addressof(residue), .atom_indices = {}};
             for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
-                const auto& atom = residue.atoms[index];
-                bool previously_seen = false;
-                for (std::size_t previous = 0; previous < index; ++previous) {
-                    if (residue.atoms[previous].name == atom.name) {
-                        previously_seen = true;
-                        break;
-                    }
-                }
-                if (previously_seen) {
+                if (!selection::is_first_named_atom(residue, index)) {
                     continue;
                 }
 
-                const ::gemmi::Atom* chosen = std::addressof(atom);
-                for (std::size_t candidate_index = index + 1;
-                     candidate_index < residue.atoms.size(); ++candidate_index) {
-                    const auto& candidate = residue.atoms[candidate_index];
-                    if (candidate.name != atom.name) {
-                        continue;
-                    }
-                    if (chosen->altloc != '\0' && candidate.altloc == '\0') {
-                        chosen = std::addressof(candidate);
-                    } else if (chosen->altloc != '\0' && candidate.altloc == 'A') {
-                        chosen = std::addressof(candidate);
-                    }
-                }
-
-                selected.atom_indices.emplace_back(chosen->name, atom_index++);
+                const auto& chosen = selection::select_altloc(residue, index);
+                selected.atom_indices.emplace_back(chosen.name, atom_index++);
             }
             result.push_back(std::move(selected));
         }
@@ -121,38 +87,17 @@ void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std
 
     for (const auto& chain : model.chains) {
         for (const auto& residue : chain.residues) {
-            if (!include_residue(residue, selection)) {
+            if (!selection::include_residue(residue, selection)) {
                 continue;
             }
 
             for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
-                const auto& atom = residue.atoms[index];
-                bool previously_seen = false;
-                for (std::size_t previous = 0; previous < index; ++previous) {
-                    if (residue.atoms[previous].name == atom.name) {
-                        previously_seen = true;
-                        break;
-                    }
-                }
-                if (previously_seen) {
+                if (!selection::is_first_named_atom(residue, index)) {
                     continue;
                 }
 
-                const ::gemmi::Atom* chosen = std::addressof(atom);
-                for (std::size_t candidate_index = index + 1;
-                     candidate_index < residue.atoms.size(); ++candidate_index) {
-                    const auto& candidate = residue.atoms[candidate_index];
-                    if (candidate.name != atom.name) {
-                        continue;
-                    }
-                    if (chosen->altloc != '\0' && candidate.altloc == '\0') {
-                        chosen = std::addressof(candidate);
-                    } else if (chosen->altloc != '\0' && candidate.altloc == 'A') {
-                        chosen = std::addressof(candidate);
-                    }
-                }
-
-                result.push_back({.atom = chosen, .index = atom_index++});
+                const auto& chosen = selection::select_altloc(residue, index);
+                result.push_back({.atom = std::addressof(chosen), .index = atom_index++});
             }
         }
     }

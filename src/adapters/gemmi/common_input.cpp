@@ -1,6 +1,7 @@
 #include "common_input.h"
 
 #include "bonds.h"
+#include "selection.h"
 
 #include "adapters/native/common_input.h"
 
@@ -24,66 +25,33 @@ struct ModelAtoms {
     std::vector<core::Position> positions;
 };
 
-[[nodiscard]] auto include_residue(const ::gemmi::Residue& residue, const RecordSelection selection)
-    -> bool {
-    switch (selection) {
-    case RecordSelection::all:
-        return true;
-    case RecordSelection::polymers_and_ligands:
-        return residue.het_flag != 'H' || residue.name != "HOH";
-    case RecordSelection::polymers:
-        return residue.het_flag != 'H';
-    }
-
-    return false;
-}
-
 [[nodiscard]] auto selected_atoms(const ::gemmi::Model& model, const RecordSelection selection)
     -> ModelAtoms {
     ModelAtoms result;
 
     for (const auto& chain : model.chains) {
         for (const auto& residue : chain.residues) {
-            if (!include_residue(residue, selection)) {
+            if (!::chargefw::adapters::gemmi::selection::include_residue(residue, selection)) {
                 continue;
             }
 
             for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
-                const auto& atom = residue.atoms[index];
-                bool previously_seen = false;
-                for (std::size_t previous = 0; previous < index; ++previous) {
-                    if (residue.atoms[previous].name == atom.name) {
-                        previously_seen = true;
-                        break;
-                    }
-                }
-                if (previously_seen) {
+                if (!::chargefw::adapters::gemmi::selection::is_first_named_atom(residue, index)) {
                     continue;
                 }
 
-                const ::gemmi::Atom* selected = std::addressof(atom);
-                for (std::size_t candidate_index = index + 1;
-                     candidate_index < residue.atoms.size(); ++candidate_index) {
-                    const auto& candidate = residue.atoms[candidate_index];
-                    if (candidate.name != atom.name) {
-                        continue;
-                    }
-                    if (selected->altloc != '\0' && candidate.altloc == '\0') {
-                        selected = std::addressof(candidate);
-                    } else if (selected->altloc != '\0' && candidate.altloc == 'A') {
-                        selected = std::addressof(candidate);
-                    }
-                }
+                const auto& selected =
+                    ::chargefw::adapters::gemmi::selection::select_altloc(residue, index);
 
-                const auto atomic_number = selected->element.atomic_number();
+                const auto atomic_number = selected.element.atomic_number();
                 if (atomic_number <= 0) {
-                    throw std::runtime_error{"structural atom '" + atom.name +
+                    throw std::runtime_error{"structural atom '" + selected.name +
                                              "' has no known element"};
                 }
 
-                result.atoms.emplace_back(atomic_number, selected->charge, atom.name);
-                result.positions.push_back(core::Position{
-                    .x = selected->pos.x, .y = selected->pos.y, .z = selected->pos.z});
+                result.atoms.emplace_back(atomic_number, selected.charge, selected.name);
+                result.positions.push_back(
+                    core::Position{.x = selected.pos.x, .y = selected.pos.y, .z = selected.pos.z});
             }
         }
     }

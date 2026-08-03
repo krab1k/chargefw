@@ -14,6 +14,7 @@ target_sources(chargefw_core
         gemmi/component_templates.cpp
         gemmi/mmcif_input.cpp
         gemmi/pdb_input.cpp
+        gemmi/selection.cpp
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
