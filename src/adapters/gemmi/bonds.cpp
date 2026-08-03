@@ -6,6 +6,7 @@
 #include <gemmi/cif.hpp>
 
 #include <cstddef>
+#include <cstdlib>
 #include <optional>
 #include <span>
 #include <string>
@@ -210,22 +211,24 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
 
 auto assign(const selection::SelectedModel& model, const BondStrategy strategy,
             std::vector<core::Bond> explicit_bonds) -> std::vector<core::Bond> {
-    if (strategy == BondStrategy::none) {
+    switch (strategy) {
+    case BondStrategy::none:
         return {};
-    }
-
-    std::vector<core::Bond> result;
-    if (strategy == BondStrategy::templates || strategy == BondStrategy::hybrid) {
-        result = assign_template_bonds(model);
-    }
-
-    if (strategy == BondStrategy::explicit_bonds || strategy == BondStrategy::hybrid) {
+    case BondStrategy::templates:
+        return assign_template_bonds(model);
+    case BondStrategy::explicit_bonds:
+        return explicit_bonds;
+    case BondStrategy::hybrid: {
+        auto bonds = assign_template_bonds(model);
         for (const auto& bond : explicit_bonds) {
-            add_bond(result, bond.first_atom_index(), bond.second_atom_index(), bond.order());
+            add_bond(bonds, bond.first_atom_index(), bond.second_atom_index(), bond.order());
         }
+
+        return bonds;
+    }
     }
 
-    return result;
+    std::abort();
 }
 
 } // namespace chargefw::adapters::gemmi::bonds
