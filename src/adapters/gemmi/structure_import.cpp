@@ -11,6 +11,7 @@
 #include <chargefw/core/position.h>
 
 #include <cstddef>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -25,7 +26,7 @@ struct ModelAtoms {
     std::vector<core::Position> positions;
 };
 
-[[nodiscard]] auto model_atoms(const selection::SelectedModel& model) -> ModelAtoms {
+[[nodiscard]] auto import_reference(const selection::SelectedModel& model) -> ModelAtoms {
     ModelAtoms result;
     result.atoms.reserve(model.atoms().size());
     result.positions.reserve(model.atoms().size());
@@ -48,21 +49,30 @@ struct ModelAtoms {
     return result;
 }
 
-auto validate_topology(const std::vector<core::Atom>& reference,
-                       const std::vector<core::Atom>& atoms) -> void {
-    if (reference.size() != atoms.size()) {
+[[nodiscard]] auto conformer_positions(const selection::SelectedModel& model,
+                                       const std::span<const core::Atom> reference)
+    -> std::vector<core::Position> {
+    if (reference.size() != model.atoms().size()) {
         throw std::runtime_error{
             "structural models do not contain the same selected atom sequence"};
     }
 
+    std::vector<core::Position> positions;
+    positions.reserve(reference.size());
     for (std::size_t index = 0; index < reference.size(); ++index) {
-        if (reference[index].atomic_number() != atoms[index].atomic_number() ||
-            reference[index].formal_charge() != atoms[index].formal_charge() ||
-            reference[index].name() != atoms[index].name()) {
+        const auto& source = *model.atoms()[index];
+        if (reference[index].atomic_number() != source.element.atomic_number() ||
+            reference[index].formal_charge() != source.charge ||
+            reference[index].name() != source.name) {
             throw std::runtime_error{
                 "structural models do not contain the same selected atom sequence"};
         }
+
+        positions.push_back(
+            core::Position{.x = source.pos.x, .y = source.pos.y, .z = source.pos.z});
     }
+
+    return positions;
 }
 
 } // namespace
@@ -77,7 +87,7 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
 
     const auto selected_model =
         ::chargefw::adapters::gemmi::selection::SelectedModel{structure.models.front(), selection};
-    auto first = model_atoms(selected_model);
+    auto first = import_reference(selected_model);
     std::vector<core::Conformer> conformers;
     conformers.reserve(structure.models.size());
     conformers.emplace_back(std::move(first.positions),
@@ -86,10 +96,8 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
     for (std::size_t index = 1; index < structure.models.size(); ++index) {
         const auto selected = ::chargefw::adapters::gemmi::selection::SelectedModel{
             structure.models[index], selection};
-        auto model = model_atoms(selected);
-        validate_topology(first.atoms, model.atoms);
-        conformers.emplace_back(std::move(model.positions),
-                                std::to_string(structure.models[index].num));
+        auto positions = conformer_positions(selected, first.atoms);
+        conformers.emplace_back(std::move(positions), std::to_string(structure.models[index].num));
     }
 
     if (name.empty()) {
