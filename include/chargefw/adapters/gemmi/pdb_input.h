@@ -13,8 +13,8 @@ namespace chargefw::adapters::gemmi::pdb_input {
 // becomes a conformer after validating the same atom sequence. Selection can retain all records,
 // exclude water, or retain only ATOM records. Alternate locations are excluded: blank locations are
 // preferred, otherwise location A, otherwise the first location. BondStrategy::none imports no
-// bonds; explicit_bonds imports PDB connectivity; templates adds basic amino-acid templates and
-// peptide-backbone bonds.
+// bonds; explicit_bonds imports PDB connectivity; templates adds basic component templates and
+// polymer-backbone bonds; hybrid combines explicit_bonds and templates.
 class PdbReader {
   public:
     explicit PdbReader(std::istream& input, std::string source = {},

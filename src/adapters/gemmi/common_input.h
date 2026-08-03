@@ -12,6 +12,7 @@ namespace chargefw::adapters::gemmi::common_input {
 
 [[nodiscard]] auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                                RecordSelection selection, BondStrategy bond_strategy,
-                               std::string name = {}) -> ImportedMoleculeRecord;
+                               bool pdb_connectivity = false, std::string name = {})
+    -> ImportedMoleculeRecord;
 
 } // namespace chargefw::adapters::gemmi::common_input

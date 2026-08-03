@@ -12,6 +12,7 @@ enum class BondStrategy {
     none,
     explicit_bonds,
     templates,
+    hybrid,
 };
 
 } // namespace chargefw::adapters::gemmi

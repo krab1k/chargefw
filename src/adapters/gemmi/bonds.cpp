@@ -18,6 +18,11 @@ struct ResidueAtoms {
     std::vector<std::pair<std::string, std::size_t>> atom_indices;
 };
 
+struct SelectedAtom {
+    const ::gemmi::Atom* atom;
+    std::size_t index;
+};
+
 [[nodiscard]] auto include_residue(const ::gemmi::Residue& residue, const RecordSelection selection)
     -> bool {
     switch (selection) {
@@ -107,6 +112,105 @@ void add_bond(std::vector<core::Bond>& bonds, const std::size_t first, const std
     return std::nullopt;
 }
 
+[[nodiscard]] auto selected_atoms(const ::gemmi::Model& model, const RecordSelection selection)
+    -> std::vector<SelectedAtom> {
+    std::vector<SelectedAtom> result;
+    std::size_t atom_index = 0;
+
+    for (const auto& chain : model.chains) {
+        for (const auto& residue : chain.residues) {
+            if (!include_residue(residue, selection)) {
+                continue;
+            }
+
+            for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
+                const auto& atom = residue.atoms[index];
+                bool previously_seen = false;
+                for (std::size_t previous = 0; previous < index; ++previous) {
+                    if (residue.atoms[previous].name == atom.name) {
+                        previously_seen = true;
+                        break;
+                    }
+                }
+                if (previously_seen) {
+                    continue;
+                }
+
+                const ::gemmi::Atom* chosen = std::addressof(atom);
+                for (std::size_t candidate_index = index + 1;
+                     candidate_index < residue.atoms.size(); ++candidate_index) {
+                    const auto& candidate = residue.atoms[candidate_index];
+                    if (candidate.name != atom.name) {
+                        continue;
+                    }
+                    if (chosen->altloc != '\0' && candidate.altloc == '\0') {
+                        chosen = std::addressof(candidate);
+                    } else if (chosen->altloc != '\0' && candidate.altloc == 'A') {
+                        chosen = std::addressof(candidate);
+                    }
+                }
+
+                result.push_back({.atom = chosen, .index = atom_index++});
+            }
+        }
+    }
+
+    return result;
+}
+
+[[nodiscard]] auto selected_atom_index(const std::vector<SelectedAtom>& atoms,
+                                       const ::gemmi::Atom* atom) -> std::optional<std::size_t> {
+    for (const auto& selected : atoms) {
+        if (selected.atom == atom) {
+            return selected.index;
+        }
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] auto selected_atom_index(const ::gemmi::Model& model,
+                                       const std::vector<SelectedAtom>& atoms,
+                                       const ::gemmi::AtomAddress& address)
+    -> std::optional<std::size_t> {
+    const auto cra = model.find_cra(address);
+    if (cra.atom != nullptr) {
+        return selected_atom_index(atoms, cra.atom);
+    }
+
+    for (const auto& chain : model.chains) {
+        if (chain.name != address.chain_name) {
+            continue;
+        }
+        for (const auto& residue : chain.residues) {
+            if (residue.seqid != address.res_id.seqid ||
+                (!address.res_id.name.empty() && residue.name != address.res_id.name)) {
+                continue;
+            }
+            for (const auto& atom : residue.atoms) {
+                if (atom.name == address.atom_name &&
+                    (address.altloc == '\0' || atom.altloc == address.altloc)) {
+                    return selected_atom_index(atoms, std::addressof(atom));
+                }
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] auto atom_by_serial(const ::gemmi::Model& model, const int serial)
+    -> const ::gemmi::Atom* {
+    for (const auto& chain : model.chains) {
+        for (const auto& residue : chain.residues) {
+            for (const auto& atom : residue.atoms) {
+                if (atom.serial == serial) {
+                    return std::addressof(atom);
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+
 void add_sequential_bonds(std::vector<core::Bond>& bonds,
                           const std::span<const ResidueAtoms> residues,
                           const component_templates::ComponentKind kind,
@@ -157,6 +261,53 @@ auto assign_template_bonds(const ::gemmi::Model& model, const RecordSelection se
                          "N");
     add_sequential_bonds(result, residues, component_templates::ComponentKind::nucleotide, "O3'",
                          "P");
+
+    return result;
+}
+
+auto assign_explicit_pdb_bonds(const ::gemmi::Structure& structure, const RecordSelection selection)
+    -> std::vector<core::Bond> {
+    if (structure.models.empty()) {
+        return {};
+    }
+
+    const auto& model = structure.models.front();
+    const auto atoms = selected_atoms(model, selection);
+    std::vector<core::Bond> result;
+
+    for (const auto& connection : structure.connections) {
+        if (connection.type != ::gemmi::Connection::Covale &&
+            connection.type != ::gemmi::Connection::Disulf) {
+            continue;
+        }
+
+        const auto first = selected_atom_index(model, atoms, connection.partner1);
+        const auto second = selected_atom_index(model, atoms, connection.partner2);
+        if (first.has_value() && second.has_value()) {
+            add_bond(result, *first, *second, core::BondOrder::SINGLE);
+        }
+    }
+
+    for (const auto& [serial, partners] : structure.conect_map) {
+        const auto* first_atom = atom_by_serial(model, serial);
+        if (first_atom == nullptr) {
+            continue;
+        }
+
+        const auto first = selected_atom_index(atoms, first_atom);
+        if (!first.has_value()) {
+            continue;
+        }
+
+        for (const auto partner : partners) {
+            const auto* second_atom = atom_by_serial(model, partner);
+            const auto second =
+                second_atom == nullptr ? std::nullopt : selected_atom_index(atoms, second_atom);
+            if (second.has_value()) {
+                add_bond(result, *first, *second, core::BondOrder::SINGLE);
+            }
+        }
+    }
 
     return result;
 }

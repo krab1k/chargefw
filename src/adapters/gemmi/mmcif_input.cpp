@@ -33,7 +33,7 @@ MmcifReader::MmcifReader(std::istream& input, std::string source,
             structure,
             MoleculeRecordIdentity{
                 .source = source, .record_index = records_.size(), .record_id = block.name},
-            selection, bond_strategy, structure.name.empty() ? block.name : structure.name));
+            selection, bond_strategy, false, structure.name.empty() ? block.name : structure.name));
     }
 
     if (records_.empty()) {

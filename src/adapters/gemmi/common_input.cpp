@@ -116,7 +116,7 @@ auto validate_topology(const std::vector<core::Atom>& reference,
 
 auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                  const RecordSelection selection, const BondStrategy bond_strategy,
-                 std::string name) -> ImportedMoleculeRecord {
+                 const bool pdb_connectivity, std::string name) -> ImportedMoleculeRecord {
     if (structure.models.empty()) {
         throw std::runtime_error{"structural input contains no models"};
     }
@@ -139,9 +139,29 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
     }
 
     std::vector<core::Bond> bonds;
-    if (bond_strategy == BondStrategy::templates) {
+    if (bond_strategy == BondStrategy::templates || bond_strategy == BondStrategy::hybrid) {
         bonds = ::chargefw::adapters::gemmi::bonds::assign_template_bonds(structure.models.front(),
                                                                           selection);
+    }
+    if ((bond_strategy == BondStrategy::explicit_bonds || bond_strategy == BondStrategy::hybrid) &&
+        pdb_connectivity) {
+        const auto explicit_bonds =
+            ::chargefw::adapters::gemmi::bonds::assign_explicit_pdb_bonds(structure, selection);
+        for (const auto& bond : explicit_bonds) {
+            bool duplicate = false;
+            for (const auto& existing : bonds) {
+                if ((existing.first_atom_index() == bond.first_atom_index() &&
+                     existing.second_atom_index() == bond.second_atom_index()) ||
+                    (existing.first_atom_index() == bond.second_atom_index() &&
+                     existing.second_atom_index() == bond.first_atom_index())) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) {
+                bonds.push_back(bond);
+            }
+        }
     }
 
     return native_common::make_record(std::move(first.atoms), std::move(bonds),
