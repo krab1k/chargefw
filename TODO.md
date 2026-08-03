@@ -72,8 +72,10 @@ acceptance criteria for each priority, not optional follow-up work.
   SDF preservation are complete; future PQR output should be tracked when its adapter is scoped.
 - [ ] Replace the molecular-file demonstration with a user-facing C++ CLI over the application
   facade; retain the water workflow as a focused example or test. The current demo accepts
-  MOL/SDF/MOL2/ChargeFW JSON input and writes compatible JSON/SDF/MOL2 results, but lacks user-facing
-  selection, multi-conformer molecular output, batch controls, and complete diagnostic behavior.
+  MOL/SDF/MOL2/PDB/mmCIF/ChargeFW JSON input. PDB/mmCIF produce JSON only pending structural writers
+  and expose record-selection and connectivity options; all inputs lack user-facing method/parameter
+  selection, batch controls, and complete diagnostic behavior, while JSON multi-conformer input cannot
+  produce molecular-format output.
 - [ ] Expose molecule source, method/parameter selection, conformer selection, full/cutoff/cover
   policy, radius, and correction policy through explicit CLI options with reported defaults.
 - [ ] Add bounded batch execution with deterministic record order and memory use independent of

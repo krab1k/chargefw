@@ -1,5 +1,7 @@
 #include <CLI/CLI.hpp>
 #include <algorithm>
+#include <chargefw/adapters/gemmi/mmcif_input.h>
+#include <chargefw/adapters/gemmi/pdb_input.h>
 #include <chargefw/adapters/native/json_input.h>
 #include <chargefw/adapters/native/json_output.h>
 #include <chargefw/adapters/native/mol2_input.h>
@@ -40,7 +42,7 @@ namespace adapters = chargefw::adapters;
 namespace {
 
 struct ImportedCollection {
-    enum class Format { sdf, mol, mol2, json };
+    enum class Format { sdf, mol, mol2, json, pdb, mmcif };
 
     core::MoleculeCollection molecules;
     std::vector<adapters::MoleculeRecordIdentity> identities;
@@ -73,7 +75,39 @@ auto read_collection(Reader& reader, const std::string& input_path,
                               .format = format};
 }
 
-auto read_collection(const std::string& input_path) -> ImportedCollection {
+[[nodiscard]] auto parse_record_selection(const std::string& value)
+    -> adapters::gemmi::RecordSelection {
+    if (value == "all") {
+        return adapters::gemmi::RecordSelection::all;
+    }
+    if (value == "polymers-and-ligands") {
+        return adapters::gemmi::RecordSelection::polymers_and_ligands;
+    }
+    if (value == "polymers") {
+        return adapters::gemmi::RecordSelection::polymers;
+    }
+    throw std::runtime_error{"Unsupported structural record selection: " + value};
+}
+
+[[nodiscard]] auto parse_bond_strategy(const std::string& value) -> adapters::gemmi::BondStrategy {
+    if (value == "none") {
+        return adapters::gemmi::BondStrategy::none;
+    }
+    if (value == "explicit") {
+        return adapters::gemmi::BondStrategy::explicit_bonds;
+    }
+    if (value == "templates") {
+        return adapters::gemmi::BondStrategy::templates;
+    }
+    if (value == "hybrid") {
+        return adapters::gemmi::BondStrategy::hybrid;
+    }
+    throw std::runtime_error{"Unsupported structural bond strategy: " + value};
+}
+
+auto read_collection(const std::string& input_path,
+                     const adapters::gemmi::InputOptions structural_options,
+                     const bool structural_options_requested) -> ImportedCollection {
     std::ifstream input{input_path};
     if (!input) {
         throw std::runtime_error{"Unable to open input file: " + input_path};
@@ -84,24 +118,48 @@ auto read_collection(const std::string& input_path) -> ImportedCollection {
         return static_cast<char>(std::tolower(character));
     });
     if (extension == ".sdf") {
+        if (structural_options_requested) {
+            throw std::runtime_error{
+                "Structural input options are only supported for PDB and mmCIF input"};
+        }
         adapters::native::sdf_input::SdfReader reader{input, input_path};
         return read_collection(reader, input_path, ImportedCollection::Format::sdf);
     }
     if (extension == ".mol") {
+        if (structural_options_requested) {
+            throw std::runtime_error{
+                "Structural input options are only supported for PDB and mmCIF input"};
+        }
         adapters::native::mol_input::MolReader reader{input, input_path};
         return read_collection(reader, input_path, ImportedCollection::Format::mol);
     }
     if (extension == ".mol2") {
+        if (structural_options_requested) {
+            throw std::runtime_error{
+                "Structural input options are only supported for PDB and mmCIF input"};
+        }
         adapters::native::mol2_input::Mol2Reader reader{input, input_path};
         return read_collection(reader, input_path, ImportedCollection::Format::mol2);
     }
     if (extension == ".json") {
+        if (structural_options_requested) {
+            throw std::runtime_error{
+                "Structural input options are only supported for PDB and mmCIF input"};
+        }
         adapters::native::json_input::JsonReader reader{input, input_path};
         return read_collection(reader, input_path, ImportedCollection::Format::json);
     }
+    if (extension == ".pdb") {
+        adapters::gemmi::pdb_input::PdbReader reader{input, input_path, structural_options};
+        return read_collection(reader, input_path, ImportedCollection::Format::pdb);
+    }
+    if (extension == ".cif" || extension == ".mmcif") {
+        adapters::gemmi::mmcif_input::MmcifReader reader{input, input_path, structural_options};
+        return read_collection(reader, input_path, ImportedCollection::Format::mmcif);
+    }
 
     throw std::runtime_error{"Unsupported input file type: " + extension +
-                             ". Supported types: .sdf, .mol, .mol2, .json"};
+                             ". Supported types: .sdf, .mol, .mol2, .json, .pdb, .cif, .mmcif"};
 }
 
 [[nodiscard]] auto assignments_by_molecule(const charges::ChargeSet& charge_set,
@@ -216,14 +274,29 @@ auto main(int argc, char* argv[]) -> int {
         CLI::App app{"Calculate empirical partial atomic charges from a molecular file."};
         std::string input_path;
         std::string output_directory;
-        app.add_option("input", input_path, "Input .sdf, .mol, .mol2, or ChargeFW .json file")
+        std::string structural_selection = "all";
+        std::string structural_bonds = "hybrid";
+        app.add_option("input", input_path,
+                       "Input .sdf, .mol, .mol2, .pdb, .cif, .mmcif, or ChargeFW .json file")
             ->required();
-        app.add_option("output", output_directory,
-                       "Output directory for .json, .sdf, and .mol2 files")
-            ->required();
+        app.add_option("output", output_directory, "Output directory")->required();
+        const auto* structural_selection_option =
+            app.add_option("--structural-selection", structural_selection,
+                           "PDB/mmCIF record selection: all, polymers-and-ligands, or polymers")
+                ->default_val("all");
+        const auto* structural_bonds_option =
+            app.add_option("--structural-bonds", structural_bonds,
+                           "PDB/mmCIF connectivity: none, explicit, templates, or hybrid")
+                ->default_val("none");
         CLI11_PARSE(app, argc, argv);
 
-        const auto imported = read_collection(input_path);
+        const auto structural_options =
+            adapters::gemmi::InputOptions{.selection = parse_record_selection(structural_selection),
+                                          .bond_strategy = parse_bond_strategy(structural_bonds)};
+        const auto structural_options_requested =
+            structural_selection_option->count() > 0 || structural_bonds_option->count() > 0;
+        const auto imported =
+            read_collection(input_path, structural_options, structural_options_requested);
         const features::PreparedMoleculeCollection prepared_collection{imported.molecules};
 
         const auto parameter_sets = parameters::load_default_parameter_sets();
@@ -242,7 +315,9 @@ auto main(int argc, char* argv[]) -> int {
             return 1;
         }
 
-        if (imported.format == ImportedCollection::Format::json &&
+        const auto json_only_output = imported.format == ImportedCollection::Format::pdb ||
+                                      imported.format == ImportedCollection::Format::mmcif;
+        if (!json_only_output && imported.format == ImportedCollection::Format::json &&
             std::ranges::any_of(imported.molecules.molecules(), [](const core::Molecule& molecule) {
                 return molecule.conformer_count() > 1;
             })) {
@@ -264,6 +339,10 @@ auto main(int argc, char* argv[]) -> int {
         const auto prefix = directory / (input_name.string() + ".chargefw");
         const auto output = result_document(imported, result);
         write_json(prefix.string() + ".json", output);
+        if (json_only_output) {
+            std::println("Wrote {}", prefix.string() + ".json");
+            return 0;
+        }
         const auto assignments =
             assignments_by_molecule(*result.charges, imported.molecules.size());
         write_sdf(prefix.string() + ".sdf", input_path, imported, assignments);

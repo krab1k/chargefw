@@ -39,6 +39,13 @@ if(CHARGEFW_BUILD_CLI)
                     -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/water.sdf
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_outputs.cmake
     )
+    add_test(
+            NAME test_chargefw_cli_structural_outputs
+            COMMAND ${CMAKE_COMMAND}
+                    -DCHARGEFW_CLI=$<TARGET_FILE:chargefw_cli>
+                    -DCHARGEFW_PARAMETER_DIR=${PROJECT_SOURCE_DIR}/data/parameters
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_structural_outputs.cmake
+    )
 endif()
 
 add_subdirectory(core)

@@ -103,13 +103,18 @@ not a universal scientific quality ranking. The result retains applicability dia
 candidate can be calculated.
 
 The current `chargefw` executable is a molecular-file demonstration. It autodetects `.sdf`, `.mol`,
-`.mol2`, and ChargeFW `.json` input from the file extension, rejects the entire input on the first
-malformed record, loads bundled parameter sets, autodetects the highest-priority applicable method
-and parameter set, and writes compatible JSON, SDF, and MOL2 outputs. Same-format SDF and MOL2
-outputs preserve the source; other molecular outputs are generated. The required output-directory
-argument is created when absent, and output filenames use `<input-stem>.chargefw`. JSON molecules
-with multiple conformers are rejected because one record cannot currently represent all assignments
-consistently. It is not yet a full user-facing file/SMILES CLI.
+`.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input from the file extension, rejects the
+entire input on the first malformed record, loads bundled parameter sets, and autodetects the
+highest-priority applicable method and parameter set. Native-molecular and JSON input produce
+compatible JSON, SDF, and MOL2 outputs; PDB and mmCIF input currently produce JSON only because
+preservation-oriented structural writers are not implemented. Same-format SDF and MOL2 outputs
+preserve the source; other molecular outputs are generated. The required output-directory argument is
+created when absent, and output filenames use `<input-stem>.chargefw`. JSON molecules with multiple
+conformers are rejected because one record cannot currently represent all assignments consistently.
+For PDB/mmCIF input, `--structural-selection` selects all records, polymers plus ligands excluding
+water, or polymers only; `--structural-bonds` selects no bonds, explicit connectivity, compact
+templates, or their hybrid. Both options reject non-structural formats. It is not yet a full
+user-facing file/SMILES CLI.
 
 ### Calculation granularity
 

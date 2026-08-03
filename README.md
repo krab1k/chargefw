@@ -55,14 +55,21 @@ Run an individual test after building:
 ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 ```
 
-The demo accepts `.sdf`, `.mol`, `.mol2`, and ChargeFW `.json` input files, selects the reader from
-the file extension, rejects the entire input on the first malformed record, loads bundled parameter
-sets, and autodetects the highest-priority applicable method and parameter set. A successful run writes
-compatible `.json`, `.sdf`, and `.mol2` outputs in the required output-directory argument, creating
-the directory when necessary. Output filenames use `<input-stem>.chargefw`, for example
-`water.chargefw.sdf`. Same-format SDF and MOL2 outputs preserve the input source; other formats are
-generated from native molecule data. JSON input containing a molecule with multiple conformers is
-rejected for these molecular outputs.
+The demo accepts `.sdf`, `.mol`, `.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input files,
+selects the reader from the file extension, rejects the entire input on the first malformed record,
+loads bundled parameter sets, and autodetects the highest-priority applicable method and parameter
+set. Native-molecular and JSON input produce compatible `.json`, `.sdf`, and `.mol2` outputs in the
+required output-directory argument, creating the directory when necessary. PDB and mmCIF input
+currently writes JSON only because preservation-oriented structural writers are not implemented.
+Output filenames use `<input-stem>.chargefw`, for example `water.chargefw.sdf`. Same-format SDF and
+MOL2 outputs preserve the input source; other molecular formats are generated from native molecule
+data. JSON input containing a molecule with multiple conformers is rejected for these molecular
+outputs.
+
+PDB and mmCIF input accepts `--structural-selection all|polymers-and-ligands|polymers` and
+`--structural-bonds none|explicit|templates|hybrid`; both default to `all` and `hybrid`, respectively.
+These options are rejected for MOL/SDF/MOL2/JSON input. Alternate-location selection remains fixed:
+blank location, then `A`, then the first occurrence.
 
 The JSON result uses `"schema_version": "1.0"` and retains one `results` entry for every successfully
 imported molecule. Each entry records input identity, explicit atom and conformer mappings, selected

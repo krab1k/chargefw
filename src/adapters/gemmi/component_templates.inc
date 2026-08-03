@@ -1,4 +1,4 @@
-// Bond templates for standard biological components, generated once from data/components.cif.gz.
+// Bond templates for standard biological components, generated once from CCD.
 // The supported component set is intentionally stable; regenerate only when it is deliberately changed.
 
 // amino_acid templates
