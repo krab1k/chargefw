@@ -19,7 +19,7 @@ if(NOT IS_DIRECTORY "${output_directory}")
     message(FATAL_ERROR "Output directory was not created: ${output_directory}")
 endif()
 
-foreach(extension IN ITEMS json sdf mol2)
+foreach(extension IN ITEMS json sdf mol2 cif)
     set(path "${output_prefix}.${extension}")
     if(NOT EXISTS "${path}")
         message(FATAL_ERROR "Expected output file was not created: ${path}")

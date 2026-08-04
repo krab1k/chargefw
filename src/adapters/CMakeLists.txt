@@ -13,6 +13,7 @@ target_sources(chargefw_core
         gemmi/structure_import.cpp
         gemmi/component_templates.cpp
         gemmi/mmcif_input.cpp
+        gemmi/mmcif_output.cpp
         gemmi/pdb_input.cpp
         gemmi/selection.cpp
         PUBLIC
@@ -25,6 +26,7 @@ target_sources(chargefw_core
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/all.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/input_options.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/mmcif_input.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/mmcif_output.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/pdb_input.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/all.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/json_input.h

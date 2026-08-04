@@ -3,6 +3,8 @@
 #include <chargefw/adapters/gemmi/input_options.h>
 #include <chargefw/adapters/molecule_record.h>
 
+#include <gemmi/model.hpp>
+
 #include <istream>
 #include <optional>
 #include <string>
@@ -21,9 +23,13 @@ class PdbReader {
                        ::chargefw::adapters::gemmi::InputOptions options = {});
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
+    [[nodiscard]] auto source_structure() const -> const ::gemmi::Structure&;
+    [[nodiscard]] auto options() const noexcept -> ::chargefw::adapters::gemmi::InputOptions;
 
   private:
     std::optional<ImportedMoleculeRecord> record_;
+    ::gemmi::Structure structure_;
+    ::chargefw::adapters::gemmi::InputOptions options_;
 };
 
 } // namespace chargefw::adapters::gemmi::pdb_input

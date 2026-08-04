@@ -26,6 +26,10 @@ chargefw_add_test(test_mmcif
         test_mmcif.cpp
 )
 
+chargefw_add_test(test_mmcif_output
+        test_mmcif_output.cpp
+)
+
 target_compile_definitions(test_mol
         PRIVATE
         CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"

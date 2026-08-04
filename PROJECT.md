@@ -105,9 +105,9 @@ candidate can be calculated.
 The current `chargefw` executable is a molecular-file demonstration. It autodetects `.sdf`, `.mol`,
 `.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input from the file extension, rejects the
 entire input on the first malformed record, loads bundled parameter sets, and autodetects the
-highest-priority applicable method and parameter set. Native-molecular and JSON input produce
-compatible JSON, SDF, and MOL2 outputs; PDB and mmCIF input currently produce JSON only because
-preservation-oriented structural writers are not implemented. Same-format SDF and MOL2 outputs
+highest-priority applicable method and parameter set. All inputs produce JSON and mmCIF outputs.
+Native-molecular and JSON input also produce SDF and MOL2; structural PDB/mmCIF input does not.
+Same-format SDF and MOL2 outputs
 preserve the source; other molecular outputs are generated. The required output-directory argument is
 created when absent, and output filenames use `<input-stem>.chargefw`. JSON molecules with multiple
 conformers are rejected because one record cannot currently represent all assignments consistently.
@@ -323,7 +323,7 @@ reported once per record when nonzero values are present. It is not a general ch
 support is optional and normally
 enters through the Python bridge; if a native RDKit adapter is later justified, it is a separately
 selected backend and never silently replaces the native SDF reader. PDB/mmCIF parsing uses
-Gemmi-backed adapters; future mmCIF charge export will also be Gemmi-backed. The project will not
+Gemmi-backed adapters; mmCIF charge export is also Gemmi-backed. The project will not
 implement those formats itself.
 `pdb_input` treats compatible PDB models as conformers of one molecule, retaining atom names,
 formal charges, and coordinates. It selects blank alternate locations before `A`, then the first
@@ -332,8 +332,10 @@ occurrence, supports all-records, polymers-and-ligands (water excluded), and pol
 rules, represents compatible models inside one `data_` block as conformers, and returns separate
 records for separate coordinate-bearing `data_` blocks. Both readers expose `none`, `templates`,
 `explicit_bonds`, and `hybrid` connectivity strategies as described above.
-The Gemmi writer must preserve imported mmCIF content where possible and append the SB-NCBR charge
-dictionary/categories rather than reconstruct unrelated structural data.
+The Gemmi writer semantically preserves the parsed mmCIF document and appends or replaces the
+SB-NCBR charge dictionary/categories without reconstructing unrelated structural data. PDB input is
+converted through Gemmi. Other inputs generate one self-contained `UNL` component block per molecule
+record. Gemmi serialization may normalize presentation and is not byte-for-byte preservation.
 
 #### Preservation-oriented output
 

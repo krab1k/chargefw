@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <istream>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -22,13 +23,17 @@ class MmcifReader {
                          ::chargefw::adapters::gemmi::InputOptions options = {});
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
+    [[nodiscard]] auto source_document() const -> std::shared_ptr<const ::gemmi::cif::Document>;
+    [[nodiscard]] auto source_block_indices() const -> const std::vector<std::size_t>&;
+    [[nodiscard]] auto options() const noexcept -> ::chargefw::adapters::gemmi::InputOptions;
 
   private:
-    ::gemmi::cif::Document document_;
+    std::shared_ptr<::gemmi::cif::Document> document_;
     std::string source_;
     ::chargefw::adapters::gemmi::InputOptions options_;
     std::size_t block_index_ = 0;
     std::size_t record_index_ = 0;
+    std::vector<std::size_t> source_block_indices_;
 };
 
 } // namespace chargefw::adapters::gemmi::mmcif_input

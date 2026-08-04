@@ -58,9 +58,9 @@ ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 The demo accepts `.sdf`, `.mol`, `.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input files,
 selects the reader from the file extension, rejects the entire input on the first malformed record,
 loads bundled parameter sets, and autodetects the highest-priority applicable method and parameter
-set. Native-molecular and JSON input produce compatible `.json`, `.sdf`, and `.mol2` outputs in the
-required output-directory argument, creating the directory when necessary. PDB and mmCIF input
-currently writes JSON only because preservation-oriented structural writers are not implemented.
+set. All inputs produce compatible `.json` and `.cif` outputs in the required output-directory
+argument, creating the directory when necessary. Native-molecular and JSON input additionally
+produce `.sdf` and `.mol2`; structural PDB/mmCIF input does not.
 Output filenames use `<input-stem>.chargefw`, for example `water.chargefw.sdf`. Same-format SDF and
 MOL2 outputs preserve the input source; other molecular formats are generated from native molecule
 data. JSON input containing a molecule with multiple conformers is rejected for these molecular
@@ -82,7 +82,8 @@ native precision internally.
 
 Native adapter headers are explicitly directional: `json_input`, `mol_input`, `sdf_input`, and
 `mol2_input` read molecule records; `gemmi/pdb_input` and `gemmi/mmcif_input` are Gemmi-backed
-structural readers; and `json_output::JsonWriter` writes calculation-result documents. The PDB
+structural readers; `gemmi/mmcif_output::MmcifWriter` writes structural charge output; and
+`json_output::JsonWriter` writes calculation-result documents. The PDB
 reader maps all compatible PDB `MODEL` records to conformers of one molecule. The mmCIF reader maps
 each coordinate-bearing `data_` block to one molecule record and models in that block to conformers.
 Both select one altloc per atom (blank, then `A`, then first occurrence), support all-records,
@@ -93,6 +94,10 @@ source file and changes only the selected atom partial-charge fields, adding opt
 when a source atom has no charge field. It can also generate basic MOL2 output from native
 graph/conformer data using element-symbol atom types; it does not infer Tripos typing or
 source-specific substructure semantics.
+The mmCIF writer semantically preserves parsed mmCIF categories while replacing ChargeFW charge
+categories in calculated blocks, converts PDB through Gemmi, and generates one local `UNL`
+component block per nonstructural input record. Append mode retains existing ChargeFW assignments.
+Gemmi serialization may normalize source formatting and is not byte-for-byte preservation.
 `sdf_output::SdfWriter` copies SDF source records and writes atom-order charge vectors as numbered
 `CHARGEFW_CHARGES_<type-id>` properties. Replace mode removes existing ChargeFW charge properties;
 append mode retains them before adding the new properties. Generated SDF output requires an explicit

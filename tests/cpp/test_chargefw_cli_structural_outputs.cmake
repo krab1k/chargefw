@@ -21,8 +21,11 @@ function(run_structural_input extension contents input_stem)
     if(NOT EXISTS "${output_prefix}.json")
         message(FATAL_ERROR "JSON output was not created for .${extension}")
     endif()
+    if(NOT EXISTS "${output_prefix}.cif")
+        message(FATAL_ERROR "mmCIF output was not created for .${extension}")
+    endif()
     if(EXISTS "${output_prefix}.sdf" OR EXISTS "${output_prefix}.mol2")
-        message(FATAL_ERROR "Structural input must produce JSON output only")
+        message(FATAL_ERROR "Structural input must not produce SDF or MOL2 output")
     endif()
 
     file(READ "${output_prefix}.json" json_output)
@@ -70,7 +73,13 @@ run_structural_input(
         "data_structural_cif\nloop_\n_atom_site.group_PDB\n_atom_site.id\n_atom_site.type_symbol\n_atom_site.label_atom_id\n_atom_site.label_alt_id\n_atom_site.label_comp_id\n_atom_site.label_asym_id\n_atom_site.label_seq_id\n_atom_site.pdbx_PDB_ins_code\n_atom_site.Cartn_x\n_atom_site.Cartn_y\n_atom_site.Cartn_z\n_atom_site.occupancy\n_atom_site.B_iso_or_equiv\n_atom_site.pdbx_formal_charge\n_atom_site.auth_seq_id\n_atom_site.auth_comp_id\n_atom_site.auth_asym_id\n_atom_site.auth_atom_id\n_atom_site.pdbx_PDB_model_num\nHETATM 1 O O . HOH A 1 ? 0.000 0.000 0.000 1.00 20.00 0 1 HOH A O 1\nHETATM 2 H H1 . HOH A 1 ? 0.957 0.000 0.000 1.00 20.00 0 1 HOH A H1 1\nHETATM 3 H H2 . HOH A 1 ? -0.239 0.927 0.000 1.00 20.00 0 1 HOH A H2 1\n#\n"
         structural_cif
         --structural-selection all
-        --structural-bonds explicit
+        --structural-bonds hybrid
+)
+
+run_structural_input(
+        cif
+        "data_structural_default_bonds\nloop_\n_atom_site.group_PDB\n_atom_site.id\n_atom_site.type_symbol\n_atom_site.label_atom_id\n_atom_site.label_alt_id\n_atom_site.label_comp_id\n_atom_site.label_asym_id\n_atom_site.label_seq_id\n_atom_site.pdbx_PDB_ins_code\n_atom_site.Cartn_x\n_atom_site.Cartn_y\n_atom_site.Cartn_z\n_atom_site.occupancy\n_atom_site.B_iso_or_equiv\n_atom_site.pdbx_formal_charge\n_atom_site.auth_seq_id\n_atom_site.auth_comp_id\n_atom_site.auth_asym_id\n_atom_site.auth_atom_id\n_atom_site.pdbx_PDB_model_num\nHETATM 1 O O . HOH A 1 ? 0.000 0.000 0.000 1.00 20.00 0 1 HOH A O 1\nHETATM 2 H H1 . HOH A 1 ? 0.957 0.000 0.000 1.00 20.00 0 1 HOH A H1 1\nHETATM 3 H H2 . HOH A 1 ? -0.239 0.927 0.000 1.00 20.00 0 1 HOH A H2 1\n#\n"
+        structural_default_bonds
 )
 
 expect_non_structural_options_rejected()

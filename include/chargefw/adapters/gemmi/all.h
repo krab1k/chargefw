@@ -5,4 +5,5 @@
 
 #include <chargefw/adapters/gemmi/input_options.h>
 #include <chargefw/adapters/gemmi/mmcif_input.h>
+#include <chargefw/adapters/gemmi/mmcif_output.h>
 #include <chargefw/adapters/gemmi/pdb_input.h>

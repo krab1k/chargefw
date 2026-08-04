@@ -66,13 +66,15 @@ acceptance criteria for each priority, not optional follow-up work.
   charges, topology, coordinates, source identifiers, or unrelated data fields. Complete calculation
   provenance remains part of the application result/export contract in section 1. Generated output
   supports explicit V2000 or V3000 selection while preservation mode retains the source MOL version.
-- [ ] Add a preservation-oriented Gemmi mmCIF writer. Retain imported CIF content and append the
-  SB-NCBR partial-charge metadata and charge categories inside the selected coordinate-bearing data
-  block. Reject only when the block or atom mapping cannot be safely located and validated. MOL2 and
-  SDF preservation are complete; future PQR output should be tracked when its adapter is scoped.
+- [x] Add a Gemmi mmCIF writer. Semantically retain parsed CIF categories and append or replace the
+  SB-NCBR partial-charge metadata and charge categories inside selected coordinate-bearing blocks;
+  convert PDB through Gemmi and generate one local `UNL` block per nonstructural record. Validate
+  atom/model mapping and generated-output round trips. Gemmi serialization is not byte-preserving.
+  Future PQR output should be tracked when its adapter is scoped.
 - [ ] Replace the molecular-file demonstration with a user-facing C++ CLI over the application
   facade; retain the water workflow as a focused example or test. The current demo accepts
-  MOL/SDF/MOL2/PDB/mmCIF/ChargeFW JSON input. PDB/mmCIF produce JSON only pending structural writers
+  MOL/SDF/MOL2/PDB/mmCIF/ChargeFW JSON input. All inputs produce JSON and mmCIF; PDB/mmCIF do not
+  produce SDF/MOL2
   and expose record-selection and connectivity options; all inputs lack user-facing method/parameter
   selection, batch controls, and complete diagnostic behavior, while JSON multi-conformer input cannot
   produce molecular-format output.
