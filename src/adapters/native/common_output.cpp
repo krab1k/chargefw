@@ -39,8 +39,6 @@ auto bond_type(const core::BondOrder order, const ::chargefw::adapters::native::
         return "2";
     case core::BondOrder::TRIPLE:
         return "3";
-    case core::BondOrder::AROMATIC:
-        return format == ::chargefw::adapters::native::BondFormat::mol ? "4" : "ar";
     case core::BondOrder::UNKNOWN:
         break;
     }

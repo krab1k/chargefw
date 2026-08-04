@@ -65,7 +65,7 @@ auto main() -> int {
         assert(mol2_record.molecule.bond_count() == 2);
         assert(mol2_record.molecule.atom(0).name() == "N1");
         assert(mol2_record.molecule.atom(0).formal_charge() == 0);
-        assert(mol2_record.molecule.bond(0).order() == chargefw::core::BondOrder::AROMATIC);
+        assert(mol2_record.molecule.bond(0).order() == chargefw::core::BondOrder::SINGLE);
         assert(mol2_record.molecule.bond(1).order() == chargefw::core::BondOrder::DOUBLE);
         assert(mol2_record.diagnostics.size() == 1);
         assert(!reader.next().has_value());

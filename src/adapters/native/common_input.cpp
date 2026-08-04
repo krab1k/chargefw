@@ -81,7 +81,7 @@ auto numeric_bond_order(const int value) -> core::BondOrder {
     case 3:
         return core::BondOrder::TRIPLE;
     case 4:
-        return core::BondOrder::AROMATIC;
+        return core::BondOrder::SINGLE;
     default:
         throw std::runtime_error{"unsupported bond order " + std::to_string(value)};
     }
@@ -90,7 +90,7 @@ auto numeric_bond_order(const int value) -> core::BondOrder {
 auto bond_order(const std::string_view value, const ::chargefw::adapters::native::BondFormat format)
     -> core::BondOrder {
     if (format == ::chargefw::adapters::native::BondFormat::mol2 && value == "ar") {
-        return core::BondOrder::AROMATIC;
+        return core::BondOrder::SINGLE;
     }
     return numeric_bond_order(parse_int(
         value, format == ::chargefw::adapters::native::BondFormat::mol ? "MOL bond order"

@@ -22,8 +22,6 @@ namespace {
         return 2.0;
     case core::BondOrder::TRIPLE:
         return 3.0;
-    case core::BondOrder::AROMATIC:
-        return 1.5;
     }
 
     return 1.0;

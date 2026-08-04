@@ -312,13 +312,14 @@ not yet wired into the demo CLI. JSON documents use `schema_version: "1.0"` and 
 triplets; atom names are intentionally excluded. Array order is authoritative for atom and conformer
 mapping, and connectivity is never inferred from coordinates. The initial MOL/SDF reader supports V2000 atom and bond blocks plus `M  CHG`
 formal-charge records, and
-V3000 CTAB `COUNTS`, `ATOM`, and `BOND` blocks with `CHG=` attributes. It accepts aromatic bond order
+V3000 CTAB `COUNTS`, `ATOM`, and `BOND` blocks with `CHG=` attributes. It imports aromatic bond order
+as single bonds
 and records ignored `CFG=` stereochemical attributes as diagnostics; it rejects query atoms, unknown
 elements, unsupported bond orders, unsupported V2000 properties, and unsupported V3000 attributes.
 `parse_mol()` handles one standalone MOL record through `M  END`; `SdfReader` adds bounded-memory
 multi-record framing and skips SDF data fields without interpreting them. `Mol2Reader` supports the
-MOL2 `MOLECULE`, `ATOM`, and `BOND` sections, standard element-prefixed atom types, and numeric and
-aromatic bond types. MOL2 partial-charge fields are ignored, never treated as formal charges, and
+MOL2 `MOLECULE`, `ATOM`, and `BOND` sections, standard element-prefixed atom types, and numeric bond
+types; aromatic bond types are imported as single bonds. MOL2 partial-charge fields are ignored, never treated as formal charges, and
 reported once per record when nonzero values are present. It is not a general chemistry toolkit. RDKit
 support is optional and normally
 enters through the Python bridge; if a native RDKit adapter is later justified, it is a separately

@@ -24,9 +24,6 @@ auto bond_order_type(const core::BondOrder order) -> std::string {
 
     case core::BondOrder::TRIPLE:
         return "3";
-
-    case core::BondOrder::AROMATIC:
-        return "aromatic";
     }
 
     return "unknown";
@@ -45,9 +42,6 @@ auto bond_order_rank(const core::BondOrder order) -> int {
 
     case core::BondOrder::TRIPLE:
         return 3;
-
-    case core::BondOrder::AROMATIC:
-        return 2;
     }
 
     return 0;
