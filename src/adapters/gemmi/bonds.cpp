@@ -130,7 +130,7 @@ void add_sequential_bonds(BondAccumulator& bonds,
     }
 }
 
-[[nodiscard]] auto bond_order(const std::string_view value) -> core::BondOrder {
+[[nodiscard]] auto bond_order(const std::string_view value) -> std::optional<core::BondOrder> {
     if (value == "SING") {
         return core::BondOrder::SINGLE;
     }
@@ -140,7 +140,10 @@ void add_sequential_bonds(BondAccumulator& bonds,
     if (value == "TRIP") {
         return core::BondOrder::TRIPLE;
     }
-    return core::BondOrder::UNKNOWN;
+    if (value == "AROM") {
+        return core::BondOrder::SINGLE;
+    }
+    return std::nullopt;
 }
 
 void add_component_bonds(BondAccumulator& result, const selection::SelectedResidue& residue,
@@ -219,8 +222,10 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
         block.find("_chem_comp_bond.", {"comp_id", "atom_id_1", "atom_id_2", "value_order"});
     for (const auto row : rows) {
         const std::string_view component{row[0]};
-        component_bonds[component].emplace_back(component_templates::BondTemplate{
-            .first = row[1], .second = row[2], .order = bond_order(row[3])});
+        if (const auto order = bond_order(row[3])) {
+            component_bonds[component].emplace_back(component_templates::BondTemplate{
+                .first = row[1], .second = row[2], .order = *order});
+        }
     }
 
     for (const auto& residue : residues) {

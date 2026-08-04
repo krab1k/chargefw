@@ -30,7 +30,7 @@ auto atom_element_symbol(const core::Atom& atom) -> std::string {
     return std::string{core::element_symbol(atom.atomic_number())};
 }
 
-auto bond_type(const core::BondOrder order, const ::chargefw::adapters::native::BondFormat format)
+auto bond_type(const core::BondOrder order, const ::chargefw::adapters::native::BondFormat)
     -> std::string_view {
     switch (order) {
     case core::BondOrder::SINGLE:
@@ -39,12 +39,8 @@ auto bond_type(const core::BondOrder order, const ::chargefw::adapters::native::
         return "2";
     case core::BondOrder::TRIPLE:
         return "3";
-    case core::BondOrder::UNKNOWN:
-        break;
     }
-    throw std::invalid_argument{format == ::chargefw::adapters::native::BondFormat::mol
-                                    ? "cannot write MOL/SDF unknown bond order"
-                                    : "cannot write MOL2 unknown bond order"};
+    throw std::invalid_argument{"cannot write unsupported bond order"};
 }
 
 auto open_source_file(const std::string& source_path, const std::string_view format_name)

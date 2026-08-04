@@ -13,9 +13,6 @@ namespace {
 
 auto bond_order_type(const core::BondOrder order) -> std::string {
     switch (order) {
-    case core::BondOrder::UNKNOWN:
-        return "unknown";
-
     case core::BondOrder::SINGLE:
         return "1";
 
@@ -26,14 +23,11 @@ auto bond_order_type(const core::BondOrder order) -> std::string {
         return "3";
     }
 
-    return "unknown";
+    throw std::logic_error{"unknown bond order"};
 }
 
 auto bond_order_rank(const core::BondOrder order) -> int {
     switch (order) {
-    case core::BondOrder::UNKNOWN:
-        return 0;
-
     case core::BondOrder::SINGLE:
         return 1;
 
@@ -44,7 +38,7 @@ auto bond_order_rank(const core::BondOrder order) -> int {
         return 3;
     }
 
-    return 0;
+    throw std::logic_error{"unknown bond order"};
 }
 
 auto permissive_bond_order_type(const core::BondOrder order) -> std::string {

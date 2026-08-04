@@ -137,8 +137,6 @@ struct BlockMapping {
         return "DOUB";
     case core::BondOrder::TRIPLE:
         return "TRIP";
-    case core::BondOrder::UNKNOWN:
-        throw std::runtime_error{"cannot write unknown bond order to generated mmCIF"};
     }
     throw std::runtime_error{"cannot write unsupported bond order to generated mmCIF"};
 }

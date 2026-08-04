@@ -4,7 +4,7 @@
 #include <cstdint>
 
 namespace chargefw::core {
-enum class BondOrder : std::uint8_t { UNKNOWN, SINGLE, DOUBLE, TRIPLE };
+enum class BondOrder : std::uint8_t { SINGLE, DOUBLE, TRIPLE };
 
 class Bond {
   public:
