@@ -179,11 +179,29 @@ END
         mmcif_output::MmcifWriter{output}.write_pdb(records.front(), two_conformer_charges(),
                                                     source);
         auto document = ::gemmi::cif::read_string(output.str());
-        auto metadata =
-            document.blocks[0].find("_sb_ncbr_partial_atomic_charges_meta.", {"scope", "model_id"});
+        auto metadata = document.blocks[0].find("_sb_ncbr_partial_atomic_charges_meta.",
+                                                {"id", "type", "method"});
         assert(metadata.length() == 2);
-        assert(::gemmi::cif::as_string(metadata[0][0]) == "model");
-        assert(::gemmi::cif::as_string(metadata[1][1]) == "2");
+        assert(::gemmi::cif::as_string(metadata[0][1]) == "empirical");
+        assert(::gemmi::cif::as_string(metadata[1][2]) == "qeq/qeq-default");
+
+        auto charges = document.blocks[0].find("_sb_ncbr_partial_atomic_charges.",
+                                               {"type_id", "atom_id", "charge"});
+        assert(charges.length() == 4);
+        assert(::gemmi::cif::as_string(charges[0][0]) != ::gemmi::cif::as_string(charges[2][0]));
+        assert(::gemmi::cif::as_string(charges[0][1]) != ::gemmi::cif::as_string(charges[2][1]));
+
+        const auto no_parameter_charges =
+            charges::ChargeSet{"formal",
+                               {{.target = {.molecule_index = 0, .conformer_index = 0},
+                                 .charges = charges::AtomicCharges{{0.0, 0.0}}}}};
+        std::ostringstream no_parameter_output;
+        mmcif_output::MmcifWriter{no_parameter_output}.write_pdb(records.front(),
+                                                                 no_parameter_charges, source);
+        auto no_parameter_document = ::gemmi::cif::read_string(no_parameter_output.str());
+        auto no_parameter_metadata = no_parameter_document.blocks[0].find(
+            "_sb_ncbr_partial_atomic_charges_meta.", {"method"});
+        assert(::gemmi::cif::as_string(no_parameter_metadata[0][0]) == "formal");
 
         std::istringstream round_trip{output.str()};
         auto round_trip_reader = mmcif_input::MmcifReader{round_trip};

@@ -317,17 +317,14 @@ auto ensure_dictionary(::gemmi::cif::Block& block) -> void {
 auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
                    const core::Molecule& molecule,
                    const std::span<const charges::ChargeAssignment> assignments,
-                   const charges::ChargeSet& charge_set, const std::string_view generator_name,
-                   const std::string_view generator_version, const WriteMode mode) -> void {
+                   const charges::ChargeSet& charge_set, const WriteMode mode) -> void {
     if (mode == WriteMode::replace) {
         erase_category(block, metadata_category);
         erase_category(block, charges_category);
     }
     ensure_dictionary(block);
     auto assignment_id = next_assignment_id(block);
-    auto metadata =
-        block.find_or_add(metadata_category, {"id", "type", "method", "parameter_set_id", "scope",
-                                              "model_id", "software", "software_version"});
+    auto metadata = block.find_or_add(metadata_category, {"id", "type", "method"});
     auto charge_rows = block.find_or_add(charges_category, {"type_id", "atom_id", "charge"});
     metadata.ensure_loop();
     charge_rows.ensure_loop();
@@ -342,13 +339,13 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
             throw std::runtime_error{"charge assignment conformer is missing from mmCIF block"};
         }
         const auto id = std::to_string(assignment_id++);
-        const auto parameter = charge_set.parameter_set_id();
-        metadata.append_row(
-            {id, "empirical", quote(charge_set.method_id()),
-             parameter.has_value() ? quote(*parameter) : ".",
-             conformer_index.has_value() ? "model" : "topology",
-             conformer_index.has_value() ? quote(mapping.model_ids[mapping_index]) : ".",
-             quote(generator_name), generator_version.empty() ? "." : quote(generator_version)});
+        const auto method = charge_set.parameter_set_id()
+                                .transform([&charge_set](const std::string_view parameter_set_id) {
+                                    return std::string{charge_set.method_id()} + "/" +
+                                           std::string{parameter_set_id};
+                                })
+                                .value_or(std::string{charge_set.method_id()});
+        metadata.append_row({id, "empirical", quote(method)});
         for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
             charge_rows.append_row({id, quote(mapping.atom_site_ids[mapping_index][atom_index]),
                                     std::format("{:.4f}", assignment.charges[atom_index])});
@@ -397,8 +394,8 @@ MmcifWriter::MmcifWriter(std::ostream& output) : output_{std::addressof(output)}
 
 auto MmcifWriter::write_generated(const std::span<const ImportedMoleculeRecord> records,
                                   const charges::ChargeSet& charge_set,
-                                  const std::string_view generator_name,
-                                  const std::string_view generator_version) const -> void {
+                                  const std::string_view /* generator_name */,
+                                  const std::string_view /* generator_version */) const -> void {
     if (records.empty()) {
         throw std::invalid_argument{"mmCIF output requires at least one molecule record"};
     }
@@ -410,8 +407,7 @@ auto MmcifWriter::write_generated(const std::span<const ImportedMoleculeRecord> 
         auto& block =
             document.add_new_block(unique_block_name(document, block_name(record, record_index)));
         const auto mapping = write_generated_block(block, record.molecule);
-        write_charges(block, mapping, record.molecule, assignments, charge_set, generator_name,
-                      generator_version, WriteMode::replace);
+        write_charges(block, mapping, record.molecule, assignments, charge_set, WriteMode::replace);
     }
 
     ::gemmi::cif::write_cif_to_stream(*output_, document);
@@ -422,8 +418,8 @@ auto MmcifWriter::write_generated(const std::span<const ImportedMoleculeRecord> 
 
 auto MmcifWriter::write_pdb(const ImportedMoleculeRecord& record,
                             const charges::ChargeSet& charge_set, const PdbSource& source,
-                            const std::string_view generator_name,
-                            const std::string_view generator_version) const -> void {
+                            const std::string_view /* generator_name */,
+                            const std::string_view /* generator_version */) const -> void {
     auto document = ::gemmi::make_mmcif_document(selected_pdb_structure(source));
     if (document.blocks.size() != 1) {
         throw std::runtime_error{"PDB conversion did not produce one mmCIF block"};
@@ -431,8 +427,7 @@ auto MmcifWriter::write_pdb(const ImportedMoleculeRecord& record,
     const auto assignments = assignments_for(charge_set, 0);
     auto& block = document.blocks.front();
     const auto mapping = atom_site_mapping(block, record.molecule, source.selection);
-    write_charges(block, mapping, record.molecule, assignments, charge_set, generator_name,
-                  generator_version, WriteMode::replace);
+    write_charges(block, mapping, record.molecule, assignments, charge_set, WriteMode::replace);
 
     ::gemmi::cif::write_cif_to_stream(*output_, document);
     if (!*output_) {
@@ -442,9 +437,9 @@ auto MmcifWriter::write_pdb(const ImportedMoleculeRecord& record,
 
 auto MmcifWriter::write_mmcif(const std::span<const ImportedMoleculeRecord> records,
                               const charges::ChargeSet& charge_set, const MmcifSource& source,
-                              const std::string_view generator_name,
-                              const std::string_view generator_version, const WriteMode mode) const
-    -> void {
+                              const std::string_view /* generator_name */,
+                              const std::string_view /* generator_version */,
+                              const WriteMode mode) const -> void {
     if (source.document == nullptr || records.size() != source.block_indices.size()) {
         throw std::invalid_argument{"mmCIF source does not match imported records"};
     }
@@ -458,8 +453,7 @@ auto MmcifWriter::write_mmcif(const std::span<const ImportedMoleculeRecord> reco
         const auto assignments = assignments_for(charge_set, record_index);
         auto& block = document.blocks[block_index];
         const auto mapping = atom_site_mapping(block, record.molecule, source.selection);
-        write_charges(block, mapping, record.molecule, assignments, charge_set, generator_name,
-                      generator_version, mode);
+        write_charges(block, mapping, record.molecule, assignments, charge_set, mode);
     }
 
     ::gemmi::cif::write_cif_to_stream(*output_, document);
