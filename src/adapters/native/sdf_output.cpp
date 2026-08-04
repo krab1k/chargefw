@@ -21,6 +21,7 @@ namespace {
 
 constexpr std::string_view delimiter{"$$$$"};
 constexpr std::string_view property_prefix{"CHARGEFW_CHARGES_"};
+constexpr std::string_view metadata_property_prefix{"CHARGEFW_CHARGE_METADATA_"};
 
 struct Line {
     std::string_view content;
@@ -65,18 +66,27 @@ auto validate_property_ids(const std::span<const ChargeProperty> properties) -> 
     return line.substr(open + 1, close - open - 1);
 }
 
-[[nodiscard]] auto is_chargefw_property(const std::string_view line) -> bool {
-    const auto name = property_name(line);
-    if (!name.has_value() || !name->starts_with(property_prefix)) {
+[[nodiscard]] auto has_numbered_chargefw_suffix(const std::string_view name,
+                                                const std::string_view prefix) -> bool {
+    if (!name.starts_with(prefix)) {
         return false;
     }
-    const auto id = name->substr(property_prefix.size());
+    const auto id = name.substr(prefix.size());
     if (id.empty()) {
         return false;
     }
     std::size_t parsed = 0;
     const auto [pointer, error] = std::from_chars(id.data(), id.data() + id.size(), parsed);
     return error == std::errc{} && pointer == id.data() + id.size() && parsed > 0;
+}
+
+[[nodiscard]] auto is_chargefw_property(const std::string_view line) -> bool {
+    const auto name = property_name(line);
+    if (!name.has_value()) {
+        return false;
+    }
+    return has_numbered_chargefw_suffix(*name, property_prefix) ||
+           has_numbered_chargefw_suffix(*name, metadata_property_prefix);
 }
 
 [[nodiscard]] auto record_ending(const std::string_view record) -> std::string_view {
@@ -134,6 +144,13 @@ auto write_charge_property(const ChargeProperty& property,
     std::print(output, "{}{}", ending, ending);
 }
 
+auto write_metadata_property(const ChargeProperty& property, const std::string_view ending,
+                             std::ostream& output) -> void {
+    std::print(output, "> <{}{}>{}type=empirical; method={}{}{}", metadata_property_prefix,
+               property.charge_type_id, ending,
+               property.method.empty() ? "unknown" : property.method, ending, ending);
+}
+
 auto write_record(const std::string_view record, const std::string_view ending,
                   const std::size_t record_index, const std::span<const ChargeProperty> properties,
                   const WriteMode mode, std::ostream& output) -> void {
@@ -157,6 +174,7 @@ auto write_record(const std::string_view record, const std::string_view ending,
                 "SDF charge properties for a record must have equal atom counts"};
         }
         write_charge_property(property, assignment, selected_ending, output);
+        write_metadata_property(property, selected_ending, output);
     }
     std::print(output, "{}{}", delimiter, selected_ending);
 }
@@ -328,6 +346,7 @@ auto SdfWriter::write_generated(const core::Molecule& molecule,
     }
     for (std::size_t index = 0; index < properties.size(); ++index) {
         write_charge_property(properties[index], *assignments[index], "\n", *output_);
+        write_metadata_property(properties[index], "\n", *output_);
     }
     std::print(*output_, "$$$$\n");
 }

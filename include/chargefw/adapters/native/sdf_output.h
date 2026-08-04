@@ -16,10 +16,12 @@ enum class MolFormat { v2000, v3000 };
 struct ChargeProperty {
     std::size_t charge_type_id = 0;
     std::span<const charges::ChargeAssignment> assignments;
+    std::string_view method;
 };
 
-// Copies an SDF source while attaching ChargeFW charge properties before each record delimiter.
-// Replace mode removes existing CHARGEFW_CHARGES_* fields first; append mode retains them.
+// Copies an SDF source while attaching ChargeFW charge properties and their method metadata before
+// each record delimiter. Replace mode removes existing CHARGEFW_CHARGES_* and
+// CHARGEFW_CHARGE_METADATA_* fields first; append mode retains them.
 class SdfWriter {
   public:
     explicit SdfWriter(std::ostream& output);

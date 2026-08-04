@@ -99,9 +99,11 @@ categories in calculated blocks, converts PDB through Gemmi, and generates one l
 component block per nonstructural input record. Append mode retains existing ChargeFW assignments.
 Gemmi serialization may normalize source formatting and is not byte-for-byte preservation.
 `sdf_output::SdfWriter` copies SDF source records and writes atom-order charge vectors as numbered
-`CHARGEFW_CHARGES_<type-id>` properties. Replace mode removes existing ChargeFW charge properties;
-append mode retains them before adding the new properties. Generated SDF output requires an explicit
-V2000 or V3000 selection; preservation mode retains the source record's MOL version.
+`CHARGEFW_CHARGES_<type-id>` properties with paired
+`CHARGEFW_CHARGE_METADATA_<type-id>` properties recording the empirical method. Replace mode removes
+existing ChargeFW charge and metadata properties; append mode retains them before adding the new
+properties. Generated SDF output requires an explicit V2000 or V3000 selection; preservation mode
+retains the source record's MOL version.
 
 ChargeFW JSON input uses `"schema_version": "1.0"` and a `molecules` array. Each molecule has
 required `atoms` with `atomic_number` and `formal_charge`, optional indexed `bonds`, and optional

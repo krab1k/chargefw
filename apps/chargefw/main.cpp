@@ -236,21 +236,22 @@ auto write_mol2(const std::filesystem::path& path, const std::string& input_path
 
 auto write_sdf(const std::filesystem::path& path, const std::string& input_path,
                const ImportedCollection& imported,
-               const std::span<const charges::ChargeAssignment> assignments) -> void {
+               const std::span<const charges::ChargeAssignment> assignments,
+               const std::string_view method) -> void {
     auto output = std::ofstream{path, std::ios::binary};
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
     auto writer = adapters::native::sdf_output::SdfWriter{output};
     const auto properties = std::array{adapters::native::sdf_output::ChargeProperty{
-        .charge_type_id = 1, .assignments = assignments}};
+        .charge_type_id = 1, .assignments = assignments, .method = method}};
     if (imported.format == ImportedCollection::Format::sdf) {
         writer.write_preserving_source(input_path, properties);
         return;
     }
     for (std::size_t index = 0; index < imported.molecules.size(); ++index) {
         const auto property = std::array{adapters::native::sdf_output::ChargeProperty{
-            .charge_type_id = 1, .assignments = assignments.subspan(index, 1)}};
+            .charge_type_id = 1, .assignments = assignments.subspan(index, 1), .method = method}};
         writer.write_generated(imported.molecules[index], property,
                                adapters::native::sdf_output::MolFormat::v2000);
     }
@@ -362,7 +363,8 @@ auto main(int argc, char* argv[]) -> int {
         }
         const auto assignments =
             assignments_by_molecule(*result.charges, imported.molecules.size());
-        write_sdf(prefix.string() + ".sdf", input_path, imported, assignments);
+        write_sdf(prefix.string() + ".sdf", input_path, imported, assignments,
+                  result.charges->method_id());
         write_mol2(prefix.string() + ".mol2", input_path, imported, assignments);
         std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json",
                      prefix.string() + ".sdf", prefix.string() + ".mol2", prefix.string() + ".cif");
