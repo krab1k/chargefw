@@ -11,44 +11,9 @@
 namespace chargefw::parameters {
 namespace {
 
-auto bond_order_type(const core::BondOrder order) -> std::string {
-    switch (order) {
-    case core::BondOrder::SINGLE:
-        return "1";
-
-    case core::BondOrder::DOUBLE:
-        return "2";
-
-    case core::BondOrder::TRIPLE:
-        return "3";
-    }
-
-    throw std::logic_error{"unknown bond order"};
-}
-
-auto bond_order_rank(const core::BondOrder order) -> int {
-    switch (order) {
-    case core::BondOrder::SINGLE:
-        return 1;
-
-    case core::BondOrder::DOUBLE:
-        return 2;
-
-    case core::BondOrder::TRIPLE:
-        return 3;
-    }
-
-    throw std::logic_error{"unknown bond order"};
-}
-
 auto permissive_bond_order_type(const core::BondOrder order) -> std::string {
-    const auto rank = bond_order_rank(order);
-
-    if (rank <= 1) {
-        return bond_order_type(order);
-    }
-
-    return std::to_string(rank - 1);
+    const auto value = static_cast<int>(core::bond_order_value(order));
+    return std::to_string(std::max(1, value - 1));
 }
 
 auto highest_bond_order_rank(const core::Molecule& molecule,
@@ -57,7 +22,8 @@ auto highest_bond_order_rank(const core::Molecule& molecule,
     auto highest = 0;
 
     for (const auto bond_index : topology.incident_bond_indices(atom_index)) {
-        highest = std::max(highest, bond_order_rank(molecule.bond(bond_index).order()));
+        highest = std::max(
+            highest, static_cast<int>(core::bond_order_value(molecule.bond(bond_index).order())));
     }
 
     return highest;
@@ -126,7 +92,7 @@ auto bond_type_for(const core::Molecule& molecule, const std::size_t bond_index,
             return permissive_bond_order_type(molecule.bond(bond_index).order());
         }
 
-        return bond_order_type(molecule.bond(bond_index).order());
+        return std::to_string(core::bond_order_value(molecule.bond(bond_index).order()));
     }
 
     throw std::logic_error{"unknown bond parameter classification"};

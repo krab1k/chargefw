@@ -32,8 +32,6 @@ namespace chargefw::adapters::native::common_input {
 [[nodiscard]] auto fixed_field(std::string_view line, std::size_t offset, std::size_t width,
                                std::string_view field) -> std::string_view;
 
-[[nodiscard]] auto numeric_bond_order(int value) -> core::BondOrder;
-
 [[nodiscard]] auto bond_order(std::string_view value,
                               ::chargefw::adapters::native::BondFormat format) -> core::BondOrder;
 

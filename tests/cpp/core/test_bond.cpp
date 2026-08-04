@@ -11,6 +11,12 @@ auto main() -> int {
     assert(bond.first_atom_index() == 0);
     assert(bond.second_atom_index() == 1);
     assert(bond.order() == core::BondOrder::SINGLE);
+    assert(core::bond_order_value(core::BondOrder::SINGLE) == 1);
+    assert(core::bond_order_value(core::BondOrder::DOUBLE) == 2);
+    assert(core::bond_order_value(core::BondOrder::TRIPLE) == 3);
+    assert(core::bond_order_from_value(1) == core::BondOrder::SINGLE);
+    assert(core::bond_order_from_value(2) == core::BondOrder::DOUBLE);
+    assert(core::bond_order_from_value(3) == core::BondOrder::TRIPLE);
 
     const core::Bond double_bond{2, 3, core::BondOrder::DOUBLE};
 
@@ -27,6 +33,15 @@ auto main() -> int {
     }
 
     assert(rejected_self_bond);
+
+    auto rejected_order = false;
+    try {
+        [[maybe_unused]] const auto invalid_order = core::bond_order_from_value(4);
+    } catch (const std::invalid_argument&) {
+        rejected_order = true;
+    }
+
+    assert(rejected_order);
 
     return 0;
 }

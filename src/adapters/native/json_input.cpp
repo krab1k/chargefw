@@ -154,7 +154,7 @@ auto require_array(const Json& value, const std::string& context) -> void {
             bonds.emplace_back(
                 require_index(endpoints[0], bond_context + ".atoms[0]"),
                 require_index(endpoints[1], bond_context + ".atoms[1]"),
-                common::numeric_bond_order(require_integer(
+                core::bond_order_from_value(require_integer(
                     member(bond_value, "order", bond_context), bond_context + ".order")));
         }
     }

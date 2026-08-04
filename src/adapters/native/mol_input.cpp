@@ -265,7 +265,8 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
             continue;
         }
 
-        result.bonds.emplace_back(first->second, second->second, common::numeric_bond_order(order));
+        result.bonds.emplace_back(first->second, second->second,
+                                  core::bond_order_from_value(order == 4 ? 1 : order));
     }
 
     if (v30_payload(read_v30_line(input, line)) != "END BOND" ||

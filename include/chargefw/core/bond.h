@@ -4,7 +4,13 @@
 #include <cstdint>
 
 namespace chargefw::core {
-enum class BondOrder : std::uint8_t { SINGLE, DOUBLE, TRIPLE };
+enum class BondOrder : std::uint8_t { SINGLE = 1, DOUBLE = 2, TRIPLE = 3 };
+
+[[nodiscard]] constexpr auto bond_order_value(const BondOrder order) noexcept -> std::uint8_t {
+    return static_cast<std::uint8_t>(order);
+}
+
+[[nodiscard]] auto bond_order_from_value(int value) -> BondOrder;
 
 class Bond {
   public:

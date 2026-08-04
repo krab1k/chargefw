@@ -14,6 +14,19 @@ auto validate_bond_indices(const std::size_t first_atom_index, const std::size_t
 
 } // namespace
 
+auto bond_order_from_value(const int value) -> BondOrder {
+    switch (value) {
+    case 1:
+        return BondOrder::SINGLE;
+    case 2:
+        return BondOrder::DOUBLE;
+    case 3:
+        return BondOrder::TRIPLE;
+    default:
+        throw std::invalid_argument{"unsupported bond order " + std::to_string(value)};
+    }
+}
+
 Bond::Bond(const std::size_t first_atom_index, const std::size_t second_atom_index,
            const BondOrder order)
     : first_atom_index_{first_atom_index}, second_atom_index_{second_atom_index}, order_{order} {

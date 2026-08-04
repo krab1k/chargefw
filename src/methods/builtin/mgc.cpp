@@ -13,19 +13,6 @@
 namespace chargefw::methods::builtin {
 namespace {
 
-[[nodiscard]] auto order(const core::BondOrder bond_order) -> double {
-    switch (bond_order) {
-    case core::BondOrder::SINGLE:
-        return 1.0;
-    case core::BondOrder::DOUBLE:
-        return 2.0;
-    case core::BondOrder::TRIPLE:
-        return 3.0;
-    }
-
-    return 1.0;
-}
-
 [[nodiscard]] auto chi0(const core::Element& element) -> double {
     if (element.electronegativity <= 0.0) {
         throw std::logic_error{"MGC requires positive electronegativity for element '" +
@@ -64,7 +51,7 @@ auto MGCMethod::calculate(const CalculationInput& input) const -> charges::Atomi
     for (const auto& bond : molecule.bonds()) {
         const auto i = static_cast<Eigen::Index>(bond.first_atom_index());
         const auto j = static_cast<Eigen::Index>(bond.second_atom_index());
-        const auto w = order(bond.order());
+        const auto w = static_cast<double>(core::bond_order_value(bond.order()));
 
         S(i, i) += w;
         S(j, j) += w;

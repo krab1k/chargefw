@@ -72,29 +72,15 @@ auto fixed_field(const std::string_view line, const std::size_t offset, const st
     return line.substr(offset, width);
 }
 
-auto numeric_bond_order(const int value) -> core::BondOrder {
-    switch (value) {
-    case 1:
-        return core::BondOrder::SINGLE;
-    case 2:
-        return core::BondOrder::DOUBLE;
-    case 3:
-        return core::BondOrder::TRIPLE;
-    case 4:
-        return core::BondOrder::SINGLE;
-    default:
-        throw std::runtime_error{"unsupported bond order " + std::to_string(value)};
-    }
-}
-
 auto bond_order(const std::string_view value, const ::chargefw::adapters::native::BondFormat format)
     -> core::BondOrder {
     if (format == ::chargefw::adapters::native::BondFormat::mol2 && value == "ar") {
         return core::BondOrder::SINGLE;
     }
-    return numeric_bond_order(parse_int(
+    const auto numeric_value = parse_int(
         value, format == ::chargefw::adapters::native::BondFormat::mol ? "MOL bond order"
-                                                                       : "MOL2 bond type"));
+                                                                       : "MOL2 bond type");
+    return core::bond_order_from_value(numeric_value == 4 ? 1 : numeric_value);
 }
 
 auto identity_mapping(const std::size_t count) -> std::vector<std::optional<std::size_t>> {
