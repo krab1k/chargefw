@@ -35,6 +35,8 @@ function(chargefw_setup_dependencies)
     if(NOT TARGET gemmi::gemmi_cpp)
         set(BUILD_GEMMI_PROGRAM OFF CACHE BOOL "" FORCE)
         set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+        set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+        set(GEMMI_BUILD_TESTING OFF CACHE BOOL "" FORCE)
         FetchContent_Declare(
                 gemmi
                 SYSTEM

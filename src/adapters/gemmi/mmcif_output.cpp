@@ -335,12 +335,13 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
             throw std::runtime_error{"charge assignment conformer is missing from mmCIF block"};
         }
         const auto id = std::to_string(assignment_id++);
-        const auto method = charge_set.parameter_set_id()
-                                .transform([&charge_set](const std::string_view parameter_set_id) {
-                                    return std::string{charge_set.method_id()} + "/" +
-                                           std::string{parameter_set_id};
-                                })
-                                .value_or(std::string{charge_set.method_id()});
+        const auto method =
+            charge_set.parameter_set_id()
+                .transform([&charge_set](const std::string_view parameter_set_id) -> std::string {
+                    return std::string{charge_set.method_id()} + "/" +
+                           std::string{parameter_set_id};
+                })
+                .value_or(std::string{charge_set.method_id()});
         metadata.append_row({id, "empirical", quote(method)});
         for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
             charge_rows.append_row({id, quote(mapping.atom_site_ids[mapping_index][atom_index]),

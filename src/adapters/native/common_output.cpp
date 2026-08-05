@@ -30,8 +30,7 @@ auto atom_element_symbol(const core::Atom& atom) -> std::string {
     return std::string{core::element_symbol(atom.atomic_number())};
 }
 
-auto bond_type(const core::BondOrder order, const ::chargefw::adapters::native::BondFormat)
-    -> std::string_view {
+auto bond_type(const core::BondOrder order) -> std::string_view {
     switch (order) {
     case core::BondOrder::SINGLE:
         return "1";

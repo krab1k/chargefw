@@ -264,8 +264,7 @@ auto write_v2000(const core::Molecule& molecule, const core::Conformer& conforme
     }
     for (const auto& bond : molecule.bonds()) {
         std::print(output, "{:>3}{:>3}{:>3}  0  0  0  0\n", bond.first_atom_index() + 1,
-                   bond.second_atom_index() + 1,
-                   common_output::bond_type(bond.order(), BondFormat::mol));
+                   bond.second_atom_index() + 1, common_output::bond_type(bond.order()));
     }
 
     constexpr std::size_t charges_per_line = 8;
@@ -308,8 +307,8 @@ auto write_v3000(const core::Molecule& molecule, const core::Conformer& conforme
     for (std::size_t index = 0; index < molecule.bond_count(); ++index) {
         const auto& bond = molecule.bond(index);
         std::print(output, "M  V30 {} {} {} {}\n", index + 1,
-                   common_output::bond_type(bond.order(), BondFormat::mol),
-                   bond.first_atom_index() + 1, bond.second_atom_index() + 1);
+                   common_output::bond_type(bond.order()), bond.first_atom_index() + 1,
+                   bond.second_atom_index() + 1);
     }
     std::print(output, "M  V30 END BOND\nM  V30 END CTAB\nM  END\n");
 }

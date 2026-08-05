@@ -3,6 +3,16 @@
 namespace chargefw::adapters::gemmi::selection {
 namespace {
 
+auto altloc_priority(const char altloc) -> int {
+    if (altloc == '\0') {
+        return 0;
+    }
+    if (altloc == 'A') {
+        return 1;
+    }
+    return 2;
+}
+
 auto include_residue(const ::gemmi::Residue& residue, const RecordSelection selection) -> bool {
     switch (selection) {
     case RecordSelection::all:
@@ -38,9 +48,7 @@ auto select_altloc(const ::gemmi::Residue& residue, const std::size_t first_atom
             continue;
         }
 
-        if (selected->altloc != '\0' && candidate.altloc == '\0') {
-            selected = std::addressof(candidate);
-        } else if (selected->altloc != '\0' && selected->altloc != 'A' && candidate.altloc == 'A') {
+        if (altloc_priority(candidate.altloc) < altloc_priority(selected->altloc)) {
             selected = std::addressof(candidate);
         }
     }

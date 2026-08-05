@@ -2,6 +2,7 @@
 
 #include <chargefw/core/bond.h>
 
+#include <cstdint>
 #include <span>
 #include <string_view>
 
@@ -13,7 +14,7 @@ struct BondTemplate {
     core::BondOrder order;
 };
 
-enum class ComponentKind {
+enum class ComponentKind : std::uint8_t {
     amino_acid,
     nucleotide,
     water,

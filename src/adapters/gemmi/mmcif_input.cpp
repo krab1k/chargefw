@@ -27,7 +27,7 @@ MmcifReader::MmcifReader(std::istream& input, std::string source,
     document_ = std::make_shared<::gemmi::cif::Document>(
         ::gemmi::cif::read_memory(contents.data(), contents.size(), source_.c_str()));
 
-    const auto has_coordinates = [](const ::gemmi::cif::Block& block) {
+    const auto has_coordinates = [](const ::gemmi::cif::Block& block) -> bool {
         return block.has_tag("_atom_site.id");
     };
     if (std::ranges::none_of(document_->blocks, has_coordinates)) {

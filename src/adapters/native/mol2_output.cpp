@@ -201,8 +201,7 @@ auto Mol2Writer::write_generated(const core::Molecule& molecule,
     for (std::size_t index = 0; index < molecule.bond_count(); ++index) {
         const auto& bond = molecule.bond(index);
         std::print(*output_, "{} {} {} {}\n", index + 1, bond.first_atom_index() + 1,
-                   bond.second_atom_index() + 1,
-                   common_output::bond_type(bond.order(), BondFormat::mol2));
+                   bond.second_atom_index() + 1, common_output::bond_type(bond.order()));
     }
 }
 

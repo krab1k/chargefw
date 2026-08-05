@@ -27,7 +27,8 @@ class BondAccumulator {
             return;
         }
 
-        const auto key = BondKey{std::min(first, second), std::max(first, second)};
+        const auto key =
+            BondKey{.first = std::min(first, second), .second = std::max(first, second)};
         if (seen_.insert(key).second) {
             bonds_.emplace_back(first, second, order);
         }
@@ -114,10 +115,10 @@ void add_sequential_bonds(BondAccumulator& bonds,
     for (std::size_t index = 1; index < residues.size(); ++index) {
         const auto& previous = residues[index - 1];
         const auto& current = residues[index];
-        const auto previous_template = component_templates::find(previous.residue->name);
-        const auto current_template = component_templates::find(current.residue->name);
-        if (!previous_template || !current_template || previous_template->kind != kind ||
-            current_template->kind != kind ||
+        const auto* const previous_template = component_templates::find(previous.residue->name);
+        const auto* const current_template = component_templates::find(current.residue->name);
+        if (previous_template == nullptr || current_template == nullptr ||
+            previous_template->kind != kind || current_template->kind != kind ||
             previous.residue->seqid.num.value + 1 != current.residue->seqid.num.value) {
             continue;
         }
@@ -163,8 +164,8 @@ void add_component_bonds(BondAccumulator& result, const selection::SelectedResid
     const auto& residues = model.residues();
 
     for (const auto& residue : residues) {
-        const auto component_template = component_templates::find(residue.residue->name);
-        if (!component_template) {
+        const auto* const component_template = component_templates::find(residue.residue->name);
+        if (component_template == nullptr) {
             continue;
         }
 
@@ -181,23 +182,23 @@ void add_component_bonds(BondAccumulator& result, const selection::SelectedResid
 
 } // namespace
 
-auto explicit_pdb(const ::gemmi::Structure& structure, const selection::SelectedModel& selected)
+auto explicit_pdb(const ::gemmi::Structure& structure, const selection::SelectedModel& model)
     -> std::vector<core::Bond> {
     if (structure.models.empty()) {
         return {};
     }
 
     BondAccumulator result;
-    add_structure_connections(result, structure, selected);
+    add_structure_connections(result, structure, model);
 
     for (const auto& [serial, partners] : structure.conect_map) {
-        const auto first = selected.atom_index_by_serial(serial);
+        const auto first = model.atom_index_by_serial(serial);
         if (!first.has_value()) {
             continue;
         }
 
         for (const auto partner : partners) {
-            const auto second = selected.atom_index_by_serial(partner);
+            const auto second = model.atom_index_by_serial(partner);
             if (second.has_value()) {
                 result.add(*first, *second, core::BondOrder::SINGLE);
             }
@@ -208,12 +209,12 @@ auto explicit_pdb(const ::gemmi::Structure& structure, const selection::Selected
 }
 
 auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& block,
-                    const selection::SelectedModel& selected) -> std::vector<core::Bond> {
+                    const selection::SelectedModel& model) -> std::vector<core::Bond> {
     if (structure.models.empty()) {
         return {};
     }
 
-    const auto& residues = selected.residues();
+    const auto& residues = model.residues();
     BondAccumulator result;
 
     std::unordered_map<std::string_view, std::vector<component_templates::BondTemplate>>
@@ -235,7 +236,7 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
         }
     }
 
-    add_structure_connections(result, structure, selected);
+    add_structure_connections(result, structure, model);
 
     return result.take();
 }

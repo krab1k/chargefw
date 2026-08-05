@@ -3,6 +3,7 @@
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule.h>
 
+#include <cstdint>
 #include <iosfwd>
 #include <span>
 #include <string>
@@ -10,8 +11,8 @@
 
 namespace chargefw::adapters::native::sdf_output {
 
-enum class WriteMode { replace, append };
-enum class MolFormat { v2000, v3000 };
+enum class WriteMode : std::uint8_t { replace, append };
+enum class MolFormat : std::uint8_t { v2000, v3000 };
 
 struct ChargeProperty {
     std::size_t charge_type_id = 0;

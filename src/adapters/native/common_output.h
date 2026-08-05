@@ -18,8 +18,7 @@ namespace chargefw::adapters::native::common_output {
 [[nodiscard]] auto formatted_charge(double value) -> std::string;
 [[nodiscard]] auto generated_atom_name(const core::Atom& atom, std::size_t index) -> std::string;
 [[nodiscard]] auto atom_element_symbol(const core::Atom& atom) -> std::string;
-[[nodiscard]] auto bond_type(core::BondOrder order, ::chargefw::adapters::native::BondFormat format)
-    -> std::string_view;
+[[nodiscard]] auto bond_type(core::BondOrder order) -> std::string_view;
 
 [[nodiscard]] auto open_source_file(const std::string& source_path, std::string_view format_name)
     -> std::ifstream;

@@ -13,6 +13,8 @@
 
 #include <array>
 #include <cctype>
+#include <cstdint>
+#include <cstdio>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -35,7 +37,7 @@ namespace adapters = chargefw::adapters;
 namespace {
 
 struct ImportedCollection {
-    enum class Format { sdf, mol, mol2, json, pdb, mmcif };
+    enum class Format : std::uint8_t { sdf, mol, mol2, json, pdb, mmcif };
 
     core::MoleculeCollection molecules;
     std::vector<adapters::ImportedMoleculeRecord> records;
@@ -167,11 +169,11 @@ auto read_collection(const std::string& input_path,
     auto result = std::vector<charges::ChargeAssignment>{};
     result.reserve(molecule_count);
     for (std::size_t molecule_index = 0; molecule_index < molecule_count; ++molecule_index) {
-        const auto found =
-            std::ranges::find_if(charge_set.assignments(),
-                                 [molecule_index](const charges::ChargeAssignment& assignment) {
-                                     return assignment.target.molecule_index == molecule_index;
-                                 });
+        const auto found = std::ranges::find_if(
+            charge_set.assignments(),
+            [molecule_index](const charges::ChargeAssignment& assignment) -> bool {
+                return assignment.target.molecule_index == molecule_index;
+            });
         if (found == charge_set.assignments().end()) {
             throw std::runtime_error{"No charge assignment for molecule " +
                                      std::to_string(molecule_index)};
@@ -179,7 +181,7 @@ auto read_collection(const std::string& input_path,
         const auto remaining = charge_set.assignments().subspan(
             static_cast<std::size_t>(std::distance(charge_set.assignments().begin(), found)) + 1);
         const auto duplicate = std::ranges::find_if(
-            remaining, [molecule_index](const charges::ChargeAssignment& assignment) {
+            remaining, [molecule_index](const charges::ChargeAssignment& assignment) -> bool {
                 return assignment.target.molecule_index == molecule_index;
             });
         if (duplicate != remaining.end()) {
@@ -286,7 +288,7 @@ auto method_pointers(const methods::MethodRegistry& registry)
 
 } // namespace
 
-auto main(int argc, char* argv[]) -> int {
+auto run(int argc, char* argv[]) -> int {
     try {
         CLI::App app{"Calculate empirical partial atomic charges from a molecular file."};
         std::string input_path;
@@ -335,9 +337,10 @@ auto main(int argc, char* argv[]) -> int {
         const auto structural_output = imported.format == ImportedCollection::Format::pdb ||
                                        imported.format == ImportedCollection::Format::mmcif;
         if (!structural_output && imported.format == ImportedCollection::Format::json &&
-            std::ranges::any_of(imported.molecules.molecules(), [](const core::Molecule& molecule) {
-                return molecule.conformer_count() > 1;
-            })) {
+            std::ranges::any_of(imported.molecules.molecules(),
+                                [](const core::Molecule& molecule) -> bool {
+                                    return molecule.conformer_count() > 1;
+                                })) {
             throw std::runtime_error{
                 "JSON input with multiple conformers cannot be written to SDF or MOL2"};
         }
@@ -356,15 +359,18 @@ auto main(int argc, char* argv[]) -> int {
         const auto prefix = directory / (input_name.string() + ".chargefw");
         const auto output = result_document(imported, result);
         write_json(prefix.string() + ".json", output);
-        write_mmcif(prefix.string() + ".cif", imported, *result.charges);
+        const auto* charges = result.charges ? std::addressof(*result.charges) : nullptr;
+        if (charges == nullptr) {
+            throw std::runtime_error{"calculation result is missing charges"};
+        }
+        write_mmcif(prefix.string() + ".cif", imported, *charges);
         if (structural_output) {
             std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
             return 0;
         }
-        const auto assignments =
-            assignments_by_molecule(*result.charges, imported.molecules.size());
+        const auto assignments = assignments_by_molecule(*charges, imported.molecules.size());
         write_sdf(prefix.string() + ".sdf", input_path, imported, assignments,
-                  result.charges->method_id());
+                  charges->method_id());
         write_mol2(prefix.string() + ".mol2", input_path, imported, assignments);
         std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json",
                      prefix.string() + ".sdf", prefix.string() + ".mol2", prefix.string() + ".cif");
@@ -372,6 +378,15 @@ auto main(int argc, char* argv[]) -> int {
         return 0;
     } catch (const std::exception& error) {
         std::print(std::cerr, "Fatal error: {}\n", error.what());
+        return 1;
+    }
+}
+
+auto main(int argc, char* argv[]) noexcept -> int {
+    try {
+        return run(argc, argv);
+    } catch (const std::exception& error) {
+        std::fprintf(stderr, "Fatal error: %s\n", error.what());
         return 1;
     }
 }
