@@ -46,9 +46,9 @@ target_include_directories(chargefw_core
 target_link_libraries(chargefw_core
   PUBLIC
     nlohmann_json::nlohmann_json
+    gemmi::gemmi_cpp
   PRIVATE
     Eigen3::Eigen
-    gemmi::gemmi_cpp
 )
 
 configure_file(
