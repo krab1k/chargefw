@@ -4,7 +4,6 @@
 #include <chargefw/core/position.h>
 
 #include <cstddef>
-#include <vector>
 
 namespace chargefw::features {
 
@@ -26,9 +25,6 @@ class ConformerFeatures {
                                         std::size_t second_atom_index) const -> double;
     [[nodiscard]] auto distance(std::size_t first_atom_index, std::size_t second_atom_index) const
         -> double;
-
-    [[nodiscard]] auto neighbor_indices_within(std::size_t atom_index, double radius) const
-        -> std::vector<std::size_t>;
 
   private:
     auto validate_conformer_index() const -> void;

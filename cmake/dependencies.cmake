@@ -31,6 +31,18 @@ function(chargefw_setup_dependencies)
         FetchContent_MakeAvailable(eigen)
     endif()
 
+    find_package(nanoflann 1.12 CONFIG QUIET)
+    if(NOT TARGET nanoflann::nanoflann)
+        set(NANOFLANN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(NANOFLANN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(
+                nanoflann
+                SYSTEM
+                URL https://github.com/jlblancoc/nanoflann/archive/refs/tags/1.12.1.tar.gz
+        )
+        FetchContent_MakeAvailable(nanoflann)
+    endif()
+
     find_package(gemmi 0.7.4 CONFIG QUIET)
     if(NOT TARGET gemmi::gemmi_cpp)
         set(BUILD_GEMMI_PROGRAM OFF CACHE BOOL "" FORCE)

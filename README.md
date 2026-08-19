@@ -24,7 +24,7 @@ SMILES/chemistry-preparation tool.
 - GCC or Clang with C++23 support
 - Internet access on first configure unless dependencies are already available to CMake
 
-CMake searches for CLI11 2.6, nlohmann/json 3.12, Eigen 5.0, and Gemmi 0.7.4, then uses
+CMake searches for CLI11 2.6, nlohmann/json 3.12, Eigen 5.0, nanoflann 1.12, and Gemmi 0.7.4, then uses
 `FetchContent` when needed.
 
 ## Build and test

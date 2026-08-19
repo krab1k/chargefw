@@ -3,6 +3,7 @@
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/position.h>
+#include <chargefw/features/conformer_features.h>
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/features/spatial_fragment.h>
 #include <chargefw/parameters/classification/parameter_classification.h>
@@ -51,7 +52,9 @@ template <typename Exception, typename Callable> auto throws(Callable&& callable
 auto main() -> int {
     const auto molecule = make_molecule();
     const features::PreparedMolecule prepared{molecule};
-    const auto fragment = features::build_spatial_fragment(prepared, 0, 1, 1.0);
+    const features::ConformerFeatures first_geometry{molecule, 0};
+    const features::SpatialFragmentBuilder first_builder{prepared, first_geometry};
+    const auto fragment = first_builder.build(1, 1.0);
 
     assert(fragment.molecule().name() == "fragment");
     assert(fragment.molecule().atom_count() == 3);
@@ -105,17 +108,19 @@ auto main() -> int {
     assert(std::ranges::equal(bond_only_projected.bond().parameter_entry_indices(),
                               std::vector<std::size_t>{20, 21}));
 
-    const auto boundary_fragment = features::build_spatial_fragment(prepared, 0, 2, 8.0);
+    const auto boundary_fragment = first_builder.build(2, 8.0);
     assert(boundary_fragment.molecule().atom_count() == 4);
     assert(boundary_fragment.center_local_atom_index() == 2);
     assert(std::ranges::equal(boundary_fragment.local_to_source_atom_indices(),
                               std::vector<std::size_t>{0, 1, 2, 3}));
 
-    const auto second_conformer_fragment = features::build_spatial_fragment(prepared, 1, 1, 2.0);
+    const features::ConformerFeatures second_geometry{molecule, 1};
+    const features::SpatialFragmentBuilder second_builder{prepared, second_geometry};
+    const auto second_conformer_fragment = second_builder.build(1, 2.0);
     assert(second_conformer_fragment.molecule().conformer(0).name() == "model-2");
     assert(second_conformer_fragment.molecule().conformer(0)[2].x == 4.0);
 
-    const auto repeated_fragment = features::build_spatial_fragment(prepared, 0, 1, 1.0);
+    const auto repeated_fragment = first_builder.build(1, 1.0);
     assert(std::ranges::equal(repeated_fragment.local_to_source_atom_indices(),
                               fragment.local_to_source_atom_indices()));
 
@@ -125,33 +130,51 @@ auto main() -> int {
         std::vector{core::Conformer{{core::Position{.x = 3.0}}, "single"}},
         "single"};
     const features::PreparedMolecule single_atom_prepared{single_atom_molecule};
-    const auto single_atom_fragment =
-        features::build_spatial_fragment(single_atom_prepared, 0, 0, 1.0);
+    const features::ConformerFeatures single_atom_geometry{single_atom_molecule, 0};
+    const features::SpatialFragmentBuilder single_atom_builder{single_atom_prepared,
+                                                               single_atom_geometry};
+    const auto single_atom_fragment = single_atom_builder.build(0, 1.0);
     assert(single_atom_fragment.molecule().atom_count() == 1);
     assert(single_atom_fragment.molecule().bond_count() == 0);
     assert(single_atom_fragment.center_local_atom_index() == 0);
 
+    const features::ConformerFeatures unrelated_geometry{single_atom_molecule, 0};
+    assert(throws<std::invalid_argument>([&prepared, &unrelated_geometry] {
+        [[maybe_unused]] const features::SpatialFragmentBuilder invalid{prepared,
+                                                                        unrelated_geometry};
+    }));
+
+    const core::Molecule nonfinite_molecule{
+        std::vector{core::Atom{1, 0, "H0"}, core::Atom{1, 0, "H1"}},
+        {},
+        std::vector{core::Conformer{
+            {core::Position{}, core::Position{.x = std::numeric_limits<double>::quiet_NaN()}},
+            "nonfinite"}},
+        "nonfinite"};
+    const features::PreparedMolecule nonfinite_prepared{nonfinite_molecule};
+    const features::ConformerFeatures nonfinite_geometry{nonfinite_molecule, 0};
+    assert(throws<std::invalid_argument>([&nonfinite_prepared, &nonfinite_geometry] {
+        [[maybe_unused]] const features::SpatialFragmentBuilder invalid{nonfinite_prepared,
+                                                                        nonfinite_geometry};
+    }));
+
     const core::Molecule empty_molecule{{}, {}, {core::Conformer{{}, "empty"}}, "empty"};
     const features::PreparedMolecule empty_prepared{empty_molecule};
-    assert(throws<std::out_of_range>([&empty_prepared] {
-        static_cast<void>(features::build_spatial_fragment(empty_prepared, 0, 0, 1.0));
-    }));
+    const features::ConformerFeatures empty_geometry{empty_molecule, 0};
+    const features::SpatialFragmentBuilder empty_builder{empty_prepared, empty_geometry};
     assert(throws<std::out_of_range>(
-        [&prepared] { static_cast<void>(features::build_spatial_fragment(prepared, 2, 1, 1.0)); }));
+        [&empty_builder] { static_cast<void>(empty_builder.build(0, 1.0)); }));
     assert(throws<std::out_of_range>(
-        [&prepared] { static_cast<void>(features::build_spatial_fragment(prepared, 0, 4, 1.0)); }));
+        [&first_builder] { static_cast<void>(first_builder.build(4, 1.0)); }));
     assert(throws<std::invalid_argument>(
-        [&prepared] { static_cast<void>(features::build_spatial_fragment(prepared, 0, 1, 0.0)); }));
-    assert(throws<std::invalid_argument>([&prepared] {
-        static_cast<void>(features::build_spatial_fragment(prepared, 0, 1, -1.0));
+        [&first_builder] { static_cast<void>(first_builder.build(1, 0.0)); }));
+    assert(throws<std::invalid_argument>(
+        [&first_builder] { static_cast<void>(first_builder.build(1, -1.0)); }));
+    assert(throws<std::invalid_argument>([&first_builder] {
+        static_cast<void>(first_builder.build(1, std::numeric_limits<double>::quiet_NaN()));
     }));
-    assert(throws<std::invalid_argument>([&prepared] {
-        static_cast<void>(features::build_spatial_fragment(
-            prepared, 0, 1, std::numeric_limits<double>::quiet_NaN()));
-    }));
-    assert(throws<std::invalid_argument>([&prepared] {
-        static_cast<void>(features::build_spatial_fragment(
-            prepared, 0, 1, std::numeric_limits<double>::infinity()));
+    assert(throws<std::invalid_argument>([&first_builder] {
+        static_cast<void>(first_builder.build(1, std::numeric_limits<double>::infinity()));
     }));
 
     return 0;

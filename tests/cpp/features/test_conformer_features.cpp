@@ -1,8 +1,11 @@
 #include "support/test_molecules.h"
 
+#include <chargefw/core/atom.h>
+#include <chargefw/core/conformer.h>
+#include <chargefw/core/molecule.h>
+#include <chargefw/core/position.h>
 #include <chargefw/features/conformer_features.h>
 
-#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <stdexcept>
@@ -39,14 +42,6 @@ auto main() -> int {
     assert(approximately_equal(geometry.squared_distance(0, 1), 0.9572 * 0.9572, 1e-12));
     assert(approximately_equal(geometry.distance(0, 1), 0.9572, 1e-12));
 
-    auto neighbors = geometry.neighbor_indices_within(0, 1.1);
-    std::ranges::sort(neighbors);
-
-    assert((neighbors == std::vector<std::size_t>{1, 2}));
-
-    const auto no_neighbors = geometry.neighbor_indices_within(0, 0.1);
-    assert(no_neighbors.empty());
-
     bool rejected_bad_conformer = false;
 
     try {
@@ -66,16 +61,6 @@ auto main() -> int {
     }
 
     assert(rejected_bad_atom);
-
-    bool rejected_negative_radius = false;
-
-    try {
-        [[maybe_unused]] const auto invalid_neighbors = geometry.neighbor_indices_within(0, -1.0);
-    } catch (const std::invalid_argument&) {
-        rejected_negative_radius = true;
-    }
-
-    assert(rejected_negative_radius);
 
     return 0;
 }

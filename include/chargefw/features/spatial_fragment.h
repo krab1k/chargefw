@@ -6,10 +6,14 @@
 
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <span>
 #include <vector>
 
 namespace chargefw::features {
+
+class ConformerFeatures;
+class SpatialFragmentBuilder;
 
 inline constexpr std::size_t no_source_index = std::numeric_limits<std::size_t>::max();
 
@@ -42,15 +46,29 @@ class SpatialFragment {
     std::size_t center_local_atom_index_;
     std::size_t source_conformer_index_;
 
-    friend auto build_spatial_fragment(const PreparedMolecule& source, std::size_t conformer_index,
-                                       std::size_t center_atom_index, double radius)
-        -> SpatialFragment;
+    friend class SpatialFragmentBuilder;
 };
 
-[[nodiscard]] auto build_spatial_fragment(const PreparedMolecule& source,
-                                          std::size_t conformer_index,
-                                          std::size_t center_atom_index, double radius)
-    -> SpatialFragment;
+// Owns one KD-tree for a source conformer and builds its spatial fragments.
+class SpatialFragmentBuilder {
+  public:
+    SpatialFragmentBuilder(const PreparedMolecule& source, const ConformerFeatures& geometry);
+    ~SpatialFragmentBuilder();
+
+    SpatialFragmentBuilder(const SpatialFragmentBuilder&) = delete;
+    auto operator=(const SpatialFragmentBuilder&) -> SpatialFragmentBuilder& = delete;
+    SpatialFragmentBuilder(SpatialFragmentBuilder&&) = delete;
+    auto operator=(SpatialFragmentBuilder&&) -> SpatialFragmentBuilder& = delete;
+
+    [[nodiscard]] auto build(std::size_t center_atom_index, double radius) const -> SpatialFragment;
+
+  private:
+    class SpatialIndex;
+
+    const PreparedMolecule* source_;
+    const ConformerFeatures* geometry_;
+    std::unique_ptr<const SpatialIndex> spatial_index_;
+};
 
 // Projects whole-molecule parameter entry indices to an induced fragment without reclassification.
 [[nodiscard]] auto project_classification(const parameters::ParameterClassification& source,

@@ -16,6 +16,8 @@ Implemented:
 - deterministic concrete-plan selection and explicit full override warnings in results;
 - source-ordered `features::SpatialFragment` with induced bonds and classification projection;
 - serial one-fragment-per-center cutoff execution through ordinary `Method::calculate()`;
+- one `SpatialFragmentBuilder` and nanoflann KD-tree per source conformer for cutoff fragment neighbor
+  queries;
 - automatic cutoff at 12 Å when an expensive full candidate exceeds the threshold;
 - CLI selection and JSON requested/effective provenance;
 - cutoff capability for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp.
@@ -23,7 +25,7 @@ Implemented:
 Not implemented or incomplete:
 
 - cover execution and overlap semantics;
-- parallel scheduling or optimized spatial indexing;
+- parallel scheduling;
 - pre-allocation emission of explicit-full warnings (warnings are currently retained after execution);
 - ChargeFW2 cutoff compatibility fixtures and supported numerical tolerances;
 - broad multi-radius, charge-state, disconnected-system, performance, and memory validation;
@@ -91,7 +93,7 @@ available it continues to the next candidate. It never silently forces discourag
 
 Cutoff ownership is outside the fragment. The serial executor:
 
-1. builds one radius fragment per source atom with the current linear neighbor scan;
+1. builds one radius fragment per source atom using the source conformer's KD-tree;
 2. prepares the fragment and projects the selected whole-molecule classification;
 3. computes the method-declared fragment target charge;
 4. calls the selected `Method` through normal `CalculationInput` without method-ID switches or

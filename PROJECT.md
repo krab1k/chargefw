@@ -17,7 +17,7 @@ The repository currently provides:
 - 22 built-in methods and bundled JSON parameter sets;
 - scientific applicability and execution-availability assessment;
 - deterministic method/parameter selection and owned application facades;
-- exact full execution and serial spatial cutoff for eight validated methods;
+- exact full execution and serial KD-tree spatial cutoff for eight validated methods;
 - native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;
 - JSON, SDF, MOL2, and mmCIF charge output through a focused CLI.
 
@@ -147,7 +147,8 @@ abeem, eem, eqeq, eqeqc, qeq, sqe, sqeq0, sqeqp
 The shared executor builds one source-ordered induced spatial fragment per source atom, projects the
 whole-molecule classification, invokes the selected method through ordinary `CalculationInput`, and
 keeps the explicitly mapped center charge. It then applies the selected final correction. Neighbor
-search is currently linear and execution is serial.
+search uses one `SpatialFragmentBuilder` and nanoflann KD-tree per source conformer; execution is
+serial.
 
 EEM/QEq-like methods and ABEEM allocate each fragment a formal-charge target proportional to its atom
 count and restore the source formal-charge total. SQE uses zero fragment and final targets. SQE+q0
@@ -161,8 +162,8 @@ its executor is not implemented.
 
 ### Preliminary large-structure observations
 
-Manual development runs, not supported benchmarks, show bounded fragment memory and convergence toward
-full execution:
+Manual development runs and local query measurements, not supported benchmarks, show bounded fragment
+memory and convergence toward full execution:
 
 - `10aw.cif` (10,479 atoms): QEq cutoff MAE decreased from 0.004288 e at 8 Å to 0.001751 e at 12 Å;
   cutoff peak RSS was about 30 MB versus 1.76 GB for full.
@@ -171,6 +172,11 @@ full execution:
 - At 10 Å on `1ek9.cif` polymers (9,798 atoms), all eight supported methods completed in full and
   cutoff modes. SQE+q0 had materially larger deviation (0.053125 e MAE) than the other tested methods,
   so it needs charged/disconnected and multi-radius validation before an accuracy claim.
+- A GCC release query comparison over all centers found the KD-tree radius search 1.57–3.99× faster at
+  12 Å and 3.96–9.70× faster at 8 Å than the former linear scan on `10aw.cif` (10,479 atoms),
+  `1ek9.cif` (11,426 atoms), and `8yax.cif` (40,738 atoms). Per-conformer tree construction took
+  0.8–3.8 ms; source-order result materialization limits the advantage as radius and neighbor count
+  grow.
 - SFKEEM is intentionally not cutoff-capable: local neutral-fragment target charges lose its global
   chemical-potential constraint. It needs a dedicated truncated-kernel solver or a separately
   validated fragment policy.
@@ -247,9 +253,9 @@ Current limitations:
 ## Build, installation, and distribution
 
 CMake builds one `chargefw_core` library and an optional `chargefw` CLI. Public dependencies are
-nlohmann/json and Gemmi; Eigen is private and CLI11 is used by the application. CMake first searches
-for compatible packages and otherwise fetches CLI11 2.6.2, nlohmann/json 3.12.0, Eigen 5.0.1, and Gemmi
-0.7.4.
+nlohmann/json and Gemmi; Eigen and nanoflann are private and CLI11 is used by the application. CMake
+first searches for compatible packages and otherwise fetches CLI11 2.6.2, nlohmann/json 3.12.0, Eigen
+5.0.1, nanoflann 1.12.1, and Gemmi 0.7.4.
 
 Installation currently provides the library, public headers, CLI, generated config header, and bundled
 parameter JSON. Exported CMake package targets are not implemented. There are no repository CI

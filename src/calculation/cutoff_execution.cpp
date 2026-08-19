@@ -128,12 +128,13 @@ calculate_target(const methods::ApplicableMethod& selected,
     const auto& source_molecule = source.molecule();
     auto values = std::vector<double>(source_molecule.atom_count());
     const auto requirements = selected.method->requirements();
+    const features::ConformerFeatures source_geometry{source_molecule, conformer_index};
+    const features::SpatialFragmentBuilder fragment_builder{source, source_geometry};
 
     for (std::size_t center_source_atom_index = 0;
          center_source_atom_index < source_molecule.atom_count(); ++center_source_atom_index) {
         try {
-            const auto fragment = features::build_spatial_fragment(
-                source, conformer_index, center_source_atom_index, radius);
+            const auto fragment = fragment_builder.build(center_source_atom_index, radius);
             const features::PreparedMolecule prepared_fragment{fragment.molecule()};
             const features::ConformerFeatures geometry{fragment.molecule(), 0};
             const auto target_charge = fragment_target_charge(

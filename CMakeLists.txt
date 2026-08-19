@@ -49,6 +49,7 @@ target_link_libraries(chargefw_core
     gemmi::gemmi_cpp
   PRIVATE
     Eigen3::Eigen
+    nanoflann::nanoflann
 )
 
 configure_file(

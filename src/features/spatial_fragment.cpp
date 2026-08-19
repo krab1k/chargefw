@@ -2,8 +2,13 @@
 
 #include <chargefw/features/conformer_features.h>
 
+#include <nanoflann.hpp>
+
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -18,7 +23,113 @@ auto validate_radius(const double radius) -> void {
     }
 }
 
+class ConformerPointCloud {
+  public:
+    explicit ConformerPointCloud(const ConformerFeatures& geometry) : geometry_{geometry} {}
+
+    [[nodiscard]] auto kdtree_get_point_count() const -> std::size_t {
+        return geometry_.molecule().atom_count();
+    }
+
+    [[nodiscard]] auto kdtree_get_pt(const std::size_t point_index,
+                                     const std::size_t dimension) const -> double {
+        const auto& position = geometry_.position(point_index);
+        switch (dimension) {
+        case 0:
+            return position.x;
+        case 1:
+            return position.y;
+        default:
+            return position.z;
+        }
+    }
+
+    template <class BoundingBox> auto kdtree_get_bbox(BoundingBox&) const -> bool {
+        return false;
+    }
+
+  private:
+    const ConformerFeatures& geometry_;
+};
+
+using KdTree =
+    nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<double, ConformerPointCloud>,
+                                        ConformerPointCloud, 3, std::size_t>;
+
+class SourceIndexRadiusResultSet {
+  public:
+    using DistanceType = double;
+    using IndexType = std::size_t;
+
+    SourceIndexRadiusResultSet(const double radius_squared,
+                               std::vector<std::size_t>& neighbor_indices)
+        : radius_squared_{radius_squared}, neighbor_indices_{neighbor_indices} {
+        neighbor_indices_.clear();
+    }
+
+    [[nodiscard]] auto size() const noexcept -> std::size_t {
+        return neighbor_indices_.size();
+    }
+    [[nodiscard]] auto full() const noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] auto worstDist() const noexcept -> double {
+        return radius_squared_;
+    }
+
+    auto addPoint(const double squared_distance, const std::size_t point_index) -> bool {
+        if (squared_distance < radius_squared_) {
+            neighbor_indices_.push_back(point_index);
+        }
+        return true;
+    }
+
+    auto sort() -> void {
+        std::ranges::sort(neighbor_indices_);
+    }
+
+  private:
+    double radius_squared_;
+    std::vector<std::size_t>& neighbor_indices_;
+};
+
 } // namespace
+
+class SpatialFragmentBuilder::SpatialIndex {
+  public:
+    explicit SpatialIndex(const ConformerFeatures& geometry)
+        : points_{geometry}, tree_{3, points_} {
+        for (std::size_t atom_index = 0; atom_index < geometry.molecule().atom_count();
+             ++atom_index) {
+            const auto& position = geometry.position(atom_index);
+            if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
+                !std::isfinite(position.z)) {
+                throw std::invalid_argument{"spatial index requires finite coordinates"};
+            }
+        }
+        tree_.buildIndex();
+    }
+
+    [[nodiscard]] auto neighbor_indices_within(const core::Position& center,
+                                               const double radius) const
+        -> std::vector<std::size_t> {
+        const std::array<double, 3> query{center.x, center.y, center.z};
+        const auto radius_squared = radius * radius;
+        const auto inclusive_radius_squared =
+            std::nextafter(radius_squared, std::numeric_limits<double>::infinity());
+
+        std::vector<std::size_t> neighbors;
+        SourceIndexRadiusResultSet result_set{inclusive_radius_squared, neighbors};
+        static_cast<void>(tree_.radiusSearchCustomCallback(
+            query.data(), result_set, nanoflann::SearchParameters{0.0F, false}));
+        std::ranges::sort(neighbors);
+        return neighbors;
+    }
+
+  private:
+    ConformerPointCloud points_;
+    KdTree tree_;
+};
 
 SpatialFragment::SpatialFragment(core::Molecule molecule,
                                  std::vector<std::size_t> local_to_source_atom_indices,
@@ -60,14 +171,27 @@ auto SpatialFragment::local_to_source_bond_indices() const noexcept
     return local_to_source_bond_indices_;
 }
 
-auto build_spatial_fragment(const PreparedMolecule& source, const std::size_t conformer_index,
-                            const std::size_t center_atom_index, const double radius)
+SpatialFragmentBuilder::SpatialFragmentBuilder(const PreparedMolecule& source,
+                                               const ConformerFeatures& geometry)
+    : source_{&source}, geometry_{&geometry} {
+    if (std::addressof(geometry.molecule()) != std::addressof(source.molecule())) {
+        throw std::invalid_argument{"fragment geometry must refer to the source molecule"};
+    }
+    spatial_index_ = std::make_unique<SpatialIndex>(geometry);
+}
+
+SpatialFragmentBuilder::~SpatialFragmentBuilder() = default;
+
+auto SpatialFragmentBuilder::build(const std::size_t center_atom_index, const double radius) const
     -> SpatialFragment {
     validate_radius(radius);
 
-    const auto& molecule = source.molecule();
-    const ConformerFeatures geometry{molecule, conformer_index};
-    auto selected_source_atom_indices = geometry.neighbor_indices_within(center_atom_index, radius);
+    const auto& molecule = source_->molecule();
+    const auto& geometry = *geometry_;
+
+    auto selected_source_atom_indices =
+        spatial_index_->neighbor_indices_within(geometry.position(center_atom_index), radius);
+    std::erase(selected_source_atom_indices, center_atom_index);
     selected_source_atom_indices.push_back(center_atom_index);
     std::ranges::sort(selected_source_atom_indices);
 
@@ -112,14 +236,14 @@ auto build_spatial_fragment(const PreparedMolecule& source, const std::size_t co
 
     std::vector<core::Conformer> conformers;
     conformers.emplace_back(std::move(positions),
-                            std::string{molecule.conformer(conformer_index).name()});
+                            std::string{molecule.conformer(geometry.conformer_index()).name()});
     return SpatialFragment{core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers),
                                           std::string{molecule.name()}},
                            std::move(selected_source_atom_indices),
                            std::move(source_to_local_atom_indices),
                            std::move(local_to_source_bond_indices),
                            center_local_atom_index,
-                           conformer_index};
+                           geometry.conformer_index()};
 }
 
 auto project_classification(const parameters::ParameterClassification& source,
