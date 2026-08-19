@@ -2,6 +2,9 @@
 #include "support/test_parameters.h"
 
 #include <chargefw/charges/atomic_charges.h>
+#include <chargefw/core/atom.h>
+#include <chargefw/core/bond.h>
+#include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method.h>
@@ -113,6 +116,35 @@ auto make_collection_parameters() -> parameters::ParameterSet {
               .parameters = {{.name = "value", .value = 4.0}}}}}};
 }
 
+auto make_double_bonded_carbons() -> core::Molecule {
+    return core::Molecule{std::vector{core::Atom{6}, core::Atom{6}},
+                          std::vector{core::Bond{0, 1, core::BondOrder::DOUBLE}},
+                          {},
+                          "double-bonded-carbons"};
+}
+
+auto make_permissive_parameters(const bool include_exact_match) -> parameters::ParameterSet {
+    auto entries = std::vector<parameters::AtomParameterEntry>{};
+
+    if (include_exact_match) {
+        entries.push_back(
+            {.key = chargefw::test::atom_key(
+                 6, parameters::AtomParameterClassificationKind::HIGHEST_BOND_ORDER, "2"),
+             .parameters = {{.name = "value", .value = 2.0}}});
+    }
+
+    entries.push_back({.key = chargefw::test::atom_key(
+                           6, parameters::AtomParameterClassificationKind::HIGHEST_BOND_ORDER, "1"),
+                       .parameters = {{.name = "value", .value = 1.0}}});
+
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{.id = "permissive-parameters",
+                                         .method_id = "atom-parameter-test",
+                                         .name = "Permissive parameters"},
+        {},
+        parameters::AtomParameters{std::move(entries)}};
+}
+
 } // namespace
 
 auto main() -> int {
@@ -131,8 +163,9 @@ auto main() -> int {
     const std::vector parameter_sets{make_wrong_method_parameters(), make_water_only_parameters(),
                                      make_collection_parameters()};
 
-    const auto result =
-        methods::find_applicable_methods(prepared_collection, candidate_methods, parameter_sets);
+    const auto result = methods::find_applicable_methods({.molecules = prepared_collection,
+                                                          .methods = candidate_methods,
+                                                          .parameter_sets = parameter_sets});
 
     assert(!result.empty());
     assert(result.applicable.size() == 2);
@@ -178,6 +211,40 @@ auto main() -> int {
     assert(!result.rejected[1].issues.empty());
     assert(result.rejected[1].issues[0].kind ==
            methods::PrerequisiteIssueKind::parameter_classification_failed);
+
+    const core::MoleculeCollection double_bonded_collection{
+        std::vector{make_double_bonded_carbons()}};
+    const features::PreparedMoleculeCollection double_bonded_prepared{double_bonded_collection};
+    const std::vector<const methods::Method*> permissive_methods{&atom_parameter_method};
+    const std::vector permissive_only_parameters{make_permissive_parameters(false)};
+
+    const auto strict_result =
+        methods::find_applicable_methods({.molecules = double_bonded_prepared,
+                                          .methods = permissive_methods,
+                                          .parameter_sets = permissive_only_parameters});
+    assert(strict_result.empty());
+    assert(strict_result.rejected.size() == 1);
+    assert(strict_result.rejected[0].issues[0].kind ==
+           methods::PrerequisiteIssueKind::parameter_classification_failed);
+
+    const auto permissive_result =
+        methods::find_applicable_methods({.molecules = double_bonded_prepared,
+                                          .methods = permissive_methods,
+                                          .parameter_sets = permissive_only_parameters,
+                                          .classification_options = {.permissive_types = true}});
+    assert(permissive_result.applicable.size() == 1);
+    assert(permissive_result.applicable[0].classifications[0].atom()[0] == 0);
+    assert(permissive_result.applicable[0].classifications[0].atom()[1] == 0);
+
+    const std::vector exact_and_permissive_parameters{make_permissive_parameters(true)};
+    const auto exact_result =
+        methods::find_applicable_methods({.molecules = double_bonded_prepared,
+                                          .methods = permissive_methods,
+                                          .parameter_sets = exact_and_permissive_parameters,
+                                          .classification_options = {.permissive_types = true}});
+    assert(exact_result.applicable.size() == 1);
+    assert(exact_result.applicable[0].classifications[0].atom()[0] == 0);
+    assert(exact_result.applicable[0].classifications[0].atom()[1] == 0);
 
     return 0;
 }

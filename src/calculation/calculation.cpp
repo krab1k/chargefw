@@ -99,19 +99,18 @@ namespace {
 
 } // namespace
 
-auto calculate(const CalculationRequest& request) -> CalculationResult {
-    auto applicability = methods::find_applicable_methods(
-        request.molecules, request.candidate_methods, request.parameter_sets);
-
+auto select_applicable_method(const methods::ApplicabilityResult& applicability)
+    -> const methods::ApplicableMethod* {
     if (applicability.empty()) {
-        return CalculationResult{.charges = std::nullopt,
-                                 .applicability = std::move(applicability)};
+        return nullptr;
     }
 
-    const auto selected = std::ranges::min_element(applicability.applicable, ranks_before);
+    return &*std::ranges::min_element(applicability.applicable, ranks_before);
+}
 
-    return CalculationResult{.charges = methods::calculate_charges(*selected, request.molecules),
-                             .applicability = std::move(applicability)};
+auto calculate(const CalculationRequest& request) -> CalculationResult {
+    return CalculationResult{.charges =
+                                 methods::calculate_charges(request.selected, request.molecules)};
 }
 
 auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalculationResult {
@@ -119,16 +118,26 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
     const auto parameter_sets = application_parameter_sets(request);
     const features::PreparedMoleculeCollection prepared{request.molecules};
 
-    auto result = calculate(CalculationRequest{.molecules = prepared,
-                                               .candidate_methods = candidate_methods,
-                                               .parameter_sets = parameter_sets});
+    auto applicability = methods::find_applicable_methods(
+        {.molecules = prepared,
+         .methods = candidate_methods,
+         .parameter_sets = parameter_sets,
+         .classification_options = request.classification_options});
+    const auto* selected = select_applicable_method(applicability);
 
-    if (!result.calculated() &&
+    if (selected == nullptr &&
         (request.method_id.has_value() || request.parameter_set_id.has_value())) {
         throw std::invalid_argument{"requested calculation selection is not applicable"};
     }
 
-    return result;
+    if (selected == nullptr) {
+        return ApplicationCalculationResult{.charges = std::nullopt,
+                                            .applicability = std::move(applicability)};
+    }
+
+    auto result = calculate(CalculationRequest{.molecules = prepared, .selected = *selected});
+    return ApplicationCalculationResult{.charges = std::move(result.charges),
+                                        .applicability = std::move(applicability)};
 }
 
 } // namespace chargefw::calculation

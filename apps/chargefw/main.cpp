@@ -6,9 +6,6 @@
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
-#include <chargefw/features/prepared_molecule_collection.h>
-#include <chargefw/methods/method.h>
-#include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
 #include <array>
@@ -259,20 +256,8 @@ auto write_sdf(const std::filesystem::path& path, const std::string& input_path,
     }
 }
 
-auto method_pointers(const methods::MethodRegistry& registry)
-    -> std::vector<const methods::Method*> {
-    std::vector<const methods::Method*> result;
-    result.reserve(registry.methods().size());
-
-    for (const auto& method : registry.methods()) {
-        result.push_back(method.get());
-    }
-
-    return result;
-}
-
 [[nodiscard]] auto result_document(const ImportedCollection& imported,
-                                   const calculation::CalculationResult& result)
+                                   const calculation::ApplicationCalculationResult& result)
     -> adapters::ChargeResultDocument {
     auto document = adapters::ChargeResultDocument{
         .generator_name = "ChargeFW", .generator_version = "0.0.1", .records = {}};
@@ -316,17 +301,10 @@ auto run(int argc, char* argv[]) -> int {
             structural_selection_option->count() > 0 || structural_bonds_option->count() > 0;
         const auto imported =
             read_collection(input_path, structural_options, structural_options_requested);
-        const features::PreparedMoleculeCollection prepared_collection{imported.molecules};
-
         const auto parameter_sets = parameters::load_default_parameter_sets();
 
-        const auto& registry = methods::method_registry();
-        const auto candidates = method_pointers(registry);
-
-        const auto result = calculation::calculate(
-            calculation::CalculationRequest{.molecules = prepared_collection,
-                                            .candidate_methods = candidates,
-                                            .parameter_sets = parameter_sets});
+        const auto result = calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = imported.molecules, .parameter_sets = parameter_sets});
 
         if (!result.calculated()) {
             adapters::native::json_output::JsonWriter{std::cout}.write(

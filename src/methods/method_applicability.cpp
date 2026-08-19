@@ -57,14 +57,11 @@ valid_classification_count(const MethodRequirements& requirements,
 
 } // namespace
 
-auto find_applicable_methods(const features::PreparedMoleculeCollection& molecules,
-                             std::span<const Method* const> methods,
-                             std::span<const parameters::ParameterSet> parameter_sets)
-    -> ApplicabilityResult {
+auto find_applicable_methods(const ApplicabilityRequest& request) -> ApplicabilityResult {
     ApplicabilityResult result;
 
-    for (std::size_t method_index = 0; method_index < methods.size(); ++method_index) {
-        const auto* method = methods[method_index];
+    for (std::size_t method_index = 0; method_index < request.methods.size(); ++method_index) {
+        const auto* method = request.methods[method_index];
 
         if (method == nullptr) {
             throw std::invalid_argument{"applicability check received a null method"};
@@ -81,7 +78,8 @@ auto find_applicable_methods(const features::PreparedMoleculeCollection& molecul
             continue;
         }
 
-        const auto method_result = check_method_prerequisites(*method, molecules, method_options);
+        const auto method_result =
+            check_method_prerequisites(*method, request.molecules, method_options);
 
         if (!method_result) {
             add_rejected(result, method_index, std::nullopt, copy_issues(method_result.issues()));
@@ -100,7 +98,7 @@ auto find_applicable_methods(const features::PreparedMoleculeCollection& molecul
             continue;
         }
 
-        if (parameter_sets.empty()) {
+        if (request.parameter_sets.empty()) {
             add_rejected(
                 result, method_index, std::nullopt,
                 {make_issue(PrerequisiteIssueKind::missing_parameters,
@@ -110,12 +108,12 @@ auto find_applicable_methods(const features::PreparedMoleculeCollection& molecul
             continue;
         }
 
-        for (std::size_t parameter_set_index = 0; parameter_set_index < parameter_sets.size();
-             ++parameter_set_index) {
-            const auto& parameter_set = parameter_sets[parameter_set_index];
+        for (std::size_t parameter_set_index = 0;
+             parameter_set_index < request.parameter_sets.size(); ++parameter_set_index) {
+            const auto& parameter_set = request.parameter_sets[parameter_set_index];
 
-            auto parameter_result =
-                check_parameter_prerequisites(*method, molecules, parameter_set);
+            auto parameter_result = check_parameter_prerequisites(
+                *method, request.molecules, parameter_set, request.classification_options);
 
             if (!parameter_result) {
                 add_rejected(result, method_index, parameter_set_index,
@@ -124,9 +122,9 @@ auto find_applicable_methods(const features::PreparedMoleculeCollection& molecul
                 continue;
             }
 
-            if (!valid_classification_count(requirements, molecules, parameter_result)) {
+            if (!valid_classification_count(requirements, request.molecules, parameter_result)) {
                 add_rejected(result, method_index, parameter_set_index,
-                             {make_invalid_classification_count_issue(*method, molecules,
+                             {make_invalid_classification_count_issue(*method, request.molecules,
                                                                       parameter_result)});
 
                 continue;

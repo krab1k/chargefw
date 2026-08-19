@@ -3,12 +3,16 @@
 
 #include <cassert>
 #include <chargefw/calculation/calculation.h>
+#include <chargefw/core/atom.h>
+#include <chargefw/core/bond.h>
+#include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_metadata.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_requirements.h>
+#include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <optional>
@@ -71,6 +75,28 @@ class ParameterizedFixedChargeMethod final : public FixedChargeMethod {
     }
 };
 
+class ParameterValueMethod final : public FixedChargeMethod {
+  public:
+    ParameterValueMethod() : FixedChargeMethod{"permissive-parameterized", 0, 0.0} {}
+
+    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
+        auto result = methods::MethodRequirements{};
+        result.atom_parameters = {"value"};
+        return result;
+    }
+
+    [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
+        -> charges::AtomicCharges override {
+        const auto values = input.parameters().atom("value");
+        auto result = std::vector<double>{};
+        result.reserve(input.molecule().atom_count());
+        for (std::size_t atom_index = 0; atom_index < input.molecule().atom_count(); ++atom_index) {
+            result.push_back(values[atom_index]);
+        }
+        return charges::AtomicCharges{std::move(result)};
+    }
+};
+
 auto make_prepared_water() -> features::PreparedMoleculeCollection {
     static const core::MoleculeCollection collection{std::vector{chargefw::test::make_water()}};
     return features::PreparedMoleculeCollection{collection};
@@ -93,6 +119,41 @@ auto make_parameter_set(std::string id, std::string method_id, const std::uint16
               .parameters = {{.name = "value", .value = 1.0}}}}}};
 }
 
+auto make_double_bonded_carbons() -> core::Molecule {
+    return core::Molecule{std::vector{core::Atom{6}, core::Atom{6}},
+                          std::vector{core::Bond{0, 1, core::BondOrder::DOUBLE}},
+                          {},
+                          "double-bonded-carbons"};
+}
+
+auto make_permissive_parameter_set() -> chargefw::parameters::ParameterSet {
+    return chargefw::parameters::ParameterSet{
+        chargefw::parameters::ParameterSetMetadata{.id = "permissive-parameters",
+                                                   .method_id = "permissive-parameterized",
+                                                   .name = "Permissive parameters"},
+        {},
+        chargefw::parameters::AtomParameters{
+            {{.key = chargefw::test::atom_key(
+                  6, chargefw::parameters::AtomParameterClassificationKind::HIGHEST_BOND_ORDER,
+                  "1"),
+              .parameters = {{.name = "value", .value = 3.0}}}}}};
+}
+
+auto make_permissive_peoe_parameter_set() -> chargefw::parameters::ParameterSet {
+    return chargefw::parameters::ParameterSet{
+        chargefw::parameters::ParameterSetMetadata{.id = "permissive-peoe-parameters",
+                                                   .method_id = "peoe",
+                                                   .name = "Permissive PEOE parameters"},
+        chargefw::parameters::CommonParameters{{{.name = "dampH", .value = 1.0}}},
+        chargefw::parameters::AtomParameters{
+            {{.key = chargefw::test::atom_key(
+                  6, chargefw::parameters::AtomParameterClassificationKind::HIGHEST_BOND_ORDER,
+                  "1"),
+              .parameters = {{.name = "A", .value = 1.0},
+                             {.name = "B", .value = 1.0},
+                             {.name = "C", .value = 1.0}}}}}};
+}
+
 template <typename Callable> auto throws_invalid_argument(Callable&& callable) -> bool {
     try {
         std::forward<Callable>(callable)();
@@ -101,6 +162,27 @@ template <typename Callable> auto throws_invalid_argument(Callable&& callable) -
     }
 
     return false;
+}
+
+auto calculate_automatically(
+    const features::PreparedMoleculeCollection& molecules,
+    std::span<const methods::Method* const> candidate_methods,
+    std::span<const chargefw::parameters::ParameterSet> parameter_sets,
+    const chargefw::parameters::ClassificationOptions classification_options = {})
+    -> calculation::ApplicationCalculationResult {
+    auto applicability =
+        methods::find_applicable_methods({.molecules = molecules,
+                                          .methods = candidate_methods,
+                                          .parameter_sets = parameter_sets,
+                                          .classification_options = classification_options});
+    const auto* selected = calculation::select_applicable_method(applicability);
+
+    if (selected == nullptr) {
+        return {.charges = std::nullopt, .applicability = std::move(applicability)};
+    }
+
+    auto result = calculation::calculate({.molecules = molecules, .selected = *selected});
+    return {.charges = std::move(result.charges), .applicability = std::move(applicability)};
 }
 
 } // namespace
@@ -112,23 +194,21 @@ auto main() -> int {
     const std::vector<const methods::Method*> methods{&lower_priority, &higher_priority};
     const std::vector<chargefw::parameters::ParameterSet> parameters;
 
-    const auto result = calculation::calculate(calculation::CalculationRequest{
-        .molecules = prepared, .candidate_methods = methods, .parameter_sets = parameters});
-
-    if (!result.charges.has_value()) {
-        return 1;
-    }
-    assert(result.charges->method_id() == std::string_view{"higher"});
-    assert(result.charges->size() == 1);
-    assert(result.charges->assignment(0).charges[0] == 10.0);
-    assert(result.applicability.applicable.size() == 2);
+    const auto applicability = methods::find_applicable_methods(
+        {.molecules = prepared, .methods = methods, .parameter_sets = parameters});
+    const auto* selected = calculation::select_applicable_method(applicability);
+    assert(selected != nullptr);
+    const auto result = calculation::calculate({.molecules = prepared, .selected = *selected});
+    assert(result.charges.method_id() == std::string_view{"higher"});
+    assert(result.charges.size() == 1);
+    assert(result.charges.assignment(0).charges[0] == 10.0);
+    assert(applicability.applicable.size() == 2);
 
     const FixedChargeMethod alpha{"alpha", 1, 2.0};
     const FixedChargeMethod beta{"beta", 1, 3.0};
     const std::vector<const methods::Method*> tied_methods{&beta, &alpha};
 
-    const auto tied_result = calculation::calculate(calculation::CalculationRequest{
-        .molecules = prepared, .candidate_methods = tied_methods, .parameter_sets = parameters});
+    const auto tied_result = calculate_automatically(prepared, tied_methods, parameters);
 
     if (!tied_result.charges.has_value()) {
         return 1;
@@ -141,10 +221,8 @@ auto main() -> int {
     const std::vector parameter_sets{make_parameter_set("alpha", "parameterized", 1),
                                      make_parameter_set("zeta", "parameterized", 10)};
 
-    const auto parameterized_result = calculation::calculate(
-        calculation::CalculationRequest{.molecules = prepared,
-                                        .candidate_methods = parameterized_methods,
-                                        .parameter_sets = parameter_sets});
+    const auto parameterized_result =
+        calculate_automatically(prepared, parameterized_methods, parameter_sets);
 
     if (!parameterized_result.charges.has_value()) {
         return 1;
@@ -153,11 +231,47 @@ auto main() -> int {
     assert(parameterized_result.charges->parameter_set_id() == std::string_view{"zeta"});
 
     const std::vector<const methods::Method*> no_methods;
-    const auto no_result = calculation::calculate(calculation::CalculationRequest{
-        .molecules = prepared, .candidate_methods = no_methods, .parameter_sets = parameters});
+    const auto no_result = calculate_automatically(prepared, no_methods, parameters);
 
     assert(!no_result.calculated());
     assert(no_result.applicability.empty());
+
+    const core::MoleculeCollection double_bonded_collection{
+        std::vector{make_double_bonded_carbons()}};
+    const features::PreparedMoleculeCollection double_bonded_prepared{double_bonded_collection};
+    const ParameterValueMethod permissive_method;
+    const std::vector<const methods::Method*> permissive_methods{&permissive_method};
+    const std::vector permissive_parameter_sets{make_permissive_parameter_set()};
+
+    const auto strict_permissive_result = calculate_automatically(
+        double_bonded_prepared, permissive_methods, permissive_parameter_sets);
+    assert(!strict_permissive_result.calculated());
+
+    const auto permissive_calculation_result =
+        calculate_automatically(double_bonded_prepared, permissive_methods,
+                                permissive_parameter_sets, {.permissive_types = true});
+    assert(permissive_calculation_result.calculated());
+    assert(permissive_calculation_result.applicability.applicable.size() == 1);
+    assert(permissive_calculation_result.charges->assignment(0).charges[0] == 3.0);
+    assert(permissive_calculation_result.charges->assignment(0).charges[1] == 3.0);
+
+    assert(throws_invalid_argument([] -> void {
+        static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
+            .parameter_sets = {make_permissive_peoe_parameter_set()},
+            .method_id = "peoe",
+            .parameter_set_id = "permissive-peoe-parameters"}));
+    }));
+
+    const auto permissive_application_result =
+        calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
+            .parameter_sets = {make_permissive_peoe_parameter_set()},
+            .method_id = "peoe",
+            .parameter_set_id = "permissive-peoe-parameters",
+            .classification_options = {.permissive_types = true}});
+    assert(permissive_application_result.calculated());
+    assert(permissive_application_result.charges->method_id() == std::string_view{"peoe"});
 
     const auto application_result =
         calculation::calculate(calculation::ApplicationCalculationRequest{

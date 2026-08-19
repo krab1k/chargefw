@@ -53,7 +53,7 @@ features::PreparedMoleculeCollection
                       methods::ApplicableMethod
                               |
                               v
-                   methods::calculate_charges()
+             calculation::calculate(CalculationRequest)
                                |
                                v
                        charges::ChargeSet
@@ -71,7 +71,7 @@ deterministic candidate selection, and calculate_charges().
 | Parameters | `ParameterSet`, `ParameterClassification`, `ParameterView` | Parameter storage, matching, and method-facing lookup. |
 | Methods | `Method`, `MethodRegistry`, `MethodRequirements`, `MethodOptions`, `ApplicableMethod` | Algorithm interface, capabilities, selection, and execution. |
 | Charges | `AtomicCharges`, `ChargeAssignment`, `ChargeSet`, `ChargeCollection` | Atom-indexed calculated results and provenance. |
-| Calculation | `CalculationRequest`, `CalculationResult` | High-level applicability, deterministic selection, and execution facade. |
+| Calculation | `CalculationRequest`, `CalculationResult`, `ApplicationCalculationRequest` | Selected-candidate execution and application-facing automatic facade. |
 
 ## Typical library workflow
 
@@ -88,19 +88,25 @@ for (const auto& method : registry.methods()) {
 }
 
 const auto applicability =
-    methods::find_applicable_methods(prepared, candidates, parameter_sets);
+    methods::find_applicable_methods(
+        {.molecules = prepared, .methods = candidates, .parameter_sets = parameter_sets});
 
-// Application policy selects an explicitly reported candidate.
-const auto& selected = applicability.applicable.front();
-const charges::ChargeSet result = methods::calculate_charges(selected, prepared);
+// Application policy may select a reported candidate itself, or use the deterministic helper.
+const auto* selected = calculation::select_applicable_method(applicability);
+if (selected == nullptr) {
+    // Inspect applicability.rejected.
+} else {
+    const auto result = calculation::calculate({.molecules = prepared, .selected = *selected});
+}
 ```
 
-For normal application use, `calculation::calculate()` provides autodetection over the supplied
-method and parameter candidates. It selects the applicable candidate with the highest method
-priority, then the highest parameter-set priority. Ties are resolved deterministically by method ID
-and parameter-set ID. Higher priorities therefore denote maintainer-curated automatic preference,
-not a universal scientific quality ranking. The result retains applicability diagnostics when no
-candidate can be calculated.
+For normal application use, `calculation::calculate(ApplicationCalculationRequest)` provides the
+owned convenience facade: it prepares molecules, determines applicability, selects a candidate, and
+executes it. `classification_options` is consumed only while determining applicability. It selects
+the applicable candidate with the highest method priority, then the highest parameter-set priority.
+Ties are resolved deterministically by method ID and parameter-set ID. Higher priorities therefore
+denote maintainer-curated automatic preference, not a universal scientific quality ranking. The
+result retains applicability diagnostics when no candidate can be calculated.
 
 The current `chargefw` executable is a molecular-file demonstration. It autodetects `.sdf`, `.mol`,
 `.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input from the file extension, rejects the
@@ -128,29 +134,34 @@ order and report each target independently.
 
 ### Calculation selection and result contract
 
-`calculation::calculate()` evaluates all supplied method and parameter-set candidates, then selects
-the applicable candidate with the highest method priority, followed by parameter-set priority.
-Equal priorities are resolved deterministically by method ID and then parameter-set ID in
-lexicographic order. A successful result contains one `charges::ChargeSet`; its owned method ID and
-optional parameter-set ID identify the candidate actually used. `CalculationResult::applicability`
-retains the considered applicable and rejected candidates for diagnostics.
+`methods::find_applicable_methods(ApplicabilityRequest)` evaluates supplied method and parameter-set
+candidates and returns resolved `ApplicableMethod` candidates. Each candidate stores its atom/bond
+parameter classifications. `calculation::select_applicable_method()` applies the deterministic
+priority ordering, or callers can select a candidate themselves. `calculation::calculate(
+CalculationRequest)` executes that selected candidate using its stored classifications; it does not
+accept or reevaluate classification policy. A successful `CalculationResult` contains one
+`charges::ChargeSet`; its owned method ID and optional parameter-set ID identify the candidate used.
+
+`ApplicationCalculationResult::applicability` retains considered applicable and rejected candidates
+for the convenience facade. If no candidate is applicable, its `charges` is empty; calculation
+failures after selection are reported as failures rather than silently treated as inapplicability.
 
 `ChargeSet` preserves calculation targets as `ChargeAssignment` entries. For geometry-dependent
 methods, it contains one assignment for every conformer of every input molecule, each identified by
 its molecule index and conformer index. For geometry-independent methods, it contains one
 assignment per molecule and no conformer index. Each assignment's atomic-charge vector follows the
-source molecule's atom order. If no candidate is applicable, `CalculationResult` contains no
-`ChargeSet` and retains applicability diagnostics; calculation failures after selection are reported
-as failures rather than silently treated as inapplicability.
+source molecule's atom order.
 
-`CalculationRequest` is intentionally a low-level native view: it contains a prepared collection,
-method pointers, and spans over caller-owned parameter data. `ApplicationCalculationRequest` is the
-binding-friendly owned facade: it accepts a native molecule collection, owns parameter sets, and
-selects registered methods and supplied parameter sets by optional IDs. Omitted IDs use the same
-deterministic automatic selection as the low-level path; explicit unavailable or inapplicable IDs
-fail rather than silently falling back. Method-specific options remain a low-level advanced-native
-feature until their application-facing policy is specified. All integrations must compose these
-calculation paths rather than reimplement selection or scientific behavior.
+`CalculationRequest` is intentionally a low-level native execution view: it contains a prepared
+collection and a selected `ApplicableMethod`, both owned by the caller. The selected candidate must
+come from applicability; its stored classifications are the only parameter mapping used for
+execution. `ApplicationCalculationRequest` is the binding-friendly owned facade: it accepts a
+native molecule collection and parameter sets, resolves registered methods, applies classification
+policy, and selects supplied candidates by optional IDs. Omitted IDs use deterministic automatic
+selection; explicit unavailable or inapplicable IDs fail rather than silently falling back.
+Method-specific options remain a low-level advanced-native feature until their application-facing
+policy is specified. All integrations must compose these calculation paths rather than reimplement
+selection or scientific behavior.
 
 ### Scalable execution policy
 

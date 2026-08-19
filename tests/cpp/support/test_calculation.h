@@ -28,7 +28,8 @@ calculate_method(core::Molecule molecule, std::string_view method_id,
     assert(method != nullptr);
 
     const std::vector<const methods::Method*> candidates{method};
-    auto applicability = methods::find_applicable_methods(prepared, candidates, parameter_sets);
+    auto applicability = methods::find_applicable_methods(
+        {.molecules = prepared, .methods = candidates, .parameter_sets = parameter_sets});
 
     assert(applicability.applicable.size() == 1);
     assert(applicability.rejected.empty());
