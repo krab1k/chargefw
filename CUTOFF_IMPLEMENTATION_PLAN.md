@@ -115,6 +115,10 @@ For a scientifically applicable pair, execution assessment reports the status of
 - cutoff and cover expose radius constraints rather than pretending that an unspecified radius is a
   concrete executable policy.
 
+Cutoff and cover are spatial approximations. A method that does not require coordinates cannot
+declare either radius-based policy available; a possible graph-distance decomposition is a separate
+future execution policy, not a reinterpretation of an angstrom radius.
+
 Exceeding the shared full threshold is not scientific inapplicability. It is an execution warning and
 an automatic-selection constraint that explicit full execution may override.
 

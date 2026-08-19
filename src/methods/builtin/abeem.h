@@ -28,7 +28,6 @@ class ABEEMMethod final : public Method {
         requirements.bond_parameters = {"A", "B", "C", "D"};
         requirements.resources.time = ComplexityTerm::atoms_plus_bonds_cubed;
         requirements.resources.memory = ComplexityTerm::atoms_plus_bonds_squared;
-        requirements.resources.reject_large_without_reduction = true;
         return requirements;
     }
 

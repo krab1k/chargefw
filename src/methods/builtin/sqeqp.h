@@ -26,7 +26,6 @@ class SQEqpMethod final : public Method {
         requirements.bond_parameters = {"kappa"};
         requirements.resources.time = ComplexityTerm::bonds_cubed;
         requirements.resources.memory = ComplexityTerm::bonds_squared;
-        requirements.resources.reject_large_without_reduction = true;
         return requirements;
     }
 

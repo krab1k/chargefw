@@ -24,7 +24,6 @@ class EQeqMethod final : public Method {
         requirements.coordinates = true;
         requirements.resources.time = ComplexityTerm::atoms_cubed;
         requirements.resources.memory = ComplexityTerm::atoms_squared;
-        requirements.resources.reject_large_without_reduction = true;
         return requirements;
     }
 

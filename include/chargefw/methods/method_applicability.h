@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chargefw/calculation/execution_policy.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_prerequisites.h>
@@ -10,6 +11,7 @@
 #include <cstddef>
 #include <optional>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace chargefw::methods {
@@ -23,6 +25,30 @@ struct ApplicabilityRequest {
     std::span<const parameters::ParameterSet> parameter_sets;
     // NOLINTEND(cppcoreguidelines-avoid-const-or-ref-data-members)
     parameters::ClassificationOptions classification_options{};
+    calculation::ResourcePolicy resource_policy{};
+};
+
+enum class ExecutionAvailability {
+    available,
+    available_with_warning,
+    unsupported,
+};
+
+enum class ExecutionIssueKind {
+    resource_threshold_exceeded,
+    unsupported_execution_mode,
+};
+
+struct ExecutionIssue {
+    ExecutionIssueKind kind;
+    std::string message;
+    std::optional<std::size_t> molecule_index = std::nullopt;
+};
+
+struct ExecutionAssessment {
+    calculation::ExecutionMode mode;
+    ExecutionAvailability availability;
+    std::vector<ExecutionIssue> issues;
 };
 
 struct ApplicableMethod {
@@ -31,6 +57,7 @@ struct ApplicableMethod {
 
     MethodOptions method_options;
     std::vector<parameters::ParameterClassification> classifications;
+    std::vector<ExecutionAssessment> execution_assessments;
 
     [[nodiscard]] auto uses_parameters() const noexcept -> bool {
         return parameter_set != nullptr;

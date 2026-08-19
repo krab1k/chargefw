@@ -195,7 +195,6 @@ auto main() -> int {
     assert(delre->requirements().bond_parameters.size() == 3);
     assert(delre->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(delre->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(delre->requirements().resources.reject_large_without_reduction);
     assert(delre->requires_parameters());
     assert(delre->option_schema().empty());
 
@@ -212,7 +211,6 @@ auto main() -> int {
     assert(mgc->option_schema().empty());
     assert(mgc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(mgc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(mgc->requirements().resources.reject_large_without_reduction);
 
     assert(denr->id() == std::string_view{"denr"});
     assert(denr->metadata().name == std::string_view{"DENR"});
@@ -241,7 +239,6 @@ auto main() -> int {
 
     assert(denr->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(denr->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(denr->requirements().resources.reject_large_without_reduction);
 
     assert(kcm->id() == std::string_view{"kcm"});
     assert(kcm->metadata().name == std::string_view{"KCM"});
@@ -259,7 +256,6 @@ auto main() -> int {
 
     assert(kcm->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(kcm->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(kcm->requirements().resources.reject_large_without_reduction);
 
     assert(tsef->id() == std::string_view{"tsef"});
     assert(tsef->metadata().name == std::string_view{"TSEF"});
@@ -280,7 +276,6 @@ auto main() -> int {
 
     assert(tsef->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(tsef->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(tsef->requirements().resources.reject_large_without_reduction);
 
     assert(qeq->id() == std::string_view{"qeq"});
     assert(qeq->metadata().name == std::string_view{"QEq"});
@@ -299,7 +294,6 @@ auto main() -> int {
 
     assert(qeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(qeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(qeq->requirements().resources.reject_large_without_reduction);
 
     assert(sqe->id() == std::string_view{"sqe"});
     assert(sqe->metadata().name == std::string_view{"SQE"});
@@ -317,7 +311,6 @@ auto main() -> int {
     assert(sqe->option_schema().empty());
     assert(sqe->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqe->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
-    assert(sqe->requirements().resources.reject_large_without_reduction);
 
     assert(sqeq0->id() == std::string_view{"sqeq0"});
     assert(sqeq0->metadata().name == std::string_view{"SQE+q0"});
@@ -337,7 +330,6 @@ auto main() -> int {
     assert(sqeq0->option_schema().empty());
     assert(sqeq0->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqeq0->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
-    assert(sqeq0->requirements().resources.reject_large_without_reduction);
 
     assert(sqeqp->id() == std::string_view{"sqeqp"});
     assert(sqeqp->metadata().name == std::string_view{"SQE+qp"});
@@ -357,7 +349,6 @@ auto main() -> int {
     assert(sqeqp->option_schema().empty());
     assert(sqeqp->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqeqp->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
-    assert(sqeqp->requirements().resources.reject_large_without_reduction);
 
     assert(eem->id() == std::string_view{"eem"});
     assert(eem->metadata().name == std::string_view{"EEM"});
@@ -377,7 +368,6 @@ auto main() -> int {
 
     assert(eem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(eem->requirements().resources.reject_large_without_reduction);
 
     assert(smpqeq->id() == std::string_view{"smpqeq"});
     assert(smpqeq->metadata().name == std::string_view{"SMP/QEq"});
@@ -397,7 +387,6 @@ auto main() -> int {
 
     assert(smpqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(smpqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(smpqeq->requirements().resources.reject_large_without_reduction);
 
     assert(sfkeem->id() == std::string_view{"sfkeem"});
     assert(sfkeem->metadata().name == std::string_view{"SFKEEM"});
@@ -418,7 +407,6 @@ auto main() -> int {
 
     assert(sfkeem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(sfkeem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(sfkeem->requirements().resources.reject_large_without_reduction);
 
     assert(eqeq->id() == std::string_view{"eqeq"});
     assert(eqeq->metadata().name == std::string_view{"EQeq"});
@@ -437,7 +425,6 @@ auto main() -> int {
 
     assert(eqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(eqeq->requirements().resources.reject_large_without_reduction);
 
     assert(eqeqc->id() == std::string_view{"eqeqc"});
     assert(eqeqc->metadata().name == std::string_view{"EQeq+C"});
@@ -459,7 +446,6 @@ auto main() -> int {
 
     assert(eqeqc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eqeqc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(eqeqc->requirements().resources.reject_large_without_reduction);
 
     assert(abeem->id() == std::string_view{"abeem"});
     assert(abeem->metadata().name == std::string_view{"ABEEM"});
@@ -484,7 +470,6 @@ auto main() -> int {
     assert(abeem->requirements().resources.time == methods::ComplexityTerm::atoms_plus_bonds_cubed);
     assert(abeem->requirements().resources.memory ==
            methods::ComplexityTerm::atoms_plus_bonds_squared);
-    assert(abeem->requirements().resources.reject_large_without_reduction);
 
     const auto water = chargefw::test::make_water();
 

@@ -7,8 +7,6 @@
 
 namespace chargefw::methods {
 
-inline constexpr std::size_t default_large_molecule_atom_threshold = 20'000;
-
 enum class ComplexityTerm : std::uint8_t {
     constant,                 // 1
     atoms,                    // N
@@ -26,11 +24,10 @@ struct ResourceRequirements {
     ComplexityTerm time = ComplexityTerm::constant;
     ComplexityTerm memory = ComplexityTerm::constant;
 
+    // Reduced execution is spatial: a method may set either capability only when it also requires
+    // coordinates and has a tested executor for the corresponding radius-based approximation.
     bool supports_cutoff = false;
     bool supports_cover = false;
-
-    std::size_t large_molecule_atom_threshold = default_large_molecule_atom_threshold;
-    bool reject_large_without_reduction = false;
 };
 
 struct MethodRequirements {

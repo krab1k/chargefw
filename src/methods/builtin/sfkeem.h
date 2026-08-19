@@ -25,7 +25,6 @@ class SFKEEMMethod final : public Method {
         requirements.atom_parameters = {"A", "B"};
         requirements.resources.time = ComplexityTerm::atoms_cubed;
         requirements.resources.memory = ComplexityTerm::atoms_squared;
-        requirements.resources.reject_large_without_reduction = true;
         return requirements;
     }
 

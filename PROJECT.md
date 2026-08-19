@@ -226,7 +226,10 @@ than a compatibility claim. Fragment construction must preserve induced topology
 atom mapping, and each method's initial-charge semantics. Fragment target-charge allocation,
 overlap reconciliation, and final total-charge correction must be specified centrally and tested
 against full calculations as radius increases. Methods must declare whether they support each
-execution policy; unsupported combinations fail explicitly.
+execution policy; unsupported combinations fail explicitly. Cutoff and cover are spatial,
+radius-based approximations: a topology-only method cannot support either policy merely because its
+full calculation is expensive. A future graph-distance approximation would require a distinct,
+explicit policy rather than reusing an angstrom radius.
 
 Spatial neighbor search and reusable fragment data belong in `features`, not `core::Molecule`.
 Validation must cover charge conservation, deterministic results, atom-order preservation,

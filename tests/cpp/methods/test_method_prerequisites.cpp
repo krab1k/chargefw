@@ -66,8 +66,6 @@ class DenseMethod final : public methods::Method {
         auto requirements = methods::MethodRequirements{};
         requirements.resources.time = methods::ComplexityTerm::atoms_cubed;
         requirements.resources.memory = methods::ComplexityTerm::atoms_squared;
-        requirements.resources.large_molecule_atom_threshold = 2;
-        requirements.resources.reject_large_without_reduction = true;
         return requirements;
     }
 
@@ -130,9 +128,8 @@ auto main() -> int {
     const auto dense_result = dense_method.check_method_prerequisites(
         {.prepared_molecule = prepared_water, .method_options = empty_options});
 
-    assert(!dense_result);
-    assert(dense_result.issues().size() == 1);
-    assert(dense_result.issues()[0].kind == methods::PrerequisiteIssueKind::resource_limit);
+    assert(dense_result);
+    assert(dense_result.issues().empty());
 
     const auto collection = make_collection();
     const features::PreparedMoleculeCollection prepared_collection{collection};

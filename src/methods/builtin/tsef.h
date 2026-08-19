@@ -25,7 +25,6 @@ class TSEFMethod final : public Method {
         requirements.atom_parameters = {"electronegativity", "hardness"};
         requirements.resources.time = ComplexityTerm::atoms_cubed;
         requirements.resources.memory = ComplexityTerm::atoms_squared;
-        requirements.resources.reject_large_without_reduction = true;
         return requirements;
     }
 

@@ -19,12 +19,14 @@
 #include <cassert>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
 namespace core = chargefw::core;
+namespace calculation = chargefw::calculation;
 namespace features = chargefw::features;
 namespace methods = chargefw::methods;
 namespace parameters = chargefw::parameters;
@@ -60,6 +62,54 @@ class AtomParameterMethod final : public methods::Method {
         return chargefw::charges::AtomicCharges{std::vector<double>{}};
     }
 };
+
+class ResourceMethod final : public methods::Method {
+  public:
+    explicit ResourceMethod(methods::ResourceRequirements resources = {},
+                            const bool requires_coordinates = false)
+        : resources_{resources}, requires_coordinates_{requires_coordinates} {}
+
+    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
+        static constexpr methods::MethodMetadata metadata{.id = "resource-test",
+                                                          .name = "Resource test",
+                                                          .full_name = "Resource test",
+                                                          .publication = std::nullopt,
+                                                          .priority = 0};
+        return metadata;
+    }
+
+    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
+        auto requirements = methods::MethodRequirements{};
+        requirements.coordinates = requires_coordinates_;
+        requirements.resources = resources_;
+        return requirements;
+    }
+
+    [[nodiscard]] auto option_schema() const noexcept
+        -> std::span<const methods::MethodOptionSpec> override {
+        return {};
+    }
+
+    [[nodiscard]] auto calculate(const methods::CalculationInput& /* unused */) const
+        -> chargefw::charges::AtomicCharges override {
+        return chargefw::charges::AtomicCharges{std::vector<double>{}};
+    }
+
+  private:
+    methods::ResourceRequirements resources_;
+    bool requires_coordinates_ = false;
+};
+
+auto assessment_for(const methods::ApplicableMethod& candidate,
+                    const calculation::ExecutionMode mode) -> const methods::ExecutionAssessment& {
+    for (const auto& assessment : candidate.execution_assessments) {
+        if (assessment.mode == mode) {
+            return assessment;
+        }
+    }
+
+    throw std::runtime_error{"missing execution assessment"};
+}
 
 auto make_collection() -> core::MoleculeCollection {
     std::vector molecules{chargefw::test::make_water(),
@@ -153,8 +203,10 @@ auto main() -> int {
 
     const auto& registry = methods::method_registry();
     const auto* dummy = registry.find("dummy");
+    const auto* mgc = registry.find("mgc");
 
     assert(dummy != nullptr);
+    assert(mgc != nullptr);
 
     const AtomParameterMethod atom_parameter_method;
 
@@ -176,6 +228,13 @@ auto main() -> int {
     assert(dummy_applicable.parameter_set == nullptr);
     assert(!dummy_applicable.uses_parameters());
     assert(dummy_applicable.classifications.empty());
+    assert(dummy_applicable.execution_assessments.size() == 3);
+    assert(assessment_for(dummy_applicable, calculation::ExecutionMode::full).availability ==
+           methods::ExecutionAvailability::available);
+    assert(assessment_for(dummy_applicable, calculation::ExecutionMode::cutoff).availability ==
+           methods::ExecutionAvailability::unsupported);
+    assert(assessment_for(dummy_applicable, calculation::ExecutionMode::cover).availability ==
+           methods::ExecutionAvailability::unsupported);
 
     const auto& parameterized_applicable = result.applicable[1];
 
@@ -235,6 +294,8 @@ auto main() -> int {
     assert(permissive_result.applicable.size() == 1);
     assert(permissive_result.applicable[0].classifications[0].atom()[0] == 0);
     assert(permissive_result.applicable[0].classifications[0].atom()[1] == 0);
+    assert(assessment_for(permissive_result.applicable[0], calculation::ExecutionMode::full)
+               .availability == methods::ExecutionAvailability::available);
 
     const std::vector exact_and_permissive_parameters{make_permissive_parameters(true)};
     const auto exact_result =
@@ -245,6 +306,112 @@ auto main() -> int {
     assert(exact_result.applicable.size() == 1);
     assert(exact_result.applicable[0].classifications[0].atom()[0] == 0);
     assert(exact_result.applicable[0].classifications[0].atom()[1] == 0);
+    assert(
+        assessment_for(exact_result.applicable[0], calculation::ExecutionMode::full).availability ==
+        assessment_for(permissive_result.applicable[0], calculation::ExecutionMode::full)
+            .availability);
+
+    const ResourceMethod inexpensive_method{};
+    const std::vector<const methods::Method*> inexpensive_methods{&inexpensive_method};
+    const auto inexpensive_result =
+        methods::find_applicable_methods({.molecules = prepared_collection,
+                                          .methods = inexpensive_methods,
+                                          .parameter_sets = {},
+                                          .resource_policy = {.full_atom_threshold = 1}});
+    assert(inexpensive_result.applicable.size() == 1);
+    assert(assessment_for(inexpensive_result.applicable[0], calculation::ExecutionMode::full)
+               .availability == methods::ExecutionAvailability::available);
+
+    const ResourceMethod expensive_method{
+        methods::ResourceRequirements{.time = methods::ComplexityTerm::atoms_cubed,
+                                      .memory = methods::ComplexityTerm::atoms_squared}};
+    const std::vector<const methods::Method*> expensive_methods{&expensive_method};
+    const auto below_threshold_result =
+        methods::find_applicable_methods({.molecules = prepared_collection,
+                                          .methods = expensive_methods,
+                                          .parameter_sets = {},
+                                          .resource_policy = {.full_atom_threshold = 3}});
+    const auto& below_threshold_full =
+        assessment_for(below_threshold_result.applicable[0], calculation::ExecutionMode::full);
+    assert(below_threshold_full.availability == methods::ExecutionAvailability::available);
+    assert(below_threshold_full.issues.empty());
+
+    const auto threshold_result =
+        methods::find_applicable_methods({.molecules = prepared_collection,
+                                          .methods = expensive_methods,
+                                          .parameter_sets = {},
+                                          .resource_policy = {.full_atom_threshold = 2}});
+    assert(threshold_result.applicable.size() == 1);
+    const auto& threshold_full =
+        assessment_for(threshold_result.applicable[0], calculation::ExecutionMode::full);
+    assert(threshold_full.availability == methods::ExecutionAvailability::available_with_warning);
+    assert(threshold_full.issues.size() == 1);
+    assert(threshold_full.issues[0].kind ==
+           methods::ExecutionIssueKind::resource_threshold_exceeded);
+    assert(threshold_full.issues[0].molecule_index == std::optional<std::size_t>{0});
+    assert(assessment_for(threshold_result.applicable[0], calculation::ExecutionMode::cutoff)
+               .availability == methods::ExecutionAvailability::unsupported);
+    assert(assessment_for(threshold_result.applicable[0], calculation::ExecutionMode::cover)
+               .availability == methods::ExecutionAvailability::unsupported);
+
+    const std::vector<const methods::Method*> topology_methods{mgc};
+    const auto topology_result =
+        methods::find_applicable_methods({.molecules = prepared_collection,
+                                          .methods = topology_methods,
+                                          .parameter_sets = {},
+                                          .resource_policy = {.full_atom_threshold = 2}});
+    assert(topology_result.applicable.size() == 1);
+    assert(assessment_for(topology_result.applicable[0], calculation::ExecutionMode::full)
+               .availability == methods::ExecutionAvailability::available_with_warning);
+    assert(assessment_for(topology_result.applicable[0], calculation::ExecutionMode::cutoff)
+               .availability == methods::ExecutionAvailability::unsupported);
+    assert(assessment_for(topology_result.applicable[0], calculation::ExecutionMode::cover)
+               .availability == methods::ExecutionAvailability::unsupported);
+
+    const auto collection_threshold_result =
+        methods::find_applicable_methods({.molecules = prepared_collection,
+                                          .methods = expensive_methods,
+                                          .parameter_sets = {},
+                                          .resource_policy = {.full_atom_threshold = 1}});
+    const auto& collection_threshold_full =
+        assessment_for(collection_threshold_result.applicable[0], calculation::ExecutionMode::full);
+    assert(collection_threshold_full.issues.size() == prepared_collection.size());
+
+    const auto unlimited_result = methods::find_applicable_methods(
+        {.molecules = prepared_collection,
+         .methods = expensive_methods,
+         .parameter_sets = {},
+         .resource_policy = {.full_atom_threshold = std::nullopt}});
+    const auto& unlimited_full =
+        assessment_for(unlimited_result.applicable[0], calculation::ExecutionMode::full);
+    assert(unlimited_full.availability == methods::ExecutionAvailability::available);
+    assert(unlimited_full.issues.empty());
+
+    const ResourceMethod topology_reduced_method{
+        methods::ResourceRequirements{.supports_cutoff = true, .supports_cover = true}};
+    const std::vector<const methods::Method*> topology_reduced_methods{&topology_reduced_method};
+    const auto topology_reduced_result =
+        methods::find_applicable_methods({.molecules = prepared_collection,
+                                          .methods = topology_reduced_methods,
+                                          .parameter_sets = {}});
+    assert(assessment_for(topology_reduced_result.applicable[0], calculation::ExecutionMode::cutoff)
+               .availability == methods::ExecutionAvailability::unsupported);
+    assert(assessment_for(topology_reduced_result.applicable[0], calculation::ExecutionMode::cover)
+               .availability == methods::ExecutionAvailability::unsupported);
+
+    const ResourceMethod spatial_reduced_method{{.supports_cutoff = true, .supports_cover = true},
+                                                true};
+    const std::vector<const methods::Method*> spatial_reduced_methods{&spatial_reduced_method};
+    const core::MoleculeCollection spatial_collection{std::vector{chargefw::test::make_water()}};
+    const features::PreparedMoleculeCollection spatial_prepared_collection{spatial_collection};
+    const auto spatial_reduced_result =
+        methods::find_applicable_methods({.molecules = spatial_prepared_collection,
+                                          .methods = spatial_reduced_methods,
+                                          .parameter_sets = {}});
+    assert(assessment_for(spatial_reduced_result.applicable[0], calculation::ExecutionMode::cutoff)
+               .availability == methods::ExecutionAvailability::available);
+    assert(assessment_for(spatial_reduced_result.applicable[0], calculation::ExecutionMode::cover)
+               .availability == methods::ExecutionAvailability::available);
 
     return 0;
 }
