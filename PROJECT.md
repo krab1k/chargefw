@@ -220,7 +220,7 @@ carries an execution selection and resource policy. It assesses candidates, dete
 a concrete full plan, and returns the effective policy plus resource warnings. Automatic selection
 uses only full assessments without resource warnings; explicit full permits the warning as a deliberate
 override. Automatic selection never invents a reduced radius or mode. Explicit cutoff is currently
-implemented serially for ABEEM, EEM, EQeq, EQeq+C, QEq, and SFKEEM; explicit cover and unsupported
+implemented serially for ABEEM, EEM, EQeq, EQeq+C, and QEq; explicit cover and unsupported
 method/mode combinations fail.
 
 ChargeFW2 implemented cutoff and cover only through `EEMethod`. It also switched modes silently at
@@ -293,11 +293,10 @@ multi-structure, charge-state, and radius validation corpus.
 ### Preliminary cutoff method-coverage check: 1ek9 polymers at 10 Å
 
 `tests/fixtures/corpus/cif/1ek9.cif` was imported with `--structural-selection polymers`, yielding
-the neutral 9,798-atom record `1EK9`. On 2026-08-19, every cutoff-capable method produced a finite,
+the neutral 9,798-atom record `1EK9`. On 2026-08-19, every supported cutoff method produced a finite,
 source-ordered assignment in full and cutoff modes. The values below compare four-decimal-place JSON
 output; they verify the generic cutoff executor's parameter-classification projection, not scientific
-accuracy or compatibility. In particular, SFKEEM's 10 Å difference is large and requires further
-multi-radius validation before any accuracy conclusion.
+accuracy or compatibility.
 
 | Method | Full time / peak RSS | Cutoff time / peak RSS | MAE vs. full | RMSE vs. full | 95th percentile | Maximum difference |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -306,7 +305,17 @@ multi-radius validation before any accuracy conclusion.
 | EQeq | 21.13 s / 1.54 GB | 2.31 s / 33.3 MB | 0.000556 e | 0.000867 e | 0.0018 e | 0.0103 e |
 | EQeq+C | 22.33 s / 1.54 GB | 4.86 s / 33.1 MB | 0.000556 e | 0.000867 e | 0.0018 e | 0.0104 e |
 | QEq | 22.80 s / 1.54 GB | 5.97 s / 33.2 MB | 0.002515 e | 0.003263 e | 0.0065 e | 0.0176 e |
-| SFKEEM | 21.16 s / 1.54 GB | 3.06 s / 33.3 MB | 0.069954 e | 0.089168 e | 0.1759 e | 0.3899 e |
+
+SFKEEM was also investigated with the shared cutoff executor but is not declared cutoff-capable.
+Its full equations match the archived implementation, and whole-molecule fragments reproduce full
+execution, but the generic fragment target-charge policy is unsuitable for its rapidly decaying
+kernel. For this neutral structure, forcing every local fragment to zero charge loses the global
+chemical-potential constraint. Its MAE decreased only from 0.085080 e at 8 Å to 0.069954 e at 10 Å,
+0.056886 e at 12 Å, 0.041376 e at 16 Å, and 0.032202 e at 20 Å. Omitting final uniform correction
+made the 10 Å raw charges sum to +253.3629 e, confirming that final correction is necessary but is
+not the cause of the discrepancy. SFKEEM requires a dedicated global sparse/truncated-kernel solver
+or a separately specified and validated chemical-potential-aware fragment policy before cutoff can
+be supported.
 
 ## Integration and distribution architecture
 

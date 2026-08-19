@@ -413,9 +413,7 @@ auto main() -> int {
 
     assert(sfkeem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(sfkeem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(sfkeem->requirements().resources.supports_cutoff);
-    assert(sfkeem->requirements().resources.fragment_target_charge_policy ==
-           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
+    assert(!sfkeem->requirements().resources.supports_cutoff);
 
     assert(eqeq->id() == std::string_view{"eqeq"});
     assert(eqeq->metadata().name == std::string_view{"EQeq"});

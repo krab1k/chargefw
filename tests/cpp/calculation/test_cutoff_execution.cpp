@@ -102,18 +102,6 @@ auto make_eqeqc_parameters() -> parameters::ParameterSet {
                                      .parameters = {{.name = "Dz", .value = 0.2}}}}}};
 }
 
-auto make_sfkeem_parameters() -> parameters::ParameterSet {
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-sfkeem", .method_id = "sfkeem", .name = "Test SFKEEM"},
-        parameters::CommonParameters{{{.name = "sigma", .value = 1.0}}},
-        parameters::AtomParameters{
-            {{.key = chargefw::test::plain_atom_key(1),
-              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 10.0}}},
-             {.key = chargefw::test::plain_atom_key(8),
-              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 10.0}}}}}};
-}
-
 auto make_abeem_parameters() -> parameters::ParameterSet {
     const auto bond_key = parameters::BondParameterKey{
         .first_atom = chargefw::test::plain_atom_key(8),
@@ -207,7 +195,6 @@ auto main() -> int {
     assert_cutoff_matches_full("qeq", {make_qeq_parameters()});
     assert_cutoff_matches_full("eqeq");
     assert_cutoff_matches_full("eqeqc", {make_eqeqc_parameters()});
-    assert_cutoff_matches_full("sfkeem", {make_sfkeem_parameters()});
     assert_cutoff_matches_full("abeem", {make_abeem_parameters()});
     return 0;
 }
