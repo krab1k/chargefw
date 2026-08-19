@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string_view>
 
@@ -9,20 +10,20 @@ namespace chargefw::calculation {
 inline constexpr std::size_t default_full_atom_threshold = 20'000;
 inline constexpr double minimum_reduced_radius = 8.0;
 
-enum class ExecutionMode {
+enum class ExecutionMode : std::uint8_t {
     full,
     cutoff,
     cover,
 };
 
-enum class ExecutionSelectionKind {
+enum class ExecutionSelectionKind : std::uint8_t {
     automatic,
     full,
     cutoff,
     cover,
 };
 
-enum class ChargeCorrectionPolicy {
+enum class ChargeCorrectionPolicy : std::uint8_t {
     none,
     uniform,
 };

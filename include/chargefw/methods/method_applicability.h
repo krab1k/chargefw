@@ -9,6 +9,7 @@
 #include <chargefw/parameters/models/parameter_set.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -28,13 +29,13 @@ struct ApplicabilityRequest {
     calculation::ResourcePolicy resource_policy{};
 };
 
-enum class ExecutionAvailability {
+enum class ExecutionAvailability : std::uint8_t {
     available,
     available_with_warning,
     unsupported,
 };
 
-enum class ExecutionIssueKind {
+enum class ExecutionIssueKind : std::uint8_t {
     resource_threshold_exceeded,
     unsupported_execution_mode,
 };

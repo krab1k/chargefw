@@ -25,7 +25,6 @@ auto Element::valence_electron_count() const noexcept -> std::optional<int> {
     return std::nullopt;
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto PeriodicTable::elements() const noexcept -> std::span<const Element> {
     return detail::elements();
 }
