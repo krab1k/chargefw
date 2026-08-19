@@ -1,5 +1,8 @@
 add_executable(chargefw_cli
         main.cpp
+        input.cpp
+        reports.cpp
+        output.cpp
 )
 
 set_target_properties(chargefw_cli
