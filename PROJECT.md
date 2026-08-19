@@ -321,8 +321,13 @@ The SQE-family rows were measured on 2026-08-19 using their `CCD_gen` parameter 
 the archived zero-width point-charge limit explicit. `PUB_pept` does not cover all atom environments
 in the imported structure. SQE and SQE+qp show the same bounded-memory trend as the EEM-family
 methods. SQE+q0 has substantially larger 10 Å deviation, so its fragment initial-charge policy needs
-multi-radius and charged/disconnected-structure validation before any accuracy claim or automatic
-reduced-mode recommendation.
+charged/disconnected-structure validation before any accuracy claim or automatic reduced-mode
+recommendation. All imported 1EK9 formal charges are zero, so this case does not exercise nonzero
+`q0`; the SQE+q0 equations differ from SQE here only through their separately fitted parameter set.
+Increasing the radius reduced SQE+q0 MAE only gradually, from 0.053125 e at 10 Å to 0.050366 e at
+12 Å and 0.045109 e at 16 Å. The `CCD_gen` set includes very large fitted widths for common nitrogen
+and oxygen classes as well as negative hardness and bond-hardness values, making this parameterization
+substantially more sensitive to removal of the full system's long-range couplings.
 
 SFKEEM was also investigated with the shared cutoff executor but is not declared cutoff-capable.
 Its full equations match the archived implementation, and whole-molecule fragments reproduce full
