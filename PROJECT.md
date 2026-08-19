@@ -267,6 +267,25 @@ runtime and memory depend on hardware, build configuration, parameter data, and 
 Retain it as a regression-investigation aid while assembling the multi-method, multi-radius benchmark
 corpus required before choosing defaults or making compatibility claims.
 
+### Preliminary cutoff method-coverage check: 10aw at 10 Å
+
+As of this reference implementation, EEM and QEq are the only built-in methods that declare cutoff
+support. Both were run through the `build/local-release` CLI against `10aw.cif` at 10 Å and compared
+with their corresponding full calculations. They produced one finite, source-ordered 10,479-atom
+assignment with an internally neutral total charge in each mode. The differences below are calculated
+from the four-decimal-place JSON output and are evidence that the executor is wired through each
+currently compatible method, not method-validation tolerances.
+
+| Method | Full time / peak RSS | Cutoff time / peak RSS | MAE vs. full | RMSE vs. full | 95th percentile | Maximum difference | Correlation |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| EEM | 24.89 s / 1.76 GB | 2.34 s / 31.3 MB | 0.001689 e | 0.003307 e | 0.0069 e | 0.0404 e | 0.9999822 |
+| QEq | 26.98 s / 1.76 GB | 7.29 s / 30.0 MB | 0.002521 e | 0.003400 e | 0.0069 e | 0.0188 e | 0.9995477 |
+
+The expected trend is present for both methods: cutoff results remain close to their selected full
+method while using bounded fragment memory. These two runs do not establish general scientific
+accuracy, a QEq/EEM compatibility claim, or acceptable error thresholds; those require the planned
+multi-structure, charge-state, and radius validation corpus.
+
 ## Integration and distribution architecture
 
 Python is expected to be the primary workflow integration, while the C++ library and C++ CLI remain

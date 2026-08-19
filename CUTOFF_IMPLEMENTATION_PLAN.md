@@ -751,9 +751,10 @@ Every execution mode must preserve or validate:
 ### Scientific and performance validation after the reference path
 
 - Use `tests/fixtures/corpus/cif/10aw.cif` as an initial manual large-structure development check
-  for cutoff and later cover. Its preliminary QEq reference measurements are recorded in
-  [`PROJECT.md`](PROJECT.md#preliminary-qeq-cutoff-reference-10aw); they show an expected trend but
-  are not a benchmark, tolerance, compatibility claim, or basis for automatic defaults.
+  for cutoff and later cover. Its preliminary QEq radius reference and EEM/QEq method-coverage
+  measurements are recorded in [`PROJECT.md`](PROJECT.md#preliminary-qeq-cutoff-reference-10aw);
+  they show an expected trend but are not a benchmark, tolerance, compatibility claim, or basis for
+  automatic defaults.
 - compare full and cutoff over increasing radii and verify convergence;
 - compare against ChargeFW2 for archived EEM-family modes;
 - record per-method tolerances and intentional deviations;

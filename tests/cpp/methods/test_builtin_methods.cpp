@@ -294,6 +294,9 @@ auto main() -> int {
 
     assert(qeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(qeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(qeq->requirements().resources.supports_cutoff);
+    assert(qeq->requirements().resources.fragment_target_charge_policy ==
+           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
     assert(sqe->id() == std::string_view{"sqe"});
     assert(sqe->metadata().name == std::string_view{"SQE"});
@@ -368,6 +371,9 @@ auto main() -> int {
 
     assert(eem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(eem->requirements().resources.supports_cutoff);
+    assert(eem->requirements().resources.fragment_target_charge_policy ==
+           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
     assert(smpqeq->id() == std::string_view{"smpqeq"});
     assert(smpqeq->metadata().name == std::string_view{"SMP/QEq"});
