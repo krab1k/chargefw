@@ -18,16 +18,23 @@ auto main() -> int {
     const auto document = adapters::ChargeResultDocument{
         .generator_name = "ChargeFW",
         .generator_version = "test",
-        .records = {
-            {.identity = {.source = "water.sdf", .record_index = 2, .record_id = "water"},
-             .mapping = {.atom_indices = {0, 1, 2}, .conformer_indices = {0}},
-             .charges = charges::ChargeSet{"formal",
-                                           {{.target = {.molecule_index = 0, .conformer_index = 0},
-                                             .charges = charges::AtomicCharges{{-0.87654, 0.43827,
-                                                                                0.43827}}}}}},
-            {.identity = {.source = "water.sdf", .record_index = 3, .record_id = "unavailable"},
-             .mapping = {.atom_indices = {}, .conformer_indices = {}},
-             .charges = std::nullopt}}};
+        .records =
+            {{.identity = {.source = "water.sdf", .record_index = 2, .record_id = "water"},
+              .mapping = {.atom_indices = {0, 1, 2}, .conformer_indices = {0}},
+              .charges = charges::ChargeSet{"formal",
+                                            {{.target = {.molecule_index = 0, .conformer_index = 0},
+                                              .charges = charges::AtomicCharges{{-0.87654, 0.43827,
+                                                                                 0.43827}}}}}},
+             {.identity = {.source = "water.sdf", .record_index = 3, .record_id = "unavailable"},
+              .mapping = {.atom_indices = {}, .conformer_indices = {}},
+              .charges = std::nullopt}},
+        .calculation_provenance = adapters::CalculationProvenance{
+            .effective_execution_mode = "cutoff",
+            .radius = 8.0,
+            .charge_correction = "uniform",
+            .permissive_types = true,
+            .full_atom_threshold = std::nullopt,
+            .warnings = {"full execution exceeds the shared threshold"}}};
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(document);
@@ -36,6 +43,13 @@ auto main() -> int {
     assert(result.at("schema_version") == "1.0");
     assert(result.at("generator").at("name") == "ChargeFW");
     assert(result.at("results").size() == 2);
+    const auto& provenance = result.at("calculation_provenance");
+    assert(provenance.at("execution").at("mode") == "cutoff");
+    assert(provenance.at("execution").at("radius_angstrom") == 8.0);
+    assert(provenance.at("execution").at("charge_correction") == "uniform");
+    assert(provenance.at("classification").at("permissive_types") == true);
+    assert(provenance.at("resource_policy").at("full_atom_threshold") == "unlimited");
+    assert(provenance.at("warnings").at(0) == "full execution exceeds the shared threshold");
 
     const auto& calculated = result.at("results").at(0);
     assert(calculated.at("status") == "success");

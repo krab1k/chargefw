@@ -14,6 +14,29 @@
 namespace chargefw::cli {
 namespace {
 
+[[nodiscard]] auto execution_mode_name(const calculation::ExecutionMode mode) -> std::string {
+    switch (mode) {
+    case calculation::ExecutionMode::full:
+        return "full";
+    case calculation::ExecutionMode::cutoff:
+        return "cutoff";
+    case calculation::ExecutionMode::cover:
+        return "cover";
+    }
+    throw std::logic_error{"unknown execution mode"};
+}
+
+[[nodiscard]] auto charge_correction_name(const calculation::ChargeCorrectionPolicy policy)
+    -> std::string {
+    switch (policy) {
+    case calculation::ChargeCorrectionPolicy::none:
+        return "none";
+    case calculation::ChargeCorrectionPolicy::uniform:
+        return "uniform";
+    }
+    throw std::logic_error{"unknown charge correction policy"};
+}
+
 [[nodiscard]] auto assignments_by_molecule(const charges::ChargeSet& charge_set,
                                            const std::size_t molecule_count)
     -> std::vector<charges::ChargeAssignment> {
@@ -110,10 +133,32 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
 }
 
 [[nodiscard]] auto result_document(const ImportedCollection& imported,
+                                   const calculation::ApplicationCalculationRequest& request,
                                    const calculation::ApplicationCalculationResult& result)
     -> adapters::ChargeResultDocument {
-    auto document = adapters::ChargeResultDocument{
-        .generator_name = "ChargeFW", .generator_version = "0.0.1", .records = {}};
+    auto warnings = std::vector<std::string>{};
+    warnings.reserve(result.execution_issues.size());
+    for (const auto& issue : result.execution_issues) {
+        warnings.push_back(issue.message);
+    }
+    const auto provenance = adapters::CalculationProvenance{
+        .effective_execution_mode =
+            result.execution_policy.has_value()
+                ? std::optional{execution_mode_name(result.execution_policy->mode())}
+                : std::nullopt,
+        .radius =
+            result.execution_policy.has_value() ? result.execution_policy->radius() : std::nullopt,
+        .charge_correction = result.execution_policy.has_value()
+                                 ? std::optional{charge_correction_name(
+                                       result.execution_policy->charge_correction())}
+                                 : std::nullopt,
+        .permissive_types = request.classification_options.permissive_types,
+        .full_atom_threshold = request.resource_policy.full_atom_threshold,
+        .warnings = std::move(warnings)};
+    auto document = adapters::ChargeResultDocument{.generator_name = "ChargeFW",
+                                                   .generator_version = "0.0.1",
+                                                   .records = {},
+                                                   .calculation_provenance = provenance};
     document.records.reserve(imported.molecules.size());
     for (std::size_t index = 0; index < imported.molecules.size(); ++index) {
         document.records.push_back(
@@ -128,10 +173,11 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
 
 auto write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
                                const ImportedCollection& imported,
+                               const calculation::ApplicationCalculationRequest& request,
                                const calculation::ApplicationCalculationResult& result) -> int {
     if (!result.calculated()) {
         adapters::native::json_output::JsonWriter{std::cout}.write(
-            result_document(imported, result));
+            result_document(imported, request, result));
         return 1;
     }
 
@@ -157,7 +203,7 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     }
     const auto prefix =
         directory / (std::filesystem::path{input_path}.stem().string() + ".chargefw");
-    const auto document = result_document(imported, result);
+    const auto document = result_document(imported, request, result);
     write_json(prefix.string() + ".json", document);
     const auto* charges = result.charges ? std::addressof(*result.charges) : nullptr;
     if (charges == nullptr) {

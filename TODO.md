@@ -10,11 +10,13 @@ acceptance criteria for each priority, not optional follow-up work.
 
 ## 1. Calculation contract and scalable execution
 
-- [ ] Complete the application result/export contract. The initial `ChargeResultDocument` and native
-  JSON writer retain record identity/mapping, selected method and optional parameter-set IDs, and
-  charge assignments; add owned method and parameter-set versions, effective options, calculation
-  targets, warnings, applicability diagnostics, record-scoped import/calculation failures, and later
-  execution/correction policies and radius.
+- [ ] Complete the application result/export contract. The native JSON writer is the primary complete
+  result format and now retains execution/correction policy, radius, threshold, permissive typing,
+  and execution warnings alongside record identity/mapping, selected method and optional
+  parameter-set IDs, and charge assignments. Add owned method and parameter-set versions, effective
+  options, calculation targets, applicability diagnostics, and record-scoped import/calculation
+  failures. Propagate applicable provenance to SDF, MOL2, and mmCIF metadata in a separate scoped
+  change rather than coupling it to the JSON contract.
 - [ ] Add explicit caller selection of method, parameter set, method options, and execution policy.
   Reject unavailable or unsupported selections rather than silently falling back.
 - [x] Provide a binding-friendly owned request/result facade that does not expose `Method*`,

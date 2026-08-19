@@ -55,10 +55,10 @@ auto run(int argc, char* argv[]) -> int {
     }
 
     const auto imported = chargefw::cli::import_input(calculate_input);
-    return chargefw::cli::write_calculation_outputs(
-        output_directory, calculate_input.path, imported,
-        chargefw::calculation::calculate(
-            chargefw::cli::make_request(imported, calculate_selection)));
+    const auto request = chargefw::cli::make_request(imported, calculate_selection);
+    return chargefw::cli::write_calculation_outputs(output_directory, calculate_input.path,
+                                                    imported, request,
+                                                    chargefw::calculation::calculate(request));
 }
 
 } // namespace

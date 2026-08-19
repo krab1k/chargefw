@@ -101,6 +101,26 @@ constexpr auto charge_scale = 10000.0;
     return result;
 }
 
+[[nodiscard]] auto provenance_json(const CalculationProvenance& provenance) -> Json {
+    Json result{
+        {"classification", {{"permissive_types", provenance.permissive_types}}},
+        {"resource_policy", provenance.full_atom_threshold.has_value()
+                                ? Json{{"full_atom_threshold", *provenance.full_atom_threshold}}
+                                : Json{{"full_atom_threshold", "unlimited"}}},
+        {"warnings", provenance.warnings}};
+    if (provenance.effective_execution_mode.has_value()) {
+        Json execution{{"mode", *provenance.effective_execution_mode}};
+        if (provenance.charge_correction.has_value()) {
+            execution["charge_correction"] = *provenance.charge_correction;
+        }
+        if (provenance.radius.has_value()) {
+            execution["radius_angstrom"] = *provenance.radius;
+        }
+        result["execution"] = std::move(execution);
+    }
+    return result;
+}
+
 } // namespace
 
 JsonWriter::JsonWriter(std::ostream& output) : output_{std::addressof(output)} {}
@@ -111,12 +131,14 @@ auto JsonWriter::write(const ChargeResultDocument& document) const -> void {
         records.push_back(record_json(document.records[index], index));
     }
 
-    std::print(*output_, "{}\n",
-               Json{{"schema_version", "1.0"},
-                    {"generator",
-                     {{"name", document.generator_name}, {"version", document.generator_version}}},
-                    {"results", std::move(records)}}
-                   .dump(2));
+    Json result{
+        {"schema_version", "1.0"},
+        {"generator", {{"name", document.generator_name}, {"version", document.generator_version}}},
+        {"results", std::move(records)}};
+    if (document.calculation_provenance.has_value()) {
+        result["calculation_provenance"] = provenance_json(*document.calculation_provenance);
+    }
+    std::print(*output_, "{}\n", result.dump(2));
 }
 
 } // namespace chargefw::adapters::native::json_output

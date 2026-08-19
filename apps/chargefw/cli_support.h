@@ -60,6 +60,7 @@ void print_parameter_sets(const std::string& method_id);
 [[nodiscard]] auto
 write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
                           const ImportedCollection& imported,
+                          const calculation::ApplicationCalculationRequest& request,
                           const calculation::ApplicationCalculationResult& result) -> int;
 
 } // namespace chargefw::cli
