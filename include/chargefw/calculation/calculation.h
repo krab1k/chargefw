@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chargefw/calculation/execution_policy.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
@@ -44,6 +45,7 @@ struct ApplicationCalculationRequest {
     std::optional<std::string> method_id;
     std::optional<std::string> parameter_set_id;
     parameters::ClassificationOptions classification_options{};
+    ExecutionSelection execution_selection{};
 };
 
 // Selects the applicable candidate with the highest method priority, then the highest parameter-set

@@ -208,6 +208,14 @@ explicitly reported fragment approximations. Keeping execution policy outside in
 implementations allows the same spatial decomposition, fragment mapping, parallel scheduling, and
 charge-reconciliation machinery to be reused by EEM/QEq-like and SQE-family methods.
 
+The public `ExecutionPolicy`, `ExecutionSelection`, and `ResourcePolicy` value types establish the
+validated vocabulary: concrete `full`, `cutoff(radius)`, and `cover(radius)` policies; an `automatic`
+caller preference; and a shared full-atom threshold with an unlimited representation. Reduced radii
+must be finite and at least 8 angstrom; full rejects a radius. `ApplicationCalculationRequest` now
+carries an execution selection, but it is preparatory only: until execution availability and concrete
+plan selection are implemented, the facade retains its existing full-calculation behavior and does
+not claim cutoff or cover support.
+
 ChargeFW2 implemented cutoff and cover only through `EEMethod`. It also switched modes silently at
 fixed atom-count thresholds. ChargeFW should first reproduce and validate that behavior for the
 methods that previously supported it, but must not retain silent switching. Any future `auto`

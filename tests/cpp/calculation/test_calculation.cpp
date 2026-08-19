@@ -278,7 +278,9 @@ auto main() -> int {
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "formal",
-            .parameter_set_id = std::nullopt});
+            .parameter_set_id = std::nullopt,
+            .execution_selection =
+                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
     if (!application_result.charges.has_value()) {
         return 1;

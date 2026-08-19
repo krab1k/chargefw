@@ -416,6 +416,10 @@ Likely documentation:
 
 ### Commit 2: Add minimal execution and shared resource policy types
 
+Status: implemented. These types validate and carry future execution preferences only; the current
+facade still performs the existing full calculation until execution availability and concrete plan
+selection are implemented in Commits 3 and 4.
+
 Scope:
 
 - add concrete execution mode/policy value types;
