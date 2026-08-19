@@ -1,624 +1,284 @@
 # ChargeFW Project Guide
 
-This document is the source of truth for ChargeFW's technical state, compatibility context, and
-product roadmap. Read [AGENTS.md](AGENTS.md) for implementation rules, [TODO.md](TODO.md) for
-actionable deliverables, and [README.md](README.md) for build and test commands.
+This document is the source of truth for implemented architecture, capabilities, compatibility state,
+and product direction. See [TODO.md](TODO.md) for unfinished work, [README.md](README.md) for usage,
+and [AGENTS.md](AGENTS.md) for implementation rules.
 
-## Purpose
+## Purpose and status
 
-ChargeFW is a C++23 framework for empirical partial atomic-charge calculation. It provides a
-toolkit-neutral core model, built-in empirical methods, parameter-set loading and classification,
-method applicability checks, and structured charge results.
+ChargeFW is a C++23, library-first framework for empirical partial atomic-charge calculation. It is a
+modern successor to ChargeFW2, the engine used by Atomic Charge Calculator III (ACC III). ChargeFW is
+not yet the ACC III backend; `old/` is an archived ChargeFW2 copy used for compatibility research.
 
-It is being developed as a modern, library-first successor to **ChargeFW2**, the current
-computational engine of [Atomic Charge Calculator III (ACC III)](https://acc.biodata.ceitec.cz).
-ACC III is described in Raček *et al.*, *Atomic Charge Calculator III: a modern platform for
-calculating partial atomic charges*, **Nucleic Acids Research** (2026),
-DOI [10.1093/nar/gkag379](https://doi.org/10.1093/nar/gkag379).
+The repository currently provides:
 
-ChargeFW is not yet the ACC III backend. `old/` is an archived ChargeFW2 copy used for behavior,
-parameter, and compatibility research.
+- a toolkit-neutral molecular graph and conformer model;
+- prepared topology/geometry features and immutable parameter classification;
+- 22 built-in methods and bundled JSON parameter sets;
+- scientific applicability and execution-availability assessment;
+- deterministic method/parameter selection and owned application facades;
+- exact full execution and serial spatial cutoff for eight validated methods;
+- native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;
+- JSON, SDF, MOL2, and mmCIF charge output through a focused CLI.
 
-## Current architecture
+Cover execution, parallel cutoff, broad compatibility/accuracy validation, Python bindings, packaged
+distribution, and a stable failure-capable result schema remain unfinished.
+
+## Architecture
 
 ```text
-External inputs and front ends                    Focused molecular-file CLI exists today
-    (current: native molecular I/O and Gemmi; planned: Python/NumPy, RDKit, JSON/WASM)
-                              |
-                              v
+input adapters / native callers
+            |
+            v
 core::MoleculeCollection
-    |- core::Molecule: atoms, bonds, conformers
-    |- core::Atom: atomic number, formal charge, source name
-    |- core::Bond: atom indices and order
-    `- core::Conformer: coordinates sharing the molecule topology
-                              |
-                              v
+  atoms + bonds + zero or more conformers
+            |
+            v
 features::PreparedMoleculeCollection
-    |- PreparedMolecule: molecule + cached TopologyFeatures
-    `- ConformerFeatures: on-demand geometry view per conformer
-                              |
-                 +------------+------------+
-                 |                         |
-                 v                         v
-     parameters::ParameterSet       methods::MethodRegistry
-                 |                         |
-                 v                         v
-      ParameterClassification     MethodRequirements/options
-                 |                         |
-                 +------------+------------+
-                              v
-                 methods::find_applicable_methods()
-                              |
-                              v
-                      methods::ApplicableMethod
-                              |
-                              v
-             calculation::calculate(CalculationRequest)
-                               |
-                               v
-                       charges::ChargeSet
-
-Normal application path: calculation::calculate() composes applicability,
-deterministic candidate selection, and calculate_charges().
+  cached topology; conformer geometry; spatial fragments
+            |
+            +-----------------------------+
+            |                             |
+            v                             v
+parameters::ParameterSet          methods::MethodRegistry
+            |                             |
+            v                             v
+ParameterClassification       MethodRequirements/options
+            +-------------+---------------+
+                          v
+methods::find_applicable_methods()
+  scientific candidates + stored classifications + full/cutoff/cover assessments
+                          |
+                          v
+calculation::select_execution_plan()
+  deterministic candidate + concrete ExecutionPolicy
+                          |
+                          v
+calculation::calculate()
+  full method execution or shared serial cutoff executor
+                          |
+                          v
+charges::ChargeSet + application/export provenance
 ```
 
-### Important public types
+### Layer boundaries
 
-| Area | Types | Role |
-|---|---|---|
-| Core | `Atom`, `Bond`, `Conformer`, `Molecule`, `MoleculeCollection` | Input molecular graph and coordinates. |
-| Features | `TopologyFeatures`, `ConformerFeatures`, `PreparedMolecule` | Cached/derived topology and geometry. |
-| Parameters | `ParameterSet`, `ParameterClassification`, `ParameterView` | Parameter storage, matching, and method-facing lookup. |
-| Methods | `Method`, `MethodRegistry`, `MethodRequirements`, `MethodOptions`, `ApplicableMethod` | Algorithm interface, capabilities, selection, and execution. |
-| Charges | `AtomicCharges`, `ChargeAssignment`, `ChargeSet`, `ChargeCollection` | Atom-indexed calculated results and provenance. |
-| Calculation | `CalculationRequest`, `CalculationResult`, `ApplicationCalculationRequest`, `ApplicationAssessmentResult` | Selected-candidate execution and application-facing assessment/calculation facades. |
+- `core` owns only toolkit-neutral graph and conformer data.
+- `features` owns derived topology/geometry state and `SpatialFragment`.
+- `parameters` owns immutable matching data and classification.
+- `methods` owns stateless algorithms, requirements, applicability, and the registry.
+- `calculation` owns resource policy, deterministic planning, full/cutoff dispatch, and facades.
+- `adapters` translate representations and preserve source identity/mapping; they do not select methods
+  or duplicate scientific policy.
 
-## Explicit native workflow
+## Calculation contracts
 
-```cpp
-core::MoleculeCollection molecules{/* validated molecules */};
-features::PreparedMoleculeCollection prepared{molecules};
-
-const auto parameter_sets = parameters::load_default_parameter_sets();
-const auto& registry = methods::method_registry();
-
-std::vector<const methods::Method*> candidates;
-for (const auto& method : registry.methods()) {
-    candidates.push_back(method.get());
-}
-
-const auto applicability =
-    methods::find_applicable_methods(
-        {.molecules = prepared,
-         .methods = candidates,
-         .parameter_sets = parameter_sets,
-         .classification_options = {.permissive_types = false}});
-
-// Application policy may select a reported candidate itself, or use the deterministic helper.
-const auto* selected = calculation::select_applicable_method(applicability);
-if (selected == nullptr) {
-    // Inspect applicability.rejected.
-} else {
-    const auto result = calculation::calculate({.molecules = prepared, .selected = *selected});
-}
-```
-
-The explicit path is:
+### Explicit native workflow
 
 ```text
 PreparedMoleculeCollection
-  + ApplicabilityRequest { methods, parameter sets, classification options }
-  -> ApplicabilityResult { applicable candidates with resolved classifications, rejected candidates }
-  -> caller selection or select_applicable_method()
-  -> CalculationRequest { prepared molecules, selected ApplicableMethod }
+  + ApplicabilityRequest {
+      methods, parameter sets, classification options, resource policy
+    }
+  -> ApplicabilityResult {
+      applicable candidates with classifications and execution assessments,
+      rejected scientific candidates
+    }
+  -> caller choice or select_execution_plan()
+  -> CalculationRequest {
+      prepared molecules, selected ApplicableMethod, concrete ExecutionPolicy
+    }
   -> CalculationResult { ChargeSet }
 ```
 
-Classification options belong to applicability. Once a candidate exists, calculation constructs
-`ParameterView` from that candidate's stored atom/bond classifications and never reclassifies.
+`ApplicableMethod` stores the resolved atom/bond classifications and default method options.
+`CalculationRequest` does not accept classification policy and never reclassifies. The selected
+candidate and prepared collection are non-owning low-level views.
 
-## Convenience application workflow
+`select_applicable_method()` remains available when a caller only needs priority-based scientific
+candidate selection. `select_execution_plan()` additionally resolves a concrete execution mode.
 
-For normal application use, `calculation::calculate(ApplicationCalculationRequest)` provides the
-owned convenience facade:
+### Owned application workflow
 
-```text
-ApplicationCalculationRequest {
-  molecules,
-  parameter sets,
-  optional method ID,
-  optional parameter-set ID,
-  classification options
-}
-  -> prepare
-  -> applicability
-  -> deterministic selection
-  -> execution
-  -> ApplicationCalculationResult { optional ChargeSet, applicability diagnostics }
-```
+`ApplicationCalculationRequest` owns molecules and parameter sets and accepts optional method and
+parameter-set IDs, classification options, an `ExecutionSelection`, and a `ResourcePolicy`.
 
-The facade consumes `classification_options` only while determining applicability. It selects the
-applicable candidate with the highest method priority, then the highest parameter-set priority. Ties
-are resolved deterministically by method ID and parameter-set ID. Higher priorities therefore denote
-maintainer-curated automatic preference, not a universal scientific quality ranking. Explicit IDs
-restrict the candidates and fail if unavailable or inapplicable rather than silently falling back.
-The result retains applicability diagnostics when no candidate can be calculated.
+- `assess()` prepares molecules, finds applicable candidates, and selects a concrete plan without
+  calculating.
+- `calculate()` composes assessment and execution.
+- Omitted IDs use deterministic ranking: method priority, parameter-set priority, method ID, then
+  parameter-set ID.
+- Explicit unavailable/inapplicable IDs or unsupported explicit execution fail; there is no fallback.
+- Application-facing method-option selection is not implemented; applicability currently uses each
+  method's validated defaults.
 
-The current `chargefw` executable has explicit `calculate`, `inspect`, `applicability`, `methods`, and
-`parameters` subcommands. It autodetects `.sdf`, `.mol`,
-`.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input from the file extension, rejects the
-entire input on the first malformed record. `calculate` loads bundled parameter sets and autodetects
-the highest-priority applicable method and parameter set; `inspect` reports imported molecular
-composition without parameter loading; `applicability` reports candidate diagnostics and execution
-availability without calculating; `methods` and `parameters [method-id]` list installed capabilities.
-All `calculate` inputs produce JSON and mmCIF outputs.
-Native-molecular and JSON input also produce SDF and MOL2; structural PDB/mmCIF input does not.
-Same-format SDF and MOL2 outputs
-preserve the source; other molecular outputs are generated. The required output-directory argument is
-created when absent, and output filenames use `<input-stem>.chargefw`. JSON molecules with multiple
-conformers are rejected because one record cannot currently represent all assignments consistently.
-For PDB/mmCIF input, `--structural-selection` selects all records, polymers plus ligands excluding
-water, or polymers only; `--structural-bonds` selects no bonds, explicit connectivity, compact
-templates, or their hybrid. Both options reject non-structural formats. It is not yet a full
-user-facing file/SMILES CLI.
+`ChargeSet` owns the selected method ID and optional parameter-set ID. Geometry-dependent methods
+produce one source-ordered assignment per molecule conformer; geometry-independent methods produce one
+assignment per molecule.
 
-### Calculation granularity
+## Execution policy and cutoff
 
-`Method::calculate()` operates on one molecule and zero or one conformer. The collection-level
-`methods::calculate_charges()` operation applies one selected method/parameter candidate across the
-prepared collection: it calculates every conformer of every molecule for geometry-dependent
-methods, and one conformer-independent assignment per molecule otherwise. A molecule without a
-conformer remains valid for methods that do not require geometry; geometry-dependent methods report
-it as inapplicable. Future streaming and batch helpers must preserve molecule, conformer, and atom
-order and report each target independently.
+`ExecutionSelection` represents caller preference (`auto`, `full`, `cutoff`, or `cover`). Results use
+a concrete `ExecutionPolicy`; `auto` never survives as the effective mode.
 
-### Calculation selection and result contract
+- Full execution accepts no radius or charge correction.
+- Reduced radii must be finite and at least 8 Å.
+- Explicit cutoff/cover requires a radius.
+- Automatic reduced execution uses 12 Å unless the caller supplies a valid radius.
+- Reduced execution defaults to uniform final charge correction; explicit cutoff may select `none`.
+- The shared full atom threshold defaults to 20,000; `nullopt`/`unlimited` disables only this safeguard.
+- A method is considered expensive when declared cubic in time or quadratic in memory. Above a finite
+  threshold, automatic planning avoids expensive full execution; explicit full remains allowed and
+  returns a resource warning.
+- Threshold assessment is per molecule, while one execution mode applies to the collection.
 
-`methods::find_applicable_methods(ApplicabilityRequest)` evaluates supplied method and parameter-set
-candidates and returns resolved `ApplicableMethod` candidates. Each candidate stores its atom/bond
-parameter classifications. `calculation::select_applicable_method()` applies the deterministic
-priority ordering, or callers can select a candidate themselves. `calculation::calculate(
-CalculationRequest)` executes that selected candidate using its stored classifications; it does not
-accept or reevaluate classification policy. A successful `CalculationResult` contains one
-`charges::ChargeSet`; its owned method ID and optional parameter-set ID identify the candidate used.
+Scientific applicability is independent of the resource warning. Missing coordinates, topology,
+formal charges, element properties, required parameter coverage, or other method prerequisites remain
+hard failures.
 
-`ApplicationCalculationResult::applicability` retains considered applicable and rejected candidates
-for the convenience facade. If no candidate is applicable, its `charges` is empty; calculation
-failures after selection are reported as failures rather than silently treated as inapplicability.
+### Implemented cutoff methods
 
-`ChargeSet` preserves calculation targets as `ChargeAssignment` entries. For geometry-dependent
-methods, it contains one assignment for every conformer of every input molecule, each identified by
-its molecule index and conformer index. For geometry-independent methods, it contains one
-assignment per molecule and no conformer index. Each assignment's atomic-charge vector follows the
-source molecule's atom order.
-
-`CalculationRequest` is intentionally a low-level native execution view: it contains a prepared
-collection and a selected `ApplicableMethod`, both owned by the caller. The selected candidate must
-come from applicability; its stored classifications are the only parameter mapping used for
-execution. `ApplicationCalculationRequest` is the binding-friendly owned facade: it accepts a
-native molecule collection and parameter sets, resolves registered methods, applies classification
-policy, and selects supplied candidates by optional IDs. Omitted IDs use deterministic automatic
-selection; explicit unavailable or inapplicable IDs fail rather than silently falling back.
-Method-specific options remain a low-level advanced-native feature until their application-facing
-policy is specified. All integrations must compose these calculation paths rather than reimplement
-selection or scientific behavior.
-
-### Scalable execution policy
-
-Large-molecule acceleration is a primary product capability, not deferred work. The application
-calculation contract should expose an execution policy distinct from scientific method options:
-`full` performs the exact/reference calculation, while `cutoff(radius)` and `cover(radius)` perform
-explicitly reported fragment approximations. Keeping execution policy outside individual `Method`
-implementations allows the same spatial decomposition, fragment mapping, parallel scheduling, and
-charge-reconciliation machinery to be reused by EEM/QEq-like and SQE-family methods.
-
-The public `ExecutionPolicy`, `ExecutionSelection`, and `ResourcePolicy` value types establish the
-validated vocabulary: concrete `full`, `cutoff(radius)`, and `cover(radius)` policies; an `automatic`
-caller preference; and a shared full-atom threshold with an unlimited representation. Reduced radii
-must be finite and at least 8 angstrom; full rejects a radius. `ApplicationCalculationRequest` now
-carries an execution selection and resource policy. It assesses candidates, deterministically selects
-a concrete plan, and returns the effective policy plus resource warnings. Automatic selection uses
-full assessments without resource warnings, then cutoff and cover where supported when full is
-discouraged. It uses a 12-angstrom reduced radius unless the caller supplies a valid override;
-explicit full permits the warning as a deliberate override. Explicit cutoff is currently
-implemented serially for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp; explicit cover
-and unsupported method/mode combinations fail.
-
-ChargeFW2 implemented cutoff and cover only through `EEMethod`. It also switched modes silently at
-fixed atom-count thresholds. ChargeFW's automatic mode uses the shared, caller-configurable threshold
-and reports the selected mode and radius; its 12-angstrom reduced-radius default is an explicit
-execution policy rather than a claim of universal approximation accuracy.
-
-SQE, SQE+q0, and SQE+qp cutoff is an intentional new approximation rather than a ChargeFW2
-compatibility claim. Each radius fragment keeps only induced bonds, so split-charge transfer cannot
-cross a cut bond. SQE conserves zero charge independently in every connected fragment component;
-its shared fragment and final correction target is therefore zero even for a formally charged source.
-SQE+q0 projects source formal charges and bond transfers preserve each component's projected initial
-total. SQE+qp projects parameterized `q0`, uniformly corrects it over the fragment to the fragment's
-formal-charge total, and then applies induced-bond transfers. The cutoff executor retains only each
-fragment center and applies the selected final correction; the default uniform correction restores
-zero for SQE and the source formal-charge total for SQE+q0/qp. Whole-molecule-radius tests cover
-neutral and charged fixtures and reproduce full execution within numerical tolerance. Multi-radius
-accuracy envelopes and cover overlap semantics remain unvalidated.
-
-Methods must declare whether they support each execution policy; unsupported combinations fail
-explicitly. Cutoff and cover are spatial, radius-based approximations: a topology-only method cannot
-support either policy merely because its full calculation is expensive. A future graph-distance
-approximation would require a distinct, explicit policy rather than reusing an angstrom radius.
-
-Spatial neighbor search and reusable fragment data belong in `features`, not `core::Molecule`.
-`features::SpatialFragment` provides the serial radius-based induced-fragment foundation: one source
-conformer, source-ordered atoms, induced bonds, source/local mappings, and projection of
-whole-molecule parameter classifications without reclassification. The shared cutoff executor uses
-it for each source atom, runs the selected cutoff-capable method against the induced fragment, retains
-the center charge, and optionally applies an explicit uniform correction. EEM-family methods and
-SQE+q0/qp receive a fragment target proportional to source formal charge by atom count and restore
-the source formal-charge total; SQE receives and restores zero. Cover, parallel execution, ChargeFW2
-compatibility fixtures, and benchmark-based validation remain unfinished.
-Validation must cover charge conservation, deterministic results, atom-order preservation,
-convergence toward `full`, accuracy/error envelopes, runtime, memory, and parallel execution.
-
-### Preliminary QEq cutoff reference: 10aw
-
-`tests/fixtures/corpus/cif/10aw.cif` (record `10AW`, 10,479 atoms) is the initial large structural
-fixture for manual cutoff and future cover development checks. The following one-off QEq measurements
-were captured on 2026-08-19 with parameter set `QEq_original`, one conformer, and the current serial
-reference implementation. Full uses the CLI default `auto` policy, which selects full execution for
-this input. Cutoff uses the default uniform final charge correction. Charge differences compare the
-four-decimal-place JSON output with the corresponding full result.
-
-| Execution | Time | Peak RSS | MAE vs. full | RMSE vs. full | 95th percentile | Maximum difference | Correlation |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Full | 26.90 s | 1.76 GB | — | — | — | — | — |
-| Cutoff, 8 Å | 2.36 s | 30.4 MB | 0.004288 e | 0.005635 e | 0.0114 e | 0.0385 e | 0.9987575 |
-| Cutoff, 10 Å | 7.15 s | 30.5 MB | 0.002521 e | 0.003400 e | 0.0069 e | 0.0188 e | 0.9995477 |
-| Cutoff, 12 Å | 20.14 s | 30.6 MB | 0.001751 e | 0.002324 e | 0.0048 e | 0.0134 e | 0.9997893 |
-
-This is a development reference, not a scientific benchmark or a supported accuracy envelope. It
-demonstrates the expected convergence trend and bounded-memory behavior for one neutral structure;
-runtime and memory depend on hardware, build configuration, parameter data, and implementation.
-Retain it as a regression-investigation aid while assembling the multi-method, multi-radius benchmark
-corpus required before choosing defaults or making compatibility claims.
-
-### Preliminary cutoff method-coverage check: 10aw at 10 Å
-
-At the time of this reference, EEM, QEq, and EQeq were run through the `build/local-release` CLI
-against `10aw.cif` at 10 Å and compared with their corresponding full calculations. They produced one
-finite, source-ordered 10,479-atom assignment with an internally neutral total charge in each mode.
-The differences below are calculated from the four-decimal-place JSON output and are evidence that
-the executor is wired through each currently compatible method, not method-validation tolerances.
-
-| Method | Full time / peak RSS | Cutoff time / peak RSS | MAE vs. full | RMSE vs. full | 95th percentile | Maximum difference | Correlation |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| EEM | 24.89 s / 1.76 GB | 2.34 s / 31.3 MB | 0.001689 e | 0.003307 e | 0.0069 e | 0.0404 e | 0.9999822 |
-| QEq | 26.98 s / 1.76 GB | 7.29 s / 30.0 MB | 0.002521 e | 0.003400 e | 0.0069 e | 0.0188 e | 0.9995477 |
-| EQeq | 25.99 s / 1.76 GB | 2.95 s / 29.8 MB | 0.000379 e | 0.000713 e | 0.0015 e | 0.0083 e | 0.9999842 |
-
-The expected trend is present for all three methods: cutoff results remain close to their selected full
-method while using bounded fragment memory. These runs do not establish general scientific
-accuracy, a QEq/EEM compatibility claim, or acceptable error thresholds; those require the planned
-multi-structure, charge-state, and radius validation corpus.
-
-### Preliminary cutoff method-coverage check: 1ek9 polymers at 10 Å
-
-`tests/fixtures/corpus/cif/1ek9.cif` was imported with `--structural-selection polymers`, yielding
-the neutral 9,798-atom record `1EK9`. On 2026-08-19, every supported cutoff method produced a finite,
-source-ordered assignment in full and cutoff modes. The values below compare four-decimal-place JSON
-output; they verify the generic cutoff executor's parameter-classification projection, not scientific
-accuracy or compatibility.
-
-| Method | Full time / peak RSS | Cutoff time / peak RSS | MAE vs. full | RMSE vs. full | 95th percentile | Maximum difference |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| ABEEM | 163.16 s / 6.15 GB | 8.52 s / 33.4 MB | 0.000917 e | 0.001388 e | 0.0028 e | 0.0127 e |
-| EEM | 20.61 s / 1.54 GB | 1.81 s / 32.8 MB | 0.002260 e | 0.003710 e | 0.0079 e | 0.0352 e |
-| EQeq | 21.13 s / 1.54 GB | 2.31 s / 33.3 MB | 0.000556 e | 0.000867 e | 0.0018 e | 0.0103 e |
-| EQeq+C | 22.33 s / 1.54 GB | 4.86 s / 33.1 MB | 0.000556 e | 0.000867 e | 0.0018 e | 0.0104 e |
-| QEq | 22.80 s / 1.54 GB | 5.97 s / 33.2 MB | 0.002515 e | 0.003263 e | 0.0065 e | 0.0176 e |
-| SQE | 143.74 s / 3.11 GB | 7.33 s / 33.6 MB | 0.001282 e | 0.001633 e | 0.0032 e | 0.0065 e |
-| SQE+q0 | 140.87 s / 3.11 GB | 7.82 s / 33.2 MB | 0.053125 e | 0.080161 e | 0.1581 e | 0.2170 e |
-| SQE+qp | 141.44 s / 3.11 GB | 7.47 s / 33.4 MB | 0.002914 e | 0.003934 e | 0.0082 e | 0.0232 e |
-
-The SQE-family rows were measured on 2026-08-19 using their `CCD_gen` parameter sets after making
-the archived zero-width point-charge limit explicit. `PUB_pept` does not cover all atom environments
-in the imported structure. SQE and SQE+qp show the same bounded-memory trend as the EEM-family
-methods. SQE+q0 has substantially larger 10 Å deviation, so its fragment initial-charge policy needs
-charged/disconnected-structure validation before any accuracy claim or automatic reduced-mode
-recommendation. All imported 1EK9 formal charges are zero, so this case does not exercise nonzero
-`q0`; the SQE+q0 equations differ from SQE here only through their separately fitted parameter set.
-Increasing the radius reduced SQE+q0 MAE only gradually, from 0.053125 e at 10 Å to 0.050366 e at
-12 Å and 0.045109 e at 16 Å. The `CCD_gen` set includes very large fitted widths for common nitrogen
-and oxygen classes as well as negative hardness and bond-hardness values, making this parameterization
-substantially more sensitive to removal of the full system's long-range couplings.
-
-SFKEEM was also investigated with the shared cutoff executor but is not declared cutoff-capable.
-Its full equations match the archived implementation, and whole-molecule fragments reproduce full
-execution, but the generic fragment target-charge policy is unsuitable for its rapidly decaying
-kernel. For this neutral structure, forcing every local fragment to zero charge loses the global
-chemical-potential constraint. Its MAE decreased only from 0.085080 e at 8 Å to 0.069954 e at 10 Å,
-0.056886 e at 12 Å, 0.041376 e at 16 Å, and 0.032202 e at 20 Å. Omitting final uniform correction
-made the 10 Å raw charges sum to +253.3629 e, confirming that final correction is necessary but is
-not the cause of the discrepancy. SFKEEM requires a dedicated global sparse/truncated-kernel solver
-or a separately specified and validated chemical-potential-aware fragment policy before cutoff can
-be supported.
-
-## Integration and distribution architecture
-
-Python is expected to be the primary workflow integration, while the C++ library and C++ CLI remain
-supported products. All front ends must converge on the same native request/result behavior:
+Serial cutoff is declared for:
 
 ```text
-RDKit Mol ── pure-Python converter ─┐
-Biopython/NumPy ─ Python converter ─┼─> toolkit-neutral molecule data
-SDF/Gemmi/C++ caller ─ C++ adapter ─┘             |
-                                                   v
-                                      native calculation facade
-                                                   |
-                                                   v
-                                  charges + mapping + provenance
+abeem, eem, eqeq, eqeqc, qeq, sqe, sqeq0, sqeqp
 ```
 
-### Python and RDKit
+The shared executor builds one source-ordered induced spatial fragment per source atom, projects the
+whole-molecule classification, invokes the selected method through ordinary `CalculationInput`, and
+keeps the explicitly mapped center charge. It then applies the selected final correction. Neighbor
+search is currently linear and execution is serial.
 
-The first RDKit integration should be implemented at the Python level. A Python converter can read
-an ordinary `rdkit.Chem.Mol` and pass atomic numbers, formal charges, indexed bonds, and conformer
-coordinates through the native binding. This gives users a direct `calculate(mol)` workflow while
-avoiding RDKit C++ headers, link libraries, ABI compatibility, and wheel-loading concerns. The
-conversion cost is expected to be small compared with classification and numerical calculation and
-must be measured before introducing a compiled RDKit dependency.
+EEM/QEq-like methods and ABEEM allocate each fragment a formal-charge target proportional to its atom
+count and restore the source formal-charge total. SQE uses zero fragment and final targets. SQE+q0
+projects formal initial charges; SQE+qp projects parameterized `q0` corrected to fragment formal
+charge. SQE-family cutoff is a new approximation design, not ChargeFW2 parity.
 
-The base Python wheel should contain the ChargeFW native extension, toolkit-neutral Python/NumPy
-API, and bundled parameter data. `uv add chargefw` must work without RDKit;
-`uv add "chargefw[rdkit]"` should add the optional Python RDKit dependency and convenience module.
-RDKit must be imported lazily so base installations remain functional. A direct C++ adapter for
-`RDKit::ROMol` remains a valid future optional target, but only for a demonstrated native consumer
-and never as a dependency of `chargefw_core` or the base wheel.
+Whole-molecule-radius tests verify full/cutoff agreement for all eight methods on small fixtures,
+including neutral/charged and zero-width SQE-family cases. They do not establish general cutoff error
+envelopes. Cover is represented in policy and applicability but no method declares it supported and
+its executor is not implemented.
 
-RDKit import is a representation conversion, not an implicit chemistry-preparation step. It must
-preserve source atom order, formal charges, bond information, and conformer identity. Sanitization,
-hydrogen addition/removal, protonation, tautomer changes, embedding, and optimization require
-separate opt-in helpers and explicit provenance. Writing partial charges back to an RDKit molecule
-is also a separate, explicit mutation operation; partial charges must never replace formal charges.
+### Preliminary large-structure observations
 
-### Other integrations
+Manual development runs, not supported benchmarks, show bounded fragment memory and convergence toward
+full execution:
 
-NumPy-style arrays form the toolkit-neutral Python interchange and make custom scientific, ML, and
-simulation workflows possible without package-specific bindings. Biopython remains a possible
-secondary adapter for structural-biology object models, but coordinates and hierarchy do not
-guarantee a complete chemical graph or bond orders; it must map onto explicit connectivity, model,
-component, and alternate-location policies. Gemmi 0.7.4 currently backs native PDB and mmCIF readers in
-`chargefw_core`. The PDB reader maps compatible models to conformers of one molecule; the mmCIF
-reader parses the CIF document eagerly, then converts each coordinate-bearing `data_` block lazily
-to a separate record, with compatible models in that block represented as conformers. Both readers
-preserve selected atom order, atom names, formal charges, conformer identity, and record identity.
-They select blank alternate locations before `A` and then the first occurrence, and support
-all-records, polymers-and-ligands (water excluded), and polymers (HETATM excluded) selection modes.
+- `10aw.cif` (10,479 atoms): QEq cutoff MAE decreased from 0.004288 e at 8 Å to 0.001751 e at 12 Å;
+  cutoff peak RSS was about 30 MB versus 1.76 GB for full.
+- At 10 Å on `10aw.cif`, EEM, QEq, and EQeq produced finite source-ordered neutral assignments with
+  MAE of 0.001689 e, 0.002521 e, and 0.000379 e, respectively.
+- At 10 Å on `1ek9.cif` polymers (9,798 atoms), all eight supported methods completed in full and
+  cutoff modes. SQE+q0 had materially larger deviation (0.053125 e MAE) than the other tested methods,
+  so it needs charged/disconnected and multi-radius validation before an accuracy claim.
+- SFKEEM is intentionally not cutoff-capable: local neutral-fragment target charges lose its global
+  chemical-potential constraint. It needs a dedicated truncated-kernel solver or a separately
+  validated fragment policy.
 
-Connectivity is an explicit input option with four strategies: `none` (the default), `templates`,
-`explicit_bonds`, and `hybrid`. The compact built-in CCD-derived template catalog covers standard
-amino acids, standard RNA/DNA nucleotide names, and water, and adds sequential peptide C-N and
-nucleotide O3'-P links. PDB explicit connectivity reads `CONECT` plus covalent/disulfide Gemmi
-connections; mmCIF explicit connectivity reads local `_chem_comp_bond` rows plus covalent/disulfide
-`_struct_conn` connections. `hybrid` combines explicit and template connectivity, deduplicating atom
-pairs and retaining an explicit bond order on conflicts. Distance-based perception and an external
-full-CCD provider are not implemented.
+Hardware, build, parameter data, charge state, and structure affect these observations. They are
+regression-investigation references only, not automatic-policy evidence or compatibility tolerances.
 
-An exploratory full-CCD packed-template benchmark represented 50,782 components and 2,523,648
-bonds as pooled atom names, a flat bond table, and a sorted component index. The optimized stripped
-lookup executable was about 1 MB, but compiling the generated 41 MB C++ source was demanding. This
-keeps a separately loadable full-CCD provider viable while compact built-in templates remain the
-normal path.
+See [CUTOFF_IMPLEMENTATION_PLAN.md](CUTOFF_IMPLEMENTATION_PLAN.md) for the retained design decisions
+and validation still required.
 
-Open Babel, MDAnalysis, MDTraj, and OpenFF may receive thin convenience bridges when concrete
-workflows justify them. They should normally convert through the toolkit-neutral Python boundary
-rather than becoming native core dependencies. The confirmed standalone CLI and bounded-memory
-batch workflow justify a focused native SDF adapter; broad format support should otherwise come from
-optional established toolkits.
+## Methods and parameters
 
-### Molecular I/O
-
-An application requires a real-molecule input path even when no external toolkit is installed. The
-standalone C++ CLI should therefore gain a bounded-memory native MOL/SDF stream adapter as its first
-file interface, beginning with a clearly documented subset and explicit rejection of unsupported
-V2000/V3000 features. It must preserve record identity, atom order, formal charges, bonds, and
-coordinates and return record-scoped errors without silently repairing chemistry. SDF output should
-retain the source mapping and attach charges and provenance without changing molecular semantics.
-
-The native SDF path is not intended to become a universal chemistry toolkit. Python RDKit provides
-broad SMILES/SDF/Mol2 workflows; the required Gemmi adapter and future optional Biopython adapters
-cover structural biology. Each adapter translates to the same toolkit-neutral molecule and
-calculation contracts, so adding a format or package cannot introduce a separate selection or
-scientific-policy implementation.
-
-#### Adapter record contract
-
-Adapters exchange `adapters::ImportedMoleculeRecord` rather than attaching format state to
-`core::Molecule`. Each successful record owns its native molecule, source identity, source-to-native
-atom/conformer mapping, and non-fatal diagnostics. A mapping is explicit even when it is the identity
-mapping, so Gemmi and future RDKit and Python adapters can preserve source order without adapter-
-specific result rules. An adapter may retain an opaque, format-tagged source payload when its writer
-must enrich an existing record rather than reconstruct it. The future Gemmi mmCIF writer will use
-this to preserve structural categories and append the `_sb_ncbr_partial_atomic_charges_meta` and
-`_sb_ncbr_partial_atomic_charges` loops from the archived exporter. Record failures use
-`adapters::MoleculeRecordError`, which retains identity, message, and optional source line for
-reporting the first malformed record before terminating import. This deliberately defines no common
-file handle, property bag, hierarchy model, or chemistry repair policy: those remain adapter-specific
-until a concrete format requires them.
-
-Native adapters are named by format and direction. The current `json_input`, `mol_input`,
-`sdf_input`, `mol2_input`, and Gemmi-backed `pdb_input` adapters import molecule records;
-`mmcif_input` parses the Gemmi CIF document eagerly and lazily converts each coordinate-bearing
-mmCIF `data_` block as a record; `json_output::JsonWriter` serializes the format-neutral
-`ChargeResultDocument` used by the CLI and future integrations.
-`mol2_output::Mol2Writer` preserves a source MOL2 file while replacing or adding atom partial-charge
-fields for one selected record, or generates a basic MOL2 record from native graph and conformer
-data when the input is another format. Generated MOL2 uses element-symbol atom types and a single
-`CHARGEFW` substructure; it does not infer Tripos typing or source-specific substructure semantics.
-`sdf_output::SdfWriter` preserves source SDF records and writes atom-order charge vectors as numbered
-`CHARGEFW_CHARGES_<type-id>` data fields. Replace mode removes existing fields with that owned prefix
-before writing the new set; append mode retains existing fields and adds another set. It can also
-generate an explicit V2000 or V3000 SDF record from native graph and conformer data, preserving
-formal charges in the MOL representation and partial charges in SDF properties.
-Additional writers must consume that export model rather than implementing calculation-result
-serialization in a front end.
-
-#### Format and connectivity policy
-
-Test molecular files are organized under `tests/fixtures/`: small hand-authored cases belong in
-`synthetic/<format>/`, while intact real-world inputs belong in `corpus/<format>/<subject>/` with a
-short provenance note. Future PDB and mmCIF fixtures should use this same format-first structure,
-with subdirectories for scenarios such as multi-model, multi-component, and alternate locations.
-
-The native adapter scope is intentionally narrow: MOL/SDF, Tripos MOL2, and a versioned ChargeFW JSON
-document are dependency-free CLI input paths; Gemmi-backed PDB/mmCIF readers are library APIs but are
-not yet wired into the demo CLI. JSON documents use `schema_version: "1.0"` and a
-`molecules` array. Each molecule has optional `id` and `name`, required `atoms` entries with
-`atomic_number` and `formal_charge`, optional indexed `bonds`, and optional conformers with coordinate
-triplets; atom names are intentionally excluded. Array order is authoritative for atom and conformer
-mapping, and connectivity is never inferred from coordinates. The initial MOL/SDF reader supports V2000 atom and bond blocks plus `M  CHG`
-formal-charge records, and
-V3000 CTAB `COUNTS`, `ATOM`, and `BOND` blocks with `CHG=` attributes. It imports aromatic bond order
-as single bonds
-and records ignored `CFG=` stereochemical attributes as diagnostics; it rejects query atoms, unknown
-elements, unsupported bond orders, unsupported V2000 properties, and unsupported V3000 attributes.
-`parse_mol()` handles one standalone MOL record through `M  END`; `SdfReader` adds bounded-memory
-multi-record framing and skips SDF data fields without interpreting them. `Mol2Reader` supports the
-MOL2 `MOLECULE`, `ATOM`, and `BOND` sections, standard element-prefixed atom types, and numeric bond
-types; aromatic bond types are imported as single bonds. MOL2 partial-charge fields are ignored, never treated as formal charges, and
-reported once per record when nonzero values are present. It is not a general chemistry toolkit. RDKit
-support is optional and normally
-enters through the Python bridge; if a native RDKit adapter is later justified, it is a separately
-selected backend and never silently replaces the native SDF reader. PDB/mmCIF parsing uses
-Gemmi-backed adapters; mmCIF charge export is also Gemmi-backed. The project will not
-implement those formats itself.
-`pdb_input` treats compatible PDB models as conformers of one molecule, retaining atom names,
-formal charges, and coordinates. It selects blank alternate locations before `A`, then the first
-occurrence, supports all-records, polymers-and-ligands (water excluded), and polymers
-(HETATM excluded) selection modes. `mmcif_input` applies the same selection and alternate-location
-rules, represents compatible models inside one `data_` block as conformers, and returns separate
-records for separate coordinate-bearing `data_` blocks. Both readers expose `none`, `templates`,
-`explicit_bonds`, and `hybrid` connectivity strategies as described above.
-The Gemmi writer semantically preserves the parsed mmCIF document and appends or replaces the
-SB-NCBR charge dictionary/categories without reconstructing unrelated structural data. PDB input is
-converted through Gemmi. Other inputs generate one self-contained `UNL` component block per molecule
-record. Gemmi serialization may normalize presentation and is not byte-for-byte preservation.
-
-#### Preservation-oriented output
-
-When output format matches a filesystem-backed input, writers should transform a byte-for-byte copy
-of the source file rather than reconstructing a molecule document. Preservation means making only
-the smallest required format-specific edits: SDF writers append ChargeFW-owned data fields before
-the record delimiter; mmCIF writers append ChargeFW categories inside the selected `data_` block;
-MOL2 writers replace the existing ATOM partial-charge token or add the missing optional trailing
-fields required to attach a charge; and future PQR writers replace mapped atom charge values while
-retaining radii. A writer rejects only when it cannot safely locate or validate the selected source
-record/block and mapped atoms, never merely because an optional charge field is absent. Generated
-output is the explicit alternative for an output format that differs from input or lacks a readable
-source file.
-
-Structural adapters must select connectivity explicitly. The implemented policies are `none`,
-`templates`, `explicit_bonds`, and `hybrid`; the latter combines compact built-in component templates
-for intra-component and sequential polymer bonds with explicit PDB/mmCIF records. A future
-distance-perception policy may infer connectivity from covalent radii and coordinates, but it must be
-opt-in, never a fallback, and must report inferred bond orders and provenance. Alternate locations
-likewise use an explicit deterministic policy: blank alternate location, then `A`, then the first
-occurrence. Adapters preserve selected native ordering; omitted-altloc mapping and diagnostics remain
-to be completed.
-
-A method may not require topology directly, but parameter classification can require atomic
-environment or highest bond order. Import success therefore does not imply calculation applicability:
-the existing method/parameter prerequisite checks remain responsible for rejecting insufficient or
-unsupported topology. Every structural calculation/export result must retain the selected
-connectivity and alternate-location policies and their provenance.
-
-### Packaging boundaries
-
-Native CMake installation and Python distribution are independent delivery paths over the same C++
-implementation. Native consumers should eventually use exported CMake targets and installed
-parameter data. Python users should receive nanobind-based binary wheels built from `pyproject.toml`
-with a CMake-aware backend such as scikit-build-core, containing the extension and parameter
-resources; they must not need a prior system ChargeFW installation or `CHARGEFW_PARAMETER_DIR`.
-Conda-forge is a complementary channel, especially for environments already using RDKit, not a
-replacement for ordinary `uv`/pip wheels. A versioned OCI/Docker image should provide the standalone
-CLI and bundled data for reproducible batch deployments.
-
-JSON is the intended stable serializable and process boundary for the CLI, WebAssembly, services,
-and MCP, but it is not required merely to pass an in-process RDKit molecule to the native extension.
-Both the Python object API and JSON serialization must expose the same calculation targets, source
-atom mapping, selected method and parameters, options, warnings, and diagnostics.
-
-## Implemented methods and parameters
-
-The current registry contains 22 methods:
+The registry contains 22 method IDs:
 
 ```text
 abeem, charge2, delre, denr, dummy, eem, eqeq, eqeqc, formal, gdac,
 kcm, mgc, mpeoe, peoe, qeq, sfkeem, smpqeq, sqe, sqeq0, sqeqp, tsef, veem
 ```
 
-Bundled JSON parameter sets cover these parameterized methods and variants. `data/parameters/`
-is installed under `share/chargefw/parameters`.
+Bundled parameter sets live in `data/parameters/` and install under
+`share/chargefw/parameters`. All nine archived SQE-family sets are migrated. Numerical parity with
+ChargeFW2 remains incomplete and release-blocking for production adoption.
 
-### Compatibility gap with ChargeFW2
+## Molecular I/O and CLI
 
-The archived ChargeFW2 registry contains the same 22 methods. All nine archived SQE-family
-parameter sets have been migrated. Numerical parity remains a release-blocking objective because
-ACC III highlights SQE+qp.
+The `chargefw` executable has `calculate`, `inspect`, `applicability`, `methods`, and `parameters`
+subcommands. It selects input by extension:
 
-## ChargeFW2 research summary
+| Input | Reader | Calculation output |
+| --- | --- | --- |
+| `.mol`, `.sdf` | Native MOL/SDF | JSON, SDF, MOL2, mmCIF |
+| `.mol2` | Native MOL2 | JSON, SDF, MOL2, mmCIF |
+| `.json` | ChargeFW schema 1.0 | JSON, SDF, MOL2, mmCIF |
+| `.pdb` | Gemmi PDB | JSON, mmCIF |
+| `.cif`, `.mmcif` | Gemmi mmCIF | JSON, mmCIF |
 
-ChargeFW2 is a functional, application-oriented engine with CLI/Python bindings, custom
-SDF/Mol2 reading, Gemmi PDB/mmCIF reading, output writers, OpenMP, and a nanoflann KD-tree. It
-has useful production behavior, but combines concerns that are intentionally separated here:
+The CLI currently reads the complete collection before calculation and rejects the input on the first
+malformed record. It is not yet a bounded-memory batch runner. JSON input with multiple conformers is
+rejected by molecular output because SDF/MOL2 export currently accepts one assignment per molecule.
 
-| ChargeFW2 pattern | ChargeFW replacement |
-|---|---|
-| Atom stores graph data, coordinates, PDB residue data, Mol2 types, and classification state. | Core graph stays minimal; adapters and derived feature layers own source-specific metadata/caches. |
-| Molecule owns all-pairs topology matrices and spatial KD-tree. | `TopologyFeatures` and `ConformerFeatures` own derived data. |
-| Parameter classification mutates atoms and bonds. | Immutable `ParameterClassification` and `ParameterView`. |
-| Method owns mutable parameters pointer and option values. | Stateless `Method::calculate(CalculationInput)`. |
-| Suitability is mainly filtering/console behavior. | Structured applicability and prerequisite diagnostics. |
-| PDB/mmCIF reader uses the first model only. | Core can represent multiple conformers; adapters should define model/altloc policy. |
-| `full`, `cutoff`, and `cover` are coupled inside `EEMethod` with silent size-based switching. | Reusable execution policy is explicit, capability-checked, benchmarked, and provenance-rich. |
+Structural input supports record selection (`all`, `polymers-and-ligands`, `polymers`) and connectivity
+(`none`, `explicit`, `templates`, `hybrid`). Library structural readers default to `none`; the CLI
+deliberately defaults to `hybrid`. Alternate locations select blank, then `A`, then the first
+occurrence. Compact templates cover standard amino acids, standard RNA/DNA nucleotides, water, and
+sequential peptide/nucleotide links. There is no distance-based bond perception or full CCD provider.
 
-The new implementation must preserve validated scientific behavior before making intentional
-improvements. Compatibility fixtures should use identical topology, coordinates, formal charge,
-options, and parameter data.
+Adapters preserve selected source atom order, formal charges, conformer identity, and record identity.
+MOL/SDF supports a deliberately narrow V2000/V3000 subset; MOL2 accepts standard element-prefixed atom
+types and numeric bonds. Aromatic bonds are imported as single bonds. Partial charges in MOL2 input are
+ignored rather than treated as formal charges.
 
-### SQE-family research
+SDF and MOL2 same-format writers preserve source content while adding/replacing ChargeFW-owned charge
+fields. The Gemmi writer semantically preserves mmCIF categories (presentation may normalize), converts
+PDB through Gemmi, and generates local `UNL` blocks for nonstructural input.
 
-ChargeFW2 implements the SQE family with a signed bond-incidence matrix `T`. SQE solves
-`(T A Tᵀ + diag(kappa)) p = T b`, then returns `q = Tᵀ p`, where `A` contains atom hardness on the
-diagonal and the Gaussian-width Coulomb interaction `erf(d / sqrt(2 wi² + 2 wj²)) / d` off the
-diagonal, and `b = -electronegativity`. SQE therefore conserves zero total charge within each
-connected component. `sqeq0` adds formal charges as initial charges; `sqeqp` uses parameterized
-`q0` after uniformly correcting its total to the molecular formal charge. All require coordinates,
-atom parameters `electronegativity`, `hardness`, and `width`, plus bond parameter `kappa`; SQE
-does not itself use formal charges, while SQE+q0 requires them. SQE+qp additionally requires atom
-parameter `q0`, which it uniformly corrects to the molecule's formal-charge total. The archived
-parameter sets intentionally include negative and zero widths; widths enter quadratically, and the
-zero-width pair limit is the point-charge interaction `1 / d`. The implementation preserves that
-limit. The archived implementation does not explicitly diagnose singular or ill-conditioned transfer
-systems.
+### JSON result state
 
-## Product direction
+Schema `1.0` records source identity, source-to-native atom/conformer mapping, source-ordered
+assignments, totals, and diagnostics. Invocation-level `calculation_provenance` records requested
+method/parameter IDs, permissive typing, resource threshold, execution/radius/correction, structural
+input policy, and effective method/parameter/execution plus warnings. Charges are rounded to at most
+four decimal places in JSON only.
 
-The product work is organized around four outcomes: scalable `full`/`cutoff`/`cover` calculation;
-real-molecule I/O and a useful C++ CLI; modern adapters led by Python/NumPy and RDKit; and easy,
-reproducible installation through wheels, Conda, native CMake packages, and a container image. The
-native request/result/provenance contract is the shared foundation for all four. Scientific
-comparison, approximation validation, diagnostics, and release automation are cross-cutting quality
-gates rather than separate product directions.
+Current limitations:
 
-The prioritized delivery checklist and validation criteria are maintained in [TODO.md](TODO.md).
-WebAssembly, MCP, ML/GNN adapters, and additional toolkit bridges must not be pre-built ahead of
-validated need.
+- unsuccessful automatic selection emits a JSON error document to stdout rather than the requested
+  output directory;
+- import and calculation exceptions are not represented as owned record-scoped result entries;
+- exit statuses do not distinguish invalid requests from calculation failures;
+- SDF, MOL2, and mmCIF do not yet carry the complete JSON provenance;
+- explicit-full threshold warnings are retained in the result but are not emitted before solver
+  allocation.
 
-## Scientific and integration principles
+## Build, installation, and distribution
 
-- Preserve source atom indexing and map every output charge back to its source atom.
-- Record method, parameter set, method options, conformer, approximation policy, and warnings in
-  every serializable result.
-- Keep exact/reference calculations distinct from cutoff/cover approximations.
-- Make automatic selection explainable and overridable.
-- Treat empirical charge results as method-dependent estimates; expose coverage and numerical
-  limitations rather than implying universal validity.
+CMake builds one `chargefw_core` library and an optional `chargefw` CLI. Public dependencies are
+nlohmann/json and Gemmi; Eigen is private and CLI11 is used by the application. CMake first searches
+for compatible packages and otherwise fetches CLI11 2.6.2, nlohmann/json 3.12.0, Eigen 5.0.1, and Gemmi
+0.7.4.
+
+Installation currently provides the library, public headers, CLI, generated config header, and bundled
+parameter JSON. Exported CMake package targets are not implemented. There are no repository CI
+workflows, Python bindings/wheels, Conda recipe, or container image yet.
+
+## Integration direction
+
+The intended front ends converge on the same owned application facade:
+
+```text
+native files / C++ / future NumPy and RDKit converters
+                         |
+                         v
+toolkit-neutral molecule data -> native assessment/calculation -> charges + mapping + provenance
+```
+
+The first Python API should use NumPy-style arrays and nanobind. RDKit integration should initially be
+a pure-Python converter with lazy optional import, preserving atom/conformer identity and performing no
+implicit sanitization, hydrogen changes, protonation, embedding, or optimization. Packaging work must
+not make RDKit a dependency of the core library or base wheel.
+
+## Scientific and compatibility principles
+
+- Preserve source atom order and identify every molecule/conformer assignment.
+- Record method, parameter set, options when exposed, execution approximation, correction, and warnings.
+- Keep exact full calculations distinct from cutoff/cover approximations.
+- Make automatic policy explainable and explicitly overridable.
+- Compare ChargeFW2 with identical graphs, charges, coordinates, options, and parameter data.
+- Record per-method tolerances and intentional deviations in tests or maintained compatibility data.
+- Do not claim cutoff accuracy from whole-fragment equality or one-off large-structure measurements.
+
+The prioritized unfinished work and acceptance criteria are maintained only in [TODO.md](TODO.md).
