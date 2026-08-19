@@ -22,6 +22,32 @@ template <typename Callable> auto throws_invalid_argument(Callable&& callable) -
 } // namespace
 
 auto main() -> int {
+    assert(calculation::execution_selection_kind_from_string("auto") ==
+           calculation::ExecutionSelectionKind::automatic);
+    assert(calculation::execution_selection_kind_from_string("full") ==
+           calculation::ExecutionSelectionKind::full);
+    assert(calculation::execution_selection_kind_from_string("cutoff") ==
+           calculation::ExecutionSelectionKind::cutoff);
+    assert(calculation::execution_selection_kind_from_string("cover") ==
+           calculation::ExecutionSelectionKind::cover);
+    assert(throws_invalid_argument([] -> void {
+        static_cast<void>(calculation::execution_selection_kind_from_string("unknown"));
+    }));
+    assert(calculation::charge_correction_policy_from_string("none") ==
+           calculation::ChargeCorrectionPolicy::none);
+    assert(calculation::charge_correction_policy_from_string("uniform") ==
+           calculation::ChargeCorrectionPolicy::uniform);
+    assert(throws_invalid_argument([] -> void {
+        static_cast<void>(calculation::charge_correction_policy_from_string("unknown"));
+    }));
+    assert(calculation::to_string(calculation::ExecutionSelectionKind::automatic) == "auto");
+    assert(calculation::to_string(calculation::ExecutionSelectionKind::full) == "full");
+    assert(calculation::to_string(calculation::ExecutionMode::cutoff) == "cutoff");
+    assert(calculation::to_string(calculation::ChargeCorrectionPolicy::uniform) == "uniform");
+    assert(throws_invalid_argument([] -> void {
+        static_cast<void>(calculation::to_string(static_cast<calculation::ExecutionMode>(99)));
+    }));
+
     const calculation::ExecutionPolicy default_policy;
     assert(default_policy.mode() == calculation::ExecutionMode::full);
     assert(!default_policy.radius().has_value());

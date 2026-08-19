@@ -14,29 +14,6 @@
 namespace chargefw::cli {
 namespace {
 
-[[nodiscard]] auto execution_mode_name(const calculation::ExecutionMode mode) -> std::string {
-    switch (mode) {
-    case calculation::ExecutionMode::full:
-        return "full";
-    case calculation::ExecutionMode::cutoff:
-        return "cutoff";
-    case calculation::ExecutionMode::cover:
-        return "cover";
-    }
-    throw std::logic_error{"unknown execution mode"};
-}
-
-[[nodiscard]] auto charge_correction_name(const calculation::ChargeCorrectionPolicy policy)
-    -> std::string {
-    switch (policy) {
-    case calculation::ChargeCorrectionPolicy::none:
-        return "none";
-    case calculation::ChargeCorrectionPolicy::uniform:
-        return "uniform";
-    }
-    throw std::logic_error{"unknown charge correction policy"};
-}
-
 [[nodiscard]] auto assignments_by_molecule(const charges::ChargeSet& charge_set,
                                            const std::size_t molecule_count)
     -> std::vector<charges::ChargeAssignment> {
@@ -142,15 +119,15 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
         warnings.push_back(issue.message);
     }
     const auto provenance = adapters::CalculationProvenance{
-        .effective_execution_mode =
-            result.execution_policy.has_value()
-                ? std::optional{execution_mode_name(result.execution_policy->mode())}
-                : std::nullopt,
+        .effective_execution_mode = result.execution_policy.has_value()
+                                        ? std::optional{std::string{calculation::to_string(
+                                              result.execution_policy->mode())}}
+                                        : std::nullopt,
         .radius =
             result.execution_policy.has_value() ? result.execution_policy->radius() : std::nullopt,
         .charge_correction = result.execution_policy.has_value()
-                                 ? std::optional{charge_correction_name(
-                                       result.execution_policy->charge_correction())}
+                                 ? std::optional{std::string{calculation::to_string(
+                                       result.execution_policy->charge_correction())}}
                                  : std::nullopt,
         .permissive_types = request.classification_options.permissive_types,
         .full_atom_threshold = request.resource_policy.full_atom_threshold,

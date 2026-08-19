@@ -66,34 +66,6 @@ auto read_collection(Reader& reader, const std::string& input_path,
     throw std::runtime_error{"Unsupported structural bond strategy: " + value};
 }
 
-[[nodiscard]] auto parse_execution_selection(const std::string& value)
-    -> calculation::ExecutionSelectionKind {
-    if (value == "auto") {
-        return calculation::ExecutionSelectionKind::automatic;
-    }
-    if (value == "full") {
-        return calculation::ExecutionSelectionKind::full;
-    }
-    if (value == "cutoff") {
-        return calculation::ExecutionSelectionKind::cutoff;
-    }
-    if (value == "cover") {
-        return calculation::ExecutionSelectionKind::cover;
-    }
-    throw std::runtime_error{"Unsupported execution selection: " + value};
-}
-
-[[nodiscard]] auto parse_charge_correction(const std::string& value)
-    -> calculation::ChargeCorrectionPolicy {
-    if (value == "none") {
-        return calculation::ChargeCorrectionPolicy::none;
-    }
-    if (value == "uniform") {
-        return calculation::ChargeCorrectionPolicy::uniform;
-    }
-    throw std::runtime_error{"Unsupported charge correction policy: " + value};
-}
-
 [[nodiscard]] auto parse_full_atom_threshold(const std::string& value)
     -> std::optional<std::size_t> {
     if (value == "unlimited") {
@@ -224,10 +196,12 @@ auto make_request(const ImportedCollection& imported, const SelectionArguments& 
             .classification_options = {.permissive_types = arguments.permissive_types},
             .execution_selection =
                 calculation::ExecutionSelection{
-                    parse_execution_selection(arguments.execution), arguments.radius,
+                    calculation::execution_selection_kind_from_string(arguments.execution),
+                    arguments.radius,
                     arguments.charge_correction_option->count() == 0
                         ? std::nullopt
-                        : std::optional{parse_charge_correction(arguments.charge_correction)}},
+                        : std::optional{calculation::charge_correction_policy_from_string(
+                              arguments.charge_correction)}},
             .resource_policy = {
                 .full_atom_threshold =
                     arguments.full_atom_threshold_option->count() == 0

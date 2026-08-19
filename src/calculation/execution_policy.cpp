@@ -90,6 +90,68 @@ auto validate_selection(const ExecutionSelectionKind kind, const std::optional<d
 
 } // namespace
 
+auto execution_selection_kind_from_string(const std::string_view value) -> ExecutionSelectionKind {
+    if (value == "auto") {
+        return ExecutionSelectionKind::automatic;
+    }
+    if (value == "full") {
+        return ExecutionSelectionKind::full;
+    }
+    if (value == "cutoff") {
+        return ExecutionSelectionKind::cutoff;
+    }
+    if (value == "cover") {
+        return ExecutionSelectionKind::cover;
+    }
+    throw std::invalid_argument{"unknown execution selection: " + std::string{value}};
+}
+
+auto charge_correction_policy_from_string(const std::string_view value) -> ChargeCorrectionPolicy {
+    if (value == "none") {
+        return ChargeCorrectionPolicy::none;
+    }
+    if (value == "uniform") {
+        return ChargeCorrectionPolicy::uniform;
+    }
+    throw std::invalid_argument{"unknown charge correction policy: " + std::string{value}};
+}
+
+auto to_string(const ExecutionSelectionKind value) -> std::string_view {
+    switch (value) {
+    case ExecutionSelectionKind::automatic:
+        return "auto";
+    case ExecutionSelectionKind::full:
+        return "full";
+    case ExecutionSelectionKind::cutoff:
+        return "cutoff";
+    case ExecutionSelectionKind::cover:
+        return "cover";
+    }
+    throw std::invalid_argument{"unknown execution selection"};
+}
+
+auto to_string(const ExecutionMode value) -> std::string_view {
+    switch (value) {
+    case ExecutionMode::full:
+        return "full";
+    case ExecutionMode::cutoff:
+        return "cutoff";
+    case ExecutionMode::cover:
+        return "cover";
+    }
+    throw std::invalid_argument{"unknown execution mode"};
+}
+
+auto to_string(const ChargeCorrectionPolicy value) -> std::string_view {
+    switch (value) {
+    case ChargeCorrectionPolicy::none:
+        return "none";
+    case ChargeCorrectionPolicy::uniform:
+        return "uniform";
+    }
+    throw std::invalid_argument{"unknown charge correction policy"};
+}
+
 ExecutionPolicy::ExecutionPolicy(const ExecutionMode mode, const std::optional<double> radius,
                                  const ChargeCorrectionPolicy charge_correction)
     : mode_{mode}, radius_{radius}, charge_correction_{charge_correction} {

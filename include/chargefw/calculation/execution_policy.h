@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <string_view>
 
 namespace chargefw::calculation {
 
@@ -25,6 +26,14 @@ enum class ChargeCorrectionPolicy {
     none,
     uniform,
 };
+
+[[nodiscard]] auto execution_selection_kind_from_string(std::string_view value)
+    -> ExecutionSelectionKind;
+[[nodiscard]] auto charge_correction_policy_from_string(std::string_view value)
+    -> ChargeCorrectionPolicy;
+[[nodiscard]] auto to_string(ExecutionSelectionKind value) -> std::string_view;
+[[nodiscard]] auto to_string(ExecutionMode value) -> std::string_view;
+[[nodiscard]] auto to_string(ChargeCorrectionPolicy value) -> std::string_view;
 
 class ExecutionPolicy {
   public:
