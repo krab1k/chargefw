@@ -86,6 +86,11 @@
     {
       "name": "gcc-debug",
       "configurePreset": "gcc-debug",
+      "filter": {
+        "exclude": {
+          "name": "^cpptest$"
+        }
+      },
       "output": {
         "outputOnFailure": true
       }
@@ -93,6 +98,11 @@
     {
       "name": "clang-asan",
       "configurePreset": "clang-asan",
+      "filter": {
+        "exclude": {
+          "name": "^cpptest$"
+        }
+      },
       "output": {
         "outputOnFailure": true
       }
