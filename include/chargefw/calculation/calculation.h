@@ -47,6 +47,20 @@ struct ApplicationCalculationResult {
     }
 };
 
+// Result of application-facing applicability and execution-plan assessment. The contained
+// candidates reference methods from the registry and the owned parameter sets below.
+struct ApplicationAssessmentResult {
+    std::vector<parameters::ParameterSet> parameter_sets;
+    methods::ApplicabilityResult applicability;
+    const methods::ApplicableMethod* selected = nullptr;
+    std::optional<ExecutionPolicy> execution_policy;
+    std::vector<methods::ExecutionIssue> execution_issues;
+
+    [[nodiscard]] auto executable() const noexcept -> bool {
+        return execution_policy.has_value();
+    }
+};
+
 // Owns facade inputs so language bindings and adapters do not need to manage native method
 // pointers, parameter spans, or prepared-feature lifetimes. This request performs applicability
 // using classification_options, chooses the highest-ranked applicable candidate, then executes it.
@@ -75,6 +89,12 @@ struct ApplicationCalculationRequest {
 // Executes an already applicable and selected candidate. Its stored parameter classifications are
 // used directly; classification policy is not reconsidered during execution.
 [[nodiscard]] auto calculate(const CalculationRequest& request) -> CalculationResult;
+
+// Convenience facade assessment: resolves registered methods, applies classification policy, and
+// selects an execution plan without running a charge calculation. Explicit unavailable method or
+// parameter-set IDs are errors; an unavailable explicit execution plan is reported as no plan.
+[[nodiscard]] auto assess(const ApplicationCalculationRequest& request)
+    -> ApplicationAssessmentResult;
 
 // Convenience facade: calculates an owned molecule collection using registered methods and caller-
 // owned parameter data. Omitted IDs enable deterministic automatic selection. Specified IDs

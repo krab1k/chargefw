@@ -77,9 +77,10 @@ acceptance criteria for each priority, not optional follow-up work.
   facade; retain the water workflow as a focused example or test. The current demo accepts
   MOL/SDF/MOL2/PDB/mmCIF/ChargeFW JSON input. All inputs produce JSON and mmCIF; PDB/mmCIF do not
   produce SDF/MOL2
-  and expose record-selection and connectivity options; all inputs lack user-facing method/parameter
-  selection, batch controls, and complete diagnostic behavior, while JSON multi-conformer input cannot
-  produce molecular-format output.
+  and expose record-selection and connectivity options. The CLI now has explicit `calculate`,
+  `inspect`, `applicability`, `methods`, and `parameters [method-id]` subcommands, including
+  method/parameter selection and applicability diagnostics; batch controls, conformer selection,
+  complete provenance reporting, and JSON multi-conformer molecular output remain unfinished.
 - [ ] Expose molecule source, method/parameter selection, conformer selection, full/cutoff/cover
   policy, radius, and correction policy through explicit CLI options with reported defaults.
 - [ ] Add bounded batch execution with deterministic record order and memory use independent of

@@ -297,6 +297,18 @@ auto main() -> int {
     assert(application_result.execution_policy->mode() == calculation::ExecutionMode::full);
     assert(application_result.execution_issues.empty());
 
+    const auto assessment = calculation::assess(calculation::ApplicationCalculationRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {},
+        .method_id = "formal",
+        .execution_selection =
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
+    assert(assessment.executable());
+    assert(assessment.applicability.applicable.size() == 1);
+    assert(assessment.selected != nullptr);
+    assert(assessment.selected->method->id() == std::string_view{"formal"});
+    assert(assessment.execution_policy->mode() == calculation::ExecutionMode::full);
+
     const auto automatic_fallback_result =
         calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},

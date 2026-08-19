@@ -202,11 +202,52 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
     throw std::invalid_argument{"unknown execution policy"};
 }
 
+auto assess(const ApplicationCalculationRequest& request) -> ApplicationAssessmentResult {
+    const auto candidate_methods = application_methods(request);
+    auto result = ApplicationAssessmentResult{.parameter_sets = application_parameter_sets(request),
+                                              .applicability = {},
+                                              .selected = nullptr,
+                                              .execution_policy = std::nullopt,
+                                              .execution_issues = {}};
+    const features::PreparedMoleculeCollection prepared{request.molecules};
+
+    result.applicability =
+        methods::find_applicable_methods({.molecules = prepared,
+                                          .methods = candidate_methods,
+                                          .parameter_sets = result.parameter_sets,
+                                          .classification_options = request.classification_options,
+                                          .resource_policy = request.resource_policy});
+    const auto plan = select_execution_plan(result.applicability, request.execution_selection);
+
+    if (!plan.has_value()) {
+        return result;
+    }
+
+    result.execution_policy = plan->policy;
+    result.selected = plan->selected;
+    result.execution_issues = std::move(plan->issues);
+    return result;
+}
+
 auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalculationResult {
+    auto assessment = assess(request);
+
+    if (!assessment.executable() &&
+        (request.method_id.has_value() || request.parameter_set_id.has_value() ||
+         request.execution_selection.kind() != ExecutionSelectionKind::automatic)) {
+        throw std::invalid_argument{"requested calculation selection has no executable plan"};
+    }
+
+    if (!assessment.executable()) {
+        return ApplicationCalculationResult{.charges = std::nullopt,
+                                            .applicability = std::move(assessment.applicability),
+                                            .execution_policy = std::nullopt,
+                                            .execution_issues = {}};
+    }
+
     const auto candidate_methods = application_methods(request);
     const auto parameter_sets = application_parameter_sets(request);
     const features::PreparedMoleculeCollection prepared{request.molecules};
-
     auto applicability =
         methods::find_applicable_methods({.molecules = prepared,
                                           .methods = candidate_methods,
@@ -214,26 +255,15 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
                                           .classification_options = request.classification_options,
                                           .resource_policy = request.resource_policy});
     const auto plan = select_execution_plan(applicability, request.execution_selection);
-
-    if (!plan.has_value() &&
-        (request.method_id.has_value() || request.parameter_set_id.has_value() ||
-         request.execution_selection.kind() != ExecutionSelectionKind::automatic)) {
-        throw std::invalid_argument{"requested calculation selection has no executable plan"};
-    }
-
     if (!plan.has_value()) {
-        return ApplicationCalculationResult{.charges = std::nullopt,
-                                            .applicability = std::move(applicability),
-                                            .execution_policy = std::nullopt,
-                                            .execution_issues = {}};
+        throw std::logic_error{"application assessment produced an invalid execution plan"};
     }
-
     auto result = calculate(CalculationRequest{
         .molecules = prepared, .selected = *plan->selected, .execution_policy = plan->policy});
     return ApplicationCalculationResult{.charges = std::move(result.charges),
                                         .applicability = std::move(applicability),
                                         .execution_policy = plan->policy,
-                                        .execution_issues = std::move(plan->issues)};
+                                        .execution_issues = std::move(assessment.execution_issues)};
 }
 
 } // namespace chargefw::calculation

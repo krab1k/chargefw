@@ -8,7 +8,7 @@ function(run_structural_input extension contents input_stem)
     execute_process(
             COMMAND "${CMAKE_COMMAND}" -E env
                     "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                    "${CHARGEFW_CLI}" ${ARGN} "${input_path}" "${output_directory}"
+                    "${CHARGEFW_CLI}" calculate ${ARGN} "${input_path}" "${output_directory}"
             RESULT_VARIABLE result
             OUTPUT_VARIABLE output
             ERROR_VARIABLE error
@@ -47,7 +47,7 @@ function(expect_non_structural_options_rejected)
     execute_process(
             COMMAND "${CMAKE_COMMAND}" -E env
                     "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                    "${CHARGEFW_CLI}" --structural-bonds templates "${input_path}" "${output_directory}"
+                    "${CHARGEFW_CLI}" calculate --structural-bonds templates "${input_path}" "${output_directory}"
             RESULT_VARIABLE result
             ERROR_VARIABLE error
     )

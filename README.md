@@ -5,8 +5,8 @@ It is a modern successor to ChargeFW2, the engine used by Atomic Charge Calculat
 
 The project currently provides a toolkit-neutral molecular core, built-in empirical methods,
 parameter-set loading and classification, applicability checks, structured charge results, and
-native MOL/SDF/MOL2 and JSON input adapters. The `chargefw` executable is a small file demonstration; it does not
-yet provide a full user-facing file/SMILES CLI.
+native MOL/SDF/MOL2 and JSON input adapters. The `chargefw` executable provides focused molecular
+file calculation and diagnostic subcommands; it is not yet a full SMILES or batch-processing CLI.
 
 ## Documentation map
 
@@ -45,8 +45,8 @@ cmake --build --preset gcc-debug
 # Run the complete debug test suite.
 ctest --preset gcc-debug
 
-# Run the molecular-file demonstration from the build tree.
-CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw tests/fixtures/synthetic/sdf/water.sdf output
+# Calculate charges from the build tree.
+CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" build/gcc-debug/apps/chargefw/chargefw calculate tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
 Run an individual test after building:
@@ -55,14 +55,28 @@ Run an individual test after building:
 ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 ```
 
-The demo accepts `.sdf`, `.mol`, `.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input files,
-selects the reader from the file extension, rejects the entire input on the first malformed record,
-and loads bundled parameter sets. `--method`, `--parameter-set`, and `--permissive-types` control
-selection; omitted IDs select the highest-priority applicable candidate. `--execution` accepts
-`auto`, `full`, `cutoff`, or `cover`; `--radius` supplies the required reduced radius (at least 8
-angstrom), `--charge-correction` selects `uniform` or `none` for reduced execution, and
-`--full-atom-threshold` accepts a non-negative atom count or `unlimited`. Cutoff is currently
-available for EEM, QEq, and EQeq; cover is not implemented. All inputs produce compatible `.json` and
+The CLI accepts `.sdf`, `.mol`, `.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input files,
+selecting the reader from the file extension and rejecting the entire input on the first malformed
+record. Its commands are:
+
+```text
+chargefw calculate [options] INPUT OUTPUT_DIRECTORY
+chargefw inspect [input-options] INPUT
+chargefw applicability [options] INPUT
+chargefw methods
+chargefw parameters [METHOD]
+```
+
+`inspect` reports record size, coordinates, formal charge, and element composition without loading
+parameters. `applicability` reports applicable and rejected method/parameter candidates and their
+full/cutoff/cover availability without calculating charges. `methods` lists the registry; `parameters`
+lists bundled parameter sets and optionally filters by method ID. For `calculate` and `applicability`,
+`--method`, `--parameter-set`, and `--permissive-types` control selection; omitted IDs select the
+highest-priority applicable candidate. `--execution` accepts `auto`, `full`, `cutoff`, or `cover`;
+`--radius` supplies the required reduced radius (at least 8 angstrom), `--charge-correction` selects
+`uniform` or `none` for reduced execution, and `--full-atom-threshold` accepts a non-negative atom
+count or `unlimited`. Cutoff is currently available for EEM, QEq, and EQeq; cover is not implemented.
+All inputs produce compatible `.json` and
 `.cif` outputs in the required output-directory argument, creating the directory when necessary.
 Native-molecular and JSON input additionally produce `.sdf` and `.mol2`; structural PDB/mmCIF input
 does not.
@@ -130,7 +144,7 @@ ctest --preset clang-asan
 cmake --preset local-install
 cmake --build build/local-install
 cmake --install build/local-install
-env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw tests/fixtures/synthetic/sdf/water.sdf output
+env -u CHARGEFW_PARAMETER_DIR _install/bin/chargefw calculate tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
 Use `--strip` when installing a release artifact for distribution while retaining symbols in the

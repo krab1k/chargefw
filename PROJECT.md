@@ -22,7 +22,7 @@ parameter, and compatibility research.
 ## Current architecture
 
 ```text
-External inputs and front ends                    Only the demo CLI exists today
+External inputs and front ends                    Focused molecular-file CLI exists today
     (current: native molecular I/O and Gemmi; planned: Python/NumPy, RDKit, JSON/WASM)
                               |
                               v
@@ -71,7 +71,7 @@ deterministic candidate selection, and calculate_charges().
 | Parameters | `ParameterSet`, `ParameterClassification`, `ParameterView` | Parameter storage, matching, and method-facing lookup. |
 | Methods | `Method`, `MethodRegistry`, `MethodRequirements`, `MethodOptions`, `ApplicableMethod` | Algorithm interface, capabilities, selection, and execution. |
 | Charges | `AtomicCharges`, `ChargeAssignment`, `ChargeSet`, `ChargeCollection` | Atom-indexed calculated results and provenance. |
-| Calculation | `CalculationRequest`, `CalculationResult`, `ApplicationCalculationRequest` | Selected-candidate execution and application-facing automatic facade. |
+| Calculation | `CalculationRequest`, `CalculationResult`, `ApplicationCalculationRequest`, `ApplicationAssessmentResult` | Selected-candidate execution and application-facing assessment/calculation facades. |
 
 ## Explicit native workflow
 
@@ -144,10 +144,14 @@ maintainer-curated automatic preference, not a universal scientific quality rank
 restrict the candidates and fail if unavailable or inapplicable rather than silently falling back.
 The result retains applicability diagnostics when no candidate can be calculated.
 
-The current `chargefw` executable is a molecular-file demonstration. It autodetects `.sdf`, `.mol`,
+The current `chargefw` executable has explicit `calculate`, `inspect`, `applicability`, `methods`, and
+`parameters` subcommands. It autodetects `.sdf`, `.mol`,
 `.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input from the file extension, rejects the
-entire input on the first malformed record, loads bundled parameter sets, and autodetects the
-highest-priority applicable method and parameter set. All inputs produce JSON and mmCIF outputs.
+entire input on the first malformed record. `calculate` loads bundled parameter sets and autodetects
+the highest-priority applicable method and parameter set; `inspect` reports imported molecular
+composition without parameter loading; `applicability` reports candidate diagnostics and execution
+availability without calculating; `methods` and `parameters [method-id]` list installed capabilities.
+All `calculate` inputs produce JSON and mmCIF outputs.
 Native-molecular and JSON input also produce SDF and MOL2; structural PDB/mmCIF input does not.
 Same-format SDF and MOL2 outputs
 preserve the source; other molecular outputs are generated. The required output-directory argument is

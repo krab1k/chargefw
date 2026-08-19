@@ -5,7 +5,7 @@ file(REMOVE_RECURSE "${output_directory}")
 execute_process(
         COMMAND "${CMAKE_COMMAND}" -E env
                 "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" "${CHARGEFW_INPUT}" "${output_directory}"
+                "${CHARGEFW_CLI}" calculate "${CHARGEFW_INPUT}" "${output_directory}"
         RESULT_VARIABLE result
         OUTPUT_VARIABLE output
         ERROR_VARIABLE error
@@ -53,3 +53,41 @@ if(NOT mol2_output MATCHES "USER_CHARGES")
 endif()
 
 file(REMOVE_RECURSE "${output_directory}")
+
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" inspect "${CHARGEFW_INPUT}"
+        RESULT_VARIABLE inspect_result
+        OUTPUT_VARIABLE inspect_output
+)
+if(NOT inspect_result EQUAL 0 OR NOT inspect_output MATCHES "records: 1" OR
+   NOT inspect_output MATCHES "atoms=3")
+    message(FATAL_ERROR "inspect output is incomplete: ${inspect_output}")
+endif()
+
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" applicability --method formal "${CHARGEFW_INPUT}"
+        RESULT_VARIABLE applicability_result
+        OUTPUT_VARIABLE applicability_output
+)
+if(NOT applicability_result EQUAL 0 OR NOT applicability_output MATCHES "applicable method=formal")
+    message(FATAL_ERROR "applicability output is incomplete: ${applicability_output}")
+endif()
+
+execute_process(COMMAND "${CHARGEFW_CLI}" methods OUTPUT_VARIABLE methods_output)
+if(NOT methods_output MATCHES "formal")
+    message(FATAL_ERROR "methods output does not list formal")
+endif()
+
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" parameters qeq
+        OUTPUT_VARIABLE parameters_output
+)
+if(NOT parameters_output MATCHES "QEq_original" OR parameters_output MATCHES "EEM_original")
+    message(FATAL_ERROR "parameter filtering is incorrect: ${parameters_output}")
+endif()
