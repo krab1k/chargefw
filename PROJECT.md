@@ -220,8 +220,8 @@ carries an execution selection and resource policy. It assesses candidates, dete
 a concrete full plan, and returns the effective policy plus resource warnings. Automatic selection
 uses only full assessments without resource warnings; explicit full permits the warning as a deliberate
 override. Automatic selection never invents a reduced radius or mode. Explicit cutoff is currently
-implemented serially for EEM, QEq, and EQeq; explicit cover and unsupported method/mode combinations
-fail.
+implemented serially for ABEEM, EEM, EQeq, EQeq+C, QEq, and SFKEEM; explicit cover and unsupported
+method/mode combinations fail.
 
 ChargeFW2 implemented cutoff and cover only through `EEMethod`. It also switched modes silently at
 fixed atom-count thresholds. ChargeFW should first reproduce and validate that behavior for the
@@ -273,12 +273,11 @@ corpus required before choosing defaults or making compatibility claims.
 
 ### Preliminary cutoff method-coverage check: 10aw at 10 Å
 
-As of this reference implementation, EEM, QEq, and EQeq are the only built-in methods that declare
-cutoff support. All were run through the `build/local-release` CLI against `10aw.cif` at 10 Å and
-compared with their corresponding full calculations. They produced one finite, source-ordered
-10,479-atom assignment with an internally neutral total charge in each mode. The differences below
-are calculated from the four-decimal-place JSON output and are evidence that the executor is wired
-through each currently compatible method, not method-validation tolerances.
+At the time of this reference, EEM, QEq, and EQeq were run through the `build/local-release` CLI
+against `10aw.cif` at 10 Å and compared with their corresponding full calculations. They produced one
+finite, source-ordered 10,479-atom assignment with an internally neutral total charge in each mode.
+The differences below are calculated from the four-decimal-place JSON output and are evidence that
+the executor is wired through each currently compatible method, not method-validation tolerances.
 
 | Method | Full time / peak RSS | Cutoff time / peak RSS | MAE vs. full | RMSE vs. full | 95th percentile | Maximum difference | Correlation |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -290,6 +289,24 @@ The expected trend is present for all three methods: cutoff results remain close
 method while using bounded fragment memory. These runs do not establish general scientific
 accuracy, a QEq/EEM compatibility claim, or acceptable error thresholds; those require the planned
 multi-structure, charge-state, and radius validation corpus.
+
+### Preliminary cutoff method-coverage check: 1ek9 polymers at 10 Å
+
+`tests/fixtures/corpus/cif/1ek9.cif` was imported with `--structural-selection polymers`, yielding
+the neutral 9,798-atom record `1EK9`. On 2026-08-19, every cutoff-capable method produced a finite,
+source-ordered assignment in full and cutoff modes. The values below compare four-decimal-place JSON
+output; they verify the generic cutoff executor's parameter-classification projection, not scientific
+accuracy or compatibility. In particular, SFKEEM's 10 Å difference is large and requires further
+multi-radius validation before any accuracy conclusion.
+
+| Method | Full time / peak RSS | Cutoff time / peak RSS | MAE vs. full | RMSE vs. full | 95th percentile | Maximum difference |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| ABEEM | 163.16 s / 6.15 GB | 8.52 s / 33.4 MB | 0.000917 e | 0.001388 e | 0.0028 e | 0.0127 e |
+| EEM | 20.61 s / 1.54 GB | 1.81 s / 32.8 MB | 0.002260 e | 0.003710 e | 0.0079 e | 0.0352 e |
+| EQeq | 21.13 s / 1.54 GB | 2.31 s / 33.3 MB | 0.000556 e | 0.000867 e | 0.0018 e | 0.0103 e |
+| EQeq+C | 22.33 s / 1.54 GB | 4.86 s / 33.1 MB | 0.000556 e | 0.000867 e | 0.0018 e | 0.0104 e |
+| QEq | 22.80 s / 1.54 GB | 5.97 s / 33.2 MB | 0.002515 e | 0.003263 e | 0.0065 e | 0.0176 e |
+| SFKEEM | 21.16 s / 1.54 GB | 3.06 s / 33.3 MB | 0.069954 e | 0.089168 e | 0.1759 e | 0.3899 e |
 
 ## Integration and distribution architecture
 

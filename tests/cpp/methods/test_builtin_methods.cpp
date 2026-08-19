@@ -413,6 +413,9 @@ auto main() -> int {
 
     assert(sfkeem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(sfkeem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(sfkeem->requirements().resources.supports_cutoff);
+    assert(sfkeem->requirements().resources.fragment_target_charge_policy ==
+           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
     assert(eqeq->id() == std::string_view{"eqeq"});
     assert(eqeq->metadata().name == std::string_view{"EQeq"});
@@ -455,6 +458,9 @@ auto main() -> int {
 
     assert(eqeqc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eqeqc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(eqeqc->requirements().resources.supports_cutoff);
+    assert(eqeqc->requirements().resources.fragment_target_charge_policy ==
+           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
     assert(abeem->id() == std::string_view{"abeem"});
     assert(abeem->metadata().name == std::string_view{"ABEEM"});
@@ -477,6 +483,11 @@ auto main() -> int {
     assert(abeem->option_schema().empty());
 
     assert(abeem->requirements().resources.time == methods::ComplexityTerm::atoms_plus_bonds_cubed);
+    assert(abeem->requirements().resources.memory ==
+           methods::ComplexityTerm::atoms_plus_bonds_squared);
+    assert(abeem->requirements().resources.supports_cutoff);
+    assert(abeem->requirements().resources.fragment_target_charge_policy ==
+           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
     assert(abeem->requirements().resources.memory ==
            methods::ComplexityTerm::atoms_plus_bonds_squared);
 

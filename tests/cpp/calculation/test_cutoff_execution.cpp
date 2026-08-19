@@ -14,6 +14,7 @@
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_requirements.h>
 #include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/bond_parameters.h>
 #include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_key.h>
 #include <chargefw/parameters/models/parameter_set.h>
@@ -90,6 +91,54 @@ auto make_qeq_parameters() -> parameters::ParameterSet {
                                                     {.name = "hardness", .value = 13.364}}}}}};
 }
 
+auto make_eqeqc_parameters() -> parameters::ParameterSet {
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{
+            .id = "test-eqeqc", .method_id = "eqeqc", .name = "Test EQeq+C"},
+        parameters::CommonParameters{{{.name = "alpha", .value = 1.0}}},
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
+                                     .parameters = {{.name = "Dz", .value = 0.1}}},
+                                    {.key = chargefw::test::plain_atom_key(8),
+                                     .parameters = {{.name = "Dz", .value = 0.2}}}}}};
+}
+
+auto make_sfkeem_parameters() -> parameters::ParameterSet {
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{
+            .id = "test-sfkeem", .method_id = "sfkeem", .name = "Test SFKEEM"},
+        parameters::CommonParameters{{{.name = "sigma", .value = 1.0}}},
+        parameters::AtomParameters{
+            {{.key = chargefw::test::plain_atom_key(1),
+              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 10.0}}},
+             {.key = chargefw::test::plain_atom_key(8),
+              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 10.0}}}}}};
+}
+
+auto make_abeem_parameters() -> parameters::ParameterSet {
+    const auto bond_key = parameters::BondParameterKey{
+        .first_atom = chargefw::test::plain_atom_key(8),
+        .second_atom = chargefw::test::plain_atom_key(1),
+        .bond = {.classification = parameters::BondParameterClassificationKind::PLAIN,
+                 .type = "*"}};
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{
+            .id = "test-abeem", .method_id = "abeem", .name = "Test ABEEM"},
+        parameters::CommonParameters{{{.name = "k", .value = 1.0}}},
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
+                                     .parameters = {{.name = "a", .value = 1.0},
+                                                    {.name = "b", .value = 10.0},
+                                                    {.name = "c", .value = 0.5}}},
+                                    {.key = chargefw::test::plain_atom_key(8),
+                                     .parameters = {{.name = "a", .value = 2.0},
+                                                    {.name = "b", .value = 10.0},
+                                                    {.name = "c", .value = 0.5}}}}},
+        parameters::BondParameters{{{.key = bond_key,
+                                     .parameters = {{.name = "A", .value = 1.0},
+                                                    {.name = "B", .value = 10.0},
+                                                    {.name = "C", .value = 0.5},
+                                                    {.name = "D", .value = 0.5}}}}}};
+}
+
 auto assert_cutoff_matches_full(const std::string_view method_id,
                                 std::vector<parameters::ParameterSet> parameter_sets = {}) -> void {
     const auto molecules =
@@ -157,5 +206,8 @@ auto main() -> int {
     assert_cutoff_matches_full("eem", {make_eem_parameters()});
     assert_cutoff_matches_full("qeq", {make_qeq_parameters()});
     assert_cutoff_matches_full("eqeq");
+    assert_cutoff_matches_full("eqeqc", {make_eqeqc_parameters()});
+    assert_cutoff_matches_full("sfkeem", {make_sfkeem_parameters()});
+    assert_cutoff_matches_full("abeem", {make_abeem_parameters()});
     return 0;
 }
