@@ -29,6 +29,7 @@ auto main() -> int {
     const calculation::ExecutionPolicy full_policy{calculation::ExecutionMode::full};
     assert(full_policy.mode() == calculation::ExecutionMode::full);
     assert(!full_policy.radius().has_value());
+    assert(full_policy.charge_correction() == calculation::ChargeCorrectionPolicy::none);
     assert(throws_invalid_argument([] -> void {
         static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::full, 8.0});
     }));
@@ -50,6 +51,11 @@ auto main() -> int {
 
     const calculation::ExecutionPolicy cutoff_policy{calculation::ExecutionMode::cutoff, 8.0};
     assert(cutoff_policy.radius() == std::optional<double>{8.0});
+    assert(cutoff_policy.charge_correction() == calculation::ChargeCorrectionPolicy::none);
+    const calculation::ExecutionPolicy corrected_cutoff_policy{
+        calculation::ExecutionMode::cutoff, 8.0, calculation::ChargeCorrectionPolicy::uniform};
+    assert(corrected_cutoff_policy.charge_correction() ==
+           calculation::ChargeCorrectionPolicy::uniform);
     const calculation::ExecutionPolicy cover_policy{calculation::ExecutionMode::cover, 12.0};
     assert(cover_policy.radius() == std::optional<double>{12.0});
 
@@ -61,6 +67,12 @@ auto main() -> int {
     assert(automatic_radius.radius() == std::optional<double>{8.0});
     const calculation::ExecutionSelection full_selection{calculation::ExecutionSelectionKind::full};
     assert(!full_selection.radius().has_value());
+    assert(!full_selection.charge_correction().has_value());
+    const calculation::ExecutionSelection corrected_cutoff_selection{
+        calculation::ExecutionSelectionKind::cutoff, 8.0,
+        calculation::ChargeCorrectionPolicy::uniform};
+    assert(corrected_cutoff_selection.charge_correction() ==
+           std::optional{calculation::ChargeCorrectionPolicy::uniform});
     assert(throws_invalid_argument([] -> void {
         static_cast<void>(
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic, 7.99});
@@ -72,6 +84,11 @@ auto main() -> int {
     assert(throws_invalid_argument([] -> void {
         static_cast<void>(
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff});
+    }));
+    assert(throws_invalid_argument([] -> void {
+        static_cast<void>(
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full, std::nullopt,
+                                            calculation::ChargeCorrectionPolicy::uniform});
     }));
 
     const calculation::ResourcePolicy default_resources;

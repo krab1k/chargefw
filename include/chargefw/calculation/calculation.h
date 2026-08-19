@@ -20,6 +20,7 @@ struct CalculationRequest {
     const features::PreparedMoleculeCollection& molecules;
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
     const methods::ApplicableMethod& selected;
+    ExecutionPolicy execution_policy{};
 };
 
 struct CalculationResult {

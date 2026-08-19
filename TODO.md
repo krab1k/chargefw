@@ -159,7 +159,9 @@ acceptance criteria for each priority, not optional follow-up work.
   regression fixtures or compatibility documentation.
 - [ ] Establish full-versus-cutoff/cover benchmark corpora across molecule sizes, methods, radii,
   charge states, and conformers. Report accuracy, charge conservation, runtime, peak memory, and
-  scaling; define supported error envelopes rather than implying exact equivalence.
+  scaling; define supported error envelopes rather than implying exact equivalence. Use
+  `tests/fixtures/corpus/cif/10aw.cif` as an initial large structural development fixture; its
+  preliminary QEq full/cutoff reference is recorded in `PROJECT.md` and is not a benchmark.
 - [ ] Verify cutoff/cover convergence toward `full` as radius increases and add regression cases for
   fragment boundaries, sparse/disconnected systems, and cover overlap reconciliation.
 - [ ] Add numerical robustness coverage for singular/ill-conditioned systems, zero-distance and

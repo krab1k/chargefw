@@ -215,8 +215,8 @@ must be finite and at least 8 angstrom; full rejects a radius. `ApplicationCalcu
 carries an execution selection and resource policy. It assesses candidates, deterministically selects
 a concrete full plan, and returns the effective policy plus resource warnings. Automatic selection
 uses only full assessments without resource warnings; explicit full permits the warning as a deliberate
-override. Until a reduced executor is implemented, unsupported explicit cutoff and cover selections
-fail and automatic selection never invents a reduced radius or mode.
+override. Automatic selection never invents a reduced radius or mode. Explicit cutoff is currently
+implemented serially for EEM and QEq; explicit cover and unsupported method/mode combinations fail.
 
 ChargeFW2 implemented cutoff and cover only through `EEMethod`. It also switched modes silently at
 fixed atom-count thresholds. ChargeFW should first reproduce and validate that behavior for the
@@ -234,12 +234,38 @@ full calculation is expensive. A future graph-distance approximation would requi
 explicit policy rather than reusing an angstrom radius.
 
 Spatial neighbor search and reusable fragment data belong in `features`, not `core::Molecule`.
-`features::SpatialFragment` now provides the serial radius-based induced-fragment foundation: one
-source conformer, source-ordered atoms, induced bonds, source/local mappings, and projection of
-whole-molecule parameter classifications without reclassification. It is not yet an executable
-cutoff or cover calculation.
+`features::SpatialFragment` provides the serial radius-based induced-fragment foundation: one source
+conformer, source-ordered atoms, induced bonds, source/local mappings, and projection of
+whole-molecule parameter classifications without reclassification. The shared cutoff executor uses
+it for each source atom, runs the selected EEM or QEq method against the induced fragment, retains
+the center charge, and optionally applies an explicit uniform correction to restore the source
+formal charge. Its fragment target charge is currently allocated in proportion to atom count.
+Cover, parallel execution, ChargeFW2 compatibility fixtures, and benchmark-based validation remain
+unfinished.
 Validation must cover charge conservation, deterministic results, atom-order preservation,
 convergence toward `full`, accuracy/error envelopes, runtime, memory, and parallel execution.
+
+### Preliminary QEq cutoff reference: 10aw
+
+`tests/fixtures/corpus/cif/10aw.cif` (record `10AW`, 10,479 atoms) is the initial large structural
+fixture for manual cutoff and future cover development checks. The following one-off QEq measurements
+were captured on 2026-08-19 with parameter set `QEq_original`, one conformer, and the current serial
+reference implementation. Full uses the CLI default `auto` policy, which selects full execution for
+this input. Cutoff uses the default uniform final charge correction. Charge differences compare the
+four-decimal-place JSON output with the corresponding full result.
+
+| Execution | Time | Peak RSS | MAE vs. full | RMSE vs. full | 95th percentile | Maximum difference | Correlation |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Full | 26.90 s | 1.76 GB | — | — | — | — | — |
+| Cutoff, 8 Å | 2.36 s | 30.4 MB | 0.004288 e | 0.005635 e | 0.0114 e | 0.0385 e | 0.9987575 |
+| Cutoff, 10 Å | 7.15 s | 30.5 MB | 0.002521 e | 0.003400 e | 0.0069 e | 0.0188 e | 0.9995477 |
+| Cutoff, 12 Å | 20.14 s | 30.6 MB | 0.001751 e | 0.002324 e | 0.0048 e | 0.0134 e | 0.9997893 |
+
+This is a development reference, not a scientific benchmark or a supported accuracy envelope. It
+demonstrates the expected convergence trend and bounded-memory behavior for one neutral structure;
+runtime and memory depend on hardware, build configuration, parameter data, and implementation.
+Retain it as a regression-investigation aid while assembling the multi-method, multi-radius benchmark
+corpus required before choosing defaults or making compatibility claims.
 
 ## Integration and distribution architecture
 

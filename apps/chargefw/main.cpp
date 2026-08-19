@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cctype>
+#include <charconv>
 #include <cstdint>
 #include <cstdio>
 #include <exception>
@@ -93,6 +94,49 @@ auto read_collection(Reader& reader, const std::string& input_path,
         return adapters::gemmi::BondStrategy::hybrid;
     }
     throw std::runtime_error{"Unsupported structural bond strategy: " + value};
+}
+
+[[nodiscard]] auto parse_execution_selection(const std::string& value)
+    -> calculation::ExecutionSelectionKind {
+    if (value == "auto") {
+        return calculation::ExecutionSelectionKind::automatic;
+    }
+    if (value == "full") {
+        return calculation::ExecutionSelectionKind::full;
+    }
+    if (value == "cutoff") {
+        return calculation::ExecutionSelectionKind::cutoff;
+    }
+    if (value == "cover") {
+        return calculation::ExecutionSelectionKind::cover;
+    }
+    throw std::runtime_error{"Unsupported execution selection: " + value};
+}
+
+[[nodiscard]] auto parse_charge_correction(const std::string& value)
+    -> calculation::ChargeCorrectionPolicy {
+    if (value == "none") {
+        return calculation::ChargeCorrectionPolicy::none;
+    }
+    if (value == "uniform") {
+        return calculation::ChargeCorrectionPolicy::uniform;
+    }
+    throw std::runtime_error{"Unsupported charge correction policy: " + value};
+}
+
+[[nodiscard]] auto parse_full_atom_threshold(const std::string& value)
+    -> std::optional<std::size_t> {
+    if (value == "unlimited") {
+        return std::nullopt;
+    }
+
+    std::size_t threshold = 0;
+    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), threshold);
+    if (error != std::errc{} || end != value.data() + value.size()) {
+        throw std::runtime_error{
+            "Full atom threshold must be a non-negative integer or 'unlimited'"};
+    }
+    return threshold;
 }
 
 auto read_collection(const std::string& input_path,
@@ -280,6 +324,13 @@ auto run(int argc, char* argv[]) -> int {
         std::string output_directory;
         std::string structural_selection = "all";
         std::string structural_bonds = "hybrid";
+        std::string method_id;
+        std::string parameter_set_id;
+        std::string execution = "auto";
+        std::optional<double> radius;
+        std::string charge_correction;
+        std::string full_atom_threshold;
+        bool permissive_types = false;
         app.add_option("input", input_path,
                        "Input .sdf, .mol, .mol2, .pdb, .cif, .mmcif, or ChargeFW .json file")
             ->required();
@@ -292,6 +343,21 @@ auto run(int argc, char* argv[]) -> int {
             app.add_option("--structural-bonds", structural_bonds,
                            "PDB/mmCIF connectivity: none, explicit, templates, or hybrid")
                 ->default_val("hybrid");
+        const auto* method_option =
+            app.add_option("--method", method_id, "Method ID; omitted selects automatically");
+        const auto* parameter_set_option = app.add_option(
+            "--parameter-set", parameter_set_id, "Parameter-set ID; omitted selects automatically");
+        app.add_flag("--permissive-types", permissive_types,
+                     "Allow permissive parameter type classification");
+        app.add_option("--execution", execution, "Execution: auto, full, cutoff, or cover")
+            ->default_val("auto");
+        app.add_option("--radius", radius, "Cutoff or cover radius in angstrom");
+        const auto* charge_correction_option =
+            app.add_option("--charge-correction", charge_correction,
+                           "Reduced-execution charge correction: uniform or none");
+        const auto* full_atom_threshold_option =
+            app.add_option("--full-atom-threshold", full_atom_threshold,
+                           "Full-execution atom threshold, or unlimited");
         CLI11_PARSE(app, argc, argv);
 
         const auto structural_options =
@@ -302,9 +368,26 @@ auto run(int argc, char* argv[]) -> int {
         const auto imported =
             read_collection(input_path, structural_options, structural_options_requested);
         const auto parameter_sets = parameters::load_default_parameter_sets();
+        const auto execution_selection = calculation::ExecutionSelection{
+            parse_execution_selection(execution), radius,
+            charge_correction_option->count() == 0
+                ? std::nullopt
+                : std::optional{parse_charge_correction(charge_correction)}};
+        const auto resource_policy = calculation::ResourcePolicy{
+            .full_atom_threshold =
+                full_atom_threshold_option->count() == 0
+                    ? std::optional<std::size_t>{calculation::default_full_atom_threshold}
+                    : parse_full_atom_threshold(full_atom_threshold)};
 
         const auto result = calculation::calculate(calculation::ApplicationCalculationRequest{
-            .molecules = imported.molecules, .parameter_sets = parameter_sets});
+            .molecules = imported.molecules,
+            .parameter_sets = parameter_sets,
+            .method_id = method_option->count() == 0 ? std::nullopt : std::optional{method_id},
+            .parameter_set_id =
+                parameter_set_option->count() == 0 ? std::nullopt : std::optional{parameter_set_id},
+            .classification_options = {.permissive_types = permissive_types},
+            .execution_selection = execution_selection,
+            .resource_policy = resource_policy});
 
         if (!result.calculated()) {
             adapters::native::json_output::JsonWriter{std::cout}.write(

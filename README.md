@@ -57,10 +57,15 @@ ctest --test-dir build/gcc-debug -R test_qeq --output-on-failure
 
 The demo accepts `.sdf`, `.mol`, `.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input files,
 selects the reader from the file extension, rejects the entire input on the first malformed record,
-loads bundled parameter sets, and autodetects the highest-priority applicable method and parameter
-set. All inputs produce compatible `.json` and `.cif` outputs in the required output-directory
-argument, creating the directory when necessary. Native-molecular and JSON input additionally
-produce `.sdf` and `.mol2`; structural PDB/mmCIF input does not.
+and loads bundled parameter sets. `--method`, `--parameter-set`, and `--permissive-types` control
+selection; omitted IDs select the highest-priority applicable candidate. `--execution` accepts
+`auto`, `full`, `cutoff`, or `cover`; `--radius` supplies the required reduced radius (at least 8
+angstrom), `--charge-correction` selects `uniform` or `none` for reduced execution, and
+`--full-atom-threshold` accepts a non-negative atom count or `unlimited`. Cutoff is currently
+available only for EEM and QEq; cover is not implemented. All inputs produce compatible `.json` and
+`.cif` outputs in the required output-directory argument, creating the directory when necessary.
+Native-molecular and JSON input additionally produce `.sdf` and `.mol2`; structural PDB/mmCIF input
+does not.
 Output filenames use `<input-stem>.chargefw`, for example `water.chargefw.sdf`. Same-format SDF and
 MOL2 outputs preserve the input source; other molecular formats are generated from native molecule
 data. JSON input containing a molecule with multiple conformers is rejected for these molecular

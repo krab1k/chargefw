@@ -122,7 +122,10 @@ valid_classification_count(const MethodRequirements& requirements,
                                                     ? ExecutionAvailability::available
                                                     : ExecutionAvailability::available_with_warning,
                                 .issues = std::move(full_issues)},
-            make_reduced_assessment(ExecutionMode::cutoff, requirements.resources.supports_cutoff),
+            make_reduced_assessment(ExecutionMode::cutoff,
+                                    requirements.resources.supports_cutoff &&
+                                        requirements.resources.fragment_target_charge_policy !=
+                                            FragmentTargetChargePolicy::unsupported),
             make_reduced_assessment(ExecutionMode::cover, requirements.resources.supports_cover)};
 }
 

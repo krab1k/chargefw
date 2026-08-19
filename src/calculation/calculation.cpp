@@ -1,5 +1,7 @@
 #include <chargefw/calculation/calculation.h>
 
+#include "calculation/cutoff_execution.h"
+
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_calculation.h>
 #include <chargefw/methods/method_registry.h>
@@ -81,9 +83,10 @@ namespace {
 
 [[nodiscard]] auto plan_for(const methods::ApplicableMethod& candidate, const ExecutionMode mode,
                             const std::optional<double> radius,
+                            const ChargeCorrectionPolicy charge_correction,
                             const methods::ExecutionAssessment& assessment) -> ExecutionPlan {
     return ExecutionPlan{.selected = &candidate,
-                         .policy = ExecutionPolicy{mode, radius},
+                         .policy = ExecutionPolicy{mode, radius, charge_correction},
                          .issues = assessment.issues};
 }
 
@@ -159,7 +162,11 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
 
             const auto radius =
                 mode == ExecutionMode::full ? std::optional<double>{} : selection.radius();
-            return plan_for(*candidate, mode, radius, *assessment);
+            const auto charge_correction =
+                mode == ExecutionMode::full
+                    ? ChargeCorrectionPolicy::none
+                    : selection.charge_correction().value_or(ChargeCorrectionPolicy::uniform);
+            return plan_for(*candidate, mode, radius, charge_correction, *assessment);
         }
 
         return std::nullopt;
@@ -180,8 +187,19 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
 }
 
 auto calculate(const CalculationRequest& request) -> CalculationResult {
-    return CalculationResult{.charges =
-                                 methods::calculate_charges(request.selected, request.molecules)};
+    switch (request.execution_policy.mode()) {
+    case ExecutionMode::full:
+        return CalculationResult{
+            .charges = methods::calculate_charges(request.selected, request.molecules)};
+    case ExecutionMode::cutoff:
+        return CalculationResult{.charges =
+                                     calculate_cutoff_charges(request.selected, request.molecules,
+                                                              request.execution_policy)};
+    case ExecutionMode::cover:
+        throw std::invalid_argument{"selected cover execution policy is not implemented"};
+    }
+
+    throw std::invalid_argument{"unknown execution policy"};
 }
 
 auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalculationResult {
@@ -210,11 +228,8 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
                                             .execution_issues = {}};
     }
 
-    if (plan->policy.mode() != ExecutionMode::full) {
-        throw std::invalid_argument{"selected execution policy is not implemented"};
-    }
-
-    auto result = calculate(CalculationRequest{.molecules = prepared, .selected = *plan->selected});
+    auto result = calculate(CalculationRequest{
+        .molecules = prepared, .selected = *plan->selected, .execution_policy = plan->policy});
     return ApplicationCalculationResult{.charges = std::move(result.charges),
                                         .applicability = std::move(applicability),
                                         .execution_policy = plan->policy,

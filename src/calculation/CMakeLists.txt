@@ -1,6 +1,7 @@
 target_sources(chargefw_core
         PRIVATE
         calculation.cpp
+        cutoff_execution.cpp
         execution_policy.cpp
         PUBLIC
         FILE_SET HEADERS

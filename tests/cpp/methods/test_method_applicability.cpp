@@ -399,8 +399,12 @@ auto main() -> int {
     assert(assessment_for(topology_reduced_result.applicable[0], calculation::ExecutionMode::cover)
                .availability == methods::ExecutionAvailability::unsupported);
 
-    const ResourceMethod spatial_reduced_method{{.supports_cutoff = true, .supports_cover = true},
-                                                true};
+    const ResourceMethod spatial_reduced_method{
+        {.supports_cutoff = true,
+         .supports_cover = true,
+         .fragment_target_charge_policy =
+             methods::FragmentTargetChargePolicy::proportional_to_atom_count},
+        true};
     const std::vector<const methods::Method*> spatial_reduced_methods{&spatial_reduced_method};
     const core::MoleculeCollection spatial_collection{std::vector{chargefw::test::make_water()}};
     const features::PreparedMoleculeCollection spatial_prepared_collection{spatial_collection};

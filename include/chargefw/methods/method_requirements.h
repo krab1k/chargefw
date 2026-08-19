@@ -20,6 +20,11 @@ enum class ComplexityTerm : std::uint8_t {
     atoms_plus_bonds_cubed,   // (N + M)^3
 };
 
+enum class FragmentTargetChargePolicy : std::uint8_t {
+    unsupported,
+    proportional_to_atom_count,
+};
+
 struct ResourceRequirements {
     ComplexityTerm time = ComplexityTerm::constant;
     ComplexityTerm memory = ComplexityTerm::constant;
@@ -28,6 +33,8 @@ struct ResourceRequirements {
     // coordinates and has a tested executor for the corresponding radius-based approximation.
     bool supports_cutoff = false;
     bool supports_cover = false;
+    FragmentTargetChargePolicy fragment_target_charge_policy =
+        FragmentTargetChargePolicy::unsupported;
 };
 
 struct MethodRequirements {
