@@ -314,6 +314,9 @@ auto main() -> int {
     assert(sqe->option_schema().empty());
     assert(sqe->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqe->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
+    assert(sqe->requirements().resources.supports_cutoff);
+    assert(sqe->requirements().resources.fragment_target_charge_policy ==
+           methods::FragmentTargetChargePolicy::zero);
 
     assert(sqeq0->id() == std::string_view{"sqeq0"});
     assert(sqeq0->metadata().name == std::string_view{"SQE+q0"});
@@ -333,6 +336,9 @@ auto main() -> int {
     assert(sqeq0->option_schema().empty());
     assert(sqeq0->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqeq0->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
+    assert(sqeq0->requirements().resources.supports_cutoff);
+    assert(sqeq0->requirements().resources.fragment_target_charge_policy ==
+           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
     assert(sqeqp->id() == std::string_view{"sqeqp"});
     assert(sqeqp->metadata().name == std::string_view{"SQE+qp"});
@@ -352,6 +358,9 @@ auto main() -> int {
     assert(sqeqp->option_schema().empty());
     assert(sqeqp->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqeqp->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
+    assert(sqeqp->requirements().resources.supports_cutoff);
+    assert(sqeqp->requirements().resources.fragment_target_charge_policy ==
+           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
     assert(eem->id() == std::string_view{"eem"});
     assert(eem->metadata().name == std::string_view{"EEM"});

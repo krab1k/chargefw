@@ -48,9 +48,25 @@ auto validate_cutoff_request(const methods::ApplicableMethod& selected,
                                           const core::Molecule& source,
                                           const features::SpatialFragment& fragment) -> double {
     switch (policy) {
+    case methods::FragmentTargetChargePolicy::zero:
+        return 0.0;
     case methods::FragmentTargetChargePolicy::proportional_to_atom_count:
         return static_cast<double>(fragment.molecule().atom_count()) /
                static_cast<double>(source.atom_count()) * core::total_formal_charge(source);
+    case methods::FragmentTargetChargePolicy::unsupported:
+        break;
+    }
+
+    throw std::invalid_argument{"unsupported fragment target-charge policy"};
+}
+
+[[nodiscard]] auto final_target_charge(const methods::FragmentTargetChargePolicy policy,
+                                       const core::Molecule& source) -> double {
+    switch (policy) {
+    case methods::FragmentTargetChargePolicy::zero:
+        return 0.0;
+    case methods::FragmentTargetChargePolicy::proportional_to_atom_count:
+        return core::total_formal_charge(source);
     case methods::FragmentTargetChargePolicy::unsupported:
         break;
     }
@@ -151,7 +167,10 @@ calculate_target(const methods::ApplicableMethod& selected,
         }
     }
 
-    apply_charge_correction(values, core::total_formal_charge(source_molecule), charge_correction);
+    apply_charge_correction(
+        values,
+        final_target_charge(requirements.resources.fragment_target_charge_policy, source_molecule),
+        charge_correction);
     return charges::AtomicCharges{std::move(values)};
 }
 

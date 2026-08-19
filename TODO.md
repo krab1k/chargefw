@@ -26,13 +26,16 @@ acceptance criteria for each priority, not optional follow-up work.
   `cover(radius)` modes, method capability checks, and no implicit atom-count-based switching.
 - [x] Build initial shared serial spatial-fragment and mapping support outside `core::Molecule`.
   `features::SpatialFragment` preserves source atom indices, induced bonds, parameter
-  classifications, and one source conformer; it uses the existing linear neighbor scan and is not
-  yet connected to a cutoff executor.
+  classifications, and one source conformer; the shared serial cutoff executor uses it with the
+  existing linear neighbor scan.
 - [ ] Reproduce ChargeFW2 cutoff/cover behavior for the EEM/QEq-like methods that previously used
   `EEMethod`, with focused compatibility fixtures and recorded deviations.
 - [ ] Define cutoff/cover semantics for SQE, SQE+q0, and SQE+qp, including fragment target charge,
   initial-charge handling, overlap reconciliation, and final total-charge correction. Treat these
-  as new approximation policies and validate them against `full`, not as ChargeFW2 parity.
+  as new approximation policies and validate them against `full`, not as ChargeFW2 parity. Cutoff
+  now uses induced bonds, method-specific zero/formal initial-charge targets, center retention, and
+  explicit final correction with neutral and charged whole-fragment convergence tests; cover overlap
+  semantics and multi-radius validation remain open.
 - [ ] Add deterministic parallel scheduling for fragment calculations without global mutable state
   or nested solver oversubscription.
 - [ ] Validate result cardinality, finite values, total charge, atom order, molecule/conformer

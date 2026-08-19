@@ -26,6 +26,9 @@ class SQEq0Method final : public Method {
         requirements.bond_parameters = {"kappa"};
         requirements.resources.time = ComplexityTerm::bonds_cubed;
         requirements.resources.memory = ComplexityTerm::bonds_squared;
+        requirements.resources.supports_cutoff = true;
+        requirements.resources.fragment_target_charge_policy =
+            FragmentTargetChargePolicy::proportional_to_atom_count;
         return requirements;
     }
 

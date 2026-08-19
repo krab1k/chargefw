@@ -673,15 +673,14 @@ Documentation:
 
 ### Commit 8 and later: Expand validated EEM-family cutoff support incrementally
 
-EEM, QEq, and EQeq now declare generic serial cutoff support. Their focused full/cutoff tests cover a
-radius containing the complete small fixture, and `PROJECT.md` records manual 10aw full/cutoff checks.
-Future additions must use separate reviewable commits with method-specific full/cutoff and ChargeFW2
-comparison tests:
+ABEEM, EEM, QEq, EQeq, and EQeq+C now declare generic serial cutoff support. Their focused
+full/cutoff tests cover a radius containing the complete small fixture, and `PROJECT.md` records
+manual large-structure checks. Future archived-EEM-family additions must use separate reviewable
+commits with method-specific full/cutoff and ChargeFW2 comparison tests:
 
-1. EQeq+C;
-2. SFKEEM;
-3. SMP/QEq;
-4. any additional method proven to share the archived `EEMethod` behavior.
+1. SFKEEM, after replacing the unsuitable local target-charge approximation;
+2. SMP/QEq;
+3. any additional method proven to share the archived `EEMethod` behavior.
 
 Do not mark a method cutoff-capable merely because it can technically run on a fragment. Confirm its
 target-charge handling, required parameters, correction, numerical behavior, and archived support.
@@ -704,21 +703,27 @@ After cutoff compatibility is stable:
 
 ### Later milestone: SQE-family reduced execution
 
-Treat SQE, SQE+q0, and SQE+qp as a new approximation design, not ChargeFW2 parity. Before code, write
-and review the semantics for:
+Status: serial cutoff is implemented for SQE, SQE+q0, and SQE+qp as a new approximation design, not
+ChargeFW2 parity. It uses the same applicability, permissive-classification, planning, threshold,
+CLI, provenance, spatial-fragment, and executor paths as the EEM-family methods.
 
-- cut bonds and induced fragment transfer variables;
-- connected components at fragment boundaries;
-- fragment target charge;
-- SQE zero-component-charge behavior;
-- SQE+q0 formal initial charges;
-- SQE+qp parameterized initial charges and their correction;
-- overlap or center reconciliation;
-- final total-charge correction;
-- convergence toward full as radius increases.
+The accepted cutoff semantics are:
 
-Once accepted, the same applicability, permissive-classification, planning, threshold, CLI, and
-provenance path should support SQE without a facade redesign.
+- cut bonds are omitted and split-charge transfer variables exist only for induced fragment bonds;
+- SQE preserves zero charge in every connected fragment component and uses zero as both its fragment
+  target and final uniform-correction target;
+- SQE+q0 projects source formal charges and induced-bond transfers preserve each component's initial
+  total;
+- SQE+qp projects parameterized initial charges, uniformly corrects them over the whole fragment to
+  its formal-charge total, and then applies induced-bond transfers;
+- one solve is performed per source atom and only the explicitly mapped center charge contributes;
+- the optional final correction is applied after center collection and defaults to uniform, targeting
+  zero for SQE and source formal charge for SQE+q0/qp;
+- neutral and charged whole-molecule-radius fixtures reproduce full execution within the focused test
+  tolerance.
+
+Multi-radius convergence/error envelopes, disconnected charged SQE+qp validation, and all cover
+interior/overlap reconciliation semantics remain later work.
 
 ## Validation strategy
 

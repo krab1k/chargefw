@@ -75,8 +75,8 @@ lists bundled parameter sets and optionally filters by method ID. For `calculate
 highest-priority applicable candidate. `--execution` accepts `auto`, `full`, `cutoff`, or `cover`;
 `--radius` supplies the required reduced radius (at least 8 angstrom), `--charge-correction` selects
 `uniform` or `none` for reduced execution, and `--full-atom-threshold` accepts a non-negative atom
-count or `unlimited`. Cutoff is currently available for ABEEM, EEM, EQeq, EQeq+C, and QEq; cover is
-not implemented.
+count or `unlimited`. Cutoff is currently available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE,
+SQE+q0, and SQE+qp; cover is not implemented.
 All inputs produce compatible `.json` and
 `.cif` outputs in the required output-directory argument, creating the directory when necessary.
 Native-molecular and JSON input additionally produce `.sdf` and `.mol2`; structural PDB/mmCIF input

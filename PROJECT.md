@@ -220,32 +220,40 @@ carries an execution selection and resource policy. It assesses candidates, dete
 a concrete full plan, and returns the effective policy plus resource warnings. Automatic selection
 uses only full assessments without resource warnings; explicit full permits the warning as a deliberate
 override. Automatic selection never invents a reduced radius or mode. Explicit cutoff is currently
-implemented serially for ABEEM, EEM, EQeq, EQeq+C, and QEq; explicit cover and unsupported
-method/mode combinations fail.
+implemented serially for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp; explicit cover
+and unsupported method/mode combinations fail.
 
 ChargeFW2 implemented cutoff and cover only through `EEMethod`. It also switched modes silently at
 fixed atom-count thresholds. ChargeFW should first reproduce and validate that behavior for the
 methods that previously supported it, but must not retain silent switching. Any future `auto`
 execution policy needs benchmark-derived thresholds and must report the selected mode and radius.
 
-Extending cutoff and cover to SQE, SQE+q0, and SQE+qp is an intentional new approximation rather
-than a compatibility claim. Fragment construction must preserve induced topology, bond parameters,
-atom mapping, and each method's initial-charge semantics. Fragment target-charge allocation,
-overlap reconciliation, and final total-charge correction must be specified centrally and tested
-against full calculations as radius increases. Methods must declare whether they support each
-execution policy; unsupported combinations fail explicitly. Cutoff and cover are spatial,
-radius-based approximations: a topology-only method cannot support either policy merely because its
-full calculation is expensive. A future graph-distance approximation would require a distinct,
-explicit policy rather than reusing an angstrom radius.
+SQE, SQE+q0, and SQE+qp cutoff is an intentional new approximation rather than a ChargeFW2
+compatibility claim. Each radius fragment keeps only induced bonds, so split-charge transfer cannot
+cross a cut bond. SQE conserves zero charge independently in every connected fragment component;
+its shared fragment and final correction target is therefore zero even for a formally charged source.
+SQE+q0 projects source formal charges and bond transfers preserve each component's projected initial
+total. SQE+qp projects parameterized `q0`, uniformly corrects it over the fragment to the fragment's
+formal-charge total, and then applies induced-bond transfers. The cutoff executor retains only each
+fragment center and applies the selected final correction; the default uniform correction restores
+zero for SQE and the source formal-charge total for SQE+q0/qp. Whole-molecule-radius tests cover
+neutral and charged fixtures and reproduce full execution within numerical tolerance. Multi-radius
+accuracy envelopes and cover overlap semantics remain unvalidated.
+
+Methods must declare whether they support each execution policy; unsupported combinations fail
+explicitly. Cutoff and cover are spatial, radius-based approximations: a topology-only method cannot
+support either policy merely because its full calculation is expensive. A future graph-distance
+approximation would require a distinct, explicit policy rather than reusing an angstrom radius.
 
 Spatial neighbor search and reusable fragment data belong in `features`, not `core::Molecule`.
 `features::SpatialFragment` provides the serial radius-based induced-fragment foundation: one source
 conformer, source-ordered atoms, induced bonds, source/local mappings, and projection of
 whole-molecule parameter classifications without reclassification. The shared cutoff executor uses
-it for each source atom, runs the selected EEM, QEq, or EQeq method against the induced fragment,
-retains the center charge, and optionally applies an explicit uniform correction to restore the source
-formal charge. Its fragment target charge is currently allocated in proportion to atom count. Cover,
-parallel execution, ChargeFW2 compatibility fixtures, and benchmark-based validation remain unfinished.
+it for each source atom, runs the selected cutoff-capable method against the induced fragment, retains
+the center charge, and optionally applies an explicit uniform correction. EEM-family methods and
+SQE+q0/qp receive a fragment target proportional to source formal charge by atom count and restore
+the source formal-charge total; SQE receives and restores zero. Cover, parallel execution, ChargeFW2
+compatibility fixtures, and benchmark-based validation remain unfinished.
 Validation must cover charge conservation, deterministic results, atom-order preservation,
 convergence toward `full`, accuracy/error envelopes, runtime, memory, and parallel execution.
 
@@ -305,6 +313,16 @@ accuracy or compatibility.
 | EQeq | 21.13 s / 1.54 GB | 2.31 s / 33.3 MB | 0.000556 e | 0.000867 e | 0.0018 e | 0.0103 e |
 | EQeq+C | 22.33 s / 1.54 GB | 4.86 s / 33.1 MB | 0.000556 e | 0.000867 e | 0.0018 e | 0.0104 e |
 | QEq | 22.80 s / 1.54 GB | 5.97 s / 33.2 MB | 0.002515 e | 0.003263 e | 0.0065 e | 0.0176 e |
+| SQE | 143.74 s / 3.11 GB | 7.33 s / 33.6 MB | 0.001282 e | 0.001633 e | 0.0032 e | 0.0065 e |
+| SQE+q0 | 140.87 s / 3.11 GB | 7.82 s / 33.2 MB | 0.053125 e | 0.080161 e | 0.1581 e | 0.2170 e |
+| SQE+qp | 141.44 s / 3.11 GB | 7.47 s / 33.4 MB | 0.002914 e | 0.003934 e | 0.0082 e | 0.0232 e |
+
+The SQE-family rows were measured on 2026-08-19 using their `CCD_gen` parameter sets after making
+the archived zero-width point-charge limit explicit. `PUB_pept` does not cover all atom environments
+in the imported structure. SQE and SQE+qp show the same bounded-memory trend as the EEM-family
+methods. SQE+q0 has substantially larger 10 Å deviation, so its fragment initial-charge policy needs
+multi-radius and charged/disconnected-structure validation before any accuracy claim or automatic
+reduced-mode recommendation.
 
 SFKEEM was also investigated with the shared cutoff executor but is not declared cutoff-capable.
 Its full equations match the archived implementation, and whole-molecule fragments reproduce full
@@ -571,7 +589,10 @@ connected component. `sqeq0` adds formal charges as initial charges; `sqeqp` use
 atom parameters `electronegativity`, `hardness`, and `width`, plus bond parameter `kappa`; SQE
 does not itself use formal charges, while SQE+q0 requires them. SQE+qp additionally requires atom
 parameter `q0`, which it uniformly corrects to the molecule's formal-charge total. The archived
-implementation does not explicitly diagnose singular or ill-conditioned transfer systems.
+parameter sets intentionally include negative and zero widths; widths enter quadratically, and the
+zero-width pair limit is the point-charge interaction `1 / d`. The implementation preserves that
+limit. The archived implementation does not explicitly diagnose singular or ill-conditioned transfer
+systems.
 
 ## Product direction
 

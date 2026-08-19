@@ -21,8 +21,8 @@ namespace {
 
     const auto width_sum = 2.0 * width_i * width_i + 2.0 * width_j * width_j;
 
-    if (width_sum <= 0.0) {
-        throw std::logic_error{"SQE+q0 atom parameters 'width' must not both be zero"};
+    if (width_sum == 0.0) {
+        return 1.0 / distance;
     }
 
     return std::erf(distance / std::sqrt(width_sum)) / distance;

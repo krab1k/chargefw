@@ -127,10 +127,49 @@ auto make_abeem_parameters() -> parameters::ParameterSet {
                                                     {.name = "D", .value = 0.5}}}}}};
 }
 
-auto assert_cutoff_matches_full(const std::string_view method_id,
-                                std::vector<parameters::ParameterSet> parameter_sets = {}) -> void {
-    const auto molecules =
-        core::MoleculeCollection{std::vector{chargefw::test::make_two_conformer_water()}};
+auto make_sqe_parameters(const std::string_view method_id, const bool parameterized_initial_charge,
+                         const bool zero_widths = false) -> parameters::ParameterSet {
+    auto hydrogen_parameters = std::vector<parameters::NamedParameter>{
+        {.name = "electronegativity", .value = 4.5280},
+        {.name = "hardness", .value = 13.8904},
+        {.name = "width", .value = zero_widths ? 0.0 : 1.0}};
+    auto oxygen_parameters = std::vector<parameters::NamedParameter>{
+        {.name = "electronegativity", .value = 8.741},
+        {.name = "hardness", .value = 13.364},
+        {.name = "width", .value = zero_widths ? 0.0 : 1.0}};
+    if (parameterized_initial_charge) {
+        hydrogen_parameters.push_back({.name = "q0", .value = 0.25});
+        oxygen_parameters.push_back({.name = "q0", .value = -0.5});
+    }
+
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{.id = "test-" + std::string{method_id},
+                                         .method_id = std::string{method_id},
+                                         .name = "Test SQE-family parameters"},
+        {},
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
+                                     .parameters = std::move(hydrogen_parameters)},
+                                    {.key = chargefw::test::plain_atom_key(8),
+                                     .parameters = std::move(oxygen_parameters)}}},
+        parameters::BondParameters{{{.key = chargefw::test::single_bond_key(1, 8),
+                                     .parameters = {{.name = "kappa", .value = 1.0}}}}}};
+}
+
+auto make_charged_water() -> core::Molecule {
+    return core::Molecule{
+        std::vector{core::Atom{8, 1, "O"}, core::Atom{1, 0, "H1"}, core::Atom{1, 0, "H2"}},
+        std::vector{core::Bond{0, 1, core::BondOrder::SINGLE},
+                    core::Bond{0, 2, core::BondOrder::SINGLE}},
+        std::vector{core::Conformer{{core::Position{.x = 0.0, .y = 0.0, .z = 0.0},
+                                     core::Position{.x = 0.9572, .y = 0.0, .z = 0.0},
+                                     core::Position{.x = -0.2390, .y = 0.9270, .z = 0.0}}}},
+        "charged-water"};
+}
+
+auto assert_cutoff_matches_full(
+    const std::string_view method_id, std::vector<parameters::ParameterSet> parameter_sets = {},
+    core::Molecule molecule = chargefw::test::make_two_conformer_water()) -> void {
+    const auto molecules = core::MoleculeCollection{std::vector{std::move(molecule)}};
     const auto full = calculation::calculate(
         calculation::ApplicationCalculationRequest{.molecules = molecules,
                                                    .parameter_sets = parameter_sets,
@@ -196,5 +235,15 @@ auto main() -> int {
     assert_cutoff_matches_full("eqeq");
     assert_cutoff_matches_full("eqeqc", {make_eqeqc_parameters()});
     assert_cutoff_matches_full("abeem", {make_abeem_parameters()});
+    assert_cutoff_matches_full("sqe", {make_sqe_parameters("sqe", false)});
+    assert_cutoff_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)});
+    assert_cutoff_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)});
+    assert_cutoff_matches_full("sqe", {make_sqe_parameters("sqe", false, true)});
+    assert_cutoff_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false, true)});
+    assert_cutoff_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true, true)});
+    assert_cutoff_matches_full("sqe", {make_sqe_parameters("sqe", false)}, make_charged_water());
+    assert_cutoff_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)},
+                               make_charged_water());
+    assert_cutoff_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)}, make_charged_water());
     return 0;
 }

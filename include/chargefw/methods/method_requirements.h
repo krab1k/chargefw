@@ -23,6 +23,7 @@ enum class ComplexityTerm : std::uint8_t {
 enum class FragmentTargetChargePolicy : std::uint8_t {
     unsupported,
     proportional_to_atom_count,
+    zero,
 };
 
 struct ResourceRequirements {
