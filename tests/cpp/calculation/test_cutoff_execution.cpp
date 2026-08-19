@@ -231,6 +231,31 @@ auto main() -> int {
     assert(uncorrected.charges.assignment(0).charges[1] == 0.0);
 
     assert_cutoff_matches_full("eem", {make_eem_parameters()});
+
+    const auto automatic_cutoff = calculation::calculate(calculation::ApplicationCalculationRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {make_eem_parameters()},
+        .method_id = "eem",
+        .resource_policy = {.full_atom_threshold = 2}});
+    assert(automatic_cutoff.calculated());
+    assert(automatic_cutoff.execution_policy->mode() == calculation::ExecutionMode::cutoff);
+    assert(automatic_cutoff.execution_policy->radius() ==
+           std::optional<double>{calculation::default_automatic_reduced_radius});
+
+    const auto overridden_automatic_cutoff =
+        calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {make_eem_parameters()},
+            .method_id = "eem",
+            .execution_selection =
+                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic,
+                                                8.0},
+            .resource_policy = {.full_atom_threshold = 2}});
+    assert(overridden_automatic_cutoff.calculated());
+    assert(overridden_automatic_cutoff.execution_policy->mode() ==
+           calculation::ExecutionMode::cutoff);
+    assert(overridden_automatic_cutoff.execution_policy->radius() == std::optional<double>{8.0});
+
     assert_cutoff_matches_full("qeq", {make_qeq_parameters()});
     assert_cutoff_matches_full("eqeq");
     assert_cutoff_matches_full("eqeqc", {make_eqeqc_parameters()});

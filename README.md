@@ -72,10 +72,12 @@ parameters. `applicability` reports applicable and rejected method/parameter can
 full/cutoff/cover availability without calculating charges. `methods` lists the registry; `parameters`
 lists bundled parameter sets and optionally filters by method ID. For `calculate` and `applicability`,
 `--method`, `--parameter-set`, and `--permissive-types` control selection; omitted IDs select the
-highest-priority applicable candidate. `--execution` accepts `auto`, `full`, `cutoff`, or `cover`;
-`--radius` supplies the required reduced radius (at least 8 angstrom), `--charge-correction` selects
-`uniform` or `none` for reduced execution, and `--full-atom-threshold` accepts a non-negative atom
-count or `unlimited`. Cutoff is currently available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE,
+highest-priority applicable candidate. `--execution` accepts `auto` (the default), `full`, `cutoff`,
+or `cover`. When full execution is discouraged and cutoff is supported, `auto` selects cutoff with a
+12-angstrom radius. `--radius` supplies the required reduced radius (at least 8 angstrom) for
+explicit cutoff/cover or overrides the automatic radius. `--charge-correction` selects `uniform` or
+`none` for reduced execution, and `--full-atom-threshold` accepts a non-negative atom count or
+`unlimited`. Cutoff is currently available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE,
 SQE+q0, and SQE+qp; cover is not implemented.
 All inputs produce compatible `.json` and
 `.cif` outputs in the required output-directory argument, creating the directory when necessary.

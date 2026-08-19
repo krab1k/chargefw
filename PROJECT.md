@@ -217,16 +217,17 @@ validated vocabulary: concrete `full`, `cutoff(radius)`, and `cover(radius)` pol
 caller preference; and a shared full-atom threshold with an unlimited representation. Reduced radii
 must be finite and at least 8 angstrom; full rejects a radius. `ApplicationCalculationRequest` now
 carries an execution selection and resource policy. It assesses candidates, deterministically selects
-a concrete full plan, and returns the effective policy plus resource warnings. Automatic selection
-uses only full assessments without resource warnings; explicit full permits the warning as a deliberate
-override. Automatic selection never invents a reduced radius or mode. Explicit cutoff is currently
+a concrete plan, and returns the effective policy plus resource warnings. Automatic selection uses
+full assessments without resource warnings, then cutoff and cover where supported when full is
+discouraged. It uses a 12-angstrom reduced radius unless the caller supplies a valid override;
+explicit full permits the warning as a deliberate override. Explicit cutoff is currently
 implemented serially for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp; explicit cover
 and unsupported method/mode combinations fail.
 
 ChargeFW2 implemented cutoff and cover only through `EEMethod`. It also switched modes silently at
-fixed atom-count thresholds. ChargeFW should first reproduce and validate that behavior for the
-methods that previously supported it, but must not retain silent switching. Any future `auto`
-execution policy needs benchmark-derived thresholds and must report the selected mode and radius.
+fixed atom-count thresholds. ChargeFW's automatic mode uses the shared, caller-configurable threshold
+and reports the selected mode and radius; its 12-angstrom reduced-radius default is an explicit
+execution policy rather than a claim of universal approximation accuracy.
 
 SQE, SQE+q0, and SQE+qp cutoff is an intentional new approximation rather than a ChargeFW2
 compatibility claim. Each radius fragment keeps only induced bonds, so split-charge transfer cannot

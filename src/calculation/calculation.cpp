@@ -173,8 +173,32 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
     };
 
     switch (selection.kind()) {
-    case ExecutionSelectionKind::automatic:
-        return select_mode(ExecutionMode::full, false);
+    case ExecutionSelectionKind::automatic: {
+        const auto radius = selection.radius().value_or(default_automatic_reduced_radius);
+        for (const auto* candidate : candidates) {
+            const auto* full = assessment_for(*candidate, ExecutionMode::full);
+            if (full != nullptr &&
+                full->availability == methods::ExecutionAvailability::available) {
+                return plan_for(*candidate, ExecutionMode::full, std::nullopt,
+                                ChargeCorrectionPolicy::none, *full);
+            }
+
+            const auto* cutoff = assessment_for(*candidate, ExecutionMode::cutoff);
+            if (cutoff != nullptr &&
+                cutoff->availability != methods::ExecutionAvailability::unsupported) {
+                return plan_for(*candidate, ExecutionMode::cutoff, radius,
+                                ChargeCorrectionPolicy::uniform, *cutoff);
+            }
+
+            const auto* cover = assessment_for(*candidate, ExecutionMode::cover);
+            if (cover != nullptr &&
+                cover->availability != methods::ExecutionAvailability::unsupported) {
+                return plan_for(*candidate, ExecutionMode::cover, radius,
+                                ChargeCorrectionPolicy::uniform, *cover);
+            }
+        }
+        return std::nullopt;
+    }
     case ExecutionSelectionKind::full:
         return select_mode(ExecutionMode::full, true);
     case ExecutionSelectionKind::cutoff:

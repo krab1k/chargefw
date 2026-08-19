@@ -120,6 +120,7 @@ auto main() -> int {
     assert(finite_resources.full_atom_threshold == std::optional<std::size_t>{42});
     const calculation::ResourcePolicy unlimited_resources{.full_atom_threshold = std::nullopt};
     assert(!unlimited_resources.full_atom_threshold.has_value());
+    assert(calculation::default_automatic_reduced_radius == 12.0);
 
     return 0;
 }

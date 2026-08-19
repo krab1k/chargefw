@@ -186,8 +186,8 @@ Rules:
 
 - `full` rejects a supplied radius because the radius has no meaning for full execution;
 - explicit `cutoff` and `cover` require a finite radius of at least 8 angstrom;
-- automatic reduced execution uses an explicitly defined default radius only after that default is
-  accepted for the reference implementation;
+- automatic reduced execution uses a default radius of 12 angstrom unless the caller supplies a
+  valid reduced radius;
 - `ResourcePolicy` is application/planning policy, not a method option;
 - explicit `full` remains executable above the threshold and adds a warning;
 - automatic selection treats expensive full execution above the threshold as discouraged;
@@ -195,8 +195,9 @@ Rules:
   solver errors.
 
 The old implementation used a 12-angstrom default. The prototype branch used 8 angstrom. Eight is
-accepted as the minimum, but the automatic default should be confirmed at the planning-selection
-commit. Until then, tests should not accidentally establish an unsupported scientific recommendation.
+the accepted minimum; automatic execution defaults to 12 angstrom, while callers may override it
+with any valid reduced radius. This policy is a practical execution default, not a universal
+scientific accuracy recommendation.
 
 ## Shared expensive-full rule
 
@@ -312,9 +313,8 @@ The ordering of cutoff versus cover is initially cutoff before cover. There is n
 threshold analogous to ChargeFW2's 80,000-atom switch. Benchmark evidence may later justify a
 different explicit automatic policy.
 
-Before automatic reduced execution is enabled in the CLI, review and settle the automatic radius.
-If that decision is deferred, automatic selection should report the reduced alternatives and require
-an explicit mode/radius rather than inventing a value.
+Automatic reduced execution uses the accepted 12-angstrom default unless the caller supplies a valid
+radius override.
 
 ## CLI direction
 
@@ -486,8 +486,8 @@ Review checkpoint:
 
 ### Commit 4: Add concrete plan selection without reduced calculation
 
-Status: implemented. Automatic reduced execution remains deferred until a tested executor and an
-accepted automatic radius exist.
+Status: implemented. Automatic reduced execution was enabled after the cutoff executor was tested and
+the 12-angstrom default radius was accepted.
 
 Scope:
 
@@ -636,7 +636,7 @@ Focused tests:
 Review checkpoint:
 
 - inspect numerical deviation from ChargeFW2 before enabling additional methods;
-- settle and record the automatic radius before allowing automatic cutoff in user-facing CLI paths.
+- automatic cutoff uses the recorded 12-angstrom default radius unless the caller overrides it.
 
 ### Commit 7: Expose selection, threshold, permissive types, and cutoff in the CLI
 
@@ -785,9 +785,8 @@ resource warnings using the smallest typed distinction that works.
 
 ### Automatic selection changing scientific results
 
-Default full behavior must remain explicit until automatic reduced radius and fallback are reviewed.
-Whenever automatic reduced selection is enabled, serialize the reason, effective mode, radius, and
-correction. Explicit selections never fall back.
+Automatic reduced selection uses the shared threshold and the explicit 12-angstrom default radius.
+It must serialize the effective mode, radius, and correction. Explicit selections never fall back.
 
 ### Out-of-memory behavior
 

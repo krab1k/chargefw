@@ -9,6 +9,7 @@ namespace chargefw::calculation {
 
 inline constexpr std::size_t default_full_atom_threshold = 20'000;
 inline constexpr double minimum_reduced_radius = 8.0;
+inline constexpr double default_automatic_reduced_radius = 12.0;
 
 enum class ExecutionMode : std::uint8_t {
     full,

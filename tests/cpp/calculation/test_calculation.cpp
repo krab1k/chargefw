@@ -315,9 +315,12 @@ auto main() -> int {
             .parameter_sets = {},
             .resource_policy = {.full_atom_threshold = 2}});
     assert(automatic_fallback_result.calculated());
-    assert(automatic_fallback_result.charges->method_id() == std::string_view{"veem"});
+    assert(automatic_fallback_result.charges->method_id() == std::string_view{"eqeq"});
     assert(automatic_fallback_result.execution_policy.has_value());
-    assert(automatic_fallback_result.execution_policy->mode() == calculation::ExecutionMode::full);
+    assert(automatic_fallback_result.execution_policy->mode() ==
+           calculation::ExecutionMode::cutoff);
+    assert(automatic_fallback_result.execution_policy->radius() ==
+           std::optional<double>{calculation::default_automatic_reduced_radius});
     assert(automatic_fallback_result.execution_issues.empty());
 
     assert(throws_invalid_argument([] -> void {
