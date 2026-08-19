@@ -520,6 +520,9 @@ Review checkpoint:
 
 ### Commit 5: Add deterministic spatial fragment support
 
+Status: implemented. `features::SpatialFragment` uses the existing linear conformer-neighbor scan;
+it is not yet connected to a cutoff executor.
+
 Scope:
 
 - adapt the prototype's `SpatialFragment` into `features`;
@@ -547,11 +550,62 @@ Review checkpoint:
 - confirm that classification projection, rather than fragment reclassification, is correct for
   compatibility and induced-topology semantics.
 
+#### Fragment and reduced-execution design decision
+
+Use one method-neutral `SpatialFragment`, not separate cutoff and cover molecule types. The fragment
+describes source identity only: its induced molecule, source conformer, center, local-to-source atom
+and bond identities, and projected classifications. Cutoff/cover ownership, contribution selection,
+overlap reconciliation, fragment target charge, and final correction belong to execution work items
+or policies rather than to the fragment.
+
+The local-to-source atom and bond mappings are the canonical compact mappings needed to project
+whole-molecule data and scatter retained local results back to source atoms. The current initial
+implementation also retains a dense source-to-local atom mapping for straightforward construction
+and lookup. That reverse mapping is redundant and scales with source atom count, so reassess it before
+retaining many fragments or adding parallel execution: it may become builder-local state plus a
+lookup derived from the source-ordered local-to-source mapping. Keep source atom order and an explicit
+`center_local_atom_index()` rather than moving the center to local atom zero merely to simplify one
+cutoff lookup.
+
+Reduced execution must call the selected `Method` through the normal `CalculationInput` contract on
+the prepared fragment. Do not switch on method IDs, downcast concrete built-ins, or duplicate solver
+equations in the cutoff/cover executor. Method-specific availability remains declarative and is
+enabled only after validation. If genuinely different reduced-execution behavior is required, model
+the smallest scientific capability/interaction category needed by the executor; do not grow a
+method-name dispatch table.
+
+The generic spatial model is a solved fragment plus a retained interior:
+
+- cutoff solves a radius fragment and retains only the explicitly identified center atom;
+- cover solves fewer radius fragments and retains a deterministic interior/contribution subset from
+  each, mapping and reconciling overlapping estimates at source atoms;
+- atoms near the fragment boundary are context, not necessarily retained output. A future cover
+  policy may express this as a solve radius plus a smaller spatial contribution radius, or reproduce
+  the archived topology-neighborhood contribution rule for compatibility;
+- the discarded boundary region acts as a halo intended to reduce cut-boundary influence on retained
+  atoms.
+
+The 8-angstrom minimum is an execution-policy lower bound, not evidence that every method's boundary
+effect is negligible. For each supported method or scientific interaction category, test retained
+charges against full execution over increasing radii and record an error/convergence envelope. A
+method must not advertise cutoff or cover merely because its unchanged solver can run on an induced
+fragment.
+
+This model covers atom-variable methods such as EEM/QEq by projecting atom data and retaining atomic
+outputs. It also supplies induced bonds and local-to-source bond identity for bond-variable methods.
+SQE, SQE+q0, and SQE+qp use atom and bond parameters and require explicit cut-bond, component,
+initial-charge, and target-charge semantics before enabling reduced execution. ABEEM also has atom
+and bond unknowns/parameters (its full system size is atoms plus bonds plus the charge constraint),
+so treat it as bond-variable for validation even though its public result is reduced to atomic
+charges. These distinctions affect capability validation and policies, not fragment classes or
+method-ID dispatch.
+
 ### Commit 6: Implement serial EEM cutoff as the first executable reduced mode
 
 Scope:
 
-- add a central serial cutoff executor outside individual `Method` state;
+- add a central serial, method-neutral cutoff executor outside individual `Method` state and invoke
+  the selected method through the normal fragment `CalculationInput` path;
 - support one fragment per source atom and extract the center charge;
 - reproduce ChargeFW2 EEM-family target-charge allocation for the first EEM implementation;
 - apply and report the final uniform total-charge correction;
@@ -559,6 +613,8 @@ Scope:
 - mark only EEM cutoff-capable after its focused tests pass;
 - let applicability now report EEM cutoff as available;
 - let explicit cutoff produce a concrete plan and execute it;
+- do not switch on the EEM method ID inside execution; EEM is the first validated user of the shared
+  executor, not a separate executor implementation;
 - do not implement cover, parallelism, or a spatial index.
 
 Focused tests:
@@ -634,6 +690,11 @@ target-charge handling, required parameters, correction, numerical behavior, and
 After cutoff compatibility is stable:
 
 - reproduce archived pivot selection and overlap semantics deterministically;
+- represent each cover solve as the same generic spatial fragment plus an execution-owned set of
+  contributing local atoms; use local-to-source mapping to accumulate and deterministically
+  reconcile estimates;
+- distinguish the solve halo from the retained interior so boundary atoms can influence the local
+  solve without automatically contributing source charges;
 - keep the same shared full threshold; do not introduce a hidden 80,000-atom mode switch;
 - report cover radius, pivots/coverage diagnostics, overlap reconciliation, and final correction;
 - validate every atom receives at least one assignment;

@@ -234,6 +234,10 @@ full calculation is expensive. A future graph-distance approximation would requi
 explicit policy rather than reusing an angstrom radius.
 
 Spatial neighbor search and reusable fragment data belong in `features`, not `core::Molecule`.
+`features::SpatialFragment` now provides the serial radius-based induced-fragment foundation: one
+source conformer, source-ordered atoms, induced bonds, source/local mappings, and projection of
+whole-molecule parameter classifications without reclassification. It is not yet an executable
+cutoff or cover calculation.
 Validation must cover charge conservation, deterministic results, atom-order preservation,
 convergence toward `full`, accuracy/error envelopes, runtime, memory, and parallel execution.
 

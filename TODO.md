@@ -24,9 +24,10 @@ acceptance criteria for each priority, not optional follow-up work.
   reclassification. Application-facing method options remain deferred pending an explicit policy.
 - [ ] Introduce a reusable execution policy with explicit `full`, `cutoff(radius)`, and
   `cover(radius)` modes, method capability checks, and no implicit atom-count-based switching.
-- [ ] Build shared spatial-neighbor and fragment-mapping support outside `core::Molecule`; preserve
-  source atom indices, induced bonds, parameter classifications, and conformer identity in every
-  fragment.
+- [x] Build initial shared serial spatial-fragment and mapping support outside `core::Molecule`.
+  `features::SpatialFragment` preserves source atom indices, induced bonds, parameter
+  classifications, and one source conformer; it uses the existing linear neighbor scan and is not
+  yet connected to a cutoff executor.
 - [ ] Reproduce ChargeFW2 cutoff/cover behavior for the EEM/QEq-like methods that previously used
   `EEMethod`, with focused compatibility fixtures and recorded deviations.
 - [ ] Define cutoff/cover semantics for SQE, SQE+q0, and SQE+qp, including fragment target charge,
