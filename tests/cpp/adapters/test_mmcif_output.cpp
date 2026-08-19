@@ -161,6 +161,52 @@ HETATM 2 O O1 . UNL A 1 1 0 0 1 0 -1 1 UNL A O1 1
     }
 
     {
+        std::istringstream input{R"cif(data_filtered
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1 C CA . ALA A 1 0 0 0 1 0 0 1 ALA A CA 1
+HETATM 2 C C1 . LIG A 2 1 0 0 1 0 0 2 LIG A C1 1
+HETATM 3 O O . HOH A 3 2 0 0 1 0 0 3 HOH A O 1
+#
+)cif"};
+        auto reader = mmcif_input::MmcifReader{
+            input, {}, {.selection = adapters::gemmi::RecordSelection::polymers}};
+        auto records = std::vector<adapters::ImportedMoleculeRecord>{std::move(*reader.next())};
+        const auto source =
+            mmcif_output::MmcifSource{.document = reader.source_document(),
+                                      .block_indices = reader.source_block_indices(),
+                                      .selection = reader.options().selection};
+        const auto charges = charges::ChargeSet{
+            "formal",
+            {{.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{{0.0}}}}};
+        std::ostringstream output;
+        mmcif_output::MmcifWriter{output}.write_mmcif(records, charges, source);
+        auto document = ::gemmi::cif::read_string(output.str());
+        auto charge_rows =
+            document.blocks[0].find("_sb_ncbr_partial_atomic_charges.", {"atom_id", "charge"});
+        assert(charge_rows.length() == 1);
+        assert(::gemmi::cif::as_string(charge_rows[0][0]) == "1");
+    }
+
+    {
         std::istringstream input{R"pdb(MODEL        1
 HETATM    1  C1  UNL A   1       0.000   0.000   0.000  1.00  0.00           C
 HETATM    2  O1  UNL A   1       1.200   0.000   0.000  1.00  0.00           O1-

@@ -241,40 +241,6 @@ struct BlockMapping {
     return mapping;
 }
 
-[[nodiscard]] auto atom_site_mapping(::gemmi::cif::Block& block, const core::Molecule& molecule,
-                                     const RecordSelection record_selection) -> BlockMapping {
-    const auto structure = ::gemmi::make_structure_from_block(block);
-    auto mapping = selected_structure_mapping(structure, record_selection, molecule);
-    auto table = block.find("_atom_site.", {"id", "type_symbol", "pdbx_PDB_model_num"});
-    if (!table.ok()) {
-        throw std::runtime_error{"mmCIF output block has no usable _atom_site category"};
-    }
-
-    BlockMapping row_mapping;
-    std::string current_model;
-    for (auto row : table) {
-        const auto model = ::gemmi::cif::is_null(row[2]) ? "1" : ::gemmi::cif::as_string(row[2]);
-        if (row_mapping.model_ids.empty() || current_model != model) {
-            current_model = model;
-            row_mapping.model_ids.push_back(model);
-            row_mapping.atom_site_ids.emplace_back();
-        }
-        row_mapping.atom_site_ids.back().push_back(::gemmi::cif::as_string(row[0]));
-    }
-
-    if (row_mapping.model_ids.size() != molecule.conformer_count()) {
-        throw std::runtime_error{"mmCIF model count does not match calculated conformers"};
-    }
-    for (const auto& ids : row_mapping.atom_site_ids) {
-        if (ids.size() != molecule.atom_count()) {
-            throw std::runtime_error{"mmCIF atom-site count does not match calculated atoms"};
-        }
-    }
-    mapping.atom_site_ids = std::move(row_mapping.atom_site_ids);
-    mapping.model_ids = std::move(row_mapping.model_ids);
-    return mapping;
-}
-
 auto erase_category(::gemmi::cif::Block& block, const std::string_view category) -> void {
     if (block.has_mmcif_category(std::string{category})) {
         block.find_mmcif_category(std::string{category}).erase();
@@ -423,7 +389,8 @@ auto MmcifWriter::write_pdb(const ImportedMoleculeRecord& record,
     }
     const auto assignments = assignments_for(charge_set, 0);
     auto& block = document.blocks.front();
-    const auto mapping = atom_site_mapping(block, record.molecule, source.selection);
+    const auto structure = ::gemmi::make_structure_from_block(block);
+    const auto mapping = selected_structure_mapping(structure, source.selection, record.molecule);
     write_charges(block, mapping, record.molecule, assignments, charge_set, WriteMode::replace);
 
     ::gemmi::cif::write_cif_to_stream(*output_, document);
@@ -449,7 +416,9 @@ auto MmcifWriter::write_mmcif(const std::span<const ImportedMoleculeRecord> reco
         const auto& record = records[record_index];
         const auto assignments = assignments_for(charge_set, record_index);
         auto& block = document.blocks[block_index];
-        const auto mapping = atom_site_mapping(block, record.molecule, source.selection);
+        const auto structure = ::gemmi::make_structure_from_block(block);
+        const auto mapping =
+            selected_structure_mapping(structure, source.selection, record.molecule);
         write_charges(block, mapping, record.molecule, assignments, charge_set, mode);
     }
 
