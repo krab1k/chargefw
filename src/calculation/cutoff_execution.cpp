@@ -180,6 +180,11 @@ auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
                               const features::PreparedMoleculeCollection& molecules,
                               const ExecutionPolicy& policy) -> charges::ChargeSet {
     validate_cutoff_request(selected, policy);
+    const auto radius = policy.radius();
+    if (!radius.has_value()) {
+        throw std::logic_error{"validated cutoff execution policy has no radius"};
+    }
+
     if (selected.uses_parameters() && selected.classifications.size() != molecules.size()) {
         throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
                                     "' has an invalid number of classifications"};
@@ -198,7 +203,7 @@ auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
                 .target = charges::ChargeTarget{.molecule_index = molecule_index,
                                                 .conformer_index = conformer_index},
                 .charges = calculate_target(selected, molecule, classification, conformer_index,
-                                            *policy.radius(), policy.charge_correction())});
+                                            *radius, policy.charge_correction())});
         }
     }
 

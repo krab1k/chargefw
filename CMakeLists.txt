@@ -24,8 +24,8 @@ include(cmake/developer_tools.cmake)
 include(cmake/warnings.cmake)
 include(cmake/sanitizers.cmake)
 
-chargefw_setup_developer_tools()
 chargefw_setup_dependencies()
+chargefw_setup_developer_tools()
 
 add_library(chargefw_core)
 add_library(chargefw::core ALIAS chargefw_core)

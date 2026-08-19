@@ -45,6 +45,7 @@ auto main() -> int {
     assert(calculation::to_string(calculation::ExecutionMode::cutoff) == "cutoff");
     assert(calculation::to_string(calculation::ChargeCorrectionPolicy::uniform) == "uniform");
     assert(throws_invalid_argument([] -> void {
+        // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
         static_cast<void>(calculation::to_string(static_cast<calculation::ExecutionMode>(99)));
     }));
 

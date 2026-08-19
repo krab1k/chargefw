@@ -20,5 +20,7 @@ function(chargefw_setup_developer_tools)
       "--exclude-header-filter=^(${PROJECT_BINARY_DIR}|${PROJECT_SOURCE_DIR}/build)/"
       PARENT_SCOPE
     )
+  else()
+    set(CMAKE_CXX_CLANG_TIDY "" PARENT_SCOPE)
   endif()
 endfunction()

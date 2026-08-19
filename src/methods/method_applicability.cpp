@@ -104,7 +104,7 @@ valid_classification_count(const MethodRequirements& requirements,
                 .mode = mode, .availability = ExecutionAvailability::available, .issues = {}};
         }
 
-        const auto mode_name = mode == ExecutionMode::cutoff ? "cutoff" : "cover";
+        const auto* const mode_name = mode == ExecutionMode::cutoff ? "cutoff" : "cover";
         const auto reason = supported
                                 ? " because it does not require coordinates for the radius-based " +
                                       std::string{mode_name} + " approximation"

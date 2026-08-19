@@ -42,7 +42,8 @@ class SpatialFragment {
     std::size_t center_local_atom_index_;
     std::size_t source_conformer_index_;
 
-    friend auto build_spatial_fragment(const PreparedMolecule&, std::size_t, std::size_t, double)
+    friend auto build_spatial_fragment(const PreparedMolecule& source, std::size_t conformer_index,
+                                       std::size_t center_atom_index, double radius)
         -> SpatialFragment;
 };
 

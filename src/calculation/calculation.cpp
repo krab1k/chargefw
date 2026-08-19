@@ -225,7 +225,7 @@ auto assess(const ApplicationCalculationRequest& request) -> ApplicationAssessme
 
     result.execution_policy = plan->policy;
     result.selected = plan->selected;
-    result.execution_issues = std::move(plan->issues);
+    result.execution_issues = plan->issues;
     return result;
 }
 
@@ -243,6 +243,10 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
                                             .applicability = std::move(assessment.applicability),
                                             .execution_policy = std::nullopt,
                                             .execution_issues = {}};
+    }
+
+    if (assessment.selected == nullptr || !assessment.execution_policy.has_value()) {
+        throw std::logic_error{"executable calculation assessment has no selected execution plan"};
     }
 
     const features::PreparedMoleculeCollection prepared{request.molecules};

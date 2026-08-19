@@ -1,13 +1,15 @@
 #include "cli_support.h"
 
+#include <cstddef>
 #include <exception>
 #include <iostream>
 #include <print>
+#include <span>
 #include <stdexcept>
 
 namespace {
 
-auto run(int argc, char* argv[]) -> int {
+auto run(std::span<char*> arguments) -> int {
     CLI::App app{"ChargeFW molecular charge calculation and inspection."};
     chargefw::cli::InputArguments calculate_input;
     chargefw::cli::InputArguments inspect_input;
@@ -28,6 +30,8 @@ auto run(int argc, char* argv[]) -> int {
     chargefw::cli::add_input_options(*applicability, applicability_input);
     chargefw::cli::add_selection_options(*applicability, applicability_selection);
     parameters->add_option("method", parameter_method, "Limit results to a method ID");
+    const auto argc = static_cast<int>(arguments.size());
+    auto* const argv = arguments.data();
     CLI11_PARSE(app, argc, argv);
 
     if (*methods) {
@@ -65,7 +69,7 @@ auto run(int argc, char* argv[]) -> int {
 
 auto main(int argc, char* argv[]) noexcept -> int {
     try {
-        return run(argc, argv);
+        return run({argv, static_cast<std::size_t>(argc)});
     } catch (const std::exception& error) {
         std::print(std::cerr, "Fatal error: {}\n", error.what());
         return 1;

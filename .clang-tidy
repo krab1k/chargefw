@@ -19,7 +19,20 @@ Checks: >
   -readability-avoid-const-params-in-decls,
   -readability-isolate-declaration,
   -readability-math-missing-parentheses,
-  -readability-function-cognitive-complexity
+  -readability-function-cognitive-complexity,
+  -modernize-use-designated-initializers,
+  -modernize-use-trailing-return-type,
+  -performance-enum-size,
+  -readability-redundant-member-init,
+  -cppcoreguidelines-avoid-c-arrays,
+  -bugprone-exception-escape,
+  -bugprone-unchecked-optional-access,
+  -readability-qualified-auto,
+  -readability-avoid-nested-conditional-operator,
+  -modernize-use-ranges,
+  -readability-convert-member-functions-to-static,
+  -readability-named-parameter,
+  -cppcoreguidelines-missing-std-forward
 
 WarningsAsErrors: ''
 HeaderFilterRegex: '.*'

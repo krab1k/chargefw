@@ -1,6 +1,7 @@
 #include "component_templates.h"
 
 #include <algorithm>
+#include <array>
 #include <iterator>
 
 namespace chargefw::adapters::gemmi::component_templates {
@@ -13,7 +14,7 @@ struct ComponentTemplateEntry {
     ComponentTemplate component_template;
 };
 
-constexpr ComponentTemplateEntry templates[]{
+constexpr std::array<ComponentTemplateEntry, 29> templates{{
     {"A", {ComponentKind::nucleotide, a_bonds}},
     {"ALA", {ComponentKind::amino_acid, ala_bonds}},
     {"ARG", {ComponentKind::amino_acid, arg_bonds}},
@@ -43,7 +44,7 @@ constexpr ComponentTemplateEntry templates[]{
     {"TYR", {ComponentKind::amino_acid, tyr_bonds}},
     {"U", {ComponentKind::nucleotide, u_bonds}},
     {"VAL", {ComponentKind::amino_acid, val_bonds}},
-};
+}};
 
 } // namespace
 
