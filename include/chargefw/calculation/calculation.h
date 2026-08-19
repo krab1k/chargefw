@@ -26,10 +26,20 @@ struct CalculationResult {
     charges::ChargeSet charges;
 };
 
+// Non-owning concrete execution choice produced from an applicability result. The selected
+// candidate and its classifications remain owned by the ApplicabilityResult.
+struct ExecutionPlan {
+    const methods::ApplicableMethod* selected = nullptr;
+    ExecutionPolicy policy{};
+    std::vector<methods::ExecutionIssue> issues;
+};
+
 // Result of the application-facing facade, which performs applicability and automatic selection.
 struct ApplicationCalculationResult {
     std::optional<charges::ChargeSet> charges;
     methods::ApplicabilityResult applicability;
+    std::optional<ExecutionPolicy> execution_policy;
+    std::vector<methods::ExecutionIssue> execution_issues;
 
     [[nodiscard]] auto calculated() const noexcept -> bool {
         return charges.has_value();
@@ -46,6 +56,7 @@ struct ApplicationCalculationRequest {
     std::optional<std::string> parameter_set_id;
     parameters::ClassificationOptions classification_options{};
     ExecutionSelection execution_selection{};
+    ResourcePolicy resource_policy{};
 };
 
 // Selects the applicable candidate with the highest method priority, then the highest parameter-set
@@ -53,6 +64,12 @@ struct ApplicationCalculationRequest {
 // order. Returns nullptr if no candidate is applicable.
 [[nodiscard]] auto select_applicable_method(const methods::ApplicabilityResult& applicability)
     -> const methods::ApplicableMethod*;
+
+// Selects a concrete execution plan from scientifically applicable candidates. Automatic selection
+// considers only non-discouraged full execution until a reduced executor is implemented.
+[[nodiscard]] auto select_execution_plan(const methods::ApplicabilityResult& applicability,
+                                         const ExecutionSelection& selection)
+    -> std::optional<ExecutionPlan>;
 
 // Executes an already applicable and selected candidate. Its stored parameter classifications are
 // used directly; classification policy is not reconsidered during execution.

@@ -54,6 +54,39 @@ namespace {
     return parameter_id_of(first) < parameter_id_of(second);
 }
 
+[[nodiscard]] auto assessment_for(const methods::ApplicableMethod& candidate,
+                                  const ExecutionMode mode) -> const methods::ExecutionAssessment* {
+    const auto found =
+        std::ranges::find_if(candidate.execution_assessments,
+                             [mode](const methods::ExecutionAssessment& assessment) -> bool {
+                                 return assessment.mode == mode;
+                             });
+    return found == candidate.execution_assessments.end() ? nullptr : &*found;
+}
+
+[[nodiscard]] auto ranked_candidates(const methods::ApplicabilityResult& applicability)
+    -> std::vector<const methods::ApplicableMethod*> {
+    auto candidates = std::vector<const methods::ApplicableMethod*>{};
+    candidates.reserve(applicability.applicable.size());
+
+    for (const auto& candidate : applicability.applicable) {
+        candidates.push_back(&candidate);
+    }
+
+    std::ranges::sort(candidates, [](const auto* first, const auto* second) -> bool {
+        return ranks_before(*first, *second);
+    });
+    return candidates;
+}
+
+[[nodiscard]] auto plan_for(const methods::ApplicableMethod& candidate, const ExecutionMode mode,
+                            const std::optional<double> radius,
+                            const methods::ExecutionAssessment& assessment) -> ExecutionPlan {
+    return ExecutionPlan{.selected = &candidate,
+                         .policy = ExecutionPolicy{mode, radius},
+                         .issues = assessment.issues};
+}
+
 [[nodiscard]] auto application_methods(const ApplicationCalculationRequest& request)
     -> std::vector<const methods::Method*> {
     const auto& registry = methods::method_registry();
@@ -108,6 +141,44 @@ auto select_applicable_method(const methods::ApplicabilityResult& applicability)
     return &*std::ranges::min_element(applicability.applicable, ranks_before);
 }
 
+auto select_execution_plan(const methods::ApplicabilityResult& applicability,
+                           const ExecutionSelection& selection) -> std::optional<ExecutionPlan> {
+    const auto candidates = ranked_candidates(applicability);
+
+    const auto select_mode =
+        [&candidates, &selection](const ExecutionMode mode,
+                                  const bool allow_warnings) -> std::optional<ExecutionPlan> {
+        for (const auto* candidate : candidates) {
+            const auto* assessment = assessment_for(*candidate, mode);
+            if (assessment == nullptr ||
+                assessment->availability == methods::ExecutionAvailability::unsupported ||
+                (!allow_warnings && assessment->availability ==
+                                        methods::ExecutionAvailability::available_with_warning)) {
+                continue;
+            }
+
+            const auto radius =
+                mode == ExecutionMode::full ? std::optional<double>{} : selection.radius();
+            return plan_for(*candidate, mode, radius, *assessment);
+        }
+
+        return std::nullopt;
+    };
+
+    switch (selection.kind()) {
+    case ExecutionSelectionKind::automatic:
+        return select_mode(ExecutionMode::full, false);
+    case ExecutionSelectionKind::full:
+        return select_mode(ExecutionMode::full, true);
+    case ExecutionSelectionKind::cutoff:
+        return select_mode(ExecutionMode::cutoff, false);
+    case ExecutionSelectionKind::cover:
+        return select_mode(ExecutionMode::cover, false);
+    }
+
+    throw std::invalid_argument{"unknown execution selection"};
+}
+
 auto calculate(const CalculationRequest& request) -> CalculationResult {
     return CalculationResult{.charges =
                                  methods::calculate_charges(request.selected, request.molecules)};
@@ -118,26 +189,36 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
     const auto parameter_sets = application_parameter_sets(request);
     const features::PreparedMoleculeCollection prepared{request.molecules};
 
-    auto applicability = methods::find_applicable_methods(
-        {.molecules = prepared,
-         .methods = candidate_methods,
-         .parameter_sets = parameter_sets,
-         .classification_options = request.classification_options});
-    const auto* selected = select_applicable_method(applicability);
+    auto applicability =
+        methods::find_applicable_methods({.molecules = prepared,
+                                          .methods = candidate_methods,
+                                          .parameter_sets = parameter_sets,
+                                          .classification_options = request.classification_options,
+                                          .resource_policy = request.resource_policy});
+    const auto plan = select_execution_plan(applicability, request.execution_selection);
 
-    if (selected == nullptr &&
-        (request.method_id.has_value() || request.parameter_set_id.has_value())) {
-        throw std::invalid_argument{"requested calculation selection is not applicable"};
+    if (!plan.has_value() &&
+        (request.method_id.has_value() || request.parameter_set_id.has_value() ||
+         request.execution_selection.kind() != ExecutionSelectionKind::automatic)) {
+        throw std::invalid_argument{"requested calculation selection has no executable plan"};
     }
 
-    if (selected == nullptr) {
+    if (!plan.has_value()) {
         return ApplicationCalculationResult{.charges = std::nullopt,
-                                            .applicability = std::move(applicability)};
+                                            .applicability = std::move(applicability),
+                                            .execution_policy = std::nullopt,
+                                            .execution_issues = {}};
     }
 
-    auto result = calculate(CalculationRequest{.molecules = prepared, .selected = *selected});
+    if (plan->policy.mode() != ExecutionMode::full) {
+        throw std::invalid_argument{"selected execution policy is not implemented"};
+    }
+
+    auto result = calculate(CalculationRequest{.molecules = prepared, .selected = *plan->selected});
     return ApplicationCalculationResult{.charges = std::move(result.charges),
-                                        .applicability = std::move(applicability)};
+                                        .applicability = std::move(applicability),
+                                        .execution_policy = plan->policy,
+                                        .execution_issues = std::move(plan->issues)};
 }
 
 } // namespace chargefw::calculation

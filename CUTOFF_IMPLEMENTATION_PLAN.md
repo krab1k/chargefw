@@ -486,6 +486,9 @@ Review checkpoint:
 
 ### Commit 4: Add concrete plan selection without reduced calculation
 
+Status: implemented. Automatic reduced execution remains deferred until a tested executor and an
+accepted automatic radius exist.
+
 Scope:
 
 - extend the existing deterministic candidate selector with concrete plan selection;

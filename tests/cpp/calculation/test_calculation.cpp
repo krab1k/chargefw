@@ -198,6 +198,12 @@ auto main() -> int {
         {.molecules = prepared, .methods = methods, .parameter_sets = parameters});
     const auto* selected = calculation::select_applicable_method(applicability);
     assert(selected != nullptr);
+    const auto plan =
+        calculation::select_execution_plan(applicability, calculation::ExecutionSelection{});
+    assert(plan.has_value());
+    assert(plan->selected == selected);
+    assert(plan->policy.mode() == calculation::ExecutionMode::full);
+    assert(plan->issues.empty());
     const auto result = calculation::calculate({.molecules = prepared, .selected = *selected});
     assert(result.charges.method_id() == std::string_view{"higher"});
     assert(result.charges.size() == 1);
@@ -287,6 +293,62 @@ auto main() -> int {
     }
     assert(application_result.charges->method_id() == std::string_view{"formal"});
     assert(application_result.charges->size() == 1);
+    assert(application_result.execution_policy.has_value());
+    assert(application_result.execution_policy->mode() == calculation::ExecutionMode::full);
+    assert(application_result.execution_issues.empty());
+
+    const auto automatic_fallback_result =
+        calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {},
+            .resource_policy = {.full_atom_threshold = 2}});
+    assert(automatic_fallback_result.calculated());
+    assert(automatic_fallback_result.charges->method_id() == std::string_view{"veem"});
+    assert(automatic_fallback_result.execution_policy.has_value());
+    assert(automatic_fallback_result.execution_policy->mode() == calculation::ExecutionMode::full);
+    assert(automatic_fallback_result.execution_issues.empty());
+
+    assert(throws_invalid_argument([] -> void {
+        static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {},
+            .method_id = "mgc",
+            .resource_policy = {.full_atom_threshold = 2}}));
+    }));
+
+    const auto explicit_full_result =
+        calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {},
+            .method_id = "mgc",
+            .execution_selection =
+                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
+            .resource_policy = {.full_atom_threshold = 2}});
+    assert(explicit_full_result.calculated());
+    assert(explicit_full_result.charges->method_id() == std::string_view{"mgc"});
+    assert(explicit_full_result.execution_policy.has_value());
+    assert(explicit_full_result.execution_policy->mode() == calculation::ExecutionMode::full);
+    assert(explicit_full_result.execution_issues.size() == 1);
+    assert(explicit_full_result.execution_issues[0].kind ==
+           methods::ExecutionIssueKind::resource_threshold_exceeded);
+
+    const auto unlimited_result = calculation::calculate(calculation::ApplicationCalculationRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {},
+        .method_id = "mgc",
+        .resource_policy = {.full_atom_threshold = std::nullopt}});
+    assert(unlimited_result.calculated());
+    assert(unlimited_result.charges->method_id() == std::string_view{"mgc"});
+    assert(unlimited_result.execution_issues.empty());
+
+    assert(throws_invalid_argument([] -> void {
+        static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {},
+            .method_id = "mgc",
+            .execution_selection = calculation::ExecutionSelection{
+                calculation::ExecutionSelectionKind::cutoff, 8.0}}));
+    }));
 
     assert(throws_invalid_argument([] -> void {
         static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{

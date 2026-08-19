@@ -212,9 +212,11 @@ The public `ExecutionPolicy`, `ExecutionSelection`, and `ResourcePolicy` value t
 validated vocabulary: concrete `full`, `cutoff(radius)`, and `cover(radius)` policies; an `automatic`
 caller preference; and a shared full-atom threshold with an unlimited representation. Reduced radii
 must be finite and at least 8 angstrom; full rejects a radius. `ApplicationCalculationRequest` now
-carries an execution selection, but it is preparatory only: until execution availability and concrete
-plan selection are implemented, the facade retains its existing full-calculation behavior and does
-not claim cutoff or cover support.
+carries an execution selection and resource policy. It assesses candidates, deterministically selects
+a concrete full plan, and returns the effective policy plus resource warnings. Automatic selection
+uses only full assessments without resource warnings; explicit full permits the warning as a deliberate
+override. Until a reduced executor is implemented, unsupported explicit cutoff and cover selections
+fail and automatic selection never invents a reduced radius or mode.
 
 ChargeFW2 implemented cutoff and cover only through `EEMethod`. It also switched modes silently at
 fixed atom-count thresholds. ChargeFW should first reproduce and validate that behavior for the
