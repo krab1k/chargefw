@@ -35,12 +35,45 @@ architecture, completed work, CLI usage, or tracked deliverables.
    radius must be explicit in provenance and may be revised after compatibility and benchmark work.
 8. Never silently change execution mode, radius, classification policy, parameter set, method, or
    charge correction. Automatic choices must be returned and serialized.
-9. Carry permissive parameter typing through the same applicability-to-plan-to-calculation path as
-   other request policy. Classification must happen once and the stored classification must be used
-   for calculation.
+9. Apply permissive parameter typing during applicability only. Classification must happen once; a
+   selected candidate carries the resolved classifications into planning and calculation without
+   carrying or reinterpreting the original classification options.
 10. Start with deterministic serial code and a simple neighbor scan. Do not add a spatial-index
     dependency, parallelism, or cover abstractions before the reference cutoff behavior is tested.
 11. Use `cutoffnew` as research material only. Do not merge or cherry-pick it wholesale.
+
+## Adopted public workflows
+
+The advanced/native workflow separates policy resolution from execution:
+
+```text
+ApplicabilityRequest
+  -> ApplicabilityResult
+  -> caller selection or select_applicable_method()
+  -> CalculationRequest { prepared molecules, selected ApplicableMethod }
+  -> CalculationResult
+```
+
+`ApplicabilityRequest` owns classification policy. `ApplicableMethod` owns the resulting atom/bond
+classifications. Execution-only `CalculationRequest` consumes the selected candidate and does not
+accept classification options.
+
+The convenience workflow composes the same stages:
+
+```text
+ApplicationCalculationRequest
+  -> preparation
+  -> applicability
+  -> deterministic selection
+  -> execution
+  -> ApplicationCalculationResult
+```
+
+The application request may expose classification, selection, resource, and execution preferences
+because the facade resolves them internally. It must delegate to the same applicability, selection,
+and execution operations rather than duplicate their behavior. As execution planning is introduced,
+a concrete mode or internal immutable plan will be inserted between selection and execution; an
+unresolved `automatic` preference will never be passed directly to calculation.
 
 ## Non-goals for the initial cutoff work
 
@@ -180,8 +213,8 @@ full and cutoff assignments within one result.
 
 ## Applicability result shape
 
-Introduce an `ApplicabilityRequest` so classification and resource policy are not added as more
-positional arguments:
+`ApplicabilityRequest` is now established for classification policy. Commit 3 extends it with resource
+policy so neither concern becomes another positional argument:
 
 ```cpp
 struct ApplicabilityRequest {
@@ -232,18 +265,20 @@ After validated SQE cutoff is eventually added, only the cutoff assessment chang
 
 ## Permissive parameter typing
 
-Permissive typing already exists in `parameters::ClassificationOptions`, but the normal applicability
-and application-facade paths currently do not expose it. This work should wire it through without
-redesigning classification.
+Permissive typing is exposed by `methods::ApplicabilityRequest` and by
+`calculation::ApplicationCalculationRequest`, because the application facade initiates applicability
+internally. The execution-only `calculation::CalculationRequest` does not accept classification
+policy. This preserves one classification decision without redesigning classification.
 
 Required invariants:
 
 1. Applicability uses the request's `ClassificationOptions` for every method/parameter pair.
-2. The successful classifications are stored with the applicable candidate or plan.
+2. The successful classifications are stored with each `ApplicableMethod` candidate.
 3. Calculation constructs `ParameterView` from those stored classifications and never reclassifies.
 4. Explicit method/parameter selection and automatic selection use the same classification policy.
 5. CLI, future bindings, and direct native callers receive the same result for the same policy.
-6. Result provenance records whether permissive typing was enabled.
+6. Result provenance eventually records whether permissive typing was enabled without requiring the
+   policy to be retained on `ApplicableMethod` or passed back into execution.
 7. A strict failure that becomes successful under permissive typing has a focused test at both the
    applicability and facade-calculation levels.
 
@@ -338,15 +373,22 @@ the code is already understood. Review may change subsequent steps.
 
 ### Commit 1: Carry permissive classification through applicability
 
+Status: implemented. Review established the explicit and convenience-facade workflows described
+below; this status does not complete later CLI or provenance deliverables.
+
 Scope:
 
 - introduce `ApplicabilityRequest` with the current molecules, method candidates, parameter sets, and
   `ClassificationOptions`;
 - update `find_applicable_methods()` to consume the request;
 - pass classification options into `check_parameter_prerequisites()`;
-- retain the effective classification options with successful candidates if needed for planning and
-  provenance;
-- add classification options to low-level and application calculation requests;
+- retain successful atom/bond classifications with each `ApplicableMethod` candidate;
+- add classification options to `ApplicationCalculationRequest`, because the convenience facade
+  performs applicability internally;
+- make `CalculationRequest` execution-only over a prepared collection and an already-selected
+  `ApplicableMethod`; do not add classification options to it or reclassify during execution;
+- expose deterministic `select_applicable_method(ApplicabilityResult)` for callers that want the
+  standard priority policy without using the owned facade;
 - update internal call sites without changing default strict behavior;
 - do not add execution modes in this commit.
 
@@ -356,12 +398,14 @@ Focused tests:
 - a strict candidate is rejected when only the permissive fallback matches;
 - the same candidate is applicable with permissive typing;
 - automatic facade calculation uses the stored permissive classification successfully;
-- explicit method/parameter selection uses the same policy;
+- the explicit applicability/select/calculate workflow uses the same stored classification;
 - default requests remain strict.
 
 Review checkpoint:
 
 - confirm that no calculation path reclassifies;
+- confirm that classification policy is absent from execution-only `CalculationRequest` and
+  `ApplicableMethod` while the resolved classifications remain available;
 - confirm that the request shape is suitable for later resource policy without becoming a general
   options bag.
 
@@ -378,7 +422,12 @@ Scope:
 - add caller execution selection with `automatic` distinct from concrete policy;
 - add `ResourcePolicy` with one shared default full atom threshold and unlimited representation;
 - add finite/minimum-radius validation;
-- add policy fields to native and application requests without changing calculation behavior yet;
+- add the caller execution preference to `ApplicationCalculationRequest` without changing
+  calculation behavior yet;
+- keep `ResourcePolicy` ready for `ApplicabilityRequest` in Commit 3, where execution availability is
+  assessed;
+- do not add an unresolved execution preference to execution-only `CalculationRequest`; a concrete
+  selected mode or internal plan reaches execution only when Commit 4 introduces plan selection;
 - document that explicit full is the threshold override;
 - do not add fragment code or advertise cutoff support.
 
@@ -431,7 +480,7 @@ Review checkpoint:
 
 Scope:
 
-- extract existing priority ordering into a plan-selection helper;
+- extend the existing deterministic candidate selector with concrete plan selection;
 - create or assemble a concrete full calculation plan from an assessed candidate;
 - implement explicit full override and warning behavior;
 - implement explicit rejection of unsupported cutoff/cover selections;
@@ -448,7 +497,9 @@ Focused tests:
 - unlimited threshold makes automatic full size-eligible;
 - explicit unsupported cutoff/cover fails before calculation;
 - unavailable explicit method or parameter IDs still fail without fallback;
-- selected classification options and concrete policy survive into the result.
+- the effective classification policy is recorded in result provenance, while execution continues to
+  reuse the candidate's stored classifications;
+- the selected concrete execution policy survives into the result.
 
 Review checkpoint:
 

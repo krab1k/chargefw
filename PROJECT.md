@@ -73,7 +73,7 @@ deterministic candidate selection, and calculate_charges().
 | Charges | `AtomicCharges`, `ChargeAssignment`, `ChargeSet`, `ChargeCollection` | Atom-indexed calculated results and provenance. |
 | Calculation | `CalculationRequest`, `CalculationResult`, `ApplicationCalculationRequest` | Selected-candidate execution and application-facing automatic facade. |
 
-## Typical library workflow
+## Explicit native workflow
 
 ```cpp
 core::MoleculeCollection molecules{/* validated molecules */};
@@ -89,7 +89,10 @@ for (const auto& method : registry.methods()) {
 
 const auto applicability =
     methods::find_applicable_methods(
-        {.molecules = prepared, .methods = candidates, .parameter_sets = parameter_sets});
+        {.molecules = prepared,
+         .methods = candidates,
+         .parameter_sets = parameter_sets,
+         .classification_options = {.permissive_types = false}});
 
 // Application policy may select a reported candidate itself, or use the deterministic helper.
 const auto* selected = calculation::select_applicable_method(applicability);
@@ -100,13 +103,46 @@ if (selected == nullptr) {
 }
 ```
 
+The explicit path is:
+
+```text
+PreparedMoleculeCollection
+  + ApplicabilityRequest { methods, parameter sets, classification options }
+  -> ApplicabilityResult { applicable candidates with resolved classifications, rejected candidates }
+  -> caller selection or select_applicable_method()
+  -> CalculationRequest { prepared molecules, selected ApplicableMethod }
+  -> CalculationResult { ChargeSet }
+```
+
+Classification options belong to applicability. Once a candidate exists, calculation constructs
+`ParameterView` from that candidate's stored atom/bond classifications and never reclassifies.
+
+## Convenience application workflow
+
 For normal application use, `calculation::calculate(ApplicationCalculationRequest)` provides the
-owned convenience facade: it prepares molecules, determines applicability, selects a candidate, and
-executes it. `classification_options` is consumed only while determining applicability. It selects
-the applicable candidate with the highest method priority, then the highest parameter-set priority.
-Ties are resolved deterministically by method ID and parameter-set ID. Higher priorities therefore
-denote maintainer-curated automatic preference, not a universal scientific quality ranking. The
-result retains applicability diagnostics when no candidate can be calculated.
+owned convenience facade:
+
+```text
+ApplicationCalculationRequest {
+  molecules,
+  parameter sets,
+  optional method ID,
+  optional parameter-set ID,
+  classification options
+}
+  -> prepare
+  -> applicability
+  -> deterministic selection
+  -> execution
+  -> ApplicationCalculationResult { optional ChargeSet, applicability diagnostics }
+```
+
+The facade consumes `classification_options` only while determining applicability. It selects the
+applicable candidate with the highest method priority, then the highest parameter-set priority. Ties
+are resolved deterministically by method ID and parameter-set ID. Higher priorities therefore denote
+maintainer-curated automatic preference, not a universal scientific quality ranking. Explicit IDs
+restrict the candidates and fail if unavailable or inapplicable rather than silently falling back.
+The result retains applicability diagnostics when no candidate can be calculated.
 
 The current `chargefw` executable is a molecular-file demonstration. It autodetects `.sdf`, `.mol`,
 `.mol2`, `.pdb`, `.cif`, `.mmcif`, and ChargeFW `.json` input from the file extension, rejects the
