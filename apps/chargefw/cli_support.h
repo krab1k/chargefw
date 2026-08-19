@@ -16,10 +16,16 @@ namespace chargefw::cli {
 struct ImportedCollection {
     enum class Format : std::uint8_t { sdf, mol, mol2, json, pdb, mmcif };
 
+    struct StructuralInputPolicy {
+        std::string selection;
+        std::string bonds;
+    };
+
     core::MoleculeCollection molecules;
     std::vector<adapters::ImportedMoleculeRecord> records;
     std::optional<adapters::gemmi::mmcif_output::MmcifSource> mmcif_source;
     std::optional<adapters::gemmi::mmcif_output::PdbSource> pdb_source;
+    std::optional<StructuralInputPolicy> structural_input_policy;
     Format format;
 };
 

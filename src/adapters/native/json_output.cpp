@@ -69,12 +69,6 @@ constexpr auto charge_scale = 10000.0;
         return result;
     }
 
-    Json calculation{{"method", Json{{"id", record.charges->method_id()}}}};
-    if (const auto parameter_set_id = record.charges->parameter_set_id();
-        parameter_set_id.has_value()) {
-        calculation["parameter_set"] = Json{{"id", *parameter_set_id}};
-    }
-
     Json assignments = Json::array();
     for (const auto& assignment : record.charges->assignments()) {
         if (assignment.target.molecule_index != molecule_index) {
@@ -95,30 +89,49 @@ constexpr auto charge_scale = 10000.0;
     }
 
     result["status"] = "success";
-    result["calculation"] = std::move(calculation);
     result["assignments"] = std::move(assignments);
     result["diagnostics"] = Json::array();
     return result;
 }
 
 [[nodiscard]] auto provenance_json(const CalculationProvenance& provenance) -> Json {
-    Json result{
-        {"classification", {{"permissive_types", provenance.permissive_types}}},
-        {"resource_policy", provenance.full_atom_threshold.has_value()
-                                ? Json{{"full_atom_threshold", *provenance.full_atom_threshold}}
-                                : Json{{"full_atom_threshold", "unlimited"}}},
-        {"warnings", provenance.warnings}};
-    if (provenance.effective_execution_mode.has_value()) {
-        Json execution{{"mode", *provenance.effective_execution_mode}};
-        if (provenance.charge_correction.has_value()) {
-            execution["charge_correction"] = *provenance.charge_correction;
-        }
-        if (provenance.radius.has_value()) {
-            execution["radius_angstrom"] = *provenance.radius;
-        }
-        result["execution"] = std::move(execution);
+    const auto optional_id = [](const std::optional<std::string>& id) -> Json {
+        return id.has_value() ? Json{{"id", *id}} : Json(nullptr);
+    };
+    const auto optional_value = [](const auto& value) -> Json {
+        return value.has_value() ? Json(*value) : Json(nullptr);
+    };
+
+    Json requested{
+        {"method", optional_id(provenance.requested.method_id)},
+        {"parameter_set", optional_id(provenance.requested.parameter_set_id)},
+        {"classification", {{"permissive_types", provenance.requested.permissive_types}}},
+        {"resource_policy",
+         provenance.requested.full_atom_threshold.has_value()
+             ? Json{{"full_atom_threshold", *provenance.requested.full_atom_threshold}}
+             : Json{{"full_atom_threshold", "unlimited"}}},
+        {"execution",
+         {{"kind", provenance.requested.execution_kind},
+          {"radius_angstrom", optional_value(provenance.requested.execution_radius)},
+          {"charge_correction",
+           optional_value(provenance.requested.execution_charge_correction)}}}};
+    if (provenance.requested.structural_input_policy.has_value()) {
+        requested["structural_input"] = {
+            {"selection", provenance.requested.structural_input_policy->selection},
+            {"bonds", provenance.requested.structural_input_policy->bonds}};
     }
-    return result;
+
+    Json effective{{"method", optional_id(provenance.effective.method_id)},
+                   {"parameter_set", optional_id(provenance.effective.parameter_set_id)},
+                   {"warnings", provenance.effective.warnings}};
+    if (provenance.effective.execution_mode.has_value()) {
+        effective["execution"] = {
+            {"mode", *provenance.effective.execution_mode},
+            {"radius_angstrom", optional_value(provenance.effective.execution_radius)},
+            {"charge_correction",
+             optional_value(provenance.effective.execution_charge_correction)}};
+    }
+    return {{"requested", std::move(requested)}, {"effective", std::move(effective)}};
 }
 
 } // namespace

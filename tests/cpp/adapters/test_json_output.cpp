@@ -29,12 +29,22 @@ auto main() -> int {
               .mapping = {.atom_indices = {}, .conformer_indices = {}},
               .charges = std::nullopt}},
         .calculation_provenance = adapters::CalculationProvenance{
-            .effective_execution_mode = "cutoff",
-            .radius = 8.0,
-            .charge_correction = "uniform",
-            .permissive_types = true,
-            .full_atom_threshold = std::nullopt,
-            .warnings = {"full execution exceeds the shared threshold"}}};
+            .requested = {.method_id = std::nullopt,
+                          .parameter_set_id = std::nullopt,
+                          .permissive_types = true,
+                          .full_atom_threshold = std::nullopt,
+                          .execution_kind = "auto",
+                          .execution_radius = std::nullopt,
+                          .execution_charge_correction = std::nullopt,
+                          .structural_input_policy =
+                              adapters::StructuralInputPolicyProvenance{.selection = "polymers",
+                                                                        .bonds = "hybrid"}},
+            .effective = {.method_id = "formal",
+                          .parameter_set_id = "test-formal",
+                          .execution_mode = "cutoff",
+                          .execution_radius = 8.0,
+                          .execution_charge_correction = "uniform",
+                          .warnings = {"full execution exceeds the shared threshold"}}}};
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(document);
@@ -44,17 +54,26 @@ auto main() -> int {
     assert(result.at("generator").at("name") == "ChargeFW");
     assert(result.at("results").size() == 2);
     const auto& provenance = result.at("calculation_provenance");
-    assert(provenance.at("execution").at("mode") == "cutoff");
-    assert(provenance.at("execution").at("radius_angstrom") == 8.0);
-    assert(provenance.at("execution").at("charge_correction") == "uniform");
-    assert(provenance.at("classification").at("permissive_types") == true);
-    assert(provenance.at("resource_policy").at("full_atom_threshold") == "unlimited");
-    assert(provenance.at("warnings").at(0) == "full execution exceeds the shared threshold");
+    const auto& requested = provenance.at("requested");
+    assert(requested.at("method").is_null());
+    assert(requested.at("parameter_set").is_null());
+    assert(requested.at("execution").at("kind") == "auto");
+    assert(requested.at("execution").at("radius_angstrom").is_null());
+    assert(requested.at("classification").at("permissive_types") == true);
+    assert(requested.at("resource_policy").at("full_atom_threshold") == "unlimited");
+    assert(requested.at("structural_input").at("selection") == "polymers");
+    assert(requested.at("structural_input").at("bonds") == "hybrid");
+    const auto& effective = provenance.at("effective");
+    assert(effective.at("execution").at("mode") == "cutoff");
+    assert(effective.at("method").at("id") == "formal");
+    assert(effective.at("parameter_set").at("id") == "test-formal");
+    assert(effective.at("execution").at("radius_angstrom") == 8.0);
+    assert(effective.at("execution").at("charge_correction") == "uniform");
+    assert(effective.at("warnings").at(0) == "full execution exceeds the shared threshold");
 
     const auto& calculated = result.at("results").at(0);
     assert(calculated.at("status") == "success");
     assert(calculated.at("input").at("atom_mapping").at("kind") == "identity");
-    assert(calculated.at("calculation").at("method").at("id") == "formal");
     assert(calculated.at("assignments").at(0).at("conformer_index") == 0);
     assert(calculated.at("assignments").at(0).at("charges").size() == 3);
     assert(calculated.at("assignments").at(0).at("charges").at(0) == -0.8765);

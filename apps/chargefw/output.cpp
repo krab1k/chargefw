@@ -119,19 +119,44 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
         warnings.push_back(issue.message);
     }
     const auto provenance = adapters::CalculationProvenance{
-        .effective_execution_mode = result.execution_policy.has_value()
-                                        ? std::optional{std::string{calculation::to_string(
-                                              result.execution_policy->mode())}}
-                                        : std::nullopt,
-        .radius =
-            result.execution_policy.has_value() ? result.execution_policy->radius() : std::nullopt,
-        .charge_correction = result.execution_policy.has_value()
-                                 ? std::optional{std::string{calculation::to_string(
-                                       result.execution_policy->charge_correction())}}
-                                 : std::nullopt,
-        .permissive_types = request.classification_options.permissive_types,
-        .full_atom_threshold = request.resource_policy.full_atom_threshold,
-        .warnings = std::move(warnings)};
+        .requested = {.method_id = request.method_id,
+                      .parameter_set_id = request.parameter_set_id,
+                      .permissive_types = request.classification_options.permissive_types,
+                      .full_atom_threshold = request.resource_policy.full_atom_threshold,
+                      .execution_kind =
+                          std::string{calculation::to_string(request.execution_selection.kind())},
+                      .execution_radius = request.execution_selection.radius(),
+                      .execution_charge_correction =
+                          request.execution_selection.charge_correction().transform(
+                              [](const calculation::ChargeCorrectionPolicy policy) {
+                                  return std::string{calculation::to_string(policy)};
+                              }),
+                      .structural_input_policy =
+                          imported.structural_input_policy.has_value()
+                              ? std::optional{adapters::StructuralInputPolicyProvenance{
+                                    .selection = imported.structural_input_policy->selection,
+                                    .bonds = imported.structural_input_policy->bonds}}
+                              : std::nullopt},
+        .effective = {
+            .method_id = result.charges.has_value()
+                             ? std::optional{std::string{result.charges->method_id()}}
+                             : std::nullopt,
+            .parameter_set_id = result.charges.has_value()
+                                    ? result.charges->parameter_set_id().transform(
+                                          [](const std::string_view id) { return std::string{id}; })
+                                    : std::nullopt,
+            .execution_mode = result.execution_policy.has_value()
+                                  ? std::optional{std::string{
+                                        calculation::to_string(result.execution_policy->mode())}}
+                                  : std::nullopt,
+            .execution_radius = result.execution_policy.has_value()
+                                    ? result.execution_policy->radius()
+                                    : std::nullopt,
+            .execution_charge_correction = result.execution_policy.has_value()
+                                               ? std::optional{std::string{calculation::to_string(
+                                                     result.execution_policy->charge_correction())}}
+                                               : std::nullopt,
+            .warnings = std::move(warnings)}};
     auto document = adapters::ChargeResultDocument{.generator_name = "ChargeFW",
                                                    .generator_version = "0.0.1",
                                                    .records = {},

@@ -10,15 +10,37 @@
 
 namespace chargefw::adapters {
 
-// Invocation-wide calculation provenance. The JSON writer serializes this as the primary complete
-// result format; other output formats intentionally do not consume it yet.
-struct CalculationProvenance {
-    std::optional<std::string> effective_execution_mode;
-    std::optional<double> radius;
-    std::optional<std::string> charge_correction;
+struct StructuralInputPolicyProvenance {
+    std::string selection;
+    std::string bonds;
+};
+
+// Invocation-wide calculation provenance. The JSON writer serializes the requested inputs and their
+// effective resolution as the primary complete result format; other output formats do not consume
+// it.
+struct RequestedCalculationProvenance {
+    std::optional<std::string> method_id;
+    std::optional<std::string> parameter_set_id;
     bool permissive_types = false;
     std::optional<std::size_t> full_atom_threshold;
+    std::string execution_kind;
+    std::optional<double> execution_radius;
+    std::optional<std::string> execution_charge_correction;
+    std::optional<StructuralInputPolicyProvenance> structural_input_policy;
+};
+
+struct EffectiveCalculationProvenance {
+    std::optional<std::string> method_id;
+    std::optional<std::string> parameter_set_id;
+    std::optional<std::string> execution_mode;
+    std::optional<double> execution_radius;
+    std::optional<std::string> execution_charge_correction;
     std::vector<std::string> warnings;
+};
+
+struct CalculationProvenance {
+    RequestedCalculationProvenance requested;
+    EffectiveCalculationProvenance effective;
 };
 
 struct ChargeResultRecord {

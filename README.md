@@ -92,13 +92,14 @@ These options are rejected for MOL/SDF/MOL2/JSON input. Alternate-location selec
 blank location, then `A`, then the first occurrence.
 
 The JSON result uses `"schema_version": "1.0"` and retains one `results` entry for every successfully
-imported molecule. Each entry records input identity, explicit atom and conformer mappings, selected
-method and optional parameter-set IDs, atom-order-preserving charge assignments, and structured
-diagnostics. Its top-level `calculation_provenance` is the primary complete output provenance: it
-records effective execution mode, radius, correction policy, classification permissiveness, full
-atom threshold (or `"unlimited"`), and execution warnings. Native input adapters currently preserve
-atom and conformer order, so their mappings are reported as `{ "kind": "identity" }`. SDF, MOL2,
-and mmCIF provenance expansion remains separate follow-up work.
+imported molecule. Each entry records input identity, explicit atom and conformer mappings,
+atom-order-preserving charge assignments, and structured diagnostics. Its top-level
+`calculation_provenance` is the primary complete output provenance: it records selected method and
+optional parameter-set IDs, effective execution mode, radius, correction policy, and warnings under
+`effective`; its `requested` object records requested method/parameter IDs, classification,
+execution, resource, and structural-input policies. Native input adapters currently preserve atom
+and conformer order, so their mappings are reported as `{ "kind": "identity" }`. SDF, MOL2, and
+mmCIF provenance expansion remains separate follow-up work.
 
 JSON partial-charge values are rounded to at most four decimal places; calculations retain their
 native precision internally.

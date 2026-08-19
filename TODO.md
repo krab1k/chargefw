@@ -10,13 +10,15 @@ acceptance criteria for each priority, not optional follow-up work.
 
 ## 1. Calculation contract and scalable execution
 
-- [ ] Complete the application result/export contract. The native JSON writer is the primary complete
-  result format and now retains execution/correction policy, radius, threshold, permissive typing,
-  and execution warnings alongside record identity/mapping, selected method and optional
-  parameter-set IDs, and charge assignments. Add owned method and parameter-set versions, effective
-  options, calculation targets, applicability diagnostics, and record-scoped import/calculation
-  failures. Propagate applicable provenance to SDF, MOL2, and mmCIF metadata in a separate scoped
-  change rather than coupling it to the JSON contract.
+- [x] Complete native JSON provenance for successful calculations. The primary JSON result records
+  record identity/mapping and charge assignments alongside the user's requested method/parameter,
+  classification, execution, resource, and structural-input policies, and the effective selected
+  method/parameter, execution policy, and warnings. Do not serialize internal candidate ranking or
+  rejected-candidate diagnostics as calculation provenance.
+- [ ] Complete the broader application result/export contract. Add effective method options when
+  application-facing method options exist, record-scoped import/calculation failures, and applicable
+  output-specific provenance to SDF, MOL2, and mmCIF in separate scoped changes rather than coupling
+  them to the completed JSON success-result contract.
 - [ ] Add explicit caller selection of method, parameter set, method options, and execution policy.
   Reject unavailable or unsupported selections rather than silently falling back.
 - [x] Provide a binding-friendly owned request/result facade that does not expose `Method*`,
@@ -97,9 +99,11 @@ acceptance criteria for each priority, not optional follow-up work.
   rules. Add approximation diagnostics and coverage only with the corresponding execution policies.
 - [ ] Add parser and CLI integration tests for valid and malformed records, V2000/V3000 boundaries,
   mixed-success batches, all execution policies, deterministic output, and failure exit statuses.
-- [ ] Complete structural-import provenance and mapping. Report selection, altloc, and bond strategy;
-  represent omitted alternate locations in source-to-native mapping and diagnostics; and retain
-  enough opaque mmCIF source state for preservation-oriented export.
+- [ ] Complete structural-import provenance and mapping. JSON calculation provenance now reports
+  selection and bond strategy; represent omitted alternate locations in source-to-native mapping and
+  diagnostics, and retain enough opaque mmCIF source state for preservation-oriented export. The
+  fixed blank-then-`A`-then-first alternate-location rule is implementation behavior, not a caller
+  selection policy requiring result provenance.
 - [ ] Harden Gemmi structural readers with fixture-backed PDB/mmCIF coverage for empty inputs and
   models, incompatible model atom sequences, unknown elements, insertion codes and chain breaks,
   alternate-location omissions, filtered records, explicit/template/hybrid bond conflicts, and

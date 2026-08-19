@@ -179,9 +179,15 @@ auto import_input(const InputArguments& arguments) -> ImportedCollection {
     const auto options = adapters::gemmi::InputOptions{
         .selection = parse_record_selection(arguments.structural_selection),
         .bond_strategy = parse_bond_strategy(arguments.structural_bonds)};
-    return read_collection(arguments.path, options,
-                           arguments.structural_selection_option->count() > 0 ||
-                               arguments.structural_bonds_option->count() > 0);
+    auto imported = read_collection(arguments.path, options,
+                                    arguments.structural_selection_option->count() > 0 ||
+                                        arguments.structural_bonds_option->count() > 0);
+    if (imported.format == ImportedCollection::Format::pdb ||
+        imported.format == ImportedCollection::Format::mmcif) {
+        imported.structural_input_policy = ImportedCollection::StructuralInputPolicy{
+            .selection = arguments.structural_selection, .bonds = arguments.structural_bonds};
+    }
+    return imported;
 }
 
 auto make_request(const ImportedCollection& imported, const SelectionArguments& arguments)
