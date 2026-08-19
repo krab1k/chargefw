@@ -245,24 +245,13 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
                                             .execution_issues = {}};
     }
 
-    const auto candidate_methods = application_methods(request);
-    const auto parameter_sets = application_parameter_sets(request);
     const features::PreparedMoleculeCollection prepared{request.molecules};
-    auto applicability =
-        methods::find_applicable_methods({.molecules = prepared,
-                                          .methods = candidate_methods,
-                                          .parameter_sets = parameter_sets,
-                                          .classification_options = request.classification_options,
-                                          .resource_policy = request.resource_policy});
-    const auto plan = select_execution_plan(applicability, request.execution_selection);
-    if (!plan.has_value()) {
-        throw std::logic_error{"application assessment produced an invalid execution plan"};
-    }
-    auto result = calculate(CalculationRequest{
-        .molecules = prepared, .selected = *plan->selected, .execution_policy = plan->policy});
+    auto result = calculate(CalculationRequest{.molecules = prepared,
+                                               .selected = *assessment.selected,
+                                               .execution_policy = *assessment.execution_policy});
     return ApplicationCalculationResult{.charges = std::move(result.charges),
-                                        .applicability = std::move(applicability),
-                                        .execution_policy = plan->policy,
+                                        .applicability = std::move(assessment.applicability),
+                                        .execution_policy = assessment.execution_policy,
                                         .execution_issues = std::move(assessment.execution_issues)};
 }
 
