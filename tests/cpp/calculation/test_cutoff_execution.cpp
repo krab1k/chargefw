@@ -91,16 +91,16 @@ auto make_qeq_parameters() -> parameters::ParameterSet {
 }
 
 auto assert_cutoff_matches_full(const std::string_view method_id,
-                                parameters::ParameterSet parameter_set) -> void {
+                                std::vector<parameters::ParameterSet> parameter_sets = {}) -> void {
     const auto molecules =
         core::MoleculeCollection{std::vector{chargefw::test::make_two_conformer_water()}};
     const auto full = calculation::calculate(
         calculation::ApplicationCalculationRequest{.molecules = molecules,
-                                                   .parameter_sets = {parameter_set},
+                                                   .parameter_sets = parameter_sets,
                                                    .method_id = std::string{method_id}});
     const auto cutoff = calculation::calculate(calculation::ApplicationCalculationRequest{
         .molecules = molecules,
-        .parameter_sets = {std::move(parameter_set)},
+        .parameter_sets = std::move(parameter_sets),
         .method_id = std::string{method_id},
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff, 8.0}});
@@ -154,7 +154,8 @@ auto main() -> int {
     assert(uncorrected.charges.assignment(0).charges[0] == 0.0);
     assert(uncorrected.charges.assignment(0).charges[1] == 0.0);
 
-    assert_cutoff_matches_full("eem", make_eem_parameters());
-    assert_cutoff_matches_full("qeq", make_qeq_parameters());
+    assert_cutoff_matches_full("eem", {make_eem_parameters()});
+    assert_cutoff_matches_full("qeq", {make_qeq_parameters()});
+    assert_cutoff_matches_full("eqeq");
     return 0;
 }

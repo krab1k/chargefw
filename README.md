@@ -62,7 +62,7 @@ selection; omitted IDs select the highest-priority applicable candidate. `--exec
 `auto`, `full`, `cutoff`, or `cover`; `--radius` supplies the required reduced radius (at least 8
 angstrom), `--charge-correction` selects `uniform` or `none` for reduced execution, and
 `--full-atom-threshold` accepts a non-negative atom count or `unlimited`. Cutoff is currently
-available only for EEM and QEq; cover is not implemented. All inputs produce compatible `.json` and
+available for EEM, QEq, and EQeq; cover is not implemented. All inputs produce compatible `.json` and
 `.cif` outputs in the required output-directory argument, creating the directory when necessary.
 Native-molecular and JSON input additionally produce `.sdf` and `.mol2`; structural PDB/mmCIF input
 does not.

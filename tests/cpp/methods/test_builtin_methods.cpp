@@ -431,6 +431,9 @@ auto main() -> int {
 
     assert(eqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    assert(eqeq->requirements().resources.supports_cutoff);
+    assert(eqeq->requirements().resources.fragment_target_charge_policy ==
+           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
     assert(eqeqc->id() == std::string_view{"eqeqc"});
     assert(eqeqc->metadata().name == std::string_view{"EQeq+C"});

@@ -216,7 +216,8 @@ carries an execution selection and resource policy. It assesses candidates, dete
 a concrete full plan, and returns the effective policy plus resource warnings. Automatic selection
 uses only full assessments without resource warnings; explicit full permits the warning as a deliberate
 override. Automatic selection never invents a reduced radius or mode. Explicit cutoff is currently
-implemented serially for EEM and QEq; explicit cover and unsupported method/mode combinations fail.
+implemented serially for EEM, QEq, and EQeq; explicit cover and unsupported method/mode combinations
+fail.
 
 ChargeFW2 implemented cutoff and cover only through `EEMethod`. It also switched modes silently at
 fixed atom-count thresholds. ChargeFW should first reproduce and validate that behavior for the
@@ -237,11 +238,10 @@ Spatial neighbor search and reusable fragment data belong in `features`, not `co
 `features::SpatialFragment` provides the serial radius-based induced-fragment foundation: one source
 conformer, source-ordered atoms, induced bonds, source/local mappings, and projection of
 whole-molecule parameter classifications without reclassification. The shared cutoff executor uses
-it for each source atom, runs the selected EEM or QEq method against the induced fragment, retains
-the center charge, and optionally applies an explicit uniform correction to restore the source
-formal charge. Its fragment target charge is currently allocated in proportion to atom count.
-Cover, parallel execution, ChargeFW2 compatibility fixtures, and benchmark-based validation remain
-unfinished.
+it for each source atom, runs the selected EEM, QEq, or EQeq method against the induced fragment,
+retains the center charge, and optionally applies an explicit uniform correction to restore the source
+formal charge. Its fragment target charge is currently allocated in proportion to atom count. Cover,
+parallel execution, ChargeFW2 compatibility fixtures, and benchmark-based validation remain unfinished.
 Validation must cover charge conservation, deterministic results, atom-order preservation,
 convergence toward `full`, accuracy/error envelopes, runtime, memory, and parallel execution.
 
@@ -269,20 +269,21 @@ corpus required before choosing defaults or making compatibility claims.
 
 ### Preliminary cutoff method-coverage check: 10aw at 10 Å
 
-As of this reference implementation, EEM and QEq are the only built-in methods that declare cutoff
-support. Both were run through the `build/local-release` CLI against `10aw.cif` at 10 Å and compared
-with their corresponding full calculations. They produced one finite, source-ordered 10,479-atom
-assignment with an internally neutral total charge in each mode. The differences below are calculated
-from the four-decimal-place JSON output and are evidence that the executor is wired through each
-currently compatible method, not method-validation tolerances.
+As of this reference implementation, EEM, QEq, and EQeq are the only built-in methods that declare
+cutoff support. All were run through the `build/local-release` CLI against `10aw.cif` at 10 Å and
+compared with their corresponding full calculations. They produced one finite, source-ordered
+10,479-atom assignment with an internally neutral total charge in each mode. The differences below
+are calculated from the four-decimal-place JSON output and are evidence that the executor is wired
+through each currently compatible method, not method-validation tolerances.
 
 | Method | Full time / peak RSS | Cutoff time / peak RSS | MAE vs. full | RMSE vs. full | 95th percentile | Maximum difference | Correlation |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | EEM | 24.89 s / 1.76 GB | 2.34 s / 31.3 MB | 0.001689 e | 0.003307 e | 0.0069 e | 0.0404 e | 0.9999822 |
 | QEq | 26.98 s / 1.76 GB | 7.29 s / 30.0 MB | 0.002521 e | 0.003400 e | 0.0069 e | 0.0188 e | 0.9995477 |
+| EQeq | 25.99 s / 1.76 GB | 2.95 s / 29.8 MB | 0.000379 e | 0.000713 e | 0.0015 e | 0.0083 e | 0.9999842 |
 
-The expected trend is present for both methods: cutoff results remain close to their selected full
-method while using bounded fragment memory. These two runs do not establish general scientific
+The expected trend is present for all three methods: cutoff results remain close to their selected full
+method while using bounded fragment memory. These runs do not establish general scientific
 accuracy, a QEq/EEM compatibility claim, or acceptable error thresholds; those require the planned
 multi-structure, charge-state, and radius validation corpus.
 

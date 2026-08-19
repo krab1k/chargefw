@@ -673,14 +673,15 @@ Documentation:
 
 ### Commit 8 and later: Expand validated EEM-family cutoff support incrementally
 
-Use separate reviewable commits, each with method-specific full/cutoff and ChargeFW2 comparison tests:
+EEM, QEq, and EQeq now declare generic serial cutoff support. Their focused full/cutoff tests cover a
+radius containing the complete small fixture, and `PROJECT.md` records manual 10aw full/cutoff checks.
+Future additions must use separate reviewable commits with method-specific full/cutoff and ChargeFW2
+comparison tests:
 
-1. QEq;
-2. EQEq;
-3. EQEq+C;
-4. SFKEEM;
-5. SMP/QEq;
-6. any additional method proven to share the archived `EEMethod` behavior.
+1. EQeq+C;
+2. SFKEEM;
+3. SMP/QEq;
+4. any additional method proven to share the archived `EEMethod` behavior.
 
 Do not mark a method cutoff-capable merely because it can technically run on a fragment. Confirm its
 target-charge handling, required parameters, correction, numerical behavior, and archived support.
