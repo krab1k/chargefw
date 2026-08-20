@@ -1,5 +1,7 @@
 #include "methods/builtin/gdac.h"
 
+#include "methods/builtin/element_prerequisites.h"
+
 #include <chargefw/core/periodic_table.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
@@ -12,13 +14,7 @@ namespace chargefw::methods::builtin {
 namespace {
 
 [[nodiscard]] auto vdw_radius(const core::Atom& atom) -> double {
-    const auto& element = core::periodic_table().element(atom.atomic_number());
-
-    if (element.van_der_waals_radius <= 0.0) {
-        throw std::logic_error{"atom has no positive van der Waals radius"};
-    }
-
-    return element.van_der_waals_radius;
+    return core::periodic_table().element(atom.atomic_number()).van_der_waals_radius;
 }
 
 [[nodiscard]] auto atom_denominator(const parameters::AtomParameterAccessor& parameter_a,
@@ -27,37 +23,13 @@ namespace {
     return parameter_a[atom_index] + parameter_b[atom_index];
 }
 
-auto add_missing_vdw_radius_issue(const Method& method, const core::Molecule& molecule,
-                                  PrerequisiteResult& result) -> void {
-    for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
-        const auto& atom = molecule.atom(atom_index);
-
-        if (!core::periodic_table().contains(atom.atomic_number())) {
-            result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::unsupported_molecule,
-                                         .message = "method '" + std::string{method.id()} +
-                                                    "' requires element properties for atom " +
-                                                    std::to_string(atom_index),
-                                         .atom_index = atom_index});
-            continue;
-        }
-
-        const auto& element = core::periodic_table().element(atom.atomic_number());
-
-        if (element.van_der_waals_radius <= 0.0) {
-            result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::unsupported_molecule,
-                                         .message = "method '" + std::string{method.id()} +
-                                                    "' requires van der Waals radius for atom " +
-                                                    std::to_string(atom_index),
-                                         .atom_index = atom_index});
-        }
-    }
-}
-
 } // namespace
 
 auto GDACMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                          PrerequisiteResult& result) const -> void {
-    add_missing_vdw_radius_issue(*this, input.prepared_molecule.molecule(), result);
+    detail::add_element_prerequisite_issues(
+        input, result, "GDAC requires a positive van der Waals radius",
+        [](const core::Element& element) -> bool { return element.van_der_waals_radius > 0.0; });
 }
 
 auto GDACMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {

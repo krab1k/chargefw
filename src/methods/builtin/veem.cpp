@@ -1,70 +1,21 @@
 #include "methods/builtin/veem.h"
 
+#include "methods/builtin/element_prerequisites.h"
+
 #include <chargefw/core/periodic_table.h>
 
 #include <stdexcept>
-#include <string>
 #include <vector>
 
 namespace chargefw::methods::builtin {
-namespace {
-
-[[nodiscard]] auto valence_electron_count_or_throw(const core::Element& element) -> int {
-    const auto count = element.valence_electron_count();
-
-    if (!count.has_value()) {
-        throw std::logic_error{"VEEM calculation called for element '" +
-                               std::string{element.symbol} +
-                               "' without available valence electron count"};
-    }
-
-    if (element.electronegativity <= 0.0) {
-        throw std::logic_error{"VEEM calculation called for element '" +
-                               std::string{element.symbol} +
-                               "' without positive electronegativity"};
-    }
-
-    return *count;
-}
-
-} // namespace
 
 auto VEEMMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                          PrerequisiteResult& result) const -> void {
-    const auto& table = core::periodic_table();
-    const auto& molecule = input.prepared_molecule.molecule();
-
-    for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
-        const auto& atom = molecule.atom(atom_index);
-
-        if (!table.contains(atom.atomic_number())) {
-            result.add(PrerequisiteIssue{
-                .kind = PrerequisiteIssueKind::unsupported_molecule,
-                .message = "atom " + std::to_string(atom_index) +
-                           " has atomic number outside the bundled periodic table",
-                .atom_index = atom_index});
-            continue;
-        }
-
-        const auto& element = table.element(atom.atomic_number());
-
-        if (!element.valence_electron_count().has_value()) {
-            result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::unsupported_molecule,
-                                         .message = "atom " + std::to_string(atom_index) + " (" +
-                                                    std::string{element.symbol} +
-                                                    ") has no valence electron count",
-                                         .atom_index = atom_index});
-            continue;
-        }
-
-        if (element.electronegativity <= 0.0) {
-            result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::unsupported_molecule,
-                                         .message = "atom " + std::to_string(atom_index) + " (" +
-                                                    std::string{element.symbol} +
-                                                    ") has no positive electronegativity",
-                                         .atom_index = atom_index});
-        }
-    }
+    detail::add_element_prerequisite_issues(
+        input, result, "VEEM requires valence electrons and electronegativity",
+        [](const core::Element& element) -> bool {
+            return element.valence_electron_count().has_value() && element.electronegativity != 0.0;
+        });
 }
 
 auto VEEMMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
@@ -81,7 +32,7 @@ auto VEEMMethod::calculate(const CalculationInput& input) const -> charges::Atom
 
     for (const auto& atom : molecule.atoms()) {
         const auto& element = table.element(atom.atomic_number());
-        const auto valence = static_cast<double>(valence_electron_count_or_throw(element));
+        const auto valence = static_cast<double>(*element.valence_electron_count());
 
         numerator += element.electronegativity * valence;
         denominator += valence;
@@ -100,7 +51,7 @@ auto VEEMMethod::calculate(const CalculationInput& input) const -> charges::Atom
     for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
         const auto& atom = molecule.atom(atom_index);
         const auto& element = table.element(atom.atomic_number());
-        const auto valence = static_cast<double>(valence_electron_count_or_throw(element));
+        const auto valence = static_cast<double>(*element.valence_electron_count());
 
         charges[atom_index] = valence * (equalized_electronegativity - element.electronegativity) /
                               equalized_electronegativity;

@@ -73,6 +73,18 @@ auto main() -> int {
     assert(!prerequisite_result.issues().empty());
     assert(prerequisite_result.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
 
+    const chargefw::core::Molecule rubidium_molecule{
+        {chargefw::core::Atom{37}}, {}, {chargefw::core::Conformer{{chargefw::core::Position{}}}}};
+    const features::PreparedMolecule prepared_rubidium{rubidium_molecule};
+    const auto rubidium_prerequisite_result = gdac->check_method_prerequisites(
+        {.prepared_molecule = prepared_rubidium, .method_options = options});
+
+    assert(!rubidium_prerequisite_result);
+    assert(rubidium_prerequisite_result.issues().size() == 1);
+    assert(rubidium_prerequisite_result.issues()[0].kind ==
+           methods::PrerequisiteIssueKind::unsupported_molecule);
+    assert(rubidium_prerequisite_result.issues()[0].atom_index == 0);
+
     const auto two_conformer_water = chargefw::test::make_two_conformer_water();
     const auto two_conformer_charge_set =
         chargefw::test::calculate_method(two_conformer_water, "gdac", {parameter_set}, &options);
