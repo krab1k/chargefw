@@ -19,7 +19,8 @@ Implemented:
   parallel over independent targets or fragment centers without nested worker pools;
 - one `SpatialFragmentBuilder` and nanoflann KD-tree per source conformer for cutoff fragment neighbor
   queries;
-- deterministic serial cover execution with a 3 Å retained interior and first-pivot ownership;
+- deterministic source-order cover ownership with parallel pivot-fragment solves, a 3 Å retained
+  interior, and first-pivot ownership;
 - automatic cutoff at 12 Å when an expensive full candidate exceeds the threshold;
 - CLI selection and JSON requested/effective provenance;
 - cutoff capability for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp.
@@ -171,8 +172,9 @@ For a source molecule and conformer with cover radius `R`:
    charges are assembled in source order, the existing selected final correction (`none` or `uniform`)
    targets the method-declared whole-molecule charge.
 
-Execution is deterministic and serial per molecule/conformer. Automatic planning continues to prefer
-cutoff before cover; explicit cover is available for the eight methods that support cutoff.
+Ownership is deterministic and constructed serially per molecule/conformer; independent pivot fragments
+are then solved in parallel. Automatic planning continues to prefer cutoff before cover; explicit cover
+is available for the eight methods that support cutoff.
 
 Before adding cover to automatic planning, validation must prove:
 

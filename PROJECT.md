@@ -17,7 +17,7 @@ The repository currently provides:
 - 22 built-in methods and bundled JSON parameter sets;
 - scientific applicability and execution-availability assessment;
 - deterministic method/parameter selection and owned application facades;
-- exact full execution, oneTBB-parallelized KD-tree spatial cutoff, and serial spatial cover for eight
+- exact full execution, oneTBB-parallelized KD-tree spatial cutoff and spatial cover for eight
   reduced-capable methods;
 - native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;
 - JSON, SDF, MOL2, and mmCIF charge output through a focused CLI.
@@ -158,11 +158,13 @@ count and restore the source formal-charge total. SQE uses zero fragment and fin
 projects formal initial charges; SQE+qp projects parameterized `q0` corrected to fragment formal
 charge. SQE-family cutoff is a new approximation design, not ChargeFW2 parity.
 
-Cover scans source atoms in order, builds and solves one radius fragment for each unassigned pivot, and
-retains charges for every previously unassigned atom within 3 Å of that pivot. Overlapping retained
-interiors use first-pivot ownership; halo-only atoms provide context. Cover shares classification
-projection, fragment target charges, validation, and final correction with cutoff, but does not
-parallelize pivot solves.
+Cover constructs source-order pivots and ownership serially, then builds and solves each independent
+radius fragment in parallel. It retains charges for every previously unassigned atom within 3 Å of the
+pivot. Overlapping retained interiors use first-pivot ownership; halo-only atoms provide context.
+Cover shares classification projection, fragment target charges, validation, and final correction with
+cutoff. Execution is parallel over independent molecule/conformer targets, or over pivot fragments
+when calculating one target; nested scheduling is avoided and result materialization remains
+source-ordered.
 
 Whole-molecule-radius tests verify full/cutoff/cover agreement for all eight methods on small fixtures,
 including neutral/charged and zero-width SQE-family cases. They do not establish general reduced-mode

@@ -104,8 +104,8 @@ Automatic selection uses full execution when it is not discouraged. For an expen
 the threshold, it uses supported cutoff at 12 Å before considering cover. Explicit full overrides the
 threshold and records a warning.
 
-Cutoff and explicit serial cover are available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and
-SQE+qp. Cover retains source-ordered charges within 3 Å of each solved pivot halo; it remains a new
+Cutoff and explicit cover are available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp.
+Cover retains source-ordered charges within 3 Å of each solved pivot halo; it remains a new
 approximation without a general accuracy envelope.
 
 ### Input and output

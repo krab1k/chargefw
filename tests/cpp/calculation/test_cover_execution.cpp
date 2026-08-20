@@ -13,6 +13,7 @@
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_requirements.h>
 
+#include <atomic>
 #include <cassert>
 #include <optional>
 #include <span>
@@ -54,12 +55,12 @@ class FragmentSizeMethod final : public methods::Method {
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {
-        ++calls;
+        calls.fetch_add(1, std::memory_order_relaxed);
         return charges::AtomicCharges{std::vector<double>(
             input.molecule().atom_count(), static_cast<double>(input.molecule().atom_count()))};
     }
 
-    mutable std::size_t calls = 0;
+    mutable std::atomic_size_t calls = 0;
 };
 
 auto make_linear_molecule() -> core::Molecule {
@@ -86,7 +87,7 @@ auto main() -> int {
         calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0,
                                      calculation::ChargeCorrectionPolicy::none});
 
-    assert(method.calls == 2);
+    assert(method.calls.load() == 2);
     assert(result.size() == 1);
     const auto& values = result.assignment(0).charges;
     assert(values.size() == 8);

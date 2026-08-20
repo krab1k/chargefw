@@ -9,9 +9,10 @@ complete the CLI/result boundary, add scientific validation, then package bindin
 
 ## 1. Calculation and reduced execution
 
-- [ ] Implement deterministic serial cover execution. Define pivot selection, solve halo versus retained
-  interior, complete coverage, overlap reconciliation, target charge, correction, diagnostics, and
-  method-by-method capability tests before enabling automatic cover.
+- [ ] Complete deterministic parallel cover validation. Define diagnostics and method-by-method
+  capability tests for serial pivot ownership, parallel pivot solves, solve halo versus retained
+  interior, complete coverage, overlap reconciliation, target charge, and correction before enabling
+  automatic cover.
 - [ ] Complete SQE-family reduced validation. Add disconnected and charged SQE+qp fixtures,
   multi-radius full/cutoff convergence/error envelopes, and cover semantics. Treat cutoff/cover as new
   approximations rather than ChargeFW2 parity.

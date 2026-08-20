@@ -242,9 +242,9 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
             .charges = calculate_cutoff_charges(request.selected, request.molecules,
                                                 request.execution_policy, request.max_threads)};
     case ExecutionMode::cover:
-        return CalculationResult{.charges =
-                                     calculate_cover_charges(request.selected, request.molecules,
-                                                             request.execution_policy)};
+        return CalculationResult{
+            .charges = calculate_cover_charges(request.selected, request.molecules,
+                                               request.execution_policy, request.max_threads)};
     }
 
     throw std::invalid_argument{"unknown execution policy"};
