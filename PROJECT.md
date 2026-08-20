@@ -17,12 +17,12 @@ The repository currently provides:
 - 22 built-in methods and bundled JSON parameter sets;
 - scientific applicability and execution-availability assessment;
 - deterministic method/parameter selection and owned application facades;
-- exact full execution and serial KD-tree spatial cutoff for eight validated methods;
+- exact full execution and oneTBB-parallelized KD-tree spatial cutoff for eight validated methods;
 - native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;
 - JSON, SDF, MOL2, and mmCIF charge output through a focused CLI.
 
-Cover execution, parallel cutoff, broad compatibility/accuracy validation, Python bindings, packaged
-distribution, and a stable failure-capable result schema remain unfinished.
+Cover execution, broad compatibility/accuracy validation, Python bindings, packaged distribution, and a
+stable failure-capable result schema remain unfinished.
 
 ## Architecture
 
@@ -55,7 +55,7 @@ calculation::select_execution_plan()
                           |
                           v
 calculation::calculate()
-  full method execution or shared serial cutoff executor
+  full method execution or shared parallel cutoff executor
                           |
                           v
 charges::ChargeSet + application/export provenance
@@ -149,7 +149,8 @@ The shared executor builds one source-ordered induced spatial fragment per sourc
 whole-molecule classification, invokes the selected method through ordinary `CalculationInput`, and
 keeps the explicitly mapped center charge. It then applies the selected final correction. Neighbor
 search uses one `SpatialFragmentBuilder` and nanoflann KD-tree per source conformer; execution is
-serial.
+parallel over independent molecule/conformer targets, or over fragment centers when a single target is
+being calculated; nested scheduling is avoided and result materialization remains source-ordered.
 
 EEM/QEq-like methods and ABEEM allocate each fragment a formal-charge target proportional to its atom
 count and restore the source formal-charge total. SQE uses zero fragment and final targets. SQE+q0

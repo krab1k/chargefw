@@ -3,6 +3,7 @@ target_sources(chargefw_core
         calculation.cpp
         cutoff_execution.cpp
         execution_policy.cpp
+        parallel_for.h
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS

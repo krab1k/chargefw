@@ -6,6 +6,8 @@
 #include <chargefw/parameters/classification/parameter_classification.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
+#include "calculation/parallel_for.h"
+
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -154,46 +156,64 @@ auto validate_coordinate_targets(const ApplicableMethod& selected,
 } // namespace
 
 auto calculate_charges(const ApplicableMethod& selected,
-                       const features::PreparedMoleculeCollection& prepared_collection)
-    -> charges::ChargeSet {
+                       const features::PreparedMoleculeCollection& prepared_collection,
+                       const std::size_t max_threads) -> charges::ChargeSet {
     validate_selected_candidate(selected, prepared_collection);
     validate_coordinate_targets(selected, prepared_collection);
 
     const auto geometry_dependent = selected.method->requirements().coordinates;
 
-    std::vector<charges::ChargeAssignment> assignments;
+    struct Target {
+        std::size_t molecule_index;
+        std::optional<std::size_t> conformer_index;
+    };
 
-    std::size_t assignment_count = 0;
+    std::vector<Target> targets;
 
+    std::size_t target_count = 0;
     for (const auto& prepared_molecule : prepared_collection.molecules()) {
-        assignment_count += geometry_dependent ? prepared_molecule.molecule().conformer_count() : 1;
+        target_count += geometry_dependent ? prepared_molecule.molecule().conformer_count() : 1;
     }
-
-    assignments.reserve(assignment_count);
+    targets.reserve(target_count);
 
     for (std::size_t molecule_index = 0; molecule_index < prepared_collection.size();
          ++molecule_index) {
         const auto& prepared_molecule = prepared_collection[molecule_index];
         const auto& molecule = prepared_molecule.molecule();
 
-        const auto target_count = geometry_dependent ? molecule.conformer_count() : 1;
+        const auto molecule_target_count = geometry_dependent ? molecule.conformer_count() : 1;
 
-        for (std::size_t target_index = 0; target_index < target_count; ++target_index) {
-            const auto conformer_index =
-                geometry_dependent ? std::optional{target_index} : std::nullopt;
+        for (std::size_t target_index = 0; target_index < molecule_target_count; ++target_index) {
+            targets.push_back(Target{
+                .molecule_index = molecule_index,
+                .conformer_index =
+                    geometry_dependent ? std::optional<std::size_t>{target_index} : std::nullopt});
+        }
+    }
 
+    std::vector<std::optional<charges::ChargeAssignment>> calculated(targets.size());
+    ::chargefw::calculation::detail::parallel_for_indexed(
+        targets.size(), max_threads, [&](const std::size_t target_index) {
+            const auto& target = targets[target_index];
+            const auto& prepared_molecule = prepared_collection[target.molecule_index];
             auto atomic_charges =
                 selected.uses_parameters()
                     ? calculate_with_parameters(selected, prepared_molecule,
-                                                selected.classifications[molecule_index],
-                                                conformer_index)
-                    : calculate_without_parameters(selected, prepared_molecule, conformer_index);
+                                                selected.classifications[target.molecule_index],
+                                                target.conformer_index)
+                    : calculate_without_parameters(selected, prepared_molecule,
+                                                   target.conformer_index);
 
-            assignments.push_back(charges::ChargeAssignment{
-                .target = charges::ChargeTarget{.molecule_index = molecule_index,
-                                                .conformer_index = conformer_index},
-                .charges = std::move(atomic_charges)});
-        }
+            calculated[target_index] = charges::ChargeAssignment{
+                .target = charges::ChargeTarget{.molecule_index = target.molecule_index,
+                                                .conformer_index = target.conformer_index},
+                .charges = std::move(atomic_charges)};
+        });
+
+    std::vector<charges::ChargeAssignment> assignments;
+    assignments.reserve(calculated.size());
+    for (auto& assignment : calculated) {
+        assignments.push_back(std::move(*assignment));
     }
 
     return charges::ChargeSet{std::string{selected.method->id()}, std::move(assignments),

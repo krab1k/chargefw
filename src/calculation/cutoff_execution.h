@@ -9,6 +9,7 @@ namespace chargefw::calculation {
 
 [[nodiscard]] auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
                                             const features::PreparedMoleculeCollection& molecules,
-                                            const ExecutionPolicy& policy) -> charges::ChargeSet;
+                                            const ExecutionPolicy& policy,
+                                            std::size_t max_threads = 0) -> charges::ChargeSet;
 
 } // namespace chargefw::calculation

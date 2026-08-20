@@ -15,8 +15,6 @@ complete the CLI/result boundary, add scientific validation, then package bindin
 - [ ] Complete SQE-family reduced validation. Add disconnected and charged SQE+qp fixtures,
   multi-radius full/cutoff convergence/error envelopes, and cover semantics. Treat cutoff/cover as new
   approximations rather than ChargeFW2 parity.
-- [ ] Add deterministic parallel fragment scheduling without global mutable state or nested solver
-  oversubscription. Verify byte-stable target ordering and numerical agreement with serial execution.
 - [ ] Emit explicit-full threshold warnings before fragment/solver allocation as well as retaining them
   in result provenance.
 - [ ] Expand facade and planning tests for multiple molecules/conformers, no-plan diagnostics, explicit

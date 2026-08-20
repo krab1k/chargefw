@@ -53,6 +53,11 @@ target_link_libraries(chargefw_core
     TBB::tbb
 )
 
+target_compile_definitions(chargefw_core
+  PRIVATE
+    EIGEN_DONT_PARALLELIZE
+)
+
 configure_file(
   ${PROJECT_SOURCE_DIR}/include/chargefw/config.h.in
   ${PROJECT_BINARY_DIR}/generated/chargefw/config.h

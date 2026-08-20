@@ -15,7 +15,8 @@ Implemented:
 - one shared configurable full atom threshold (20,000 by default; unlimited supported);
 - deterministic concrete-plan selection and explicit full override warnings in results;
 - source-ordered `features::SpatialFragment` with induced bonds and classification projection;
-- serial one-fragment-per-center cutoff execution through ordinary `Method::calculate()`;
+- one-fragment-per-center cutoff execution through ordinary `Method::calculate()`, scheduled in
+  parallel over independent targets or fragment centers without nested worker pools;
 - one `SpatialFragmentBuilder` and nanoflann KD-tree per source conformer for cutoff fragment neighbor
   queries;
 - automatic cutoff at 12 Å when an expensive full candidate exceeds the threshold;
@@ -25,7 +26,6 @@ Implemented:
 Not implemented or incomplete:
 
 - cover execution and overlap semantics;
-- parallel scheduling;
 - pre-allocation emission of explicit-full warnings (warnings are currently retained after execution);
 - ChargeFW2 cutoff compatibility fixtures and supported numerical tolerances;
 - broad multi-radius, charge-state, disconnected-system, performance, and memory validation;
@@ -91,7 +91,7 @@ available it continues to the next candidate. It never silently forces discourag
 - local-to-source atom/bond mappings and source-to-local atom lookup;
 - projected atom/bond classifications.
 
-Cutoff ownership is outside the fragment. The serial executor:
+Cutoff ownership is outside the fragment. The executor:
 
 1. builds one radius fragment per source atom using the source conformer's KD-tree;
 2. prepares the fragment and projects the selected whole-molecule classification;

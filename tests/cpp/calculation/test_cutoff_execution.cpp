@@ -173,13 +173,15 @@ auto assert_cutoff_matches_full(
     const auto full = calculation::calculate(
         calculation::ApplicationCalculationRequest{.molecules = molecules,
                                                    .parameter_sets = parameter_sets,
-                                                   .method_id = std::string{method_id}});
+                                                   .method_id = std::string{method_id},
+                                                   .resource_policy = {.max_threads = 2}});
     const auto cutoff = calculation::calculate(calculation::ApplicationCalculationRequest{
         .molecules = molecules,
         .parameter_sets = std::move(parameter_sets),
         .method_id = std::string{method_id},
         .execution_selection =
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff, 8.0}});
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff, 8.0},
+        .resource_policy = {.max_threads = 2}});
 
     assert(full.calculated());
     assert(cutoff.calculated());
@@ -213,20 +215,23 @@ auto main() -> int {
     const features::PreparedMoleculeCollection prepared{collection};
     const methods::ApplicableMethod selected{.method = &zero_method, .parameter_set = nullptr};
 
-    const auto corrected =
-        calculation::calculate({.molecules = prepared,
-                                .selected = selected,
-                                .execution_policy = calculation::ExecutionPolicy{
-                                    calculation::ExecutionMode::cutoff, 8.0,
-                                    calculation::ChargeCorrectionPolicy::uniform}});
+    const auto corrected = calculation::calculate(
+        {.molecules = prepared,
+         .selected = selected,
+         .execution_policy =
+             calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff, 8.0,
+                                          calculation::ChargeCorrectionPolicy::uniform},
+         .max_threads = 2});
     assert(corrected.charges.assignment(0).charges[0] == 0.5);
     assert(corrected.charges.assignment(0).charges[1] == 0.5);
 
     const auto uncorrected = calculation::calculate(
         {.molecules = prepared,
          .selected = selected,
-         .execution_policy = calculation::ExecutionPolicy{
-             calculation::ExecutionMode::cutoff, 8.0, calculation::ChargeCorrectionPolicy::none}});
+         .execution_policy =
+             calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff, 8.0,
+                                          calculation::ChargeCorrectionPolicy::none},
+         .max_threads = 2});
     assert(uncorrected.charges.assignment(0).charges[0] == 0.0);
     assert(uncorrected.charges.assignment(0).charges[1] == 0.0);
 

@@ -4,7 +4,7 @@ ChargeFW is a C++23, library-first framework for empirical partial atomic-charge
 modern successor to ChargeFW2, the engine used by Atomic Charge Calculator III (ACC III).
 
 The repository includes a toolkit-neutral C++ library, 22 built-in methods, parameter loading and
-classification, applicability/execution planning, full and serial cutoff calculation, molecular-file
+classification, applicability/execution planning, full and parallel cutoff calculation, molecular-file
 adapters, and a focused CLI. It is not yet a production ACC III backend, Python package, or general
 SMILES/chemistry-preparation tool.
 
@@ -88,6 +88,7 @@ Use `chargefw COMMAND --help` for the complete option list.
   reduced-execution default.
 - `--full-atom-threshold COUNT|unlimited` changes the automatic full-execution safeguard (default
   20,000 atoms).
+- `--threads COUNT` limits calculation concurrency; `0` uses the oneTBB default.
 - `--method-option METHOD.OPTION=VALUE` supplies a repeatable, method-scoped option override. For
   automatic method selection, include the method ID; `chargefw methods` lists option schemas,
   defaults, and choices.

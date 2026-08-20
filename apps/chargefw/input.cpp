@@ -253,6 +253,8 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
     arguments.full_atom_threshold_option =
         command.add_option("--full-atom-threshold", arguments.full_atom_threshold,
                            "Full-execution atom threshold, or unlimited");
+    command.add_option("--threads", arguments.max_threads,
+                       "Maximum calculation threads; 0 uses the oneTBB default");
 }
 
 auto import_input(const InputArguments& arguments) -> ImportedCollection {
@@ -300,7 +302,8 @@ auto make_request(const ImportedCollection& imported, const SelectionArguments& 
                 .full_atom_threshold =
                     arguments.full_atom_threshold_option->count() == 0
                         ? std::optional<std::size_t>{calculation::default_full_atom_threshold}
-                        : parse_full_atom_threshold(arguments.full_atom_threshold)}};
+                        : parse_full_atom_threshold(arguments.full_atom_threshold),
+                .max_threads = arguments.max_threads}};
 }
 
 } // namespace chargefw::cli

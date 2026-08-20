@@ -233,12 +233,12 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
 auto calculate(const CalculationRequest& request) -> CalculationResult {
     switch (request.execution_policy.mode()) {
     case ExecutionMode::full:
-        return CalculationResult{
-            .charges = methods::calculate_charges(request.selected, request.molecules)};
+        return CalculationResult{.charges = methods::calculate_charges(
+                                     request.selected, request.molecules, request.max_threads)};
     case ExecutionMode::cutoff:
-        return CalculationResult{.charges =
-                                     calculate_cutoff_charges(request.selected, request.molecules,
-                                                              request.execution_policy)};
+        return CalculationResult{
+            .charges = calculate_cutoff_charges(request.selected, request.molecules,
+                                                request.execution_policy, request.max_threads)};
     case ExecutionMode::cover:
         throw std::invalid_argument{"selected cover execution policy is not implemented"};
     }
@@ -299,7 +299,8 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
     const features::PreparedMoleculeCollection prepared{request.molecules};
     auto result = calculate(CalculationRequest{.molecules = prepared,
                                                .selected = *assessment.selected,
-                                               .execution_policy = *assessment.execution_policy});
+                                               .execution_policy = *assessment.execution_policy,
+                                               .max_threads = request.resource_policy.max_threads});
     return ApplicationCalculationResult{.charges = std::move(result.charges),
                                         .applicability = std::move(assessment.applicability),
                                         .execution_policy = assessment.execution_policy,

@@ -22,6 +22,8 @@ struct CalculationRequest {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
     const methods::ApplicableMethod& selected;
     ExecutionPolicy execution_policy{};
+    // Zero delegates the worker count to the oneTBB runtime.
+    std::size_t max_threads = 0;
 };
 
 struct CalculationResult {

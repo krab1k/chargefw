@@ -46,6 +46,7 @@ struct SelectionArguments {
     std::optional<double> radius;
     std::string charge_correction;
     std::string full_atom_threshold;
+    std::size_t max_threads = 0;
     bool permissive_types = false;
     std::vector<std::string> method_options;
     CLI::Option* method_option = nullptr;

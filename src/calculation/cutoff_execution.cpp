@@ -1,4 +1,5 @@
 #include "calculation/cutoff_execution.h"
+#include "calculation/parallel_for.h"
 
 #include <chargefw/core/molecule.h>
 #include <chargefw/features/conformer_features.h>
@@ -124,49 +125,52 @@ calculate_target(const methods::ApplicableMethod& selected,
                  const features::PreparedMolecule& source,
                  const parameters::ParameterClassification* source_classification,
                  const std::size_t conformer_index, const double radius,
-                 const ChargeCorrectionPolicy charge_correction) -> charges::AtomicCharges {
+                 const ChargeCorrectionPolicy charge_correction, const std::size_t max_threads)
+    -> charges::AtomicCharges {
     const auto& source_molecule = source.molecule();
     auto values = std::vector<double>(source_molecule.atom_count());
     const auto requirements = selected.method->requirements();
     const features::ConformerFeatures source_geometry{source_molecule, conformer_index};
     const features::SpatialFragmentBuilder fragment_builder{source, source_geometry};
 
-    for (std::size_t center_source_atom_index = 0;
-         center_source_atom_index < source_molecule.atom_count(); ++center_source_atom_index) {
-        try {
-            const auto fragment = fragment_builder.build(center_source_atom_index, radius);
-            const features::PreparedMolecule prepared_fragment{fragment.molecule()};
-            const features::ConformerFeatures geometry{fragment.molecule(), 0};
-            const auto target_charge = fragment_target_charge(
-                requirements.resources.fragment_target_charge_policy, source_molecule, fragment);
+    ::chargefw::calculation::detail::parallel_for_indexed(
+        source_molecule.atom_count(), max_threads, [&](const std::size_t center_source_atom_index) {
+            try {
+                const auto fragment = fragment_builder.build(center_source_atom_index, radius);
+                const features::PreparedMolecule prepared_fragment{fragment.molecule()};
+                const features::ConformerFeatures geometry{fragment.molecule(), 0};
+                const auto target_charge =
+                    fragment_target_charge(requirements.resources.fragment_target_charge_policy,
+                                           source_molecule, fragment);
 
-            auto projected_classification = parameters::ParameterClassification{};
-            if (source_classification != nullptr) {
-                projected_classification =
-                    features::project_classification(*source_classification, fragment);
-                parameters::validate_parameter_classification(
-                    fragment.molecule(), *selected.parameter_set, projected_classification);
+                auto projected_classification = parameters::ParameterClassification{};
+                if (source_classification != nullptr) {
+                    projected_classification =
+                        features::project_classification(*source_classification, fragment);
+                    parameters::validate_parameter_classification(
+                        fragment.molecule(), *selected.parameter_set, projected_classification);
+                }
+                const auto parameter_view =
+                    source_classification == nullptr
+                        ? std::optional<parameters::ParameterView>{}
+                        : std::optional<parameters::ParameterView>{
+                              std::in_place, *selected.parameter_set, projected_classification};
+
+                const methods::CalculationInput input{
+                    prepared_fragment, selected.method_options, target_charge, &geometry,
+                    parameter_view ? std::addressof(*parameter_view) : nullptr};
+                const auto fragment_charges = selected.method->calculate(input);
+                validate_fragment_charges(*selected.method, fragment, fragment_charges);
+                values[center_source_atom_index] =
+                    fragment_charges[fragment.center_local_atom_index()];
+            } catch (const std::exception& error) {
+                throw std::runtime_error{
+                    "cutoff calculation failed for method '" + std::string{selected.method->id()} +
+                    "', molecule '" + std::string{source_molecule.name()} + "', conformer " +
+                    std::to_string(conformer_index) + ", center atom " +
+                    std::to_string(center_source_atom_index) + ": " + error.what()};
             }
-            const auto parameter_view =
-                source_classification == nullptr
-                    ? std::optional<parameters::ParameterView>{}
-                    : std::optional<parameters::ParameterView>{
-                          std::in_place, *selected.parameter_set, projected_classification};
-
-            const methods::CalculationInput input{
-                prepared_fragment, selected.method_options, target_charge, &geometry,
-                parameter_view ? std::addressof(*parameter_view) : nullptr};
-            const auto fragment_charges = selected.method->calculate(input);
-            validate_fragment_charges(*selected.method, fragment, fragment_charges);
-            values[center_source_atom_index] = fragment_charges[fragment.center_local_atom_index()];
-        } catch (const std::exception& error) {
-            throw std::runtime_error{
-                "cutoff calculation failed for method '" + std::string{selected.method->id()} +
-                "', molecule '" + std::string{source_molecule.name()} + "', conformer " +
-                std::to_string(conformer_index) + ", center atom " +
-                std::to_string(center_source_atom_index) + ": " + error.what()};
-        }
-    }
+        });
 
     apply_charge_correction(
         values,
@@ -179,7 +183,8 @@ calculate_target(const methods::ApplicableMethod& selected,
 
 auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
                               const features::PreparedMoleculeCollection& molecules,
-                              const ExecutionPolicy& policy) -> charges::ChargeSet {
+                              const ExecutionPolicy& policy, const std::size_t max_threads)
+    -> charges::ChargeSet {
     validate_cutoff_request(selected, policy);
     const auto radius = policy.radius();
     if (!radius.has_value()) {
@@ -191,21 +196,43 @@ auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
                                     "' has an invalid number of classifications"};
     }
 
-    std::vector<charges::ChargeAssignment> assignments;
+    struct Target {
+        std::size_t molecule_index;
+        std::size_t conformer_index;
+    };
+
+    std::vector<Target> targets;
     for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
         const auto& molecule = molecules[molecule_index];
         for (std::size_t conformer_index = 0;
              conformer_index < molecule.molecule().conformer_count(); ++conformer_index) {
+            targets.push_back(
+                Target{.molecule_index = molecule_index, .conformer_index = conformer_index});
+        }
+    }
+
+    std::vector<std::optional<charges::ChargeAssignment>> calculated(targets.size());
+    const auto target_threads = targets.size() > 1 ? max_threads : 1;
+    ::chargefw::calculation::detail::parallel_for_indexed(
+        targets.size(), target_threads, [&](const std::size_t target_index) {
+            const auto& target = targets[target_index];
+            const auto& molecule = molecules[target.molecule_index];
             const auto* classification =
                 selected.uses_parameters()
-                    ? std::addressof(selected.classifications[molecule_index])
+                    ? std::addressof(selected.classifications[target.molecule_index])
                     : nullptr;
-            assignments.push_back(charges::ChargeAssignment{
-                .target = charges::ChargeTarget{.molecule_index = molecule_index,
-                                                .conformer_index = conformer_index},
-                .charges = calculate_target(selected, molecule, classification, conformer_index,
-                                            *radius, policy.charge_correction())});
-        }
+            calculated[target_index] = charges::ChargeAssignment{
+                .target = charges::ChargeTarget{.molecule_index = target.molecule_index,
+                                                .conformer_index = target.conformer_index},
+                .charges = calculate_target(
+                    selected, molecule, classification, target.conformer_index, *radius,
+                    policy.charge_correction(), target_threads == 1 ? max_threads : 1)};
+        });
+
+    std::vector<charges::ChargeAssignment> assignments;
+    assignments.reserve(calculated.size());
+    for (auto& assignment : calculated) {
+        assignments.push_back(std::move(*assignment));
     }
 
     return charges::ChargeSet{std::string{selected.method->id()}, std::move(assignments),

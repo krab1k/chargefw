@@ -72,6 +72,8 @@ class ExecutionSelection {
 struct ResourcePolicy {
     // nullopt means unlimited.
     std::optional<std::size_t> full_atom_threshold = default_full_atom_threshold;
+    // Zero delegates the worker count to the oneTBB runtime.
+    std::size_t max_threads = 0;
 };
 
 } // namespace chargefw::calculation

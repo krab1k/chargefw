@@ -15,6 +15,7 @@
 #include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
+#include <limits>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -209,6 +210,28 @@ auto main() -> int {
     assert(result.charges.size() == 1);
     assert(result.charges.assignment(0).charges[0] == 10.0);
     assert(applicability.applicable.size() == 2);
+
+    const auto parallel_collection = core::MoleculeCollection{
+        std::vector{chargefw::test::make_water(), chargefw::test::make_water()}};
+    const features::PreparedMoleculeCollection parallel_prepared{parallel_collection};
+    const auto parallel_result =
+        calculation::calculate({.molecules = parallel_prepared,
+                                .selected = *selected,
+                                .execution_policy = calculation::ExecutionPolicy{},
+                                .max_threads = 2});
+    assert(parallel_result.charges.size() == 2);
+    assert(parallel_result.charges.assignment(0).target.molecule_index == 0);
+    assert(parallel_result.charges.assignment(1).target.molecule_index == 1);
+    assert(parallel_result.charges.assignment(0).charges[0] == 10.0);
+    assert(parallel_result.charges.assignment(1).charges[0] == 10.0);
+
+    assert(throws_invalid_argument([&] -> void {
+        static_cast<void>(
+            calculation::calculate({.molecules = prepared,
+                                    .selected = *selected,
+                                    .execution_policy = calculation::ExecutionPolicy{},
+                                    .max_threads = std::numeric_limits<std::size_t>::max()}));
+    }));
 
     const FixedChargeMethod alpha{"alpha", 1, 2.0};
     const FixedChargeMethod beta{"beta", 1, 3.0};
