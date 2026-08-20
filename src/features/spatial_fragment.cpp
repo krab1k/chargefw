@@ -122,7 +122,6 @@ class SpatialFragmentBuilder::SpatialIndex {
         SourceIndexRadiusResultSet result_set{inclusive_radius_squared, neighbors};
         static_cast<void>(tree_.radiusSearchCustomCallback(
             query.data(), result_set, nanoflann::SearchParameters{0.0F, false}));
-        std::ranges::sort(neighbors);
         return neighbors;
     }
 
