@@ -123,6 +123,7 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                       .parameter_set_id = request.parameter_set_id,
                       .permissive_types = request.classification_options.permissive_types,
                       .full_atom_threshold = request.resource_policy.full_atom_threshold,
+                      .max_threads = request.resource_policy.max_threads,
                       .execution_kind =
                           std::string{calculation::to_string(request.execution_selection.kind())},
                       .execution_radius = request.execution_selection.radius(),

@@ -31,6 +31,7 @@ auto main() -> int {
                           .parameter_set_id = std::nullopt,
                           .permissive_types = true,
                           .full_atom_threshold = std::nullopt,
+                          .max_threads = 0,
                           .execution_kind = "auto",
                           .execution_radius = std::nullopt,
                           .execution_charge_correction = std::nullopt,
@@ -64,6 +65,7 @@ auto main() -> int {
     assert(requested.at("execution").at("radius_angstrom").is_null());
     assert(requested.at("classification").at("permissive_types") == true);
     assert(requested.at("resource_policy").at("full_atom_threshold") == "unlimited");
+    assert(requested.at("resource_policy").at("max_threads") == 0);
     assert(requested.at("structural_input").at("selection") == "polymers");
     assert(requested.at("structural_input").at("bonds") == "hybrid");
     assert(requested.at("input").at("conformers") == "all");

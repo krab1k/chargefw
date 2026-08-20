@@ -99,8 +99,10 @@ constexpr auto charge_scale = 10000.0;
         {"classification", {{"permissive_types", provenance.requested.permissive_types}}},
         {"resource_policy",
          provenance.requested.full_atom_threshold.has_value()
-             ? Json{{"full_atom_threshold", *provenance.requested.full_atom_threshold}}
-             : Json{{"full_atom_threshold", "unlimited"}}},
+             ? Json{{"full_atom_threshold", *provenance.requested.full_atom_threshold},
+                    {"max_threads", provenance.requested.max_threads}}
+             : Json{{"full_atom_threshold", "unlimited"},
+                    {"max_threads", provenance.requested.max_threads}}},
         {"execution",
          {{"kind", provenance.requested.execution_kind},
           {"radius_angstrom", optional_value(provenance.requested.execution_radius)},
