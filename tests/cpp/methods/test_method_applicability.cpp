@@ -258,17 +258,12 @@ auto main() -> int {
     assert(charged_pair_classification.atom()[0] == 2);
     assert(charged_pair_classification.atom()[1] == 3);
 
-    assert(result.rejected.size() == 2);
+    assert(result.rejected.size() == 1);
 
     assert(result.rejected[0].method_index == 1);
-    assert(result.rejected[0].parameter_set_index == std::optional<std::size_t>{0});
+    assert(result.rejected[0].parameter_set_index == std::optional<std::size_t>{1});
     assert(!result.rejected[0].issues.empty());
-    assert(result.rejected[0].issues[0].kind == methods::PrerequisiteIssueKind::missing_parameters);
-
-    assert(result.rejected[1].method_index == 1);
-    assert(result.rejected[1].parameter_set_index == std::optional<std::size_t>{1});
-    assert(!result.rejected[1].issues.empty());
-    assert(result.rejected[1].issues[0].kind ==
+    assert(result.rejected[0].issues[0].kind ==
            methods::PrerequisiteIssueKind::parameter_classification_failed);
 
     const core::MoleculeCollection double_bonded_collection{

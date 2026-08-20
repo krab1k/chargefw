@@ -189,6 +189,10 @@ auto find_applicable_methods(const ApplicabilityRequest& request) -> Applicabili
              parameter_set_index < request.parameter_sets.size(); ++parameter_set_index) {
             const auto& parameter_set = request.parameter_sets[parameter_set_index];
 
+            if (!parameter_set.method_id().empty() && parameter_set.method_id() != method->id()) {
+                continue;
+            }
+
             auto parameter_result = check_parameter_prerequisites(
                 *method, request.molecules, parameter_set, request.classification_options);
 
