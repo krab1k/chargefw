@@ -25,15 +25,15 @@ auto validate_radius(const double radius) -> void {
 
 class ConformerPointCloud {
   public:
-    explicit ConformerPointCloud(const ConformerFeatures& geometry) : geometry_{geometry} {}
+    explicit ConformerPointCloud(const ConformerFeatures& geometry) : geometry_{&geometry} {}
 
     [[nodiscard]] auto kdtree_get_point_count() const -> std::size_t {
-        return geometry_.molecule().atom_count();
+        return geometry_->molecule().atom_count();
     }
 
     [[nodiscard]] auto kdtree_get_pt(const std::size_t point_index,
                                      const std::size_t dimension) const -> double {
-        const auto& position = geometry_.position(point_index);
+        const auto& position = geometry_->position(point_index);
         switch (dimension) {
         case 0:
             return position.x;
@@ -49,7 +49,7 @@ class ConformerPointCloud {
     }
 
   private:
-    const ConformerFeatures& geometry_;
+    const ConformerFeatures* geometry_;
 };
 
 using KdTree =
@@ -63,12 +63,12 @@ class SourceIndexRadiusResultSet {
 
     SourceIndexRadiusResultSet(const double radius_squared,
                                std::vector<std::size_t>& neighbor_indices)
-        : radius_squared_{radius_squared}, neighbor_indices_{neighbor_indices} {
-        neighbor_indices_.clear();
+        : radius_squared_{radius_squared}, neighbor_indices_{&neighbor_indices} {
+        neighbor_indices_->clear();
     }
 
     [[nodiscard]] auto size() const noexcept -> std::size_t {
-        return neighbor_indices_.size();
+        return neighbor_indices_->size();
     }
     [[nodiscard]] auto full() const noexcept -> bool {
         return true;
@@ -79,18 +79,18 @@ class SourceIndexRadiusResultSet {
 
     auto addPoint(const double squared_distance, const std::size_t point_index) -> bool {
         if (squared_distance < radius_squared_) {
-            neighbor_indices_.push_back(point_index);
+            neighbor_indices_->push_back(point_index);
         }
         return true;
     }
 
     auto sort() -> void {
-        std::ranges::sort(neighbor_indices_);
+        std::ranges::sort(*neighbor_indices_);
     }
 
   private:
     double radius_squared_;
-    std::vector<std::size_t>& neighbor_indices_;
+    std::vector<std::size_t>* neighbor_indices_;
 };
 
 } // namespace

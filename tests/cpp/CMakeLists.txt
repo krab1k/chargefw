@@ -24,6 +24,8 @@ function(chargefw_add_test name)
             chargefw_test_support
     )
 
+    target_link_options(${name} PRIVATE "LINKER:--disable-new-dtags")
+
     add_test(
             NAME ${name}
             COMMAND ${name}

@@ -146,6 +146,7 @@ auto read_collection(Reader& reader, const std::string& input_path,
                 return {method_id, {option_id, parsed}};
             }
         } catch (const std::exception&) {
+            break;
         }
         break;
     }
