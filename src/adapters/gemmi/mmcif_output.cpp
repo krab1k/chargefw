@@ -161,6 +161,20 @@ struct BlockMapping {
         block.init_loop("_chem_comp.", {"id", "name", "type", "formula", "formula_weight"});
     component.add_row({"UNL", quote(molecule.name()), "NON-POLYMER", "?", "?"});
 
+    auto& atom_types = block.init_loop("_atom_type.", {"symbol"});
+    std::vector<std::string> atom_type_symbols;
+    atom_type_symbols.reserve(molecule.atom_count());
+    for (std::size_t index = 0; index < molecule.atom_count(); ++index) {
+        auto symbol = std::string{core::element_symbol(molecule.atom(index).atomic_number())};
+        if (std::find(atom_type_symbols.begin(), atom_type_symbols.end(), symbol) ==
+            atom_type_symbols.end()) {
+            atom_type_symbols.push_back(std::move(symbol));
+        }
+    }
+    for (const auto& symbol : atom_type_symbols) {
+        atom_types.add_row({symbol});
+    }
+
     auto& component_atoms =
         block.init_loop("_chem_comp_atom.", {"comp_id", "atom_id", "type_symbol", "charge"});
     for (std::size_t index = 0; index < molecule.atom_count(); ++index) {

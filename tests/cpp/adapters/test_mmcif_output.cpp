@@ -63,10 +63,14 @@ auto main() -> int {
                                                                      generated_record("second", 2)};
         std::ostringstream output;
         mmcif_output::MmcifWriter{output}.write_generated(records, charge_set(records.size()));
-        const auto document = ::gemmi::cif::read_string(output.str());
+        auto document = ::gemmi::cif::read_string(output.str());
         assert(document.blocks.size() == 2);
         assert(document.blocks[0].has_mmcif_category("_chem_comp."));
         assert(document.blocks[1].has_mmcif_category("_chem_comp_bond."));
+        auto atom_types = document.blocks[0].find("_atom_type.", {"symbol"});
+        assert(atom_types.length() == 2);
+        assert(::gemmi::cif::as_string(atom_types[0][0]) == "C");
+        assert(::gemmi::cif::as_string(atom_types[1][0]) == "O");
         assert(document.blocks[0].has_mmcif_category("_sb_ncbr_partial_atomic_charges_meta."));
         assert(::gemmi::cif::as_string(
                    *document.blocks[0].find_value("_chem_comp_bond.value_order")) == "doub");
