@@ -132,16 +132,16 @@ void add_sequential_bonds(BondAccumulator& bonds,
 }
 
 [[nodiscard]] auto bond_order(const std::string_view value) -> std::optional<core::BondOrder> {
-    if (value == "SING") {
+    if (value == "SING" || value == "sing") {
         return core::BondOrder::SINGLE;
     }
-    if (value == "DOUB") {
+    if (value == "DOUB" || value == "doub") {
         return core::BondOrder::DOUBLE;
     }
-    if (value == "TRIP") {
+    if (value == "TRIP" || value == "trip") {
         return core::BondOrder::TRIPLE;
     }
-    if (value == "AROM") {
+    if (value == "AROM" || value == "arom") {
         return core::BondOrder::SINGLE;
     }
     return std::nullopt;

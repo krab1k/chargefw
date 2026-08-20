@@ -132,11 +132,11 @@ struct BlockMapping {
 [[nodiscard]] auto bond_order(const core::BondOrder order) -> std::string {
     switch (order) {
     case core::BondOrder::SINGLE:
-        return "SING";
+        return "sing";
     case core::BondOrder::DOUBLE:
-        return "DOUB";
+        return "doub";
     case core::BondOrder::TRIPLE:
-        return "TRIP";
+        return "trip";
     }
     throw std::runtime_error{"cannot write unsupported bond order to generated mmCIF"};
 }

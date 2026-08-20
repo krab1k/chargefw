@@ -68,6 +68,8 @@ auto main() -> int {
         assert(document.blocks[0].has_mmcif_category("_chem_comp."));
         assert(document.blocks[1].has_mmcif_category("_chem_comp_bond."));
         assert(document.blocks[0].has_mmcif_category("_sb_ncbr_partial_atomic_charges_meta."));
+        assert(::gemmi::cif::as_string(
+                   *document.blocks[0].find_value("_chem_comp_bond.value_order")) == "doub");
 
         std::istringstream round_trip{output.str()};
         auto reader = mmcif_input::MmcifReader{
