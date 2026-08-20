@@ -47,9 +47,12 @@ Sanitizer configuration:
 
 ```bash
 cmake --preset clang-asan
-cmake --build --preset clang-asan
+cmake --build --preset clang-asan --parallel 1
 ctest --preset clang-asan
 ```
+
+Sanitized Clang builds can require substantial memory for template-heavy translation units; keep the
+build serial (or use a deliberately chosen low `--parallel` value) to avoid exhausting system memory.
 
 Other tracked configure presets are `gcc-release`, `clang-debug`, and `clang-tidy`. Useful options
 include `CHARGEFW_BUILD_TESTS`, `CHARGEFW_BUILD_CLI`, `CHARGEFW_ENABLE_CCACHE`,
@@ -95,11 +98,12 @@ Use `chargefw COMMAND --help` for the complete option list.
   defaults, and choices.
 
 Automatic selection uses full execution when it is not discouraged. For an expensive candidate above
-the threshold, it uses supported cutoff at 12 Å before considering another candidate policy. Explicit
-full overrides the threshold and records a warning. Cover is accepted by the policy API but no method
-currently supports it.
+the threshold, it uses supported cutoff at 12 Å before considering cover. Explicit full overrides the
+threshold and records a warning.
 
-Cutoff is currently available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp.
+Cutoff and explicit serial cover are available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and
+SQE+qp. Cover retains source-ordered charges within 3 Å of each solved pivot halo; it remains a new
+approximation without a general accuracy envelope.
 
 ### Input and output
 

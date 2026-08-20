@@ -22,6 +22,8 @@ complete the CLI/result boundary, add scientific validation, then package bindin
   cardinality.
 - [ ] Reuse one prepared molecule collection across applicability and calculation in the application
   facade instead of preparing the input twice.
+- [ ] Share selected-candidate validation between full and cutoff execution; cutoff currently does not
+  reject classifications attached to a method that does not use parameters.
 
 ## 2. Result contract, molecular I/O, and CLI
 

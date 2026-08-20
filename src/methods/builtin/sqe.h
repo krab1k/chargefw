@@ -24,6 +24,7 @@ class SQEMethod final : public Method {
         requirements.resources.time = ComplexityTerm::bonds_cubed;
         requirements.resources.memory = ComplexityTerm::bonds_squared;
         requirements.resources.supports_cutoff = true;
+        requirements.resources.supports_cover = true;
         requirements.resources.fragment_target_charge_policy = FragmentTargetChargePolicy::zero;
         return requirements;
     }

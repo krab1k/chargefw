@@ -1,5 +1,6 @@
 #include <chargefw/calculation/calculation.h>
 
+#include "calculation/cover_execution.h"
 #include "calculation/cutoff_execution.h"
 
 #include <chargefw/methods/method.h>
@@ -241,7 +242,9 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
             .charges = calculate_cutoff_charges(request.selected, request.molecules,
                                                 request.execution_policy, request.max_threads)};
     case ExecutionMode::cover:
-        throw std::invalid_argument{"selected cover execution policy is not implemented"};
+        return CalculationResult{.charges =
+                                     calculate_cover_charges(request.selected, request.molecules,
+                                                             request.execution_policy)};
     }
 
     throw std::invalid_argument{"unknown execution policy"};

@@ -52,6 +52,7 @@ class ZeroFragmentMethod final : public methods::Method {
         auto requirements = methods::MethodRequirements{};
         requirements.coordinates = true;
         requirements.resources.supports_cutoff = true;
+        requirements.resources.supports_cover = true;
         requirements.resources.fragment_target_charge_policy =
             methods::FragmentTargetChargePolicy::proportional_to_atom_count;
         return requirements;
@@ -166,7 +167,7 @@ auto make_charged_water() -> core::Molecule {
         "charged-water"};
 }
 
-auto assert_cutoff_matches_full(
+auto assert_reduced_matches_full(
     const std::string_view method_id, std::vector<parameters::ParameterSet> parameter_sets = {},
     core::Molecule molecule = chargefw::test::make_two_conformer_water()) -> void {
     const auto molecules = core::MoleculeCollection{std::vector{std::move(molecule)}};
@@ -175,29 +176,35 @@ auto assert_cutoff_matches_full(
                                                    .parameter_sets = parameter_sets,
                                                    .method_id = std::string{method_id},
                                                    .resource_policy = {.max_threads = 2}});
-    const auto cutoff = calculation::calculate(calculation::ApplicationCalculationRequest{
-        .molecules = molecules,
-        .parameter_sets = std::move(parameter_sets),
-        .method_id = std::string{method_id},
-        .execution_selection =
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff, 8.0},
-        .resource_policy = {.max_threads = 2}});
-
     assert(full.calculated());
-    assert(cutoff.calculated());
-    assert(cutoff.execution_policy.has_value());
-    assert(cutoff.execution_policy->mode() == calculation::ExecutionMode::cutoff);
-    assert(cutoff.execution_policy->charge_correction() ==
-           calculation::ChargeCorrectionPolicy::uniform);
-    assert(full.charges->size() == cutoff.charges->size());
 
-    for (std::size_t assignment_index = 0; assignment_index < full.charges->size();
-         ++assignment_index) {
-        const auto& full_charges = full.charges->assignment(assignment_index).charges;
-        const auto& cutoff_charges = cutoff.charges->assignment(assignment_index).charges;
-        assert(full_charges.size() == cutoff_charges.size());
-        for (std::size_t atom_index = 0; atom_index < full_charges.size(); ++atom_index) {
-            assert(std::abs(full_charges[atom_index] - cutoff_charges[atom_index]) < 1.0e-10);
+    for (const auto selection_kind : {calculation::ExecutionSelectionKind::cutoff,
+                                      calculation::ExecutionSelectionKind::cover}) {
+        const auto reduced = calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = molecules,
+            .parameter_sets = parameter_sets,
+            .method_id = std::string{method_id},
+            .execution_selection = calculation::ExecutionSelection{selection_kind, 8.0},
+            .resource_policy = {.max_threads = 2}});
+
+        assert(reduced.calculated());
+        assert(reduced.execution_policy.has_value());
+        assert(reduced.execution_policy->mode() ==
+               (selection_kind == calculation::ExecutionSelectionKind::cutoff
+                    ? calculation::ExecutionMode::cutoff
+                    : calculation::ExecutionMode::cover));
+        assert(reduced.execution_policy->charge_correction() ==
+               calculation::ChargeCorrectionPolicy::uniform);
+        assert(full.charges->size() == reduced.charges->size());
+
+        for (std::size_t assignment_index = 0; assignment_index < full.charges->size();
+             ++assignment_index) {
+            const auto& full_charges = full.charges->assignment(assignment_index).charges;
+            const auto& reduced_charges = reduced.charges->assignment(assignment_index).charges;
+            assert(full_charges.size() == reduced_charges.size());
+            for (std::size_t atom_index = 0; atom_index < full_charges.size(); ++atom_index) {
+                assert(std::abs(full_charges[atom_index] - reduced_charges[atom_index]) < 1.0e-10);
+            }
         }
     }
 }
@@ -235,7 +242,16 @@ auto main() -> int {
     assert(uncorrected.charges.assignment(0).charges[0] == 0.0);
     assert(uncorrected.charges.assignment(0).charges[1] == 0.0);
 
-    assert_cutoff_matches_full("eem", {make_eem_parameters()});
+    const auto cover_corrected =
+        calculation::calculate({.molecules = prepared,
+                                .selected = selected,
+                                .execution_policy = calculation::ExecutionPolicy{
+                                    calculation::ExecutionMode::cover, 8.0,
+                                    calculation::ChargeCorrectionPolicy::uniform}});
+    assert(cover_corrected.charges.assignment(0).charges[0] == 0.5);
+    assert(cover_corrected.charges.assignment(0).charges[1] == 0.5);
+
+    assert_reduced_matches_full("eem", {make_eem_parameters()});
 
     const auto automatic_cutoff = calculation::calculate(calculation::ApplicationCalculationRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -261,19 +277,20 @@ auto main() -> int {
            calculation::ExecutionMode::cutoff);
     assert(overridden_automatic_cutoff.execution_policy->radius() == std::optional<double>{8.0});
 
-    assert_cutoff_matches_full("qeq", {make_qeq_parameters()});
-    assert_cutoff_matches_full("eqeq");
-    assert_cutoff_matches_full("eqeqc", {make_eqeqc_parameters()});
-    assert_cutoff_matches_full("abeem", {make_abeem_parameters()});
-    assert_cutoff_matches_full("sqe", {make_sqe_parameters("sqe", false)});
-    assert_cutoff_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)});
-    assert_cutoff_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)});
-    assert_cutoff_matches_full("sqe", {make_sqe_parameters("sqe", false, true)});
-    assert_cutoff_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false, true)});
-    assert_cutoff_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true, true)});
-    assert_cutoff_matches_full("sqe", {make_sqe_parameters("sqe", false)}, make_charged_water());
-    assert_cutoff_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)},
-                               make_charged_water());
-    assert_cutoff_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)}, make_charged_water());
+    assert_reduced_matches_full("qeq", {make_qeq_parameters()});
+    assert_reduced_matches_full("eqeq");
+    assert_reduced_matches_full("eqeqc", {make_eqeqc_parameters()});
+    assert_reduced_matches_full("abeem", {make_abeem_parameters()});
+    assert_reduced_matches_full("sqe", {make_sqe_parameters("sqe", false)});
+    assert_reduced_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)});
+    assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)});
+    assert_reduced_matches_full("sqe", {make_sqe_parameters("sqe", false, true)});
+    assert_reduced_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false, true)});
+    assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true, true)});
+    assert_reduced_matches_full("sqe", {make_sqe_parameters("sqe", false)}, make_charged_water());
+    assert_reduced_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)},
+                                make_charged_water());
+    assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)},
+                                make_charged_water());
     return 0;
 }

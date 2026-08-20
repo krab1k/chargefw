@@ -19,13 +19,13 @@ Implemented:
   parallel over independent targets or fragment centers without nested worker pools;
 - one `SpatialFragmentBuilder` and nanoflann KD-tree per source conformer for cutoff fragment neighbor
   queries;
+- deterministic serial cover execution with a 3 Å retained interior and first-pivot ownership;
 - automatic cutoff at 12 Å when an expensive full candidate exceeds the threshold;
 - CLI selection and JSON requested/effective provenance;
 - cutoff capability for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp.
 
 Not implemented or incomplete:
 
-- cover execution and overlap semantics;
 - pre-allocation emission of explicit-full warnings (warnings are currently retained after execution);
 - ChargeFW2 cutoff compatibility fixtures and supported numerical tolerances;
 - broad multi-radius, charge-state, disconnected-system, performance, and memory validation;
@@ -171,10 +171,10 @@ For a source molecule and conformer with cover radius `R`:
    charges are assembled in source order, the existing selected final correction (`none` or `uniform`)
    targets the method-declared whole-molecule charge.
 
-Initial execution is deterministic and serial per molecule/conformer. Parallel cover scheduling and
-automatic built-in cover capability are deferred until this policy has focused numerical validation.
+Execution is deterministic and serial per molecule/conformer. Automatic planning continues to prefer
+cutoff before cover; explicit cover is available for the eight methods that support cutoff.
 
-Before declaring any method cover-capable, tests must prove:
+Before adding cover to automatic planning, validation must prove:
 
 - deterministic pivot and contribution selection;
 - every source atom receives at least one assignment;

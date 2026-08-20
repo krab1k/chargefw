@@ -17,11 +17,12 @@ The repository currently provides:
 - 22 built-in methods and bundled JSON parameter sets;
 - scientific applicability and execution-availability assessment;
 - deterministic method/parameter selection and owned application facades;
-- exact full execution and oneTBB-parallelized KD-tree spatial cutoff for eight validated methods;
+- exact full execution, oneTBB-parallelized KD-tree spatial cutoff, and serial spatial cover for eight
+  reduced-capable methods;
 - native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;
 - JSON, SDF, MOL2, and mmCIF charge output through a focused CLI.
 
-Cover execution, broad compatibility/accuracy validation, Python bindings, packaged distribution, and a
+Broad reduced-mode compatibility/accuracy validation, Python bindings, packaged distribution, and a
 stable failure-capable result schema remain unfinished.
 
 ## Architecture
@@ -137,9 +138,9 @@ Scientific applicability is independent of the resource warning. Missing coordin
 formal charges, element properties, required parameter coverage, or other method prerequisites remain
 hard failures.
 
-### Implemented cutoff methods
+### Implemented reduced methods
 
-Serial cutoff is declared for:
+Cutoff and explicit serial cover are declared for:
 
 ```text
 abeem, eem, eqeq, eqeqc, qeq, sqe, sqeq0, sqeqp
@@ -157,10 +158,15 @@ count and restore the source formal-charge total. SQE uses zero fragment and fin
 projects formal initial charges; SQE+qp projects parameterized `q0` corrected to fragment formal
 charge. SQE-family cutoff is a new approximation design, not ChargeFW2 parity.
 
-Whole-molecule-radius tests verify full/cutoff agreement for all eight methods on small fixtures,
-including neutral/charged and zero-width SQE-family cases. They do not establish general cutoff error
-envelopes. Cover is represented in policy and applicability but no method declares it supported and
-its executor is not implemented.
+Cover scans source atoms in order, builds and solves one radius fragment for each unassigned pivot, and
+retains charges for every previously unassigned atom within 3 Å of that pivot. Overlapping retained
+interiors use first-pivot ownership; halo-only atoms provide context. Cover shares classification
+projection, fragment target charges, validation, and final correction with cutoff, but does not
+parallelize pivot solves.
+
+Whole-molecule-radius tests verify full/cutoff/cover agreement for all eight methods on small fixtures,
+including neutral/charged and zero-width SQE-family cases. They do not establish general reduced-mode
+error envelopes.
 
 ### Preliminary large-structure observations
 

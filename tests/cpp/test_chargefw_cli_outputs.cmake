@@ -2,6 +2,37 @@ set(output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_outputs")
 set(output_prefix "${output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${output_directory}")
 
+foreach(mode IN ITEMS full cutoff cover)
+    set(mode_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_${mode}")
+    set(mode_output_prefix "${mode_output_directory}/water.chargefw")
+    file(REMOVE_RECURSE "${mode_output_directory}")
+
+    set(execution_arguments --method eem --execution ${mode})
+    if(NOT mode STREQUAL "full")
+        list(APPEND execution_arguments --radius 8)
+    endif()
+
+    execute_process(
+            COMMAND "${CMAKE_COMMAND}" -E env
+                    "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                    "${CHARGEFW_CLI}" calculate ${execution_arguments} "${CHARGEFW_INPUT}"
+                    "${mode_output_directory}"
+            RESULT_VARIABLE mode_result
+            ERROR_VARIABLE mode_error
+    )
+    if(NOT mode_result EQUAL 0)
+        message(FATAL_ERROR "${mode} CLI calculation failed: ${mode_error}")
+    endif()
+
+    file(READ "${mode_output_prefix}.json" mode_json)
+    string(JSON mode_status GET "${mode_json}" results 0 status)
+    string(JSON effective_mode GET "${mode_json}" calculation_provenance effective execution mode)
+    if(NOT mode_status STREQUAL "success" OR NOT effective_mode STREQUAL "${mode}")
+        message(FATAL_ERROR "Unexpected ${mode} CLI result")
+    endif()
+    file(REMOVE_RECURSE "${mode_output_directory}")
+endforeach()
+
 execute_process(
         COMMAND "${CMAKE_COMMAND}" -E env
                 "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"

@@ -126,7 +126,10 @@ valid_classification_count(const MethodRequirements& requirements,
                                     requirements.resources.supports_cutoff &&
                                         requirements.resources.fragment_target_charge_policy !=
                                             FragmentTargetChargePolicy::unsupported),
-            make_reduced_assessment(ExecutionMode::cover, requirements.resources.supports_cover)};
+            make_reduced_assessment(ExecutionMode::cover,
+                                    requirements.resources.supports_cover &&
+                                        requirements.resources.fragment_target_charge_policy !=
+                                            FragmentTargetChargePolicy::unsupported)};
 }
 
 } // namespace

@@ -275,6 +275,7 @@ auto main() -> int {
     assert(qeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(qeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(qeq->requirements().resources.supports_cutoff);
+    assert(qeq->requirements().resources.supports_cover);
     assert(qeq->requirements().resources.fragment_target_charge_policy ==
            methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
@@ -294,6 +295,7 @@ auto main() -> int {
     assert(sqe->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqe->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
     assert(sqe->requirements().resources.supports_cutoff);
+    assert(sqe->requirements().resources.supports_cover);
     assert(sqe->requirements().resources.fragment_target_charge_policy ==
            methods::FragmentTargetChargePolicy::zero);
 
@@ -314,6 +316,7 @@ auto main() -> int {
     assert(sqeq0->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqeq0->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
     assert(sqeq0->requirements().resources.supports_cutoff);
+    assert(sqeq0->requirements().resources.supports_cover);
     assert(sqeq0->requirements().resources.fragment_target_charge_policy ==
            methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
@@ -334,6 +337,7 @@ auto main() -> int {
     assert(sqeqp->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
     assert(sqeqp->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
     assert(sqeqp->requirements().resources.supports_cutoff);
+    assert(sqeqp->requirements().resources.supports_cover);
     assert(sqeqp->requirements().resources.fragment_target_charge_policy ==
            methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
@@ -355,6 +359,7 @@ auto main() -> int {
     assert(eem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(eem->requirements().resources.supports_cutoff);
+    assert(eem->requirements().resources.supports_cover);
     assert(eem->requirements().resources.fragment_target_charge_policy ==
            methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
@@ -412,6 +417,7 @@ auto main() -> int {
     assert(eqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(eqeq->requirements().resources.supports_cutoff);
+    assert(eqeq->requirements().resources.supports_cover);
     assert(eqeq->requirements().resources.fragment_target_charge_policy ==
            methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
@@ -434,6 +440,7 @@ auto main() -> int {
     assert(eqeqc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
     assert(eqeqc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
     assert(eqeqc->requirements().resources.supports_cutoff);
+    assert(eqeqc->requirements().resources.supports_cover);
     assert(eqeqc->requirements().resources.fragment_target_charge_policy ==
            methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
@@ -458,6 +465,7 @@ auto main() -> int {
     assert(abeem->requirements().resources.memory ==
            methods::ComplexityTerm::atoms_plus_bonds_squared);
     assert(abeem->requirements().resources.supports_cutoff);
+    assert(abeem->requirements().resources.supports_cover);
     assert(abeem->requirements().resources.fragment_target_charge_policy ==
            methods::FragmentTargetChargePolicy::proportional_to_atom_count);
     assert(abeem->requirements().resources.memory ==
