@@ -15,12 +15,14 @@ option(CHARGEFW_BUILD_CLI "Build the chargefw command-line application" ON)
 option(CHARGEFW_ENABLE_WARNINGS "Enable project warnings" ON)
 option(CHARGEFW_ENABLE_SANITIZERS "Enable sanitizers" OFF)
 option(CHARGEFW_ENABLE_CLANG_TIDY "Enable clang-tidy" OFF)
+option(CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS "Optimize for the build host CPU" ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 include(cmake/dependencies.cmake)
 include(cmake/developer_tools.cmake)
+include(cmake/optimization.cmake)
 include(cmake/warnings.cmake)
 include(cmake/sanitizers.cmake)
 
@@ -57,6 +59,8 @@ target_compile_definitions(chargefw_core
   PRIVATE
     EIGEN_DONT_PARALLELIZE
 )
+
+chargefw_enable_optimizations(chargefw_core)
 
 configure_file(
   ${PROJECT_SOURCE_DIR}/include/chargefw/config.h.in

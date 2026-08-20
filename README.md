@@ -53,7 +53,8 @@ ctest --preset clang-asan
 
 Other tracked configure presets are `gcc-release`, `clang-debug`, and `clang-tidy`. Useful options
 include `CHARGEFW_BUILD_TESTS`, `CHARGEFW_BUILD_CLI`, `CHARGEFW_ENABLE_CCACHE`,
-`CHARGEFW_ENABLE_SANITIZERS`, and `CHARGEFW_ENABLE_CLANG_TIDY`.
+`CHARGEFW_ENABLE_SANITIZERS`, `CHARGEFW_ENABLE_CLANG_TIDY`, and
+`CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS` (enabled by default; disable for portable builds).
 
 ## CLI quick start
 

@@ -10,6 +10,8 @@ set_target_properties(chargefw_cli
         OUTPUT_NAME chargefw
 )
 
+chargefw_enable_optimizations(chargefw_cli)
+
 target_link_libraries(chargefw_cli
         PRIVATE
         chargefw::core
