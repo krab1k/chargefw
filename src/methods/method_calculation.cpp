@@ -79,14 +79,6 @@ auto validate_calculated_charges(const Method& method, const features::PreparedM
     }
 }
 
-auto validate_candidate_classification(const ApplicableMethod& selected,
-                                       const features::PreparedMolecule& molecule,
-                                       const parameters::ParameterClassification& classification)
-    -> void {
-    parameters::validate_parameter_classification(molecule.molecule(), *selected.parameter_set,
-                                                  classification);
-}
-
 [[nodiscard]] auto parameter_set_id_for(const ApplicableMethod& selected)
     -> std::optional<std::string> {
     if (!selected.uses_parameters()) {
@@ -136,7 +128,8 @@ auto validate_coordinate_targets(const ApplicableMethod& selected,
     const ApplicableMethod& selected, const features::PreparedMolecule& molecule,
     const parameters::ParameterClassification& classification,
     const std::optional<std::size_t> conformer_index) -> charges::AtomicCharges {
-    validate_candidate_classification(selected, molecule, classification);
+    parameters::validate_parameter_classification(molecule.molecule(), *selected.parameter_set,
+                                                  classification);
 
     const parameters::ParameterView parameter_view{*selected.parameter_set, classification};
 
