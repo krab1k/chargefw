@@ -259,9 +259,9 @@ Current limitations:
 ## Build, installation, and distribution
 
 CMake builds one `chargefw_core` library and an optional `chargefw` CLI. Public dependencies are
-nlohmann/json and Gemmi; Eigen and nanoflann are private and CLI11 is used by the application. CMake
-first searches for compatible packages and otherwise fetches CLI11 2.6.2, nlohmann/json 3.12.0, Eigen
-5.0.1, nanoflann 1.12.1, and Gemmi 0.7.4.
+nlohmann/json and Gemmi; Eigen, nanoflann, and oneTBB are private and CLI11 is used by the application.
+CMake first searches for compatible packages and otherwise fetches CLI11 2.6.2, nlohmann/json 3.12.0,
+Eigen 5.0.1, nanoflann 1.12.1, oneTBB 2023.1.0, and Gemmi 0.7.4.
 
 Installation currently provides the library, public headers, CLI, generated config header, and bundled
 parameter JSON. Exported CMake package targets are not implemented. There are no repository CI

@@ -50,6 +50,7 @@ target_link_libraries(chargefw_core
   PRIVATE
     Eigen3::Eigen
     nanoflann::nanoflann
+    TBB::tbb
 )
 
 configure_file(

@@ -43,6 +43,18 @@ function(chargefw_setup_dependencies)
         FetchContent_MakeAvailable(nanoflann)
     endif()
 
+    find_package(TBB 2023.1 CONFIG QUIET)
+    if(NOT TARGET TBB::tbb)
+        set(TBB_TEST OFF CACHE BOOL "" FORCE)
+        set(TBB_STRICT OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(
+                onetbb
+                SYSTEM
+                URL https://github.com/uxlfoundation/oneTBB/archive/refs/tags/v2023.1.0.tar.gz
+        )
+        FetchContent_MakeAvailable(onetbb)
+    endif()
+
     find_package(gemmi 0.7.4 CONFIG QUIET)
     if(NOT TARGET gemmi::gemmi_cpp)
         set(BUILD_GEMMI_PROGRAM OFF CACHE BOOL "" FORCE)
