@@ -15,6 +15,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <cmath>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -63,11 +64,44 @@ class FragmentSizeMethod final : public methods::Method {
     mutable std::atomic_size_t calls = 0;
 };
 
-auto make_linear_molecule() -> core::Molecule {
+class TargetChargeMethod final : public methods::Method {
+  public:
+    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
+        static constexpr methods::MethodMetadata metadata{.id = "cover-target-charge",
+                                                          .name = "Cover target charge",
+                                                          .full_name = "Cover target charge",
+                                                          .publication = std::nullopt,
+                                                          .priority = 0};
+        return metadata;
+    }
+
+    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
+        auto requirements = methods::MethodRequirements{};
+        requirements.coordinates = true;
+        requirements.resources.supports_cover = true;
+        requirements.resources.fragment_target_charge_policy =
+            methods::FragmentTargetChargePolicy::proportional_to_atom_count;
+        return requirements;
+    }
+
+    [[nodiscard]] auto option_schema() const noexcept
+        -> std::span<const methods::MethodOptionSpec> override {
+        return {};
+    }
+
+    [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
+        -> charges::AtomicCharges override {
+        return charges::AtomicCharges{
+            std::vector<double>(input.molecule().atom_count(), input.target_charge())};
+    }
+};
+
+auto make_linear_molecule(const std::size_t atom_count = 8, const int formal_charge = 0)
+    -> core::Molecule {
     auto atoms = std::vector<core::Atom>{};
     auto positions = std::vector<core::Position>{};
-    for (std::size_t atom_index = 0; atom_index < 8; ++atom_index) {
-        atoms.emplace_back(6);
+    for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
+        atoms.emplace_back(6, formal_charge);
         positions.push_back(core::Position{.x = static_cast<double>(atom_index)});
     }
     return core::Molecule{
@@ -77,22 +111,48 @@ auto make_linear_molecule() -> core::Molecule {
 } // namespace
 
 auto main() -> int {
-    const FragmentSizeMethod method;
-    const auto collection = core::MoleculeCollection{std::vector{make_linear_molecule()}};
+    const auto collection = core::MoleculeCollection{std::vector{make_linear_molecule(10)}};
     const features::PreparedMoleculeCollection prepared{collection};
-    const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
+    const auto policy = calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0,
+                                                     calculation::ChargeCorrectionPolicy::none};
 
-    const auto result = calculation::calculate_cover_charges(
-        selected, prepared,
-        calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0,
-                                     calculation::ChargeCorrectionPolicy::none});
+    {
+        const FragmentSizeMethod method;
+        const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
+        const auto serial = calculation::calculate_cover_charges(selected, prepared, policy, 1);
+        const auto parallel = calculation::calculate_cover_charges(selected, prepared, policy, 0);
 
-    assert(method.calls.load() == 2);
-    assert(result.size() == 1);
-    const auto& values = result.assignment(0).charges;
-    assert(values.size() == 8);
-    for (const auto value : values.values()) {
-        assert(value == 8.0);
+        assert(method.calls.load() == 6);
+        assert(serial.size() == 1);
+        assert(parallel.size() == 1);
+        const auto& serial_values = serial.assignment(0).charges;
+        const auto& parallel_values = parallel.assignment(0).charges;
+        assert(serial_values.size() == 10);
+        assert(parallel_values.size() == serial_values.size());
+        for (std::size_t atom_index = 0; atom_index < serial_values.size(); ++atom_index) {
+            assert(parallel_values[atom_index] == serial_values[atom_index]);
+            const auto expected = atom_index < 4 ? 9.0 : 10.0;
+            assert(serial_values[atom_index] == expected);
+        }
+    }
+
+    {
+        const auto charged_collection =
+            core::MoleculeCollection{std::vector{make_linear_molecule(10, 1)}};
+        const features::PreparedMoleculeCollection charged_prepared{charged_collection};
+        const TargetChargeMethod method;
+        const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
+        const auto corrected = calculation::calculate_cover_charges(
+            selected, charged_prepared,
+            calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0,
+                                         calculation::ChargeCorrectionPolicy::uniform},
+            1);
+
+        const auto& values = corrected.assignment(0).charges;
+        for (std::size_t atom_index = 0; atom_index < values.size(); ++atom_index) {
+            const auto expected = atom_index < 4 ? 0.4 : 1.4;
+            assert(std::abs(values[atom_index] - expected) < 1.0e-12);
+        }
     }
 
     return 0;

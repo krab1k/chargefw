@@ -4,18 +4,12 @@ This file contains unfinished work only. Implemented state belongs in [PROJECT.m
 in [README.md](README.md), and implementation rules in [AGENTS.md](AGENTS.md). Remove an item when its
 full acceptance criteria are met; do not retain checked history here.
 
-Priorities are ordered by product dependency: stabilize the native contract and reduced execution,
-complete the CLI/result boundary, add scientific validation, then package bindings and distributions.
+Priorities are ordered by product dependency: complete implementation contracts, complete the CLI/result
+boundary, establish scientific/compatibility evidence, then package bindings and distributions. Numerical
+accuracy studies are deliberately separate from implementation-completion work.
 
-## 1. Calculation and reduced execution
+## 1. Implementation completion: calculation and reduced execution
 
-- [ ] Complete deterministic parallel cover validation. Define diagnostics and method-by-method
-  capability tests for serial pivot ownership, parallel pivot solves, solve halo versus retained
-  interior, complete coverage, overlap reconciliation, target charge, and correction before enabling
-  automatic cover.
-- [ ] Complete SQE-family reduced validation. Add disconnected and charged SQE+qp fixtures,
-  multi-radius full/cutoff convergence/error envelopes, and cover semantics. Treat cutoff/cover as new
-  approximations rather than ChargeFW2 parity.
 - [ ] Emit explicit-full threshold warnings before fragment/solver allocation as well as retaining them
   in result provenance.
 - [ ] Expand facade and planning tests for multiple molecules/conformers, no-plan diagnostics, explicit
@@ -51,6 +45,13 @@ complete the CLI/result boundary, add scientific validation, then package bindin
   untrusted input as supported.
 
 ## 3. Scientific and compatibility validation
+
+These are evidence and release-readiness work, not implementation-completion blockers. Cutoff and cover
+remain explicit approximations until their method-specific validation is complete.
+
+- [ ] Complete SQE-family reduced validation. Add disconnected and charged SQE+qp fixtures,
+  multi-radius full/cutoff/cover convergence and error envelopes, and cover semantics. Treat
+  cutoff/cover as new approximations rather than ChargeFW2 parity.
 
 - [ ] Build a reusable ChargeFW2 comparison harness using identical topology, formal charges,
   conformers, method options, and parameter data.
