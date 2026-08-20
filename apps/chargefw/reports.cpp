@@ -7,6 +7,7 @@
 #include <iostream>
 #include <map>
 #include <print>
+#include <variant>
 
 namespace chargefw::cli {
 
@@ -77,6 +78,22 @@ void print_applicability(const calculation::ApplicationAssessmentResult& assessm
 void print_methods() {
     for (const auto& method : methods::method_registry().methods()) {
         std::println("{}\t{}", method->id(), method->metadata().name);
+        for (const auto& option : method->option_schema()) {
+            std::print("  {} (default=", option.id);
+            std::visit([](const auto& value) { std::print("{}", value); }, option.default_value);
+            std::print(")");
+            if (!option.choices.empty()) {
+                std::print(" choices=");
+                for (std::size_t index = 0; index < option.choices.size(); ++index) {
+                    if (index != 0) {
+                        std::print(",");
+                    }
+                    std::visit([](const auto& value) { std::print("{}", value); },
+                               option.choices[index]);
+                }
+            }
+            std::println();
+        }
     }
 }
 

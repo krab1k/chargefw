@@ -1,5 +1,6 @@
 #include "cli_support.h"
 
+#include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <ranges>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 
 namespace chargefw::cli {
 namespace {
@@ -90,6 +92,68 @@ auto read_collection(Reader& reader, const std::string& input_path,
             "Full atom threshold must be a non-negative integer or 'unlimited'"};
     }
     return threshold;
+}
+
+[[nodiscard]] auto parse_method_option(const std::string& text)
+    -> std::pair<std::string, std::pair<std::string, methods::MethodOptionValue>> {
+    const auto equals = text.find('=');
+    const auto dot = text.find('.');
+    if (dot == std::string::npos || equals == std::string::npos || dot == 0 || dot + 1 >= equals ||
+        equals + 1 >= text.size()) {
+        throw std::runtime_error{"Method option must have the form METHOD.OPTION=VALUE: " + text};
+    }
+
+    const auto method_id = text.substr(0, dot);
+    const auto option_id = text.substr(dot + 1, equals - dot - 1);
+    const auto value = text.substr(equals + 1);
+    const auto* method = methods::method_registry().find(method_id);
+    if (method == nullptr) {
+        throw std::runtime_error{"Unknown method in method option: " + method_id};
+    }
+    const auto schema = method->option_schema();
+    const auto spec =
+        std::ranges::find_if(schema, [&option_id](const methods::MethodOptionSpec& item) {
+            return item.id == option_id;
+        });
+    if (spec == schema.end()) {
+        throw std::runtime_error{"Unknown option '" + option_id + "' for method '" + method_id +
+                                 "'"};
+    }
+
+    switch (spec->type) {
+    case methods::MethodOptionType::boolean:
+        if (value == "true" || value == "1") {
+            return {method_id, {option_id, true}};
+        }
+        if (value == "false" || value == "0") {
+            return {method_id, {option_id, false}};
+        }
+        break;
+    case methods::MethodOptionType::integer: {
+        int parsed = 0;
+        const auto [end, error] =
+            std::from_chars(value.data(), value.data() + value.size(), parsed);
+        if (error == std::errc{} && end == value.data() + value.size()) {
+            return {method_id, {option_id, parsed}};
+        }
+        break;
+    }
+    case methods::MethodOptionType::floating_point: {
+        try {
+            std::size_t end = 0;
+            const auto parsed = std::stod(value, &end);
+            if (end == value.size()) {
+                return {method_id, {option_id, parsed}};
+            }
+        } catch (const std::exception&) {
+        }
+        break;
+    }
+    case methods::MethodOptionType::string:
+        return {method_id, {option_id, value}};
+    }
+    throw std::runtime_error{"Invalid value for method option '" + method_id + "." + option_id +
+                             "': " + value};
 }
 
 auto read_collection(const std::string& input_path,
@@ -178,6 +242,8 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
         command.add_option("--parameter-set", arguments.parameter_set_id, "Parameter-set ID");
     command.add_flag("--permissive-types", arguments.permissive_types,
                      "Allow permissive parameter type classification");
+    command.add_option("--method-option", arguments.method_options,
+                       "Method option METHOD.OPTION=VALUE (repeatable)");
     command.add_option("--execution", arguments.execution,
                        "Execution: auto, full, cutoff, or cover");
     command.add_option("--radius", arguments.radius, "Cutoff or cover radius in angstrom");
@@ -208,6 +274,11 @@ auto import_input(const InputArguments& arguments) -> ImportedCollection {
 
 auto make_request(const ImportedCollection& imported, const SelectionArguments& arguments)
     -> calculation::ApplicationCalculationRequest {
+    auto method_options = std::unordered_map<std::string, methods::MethodOptions>{};
+    for (const auto& text : arguments.method_options) {
+        const auto [method_id, option] = parse_method_option(text);
+        method_options[method_id].set(option.first, option.second);
+    }
     return {.molecules = imported.molecules,
             .parameter_sets = parameters::load_default_parameter_sets(),
             .method_id = arguments.method_option->count() == 0 ? std::nullopt
@@ -215,6 +286,7 @@ auto make_request(const ImportedCollection& imported, const SelectionArguments& 
             .parameter_set_id = arguments.parameter_set_option->count() == 0
                                     ? std::nullopt
                                     : std::optional{arguments.parameter_set_id},
+            .method_options = std::move(method_options),
             .classification_options = {.permissive_types = arguments.permissive_types},
             .execution_selection =
                 calculation::ExecutionSelection{

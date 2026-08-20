@@ -13,6 +13,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace chargefw::methods {
@@ -27,6 +28,7 @@ struct ApplicabilityRequest {
     // NOLINTEND(cppcoreguidelines-avoid-const-or-ref-data-members)
     parameters::ClassificationOptions classification_options{};
     calculation::ResourcePolicy resource_policy{};
+    std::unordered_map<std::string, MethodOptions> method_options;
 };
 
 enum class ExecutionAvailability : std::uint8_t {

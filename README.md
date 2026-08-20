@@ -88,6 +88,9 @@ Use `chargefw COMMAND --help` for the complete option list.
   reduced-execution default.
 - `--full-atom-threshold COUNT|unlimited` changes the automatic full-execution safeguard (default
   20,000 atoms).
+- `--method-option METHOD.OPTION=VALUE` supplies a repeatable, method-scoped option override. For
+  automatic method selection, include the method ID; `chargefw methods` lists option schemas,
+  defaults, and choices.
 
 Automatic selection uses full execution when it is not discouraged. For an expensive candidate above
 the threshold, it uses supported cutoff at 12 Å before considering another candidate policy. Explicit
@@ -138,8 +141,10 @@ list installed capabilities.
 Schema `1.0` contains one ordered result per imported molecule, source identity,
 source-ordered charge assignments, totals, and diagnostics. `calculation_provenance` records requested
 conformer selection, selection/classification/resource/structural policies, and the effective method,
-parameter set, execution mode, radius, correction, and warnings. JSON charge values are rounded to at
-most four decimal places; internal calculations retain native precision.
+parameter set, method options, execution mode, radius, correction, and warnings. Requested method
+options contain explicit overrides; effective options contain the complete selected-method values.
+JSON charge values are rounded to at most four decimal places; internal calculations retain native
+precision.
 
 ## Install
 

@@ -118,7 +118,7 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
     for (const auto& issue : result.execution_issues) {
         warnings.push_back(issue.message);
     }
-    const auto provenance = adapters::CalculationProvenance{
+    auto provenance = adapters::CalculationProvenance{
         .requested = {.method_id = request.method_id,
                       .parameter_set_id = request.parameter_set_id,
                       .permissive_types = request.classification_options.permissive_types,
@@ -158,6 +158,13 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                                                      result.execution_policy->charge_correction())}}
                                                : std::nullopt,
             .warnings = std::move(warnings)}};
+    for (const auto& [method_id, options] : request.method_options) {
+        provenance.requested.method_options.emplace(method_id, options);
+    }
+    if (result.effective_method_options.has_value() && result.charges.has_value()) {
+        provenance.effective.method_options.emplace(std::string{result.charges->method_id()},
+                                                    *result.effective_method_options);
+    }
     auto document = adapters::ChargeResultDocument{.generator_name = "ChargeFW",
                                                    .generator_version = "0.0.1",
                                                    .records = {},

@@ -2,8 +2,10 @@
 
 #include <chargefw/adapters/molecule_record.h>
 #include <chargefw/charges/charge_collection.h>
+#include <chargefw/methods/method_options.h>
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -28,6 +30,7 @@ struct RequestedCalculationProvenance {
     std::optional<std::string> execution_charge_correction;
     std::optional<StructuralInputPolicyProvenance> structural_input_policy;
     std::string conformer_selection;
+    std::map<std::string, methods::MethodOptions> method_options;
 };
 
 struct EffectiveCalculationProvenance {
@@ -37,6 +40,7 @@ struct EffectiveCalculationProvenance {
     std::optional<double> execution_radius;
     std::optional<std::string> execution_charge_correction;
     std::vector<std::string> warnings;
+    std::map<std::string, methods::MethodOptions> method_options;
 };
 
 struct CalculationProvenance {

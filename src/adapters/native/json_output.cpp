@@ -77,6 +77,21 @@ constexpr auto charge_scale = 10000.0;
     const auto optional_value = [](const auto& value) -> Json {
         return value.has_value() ? Json(*value) : Json(nullptr);
     };
+    const auto option_value = [](const methods::MethodOptionValue& value) -> Json {
+        return std::visit([](const auto& item) -> Json { return item; }, value);
+    };
+    const auto method_options_json =
+        [&option_value](const std::map<std::string, methods::MethodOptions>& options) -> Json {
+        Json result = Json::object();
+        for (const auto& [method_id, values] : options) {
+            Json method = Json::object();
+            for (const auto& [id, value] : values.values()) {
+                method[id] = option_value(value);
+            }
+            result[method_id] = std::move(method);
+        }
+        return result;
+    };
 
     Json requested{
         {"method", optional_id(provenance.requested.method_id)},
@@ -92,6 +107,7 @@ constexpr auto charge_scale = 10000.0;
           {"charge_correction",
            optional_value(provenance.requested.execution_charge_correction)}}}};
     requested["input"] = {{"conformers", provenance.requested.conformer_selection}};
+    requested["method_options"] = method_options_json(provenance.requested.method_options);
     if (provenance.requested.structural_input_policy.has_value()) {
         requested["structural_input"] = {
             {"selection", provenance.requested.structural_input_policy->selection},
@@ -108,6 +124,7 @@ constexpr auto charge_scale = 10000.0;
             {"charge_correction",
              optional_value(provenance.effective.execution_charge_correction)}};
     }
+    effective["method_options"] = method_options_json(provenance.effective.method_options);
     return {{"requested", std::move(requested)}, {"effective", std::move(effective)}};
 }
 

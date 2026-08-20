@@ -37,13 +37,17 @@ auto main() -> int {
                           .structural_input_policy =
                               adapters::StructuralInputPolicyProvenance{.selection = "polymers",
                                                                         .bonds = "hybrid"},
-                          .conformer_selection = "all"},
+                          .conformer_selection = "all",
+                          .method_options = {{"qeq",
+                                              chargefw::methods::MethodOptions{
+                                                  {{"overlap_term", "Ohno"}}}}}},
             .effective = {.method_id = "formal",
                           .parameter_set_id = "test-formal",
                           .execution_mode = "cutoff",
                           .execution_radius = 8.0,
                           .execution_charge_correction = "uniform",
-                          .warnings = {"full execution exceeds the shared threshold"}}}};
+                          .warnings = {"full execution exceeds the shared threshold"},
+                          .method_options = {{"formal", chargefw::methods::MethodOptions{}}}}}};
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(document);
@@ -63,6 +67,7 @@ auto main() -> int {
     assert(requested.at("structural_input").at("selection") == "polymers");
     assert(requested.at("structural_input").at("bonds") == "hybrid");
     assert(requested.at("input").at("conformers") == "all");
+    assert(requested.at("method_options").at("qeq").at("overlap_term") == "Ohno");
     const auto& effective = provenance.at("effective");
     assert(effective.at("execution").at("mode") == "cutoff");
     assert(effective.at("method").at("id") == "formal");
@@ -70,6 +75,7 @@ auto main() -> int {
     assert(effective.at("execution").at("radius_angstrom") == 8.0);
     assert(effective.at("execution").at("charge_correction") == "uniform");
     assert(effective.at("warnings").at(0) == "full execution exceeds the shared threshold");
+    assert(effective.at("method_options").at("formal").empty());
 
     const auto& calculated = result.at("results").at(0);
     assert(calculated.at("status") == "success");

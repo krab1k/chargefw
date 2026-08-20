@@ -10,6 +10,7 @@
 
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace chargefw::calculation {
@@ -41,6 +42,7 @@ struct ApplicationCalculationResult {
     methods::ApplicabilityResult applicability;
     std::optional<ExecutionPolicy> execution_policy;
     std::vector<methods::ExecutionIssue> execution_issues;
+    std::optional<methods::MethodOptions> effective_method_options;
 
     [[nodiscard]] auto calculated() const noexcept -> bool {
         return charges.has_value();
@@ -69,6 +71,7 @@ struct ApplicationCalculationRequest {
     std::vector<parameters::ParameterSet> parameter_sets;
     std::optional<std::string> method_id;
     std::optional<std::string> parameter_set_id;
+    std::unordered_map<std::string, methods::MethodOptions> method_options;
     parameters::ClassificationOptions classification_options{};
     ExecutionSelection execution_selection{};
     ResourcePolicy resource_policy{};

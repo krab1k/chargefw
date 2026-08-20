@@ -279,6 +279,32 @@ auto main() -> int {
     assert(permissive_application_result.calculated());
     assert(permissive_application_result.charges->method_id() == std::string_view{"peoe"});
 
+    auto peoe_options = methods::MethodOptions{};
+    peoe_options.set("iters", 1);
+    const auto configured_peoe_result =
+        calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
+            .parameter_sets = {make_permissive_peoe_parameter_set()},
+            .method_id = "peoe",
+            .parameter_set_id = "permissive-peoe-parameters",
+            .method_options = {{"peoe", peoe_options}},
+            .classification_options = {.permissive_types = true}});
+    assert(configured_peoe_result.calculated());
+    assert(configured_peoe_result.effective_method_options.has_value());
+    assert(configured_peoe_result.effective_method_options->get<int>("iters") == 1);
+
+    auto invalid_peoe_options = methods::MethodOptions{};
+    invalid_peoe_options.set("iters", std::string{"one"});
+    assert(throws_invalid_argument([&] -> void {
+        static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
+            .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
+            .parameter_sets = {make_permissive_peoe_parameter_set()},
+            .method_id = "peoe",
+            .parameter_set_id = "permissive-peoe-parameters",
+            .method_options = {{"peoe", invalid_peoe_options}},
+            .classification_options = {.permissive_types = true}}));
+    }));
+
     const auto application_result =
         calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},

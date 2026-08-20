@@ -145,6 +145,13 @@ auto find_applicable_methods(const ApplicabilityRequest& request) -> Applicabili
 
         try {
             method_options = make_default_options(method->option_schema());
+            if (const auto options = request.method_options.find(std::string{method->id()});
+                options != request.method_options.end()) {
+                for (const auto& [id, value] : options->second.values()) {
+                    method_options.set(id, value);
+                }
+                validate_method_options(method->option_schema(), method_options);
+            }
         } catch (const std::exception& error) {
             add_rejected(result, method_index, std::nullopt,
                          {make_issue(PrerequisiteIssueKind::invalid_options, error.what())});

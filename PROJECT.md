@@ -109,8 +109,9 @@ parameter-set IDs, classification options, an `ExecutionSelection`, and a `Resou
 - Omitted IDs use deterministic ranking: method priority, parameter-set priority, method ID, then
   parameter-set ID.
 - Explicit unavailable/inapplicable IDs or unsupported explicit execution fail; there is no fallback.
-- Application-facing method-option selection is not implemented; applicability currently uses each
-  method's validated defaults.
+- Application-facing method options are supplied as method-scoped overrides. Explicit method selection
+  rejects options for other methods; automatic selection accepts namespaced overrides and records the
+  selected method's complete validated options in result provenance.
 
 `ChargeSet` owns the selected method ID and optional parameter-set ID. Geometry-dependent methods
 produce one source-ordered assignment per molecule conformer; geometry-independent methods produce one

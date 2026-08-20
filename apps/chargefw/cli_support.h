@@ -47,6 +47,7 @@ struct SelectionArguments {
     std::string charge_correction;
     std::string full_atom_threshold;
     bool permissive_types = false;
+    std::vector<std::string> method_options;
     CLI::Option* method_option = nullptr;
     CLI::Option* parameter_set_option = nullptr;
     CLI::Option* charge_correction_option = nullptr;

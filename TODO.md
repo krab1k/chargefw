@@ -9,9 +9,6 @@ complete the CLI/result boundary, add scientific validation, then package bindin
 
 ## 1. Calculation and reduced execution
 
-- [ ] Add application-facing method options. Accept validated options in the owned request, retain them
-  in the selected plan/result, expose them in CLI/bindings, and reject unsupported values without
-  fallback. Keep low-level `ApplicableMethod::method_options` behavior unchanged.
 - [ ] Implement deterministic serial cover execution. Define pivot selection, solve halo versus retained
   interior, complete coverage, overlap reconciliation, target charge, correction, diagnostics, and
   method-by-method capability tests before enabling automatic cover.

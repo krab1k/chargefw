@@ -114,6 +114,26 @@ namespace {
     return result;
 }
 
+auto validate_application_method_options(const ApplicationCalculationRequest& request) -> void {
+    const auto& registry = methods::method_registry();
+    for (const auto& [method_id, overrides] : request.method_options) {
+        const auto* method = registry.find(method_id);
+        if (method == nullptr) {
+            throw std::invalid_argument{"method '" + method_id + "' is not registered"};
+        }
+        if (request.method_id.has_value() && method_id != *request.method_id) {
+            throw std::invalid_argument{"method options supplied for '" + method_id +
+                                        "' but method '" + *request.method_id + "' was requested"};
+        }
+
+        auto options = methods::make_default_options(method->option_schema());
+        for (const auto& [id, value] : overrides.values()) {
+            options.set(id, value);
+        }
+        methods::validate_method_options(method->option_schema(), options);
+    }
+}
+
 [[nodiscard]] auto application_parameter_sets(const ApplicationCalculationRequest& request)
     -> std::vector<parameters::ParameterSet> {
     if (!request.parameter_set_id.has_value()) {
@@ -227,6 +247,7 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
 }
 
 auto assess(const ApplicationCalculationRequest& request) -> ApplicationAssessmentResult {
+    validate_application_method_options(request);
     const auto candidate_methods = application_methods(request);
     auto result = ApplicationAssessmentResult{.parameter_sets = application_parameter_sets(request),
                                               .applicability = {},
@@ -240,7 +261,8 @@ auto assess(const ApplicationCalculationRequest& request) -> ApplicationAssessme
                                           .methods = candidate_methods,
                                           .parameter_sets = result.parameter_sets,
                                           .classification_options = request.classification_options,
-                                          .resource_policy = request.resource_policy});
+                                          .resource_policy = request.resource_policy,
+                                          .method_options = request.method_options});
     const auto plan = select_execution_plan(result.applicability, request.execution_selection);
 
     if (!plan.has_value()) {
@@ -266,7 +288,8 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
         return ApplicationCalculationResult{.charges = std::nullopt,
                                             .applicability = std::move(assessment.applicability),
                                             .execution_policy = std::nullopt,
-                                            .execution_issues = {}};
+                                            .execution_issues = {},
+                                            .effective_method_options = std::nullopt};
     }
 
     if (assessment.selected == nullptr || !assessment.execution_policy.has_value()) {
@@ -280,7 +303,9 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
     return ApplicationCalculationResult{.charges = std::move(result.charges),
                                         .applicability = std::move(assessment.applicability),
                                         .execution_policy = assessment.execution_policy,
-                                        .execution_issues = std::move(assessment.execution_issues)};
+                                        .execution_issues = std::move(assessment.execution_issues),
+                                        .effective_method_options =
+                                            assessment.selected->method_options};
 }
 
 } // namespace chargefw::calculation
