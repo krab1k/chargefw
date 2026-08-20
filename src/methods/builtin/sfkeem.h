@@ -19,7 +19,6 @@ class SFKEEMMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.formal_charges = true;
         requirements.coordinates = true;
         requirements.common_parameters = {"sigma"};
         requirements.atom_parameters = {"A", "B"};

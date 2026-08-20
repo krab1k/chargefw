@@ -20,7 +20,6 @@ class QEqMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.formal_charges = true;
         requirements.coordinates = true;
         requirements.atom_parameters = {"electronegativity", "hardness"};
         requirements.resources.time = ComplexityTerm::atoms_cubed;

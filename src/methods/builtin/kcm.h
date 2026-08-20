@@ -18,7 +18,6 @@ class KCMMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.bond_graph = true;
         requirements.atom_parameters = {"electronegativity", "hardness"};
         requirements.resources.time = ComplexityTerm::atoms_cubed;
         requirements.resources.memory = ComplexityTerm::atoms_squared;

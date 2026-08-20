@@ -19,8 +19,6 @@ class SQEqpMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.bond_graph = true;
-        requirements.formal_charges = true;
         requirements.coordinates = true;
         requirements.atom_parameters = {"electronegativity", "hardness", "width", "q0"};
         requirements.bond_parameters = {"kappa"};

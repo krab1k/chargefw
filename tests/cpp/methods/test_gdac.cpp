@@ -45,9 +45,7 @@ auto main() -> int {
 
     assert(gdac != nullptr);
     assert(gdac->requires_parameters());
-    assert(gdac->requirements().bond_graph);
     assert(gdac->requirements().coordinates);
-    assert(gdac->requirements().element_properties);
     assert(gdac->requirements().atom_parameters.size() == 2);
 
     const auto options = methods::make_default_options(gdac->option_schema());

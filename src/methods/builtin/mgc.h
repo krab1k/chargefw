@@ -18,9 +18,6 @@ class MGCMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.bond_graph = true;
-        requirements.bond_orders = true;
-        requirements.element_properties = true;
         requirements.resources.time = ComplexityTerm::atoms_cubed;
         requirements.resources.memory = ComplexityTerm::atoms_squared;
         return requirements;

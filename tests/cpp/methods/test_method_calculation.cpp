@@ -75,7 +75,6 @@ class AtomParameterMethod final : public methods::Method {
 
     [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
         auto requirements = methods::MethodRequirements{};
-        requirements.bond_graph = true;
         requirements.atom_parameters = {"value"};
         return requirements;
     }

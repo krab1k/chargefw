@@ -19,8 +19,6 @@ class EQeqMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.formal_charges = true;
-        requirements.element_properties = true;
         requirements.coordinates = true;
         requirements.resources.time = ComplexityTerm::atoms_cubed;
         requirements.resources.memory = ComplexityTerm::atoms_squared;

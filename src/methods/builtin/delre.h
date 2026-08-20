@@ -18,7 +18,6 @@ class DelReMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.bond_graph = true;
         requirements.atom_parameters = {"delta"};
         requirements.bond_parameters = {"eps", "gammaA", "gammaB"};
         requirements.resources.time = ComplexityTerm::atoms_cubed;

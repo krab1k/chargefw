@@ -19,7 +19,6 @@ class SMPQEqMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.formal_charges = true;
         requirements.coordinates = true;
         requirements.atom_parameters = {"first", "second", "third", "fourth"};
         requirements.resources.time = ComplexityTerm::atoms_cubed;

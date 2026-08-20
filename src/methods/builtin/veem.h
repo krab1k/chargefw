@@ -19,7 +19,6 @@ class VEEMMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.element_properties = true;
         requirements.resources.time = ComplexityTerm::atoms;
         requirements.resources.memory = ComplexityTerm::constant;
         return requirements;

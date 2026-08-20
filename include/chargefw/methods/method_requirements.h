@@ -39,15 +39,7 @@ struct ResourceRequirements {
 };
 
 struct MethodRequirements {
-    bool bond_graph = false;
-    bool bond_orders = false;
-    bool topological_distances = false;
-
-    bool formal_charges = false;
-    bool element_properties = false;
-
     bool coordinates = false;
-    bool spatial_neighbor_search = false;
 
     std::vector<std::string_view> common_parameters;
     std::vector<std::string_view> atom_parameters;

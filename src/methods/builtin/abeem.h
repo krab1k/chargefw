@@ -19,9 +19,6 @@ class ABEEMMethod final : public Method {
 
     [[nodiscard]] auto requirements() const -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.bond_graph = true;
-        requirements.formal_charges = true;
-        requirements.element_properties = true;
         requirements.coordinates = true;
         requirements.common_parameters = {"k"};
         requirements.atom_parameters = {"a", "b", "c"};

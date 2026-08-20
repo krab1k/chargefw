@@ -18,7 +18,6 @@ class FormalMethod final : public Method {
 
     [[nodiscard]] auto requirements() const noexcept -> MethodRequirements override {
         auto requirements = MethodRequirements{};
-        requirements.formal_charges = true;
         requirements.resources.time = ComplexityTerm::atoms;
         requirements.resources.memory = ComplexityTerm::constant;
         return requirements;

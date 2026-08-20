@@ -92,7 +92,6 @@ auto main() -> int {
     assert(dummy->metadata().full_name == std::string_view{"Dummy zero charges"});
     assert(!dummy->metadata().publication.has_value());
     assert(dummy->metadata().priority == 0);
-    assert(!dummy->requirements().formal_charges);
     assert(!dummy->requires_parameters());
     assert(dummy->option_schema().empty());
 
@@ -101,7 +100,6 @@ auto main() -> int {
     assert(formal->metadata().full_name == std::string_view{"Formal atomic charges"});
     assert(!formal->metadata().publication.has_value());
     assert(formal->metadata().priority == 10);
-    assert(formal->requirements().formal_charges);
     assert(!formal->requires_parameters());
     assert(formal->option_schema().empty());
 
@@ -110,7 +108,6 @@ auto main() -> int {
     assert(veem->metadata().full_name == std::string_view{"Valence Electrons Equalization Method"});
     assert(veem->metadata().publication.has_value());
     assert(veem->metadata().priority == 20);
-    assert(veem->requirements().element_properties);
     assert(veem->requirements().resources.time == methods::ComplexityTerm::atoms);
     assert(veem->requirements().resources.memory == methods::ComplexityTerm::constant);
     assert(!veem->requires_parameters());
@@ -136,9 +133,7 @@ auto main() -> int {
     assert(gdac->metadata().publication.has_value());
     assert(gdac->metadata().priority == 100);
 
-    assert(gdac->requirements().bond_graph);
     assert(gdac->requirements().coordinates);
-    assert(gdac->requirements().element_properties);
     assert(gdac->requirements().requires_atom_parameters());
     assert(!gdac->requirements().requires_common_parameters());
     assert(!gdac->requirements().requires_bond_parameters());
@@ -146,7 +141,6 @@ auto main() -> int {
     assert(gdac->requires_parameters());
     assert(gdac->option_schema().size() == 1);
 
-    assert(mpeoe->requirements().bond_graph);
     assert(mpeoe->requirements().requires_common_parameters());
     assert(mpeoe->requirements().requires_atom_parameters());
     assert(mpeoe->requirements().requires_bond_parameters());
@@ -156,7 +150,6 @@ auto main() -> int {
     assert(mpeoe->requires_parameters());
     assert(mpeoe->option_schema().size() == 1);
 
-    assert(peoe->requirements().bond_graph);
     assert(peoe->requirements().requires_common_parameters());
     assert(peoe->requirements().requires_atom_parameters());
     assert(peoe->requirements().common_parameters.size() == 1);
@@ -170,9 +163,6 @@ auto main() -> int {
     assert(charge2->metadata().publication.has_value());
     assert(charge2->metadata().priority == 30);
 
-    assert(charge2->requirements().bond_graph);
-    assert(charge2->requirements().topological_distances);
-    assert(charge2->requirements().element_properties);
     assert(charge2->requirements().requires_common_parameters());
     assert(charge2->requirements().requires_atom_parameters());
     assert(!charge2->requirements().requires_bond_parameters());
@@ -187,7 +177,6 @@ auto main() -> int {
     assert(delre->metadata().publication.has_value());
     assert(delre->metadata().priority == 130);
 
-    assert(delre->requirements().bond_graph);
     assert(delre->requirements().requires_atom_parameters());
     assert(delre->requirements().requires_bond_parameters());
     assert(!delre->requirements().requires_common_parameters());
@@ -204,9 +193,6 @@ auto main() -> int {
     assert(mgc->metadata().publication.has_value());
     assert(mgc->metadata().priority == 70);
 
-    assert(mgc->requirements().bond_graph);
-    assert(mgc->requirements().bond_orders);
-    assert(mgc->requirements().element_properties);
     assert(!mgc->requires_parameters());
     assert(mgc->option_schema().empty());
     assert(mgc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
@@ -219,7 +205,6 @@ auto main() -> int {
     assert(denr->metadata().publication.has_value());
     assert(denr->metadata().priority == 50);
 
-    assert(denr->requirements().bond_graph);
     assert(!denr->requirements().requires_common_parameters());
     assert(denr->requirements().requires_atom_parameters());
     assert(!denr->requirements().requires_bond_parameters());
@@ -246,7 +231,6 @@ auto main() -> int {
     assert(kcm->metadata().publication.has_value());
     assert(kcm->metadata().priority == 60);
 
-    assert(kcm->requirements().bond_graph);
     assert(kcm->requirements().requires_atom_parameters());
     assert(!kcm->requirements().requires_common_parameters());
     assert(!kcm->requirements().requires_bond_parameters());
@@ -264,9 +248,6 @@ auto main() -> int {
     assert(tsef->metadata().publication.has_value());
     assert(tsef->metadata().priority == 55);
 
-    assert(tsef->requirements().bond_graph);
-    assert(tsef->requirements().topological_distances);
-    assert(tsef->requirements().formal_charges);
     assert(!tsef->requirements().requires_common_parameters());
     assert(tsef->requirements().requires_atom_parameters());
     assert(!tsef->requirements().requires_bond_parameters());
@@ -284,7 +265,6 @@ auto main() -> int {
     assert(qeq->metadata().priority == 170);
 
     assert(qeq->requirements().coordinates);
-    assert(qeq->requirements().formal_charges);
     assert(qeq->requirements().requires_atom_parameters());
     assert(!qeq->requirements().requires_common_parameters());
     assert(!qeq->requirements().requires_bond_parameters());
@@ -303,7 +283,6 @@ auto main() -> int {
     assert(sqe->metadata().full_name == std::string_view{"Split-charge Equilibration"});
     assert(sqe->metadata().publication.has_value());
     assert(sqe->metadata().priority == 90);
-    assert(sqe->requirements().bond_graph);
     assert(sqe->requirements().coordinates);
     assert(sqe->requirements().requires_atom_parameters());
     assert(sqe->requirements().requires_bond_parameters());
@@ -324,8 +303,6 @@ auto main() -> int {
            std::string_view{"Split-charge Equilibration with Initial Formal Charges"});
     assert(sqeq0->metadata().publication.has_value());
     assert(sqeq0->metadata().priority == 80);
-    assert(sqeq0->requirements().bond_graph);
-    assert(sqeq0->requirements().formal_charges);
     assert(sqeq0->requirements().coordinates);
     assert(sqeq0->requirements().requires_atom_parameters());
     assert(sqeq0->requirements().requires_bond_parameters());
@@ -346,8 +323,6 @@ auto main() -> int {
            std::string_view{"Split-charge Equilibration with Parameterized Initial Charges"});
     assert(sqeqp->metadata().publication.has_value());
     assert(sqeqp->metadata().priority == 210);
-    assert(sqeqp->requirements().bond_graph);
-    assert(sqeqp->requirements().formal_charges);
     assert(sqeqp->requirements().coordinates);
     assert(sqeqp->requirements().requires_atom_parameters());
     assert(sqeqp->requirements().requires_bond_parameters());
@@ -369,7 +344,6 @@ auto main() -> int {
     assert(eem->metadata().priority == 200);
 
     assert(eem->requirements().coordinates);
-    assert(eem->requirements().formal_charges);
     assert(eem->requirements().requires_common_parameters());
     assert(eem->requirements().requires_atom_parameters());
     assert(!eem->requirements().requires_bond_parameters());
@@ -392,7 +366,6 @@ auto main() -> int {
     assert(smpqeq->metadata().priority == 160);
 
     assert(smpqeq->requirements().coordinates);
-    assert(smpqeq->requirements().formal_charges);
     assert(smpqeq->requirements().requires_atom_parameters());
     assert(!smpqeq->requirements().requires_common_parameters());
     assert(!smpqeq->requirements().requires_bond_parameters());
@@ -411,7 +384,6 @@ auto main() -> int {
     assert(sfkeem->metadata().priority == 180);
 
     assert(sfkeem->requirements().coordinates);
-    assert(sfkeem->requirements().formal_charges);
     assert(sfkeem->requirements().requires_common_parameters());
     assert(sfkeem->requirements().requires_atom_parameters());
     assert(!sfkeem->requirements().requires_bond_parameters());
@@ -431,8 +403,6 @@ auto main() -> int {
     assert(eqeq->metadata().priority == 150);
 
     assert(eqeq->requirements().coordinates);
-    assert(eqeq->requirements().formal_charges);
-    assert(eqeq->requirements().element_properties);
     assert(!eqeq->requirements().requires_common_parameters());
     assert(!eqeq->requirements().requires_atom_parameters());
     assert(!eqeq->requirements().requires_bond_parameters());
@@ -453,8 +423,6 @@ auto main() -> int {
     assert(eqeqc->metadata().priority == 140);
 
     assert(eqeqc->requirements().coordinates);
-    assert(eqeqc->requirements().formal_charges);
-    assert(eqeqc->requirements().element_properties);
     assert(eqeqc->requirements().requires_common_parameters());
     assert(eqeqc->requirements().requires_atom_parameters());
     assert(!eqeqc->requirements().requires_bond_parameters());
@@ -476,10 +444,7 @@ auto main() -> int {
     assert(abeem->metadata().publication.has_value());
     assert(abeem->metadata().priority == 190);
 
-    assert(abeem->requirements().bond_graph);
     assert(abeem->requirements().coordinates);
-    assert(abeem->requirements().formal_charges);
-    assert(abeem->requirements().element_properties);
     assert(abeem->requirements().requires_common_parameters());
     assert(abeem->requirements().requires_atom_parameters());
     assert(abeem->requirements().requires_bond_parameters());
