@@ -155,6 +155,36 @@ auto validate_application_method_options(const ApplicationCalculationRequest& re
     return {*found};
 }
 
+[[nodiscard]] auto assess_prepared(const ApplicationCalculationRequest& request,
+                                   const features::PreparedMoleculeCollection& prepared)
+    -> ApplicationAssessmentResult {
+    validate_application_method_options(request);
+    const auto candidate_methods = application_methods(request);
+    auto result = ApplicationAssessmentResult{.parameter_sets = application_parameter_sets(request),
+                                              .applicability = {},
+                                              .selected = nullptr,
+                                              .execution_policy = std::nullopt,
+                                              .execution_issues = {}};
+
+    result.applicability =
+        methods::find_applicable_methods({.molecules = prepared,
+                                          .methods = candidate_methods,
+                                          .parameter_sets = result.parameter_sets,
+                                          .classification_options = request.classification_options,
+                                          .resource_policy = request.resource_policy,
+                                          .method_options = request.method_options});
+    const auto plan = select_execution_plan(result.applicability, request.execution_selection);
+
+    if (!plan.has_value()) {
+        return result;
+    }
+
+    result.execution_policy = plan->policy;
+    result.selected = plan->selected;
+    result.execution_issues = plan->issues;
+    return result;
+}
+
 } // namespace
 
 auto select_applicable_method(const methods::ApplicabilityResult& applicability)
@@ -251,37 +281,14 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
 }
 
 auto assess(const ApplicationCalculationRequest& request) -> ApplicationAssessmentResult {
-    validate_application_method_options(request);
-    const auto candidate_methods = application_methods(request);
-    auto result = ApplicationAssessmentResult{.parameter_sets = application_parameter_sets(request),
-                                              .applicability = {},
-                                              .selected = nullptr,
-                                              .execution_policy = std::nullopt,
-                                              .execution_issues = {}};
     const features::PreparedMoleculeCollection prepared{request.molecules};
-
-    result.applicability =
-        methods::find_applicable_methods({.molecules = prepared,
-                                          .methods = candidate_methods,
-                                          .parameter_sets = result.parameter_sets,
-                                          .classification_options = request.classification_options,
-                                          .resource_policy = request.resource_policy,
-                                          .method_options = request.method_options});
-    const auto plan = select_execution_plan(result.applicability, request.execution_selection);
-
-    if (!plan.has_value()) {
-        return result;
-    }
-
-    result.execution_policy = plan->policy;
-    result.selected = plan->selected;
-    result.execution_issues = plan->issues;
-    return result;
+    return assess_prepared(request, prepared);
 }
 
 auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalculationResult {
     const auto applicability_started = std::chrono::steady_clock::now();
-    auto assessment = assess(request);
+    const features::PreparedMoleculeCollection prepared{request.molecules};
+    auto assessment = assess_prepared(request, prepared);
     const auto applicability_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - applicability_started}
             .count();
@@ -307,7 +314,6 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
     }
 
     const auto computation_started = std::chrono::steady_clock::now();
-    const features::PreparedMoleculeCollection prepared{request.molecules};
     auto result = calculate(CalculationRequest{.molecules = prepared,
                                                .selected = *assessment.selected,
                                                .execution_policy = *assessment.execution_policy,

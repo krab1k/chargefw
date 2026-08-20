@@ -157,8 +157,7 @@ precision.
 
 Calculation provenance also includes `execution_metrics` with UTC start/end timestamps, phase durations for
 parsing, applicability, computation, and non-JSON output writing, plus peak resident memory in MB.
-The computation timing currently includes the second feature-preparation pass performed by the
-application facade.
+Feature preparation is included in applicability timing; computation timing covers execution only.
 
 ## Install
 

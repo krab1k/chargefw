@@ -106,7 +106,7 @@ parameter-set IDs, classification options, an `ExecutionSelection`, and a `Resou
 
 - `assess()` prepares molecules, finds applicable candidates, and selects a concrete plan without
   calculating.
-- `calculate()` composes assessment and execution.
+- `calculate()` prepares once, then reuses that collection for assessment and execution.
 - Omitted IDs use deterministic ranking: method priority, parameter-set priority, method ID, then
   parameter-set ID.
 - Explicit unavailable/inapplicable IDs or unsupported explicit execution fail; there is no fallback.
