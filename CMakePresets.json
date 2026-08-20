@@ -24,7 +24,7 @@
         "CMAKE_CXX_COMPILER": "/usr/bin/g++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON",
-        "CHARGEFW_BUILD_TESTS": "OFF",
+        "CHARGEFW_BUILD_TESTS": "ON",
         "CHARGEFW_ENABLE_WARNINGS": "ON"
       }
     },
@@ -42,12 +42,31 @@
       }
     },
     {
+      "name": "clang-release",
+      "displayName": "Clang Release",
+      "inherits": "clang-debug",
+      "binaryDir": "${sourceDir}/build/clang-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
+      }
+    },
+    {
       "name": "clang-asan",
-      "displayName": "Clang ASan UBSan",
+      "displayName": "Clang ASan",
       "inherits": "clang-debug",
       "binaryDir": "${sourceDir}/build/clang-asan",
       "cacheVariables": {
-        "CHARGEFW_ENABLE_SANITIZERS": "ON"
+        "CHARGEFW_ENABLE_ASAN": "ON"
+      }
+    },
+    {
+      "name": "clang-ubsan",
+      "displayName": "Clang UBSan",
+      "inherits": "clang-debug",
+      "binaryDir": "${sourceDir}/build/clang-ubsan",
+      "cacheVariables": {
+        "CHARGEFW_ENABLE_UBSAN": "ON"
       }
     },
     {
@@ -74,8 +93,16 @@
       "configurePreset": "clang-debug"
     },
     {
+      "name": "clang-release",
+      "configurePreset": "clang-release"
+    },
+    {
       "name": "clang-asan",
       "configurePreset": "clang-asan"
+    },
+    {
+      "name": "clang-ubsan",
+      "configurePreset": "clang-ubsan"
     },
     {
       "name": "clang-tidy",
@@ -98,6 +125,54 @@
     {
       "name": "clang-asan",
       "configurePreset": "clang-asan",
+      "filter": {
+        "exclude": {
+          "name": "^cpptest$"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "clang-debug",
+      "configurePreset": "clang-debug",
+      "filter": {
+        "exclude": {
+          "name": "^cpptest$"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "gcc-release",
+      "configurePreset": "gcc-release",
+      "filter": {
+        "exclude": {
+          "name": "^cpptest$"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "clang-release",
+      "configurePreset": "clang-release",
+      "filter": {
+        "exclude": {
+          "name": "^cpptest$"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "clang-ubsan",
+      "configurePreset": "clang-ubsan",
       "filter": {
         "exclude": {
           "name": "^cpptest$"

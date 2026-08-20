@@ -43,7 +43,7 @@ Run one focused test after building:
 ctest --test-dir build/gcc-debug -R test_cutoff_execution --output-on-failure
 ```
 
-Sanitizer configuration:
+AddressSanitizer configuration:
 
 ```bash
 cmake --preset clang-asan
@@ -53,10 +53,13 @@ ctest --preset clang-asan
 
 Sanitized Clang builds can require substantial memory for template-heavy translation units; keep the
 build serial (or use a deliberately chosen low `--parallel` value) to avoid exhausting system memory.
+`clang-asan` enables only AddressSanitizer. Use the separate `clang-ubsan` preset for undefined-behavior
+checks.
 
-Other tracked configure presets are `gcc-release`, `clang-debug`, and `clang-tidy`. Useful options
-include `CHARGEFW_BUILD_TESTS`, `CHARGEFW_BUILD_CLI`, `CHARGEFW_ENABLE_CCACHE`,
-`CHARGEFW_ENABLE_SANITIZERS`, `CHARGEFW_ENABLE_CLANG_TIDY`, and
+The tracked preset palette is `gcc-debug`, `clang-debug`, `gcc-release`, `clang-release`, `clang-asan`,
+`clang-ubsan`, and `clang-tidy`. Useful options include `CHARGEFW_BUILD_TESTS`,
+`CHARGEFW_BUILD_CLI`, `CHARGEFW_ENABLE_CCACHE`, `CHARGEFW_ENABLE_ASAN`,
+`CHARGEFW_ENABLE_UBSAN`, `CHARGEFW_ENABLE_CLANG_TIDY`, and
 `CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS` (enabled by default; disable for portable builds).
 
 ## CLI quick start

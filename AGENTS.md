@@ -70,12 +70,31 @@ Do not merge prototype or archived behavior wholesale.
 2. Make the smallest coherent change and keep unrelated formatting out of the diff.
 3. Add focused tests for behavior changes, especially numerical, mapping, applicability, and policy
    cases.
-4. Build the directly affected target, run its focused CTest test, then run `ctest --preset gcc-debug`.
-   Use `clang-asan` for ownership/mapping changes and before completing reduced-execution work.
+4. Follow the validation cadence below. Build the directly affected target and run its focused test first;
+   do not make the full compiler/sanitizer matrix part of every edit cycle.
 5. Stop for approval before heavyweight dependencies, broad rewrites, destructive commands, automatic
    chemistry policy, or public API changes beyond the requested scope.
 6. Remove a TODO only when its full deliverable and validation are complete. Put durable implemented
    state in `PROJECT.md`.
+
+### Validation cadence
+
+- Use `gcc-debug` for the rapid edit/build/focused-test loop. After a coherent change, run the full
+  `ctest --preset gcc-debug` suite.
+- Use `clang-debug` for cross-compiler validation when changing templates, conversions, overloads,
+  headers, or compiler-sensitive C++ behavior; run its focused test before substantial work is complete.
+- Use `gcc-release` and `clang-release` for optimization- or `NDEBUG`-sensitive behavior, numerical
+  methods, Eigen code, and before completing substantial changes. Run the affected test under both
+  release configurations when practical.
+- Use `clang-asan` for ownership, lifetime, bounds, mapping, parser, container, view, and pointer
+  changes. Use `clang-ubsan` for arithmetic, conversions, shifts, alignment, indexing, and other
+  undefined-behavior risks. Run the focused sanitizer test first and the full relevant sanitizer suite
+  before completing substantial risk-sensitive work. Keep sanitizer builds serial or deliberately
+  low-parallel because template-heavy translation units can consume substantial memory.
+- Run `clang-tidy` after meaningful implementation or public-interface changes and before a milestone;
+  it is static analysis, not a replacement for compiler or runtime tests.
+- Before a substantial merge or milestone, run the full debug, release, sanitizer, and clang-tidy
+  matrix. CI may distribute those configurations across independent jobs.
 
 ## C++ conventions
 
