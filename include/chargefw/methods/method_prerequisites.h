@@ -18,7 +18,6 @@ enum class PrerequisiteIssueKind : std::uint8_t {
     invalid_options,
     missing_feature,
     unsupported_molecule,
-    resource_limit,
     missing_parameters,
     parameter_classification_failed,
 };
