@@ -135,7 +135,7 @@ list installed capabilities.
 
 ### JSON result
 
-Schema `1.0` contains one ordered result per imported molecule, source identity and atom mapping,
+Schema `1.0` contains one ordered result per imported molecule, source identity,
 source-ordered charge assignments, totals, and diagnostics. `calculation_provenance` records requested
 conformer selection, selection/classification/resource/structural policies, and the effective method,
 parameter set, execution mode, radius, correction, and warnings. JSON charge values are rounded to at

@@ -46,7 +46,6 @@ struct CalculationProvenance {
 
 struct ChargeResultRecord {
     MoleculeRecordIdentity identity;
-    MoleculeRecordMapping mapping;
     std::optional<charges::ChargeSet> charges;
 };
 

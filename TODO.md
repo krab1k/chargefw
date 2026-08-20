@@ -24,12 +24,12 @@ complete the CLI/result boundary, add scientific validation, then package bindin
   in result provenance.
 - [ ] Expand facade and planning tests for multiple molecules/conformers, no-plan diagnostics, explicit
   unsupported policies, empty/tiny inputs, fragment solver failures, ownership/lifetimes, and result
-  cardinality/mapping.
+  cardinality.
 
 ## 2. Result contract, molecular I/O, and CLI
 
 - [ ] Define the stable result/error schema. Represent successful and failed source records in input
-  order with owned import/calculation diagnostics, mapping semantics, multi-conformer assignments,
+  order with owned import/calculation diagnostics, multi-conformer assignments,
   precision/total-charge rules, and schema compatibility/versioning rules.
 - [ ] Make CLI failures structured and distinguish exit statuses for invalid input/request, no
   executable plan, and numerical calculation failure. Do not print a no-plan result only to stdout

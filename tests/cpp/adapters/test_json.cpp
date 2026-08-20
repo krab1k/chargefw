@@ -57,7 +57,6 @@ auto main() -> int {
         assert(record.molecule.conformer_count() == 1);
         assert(record.molecule.conformer(0).name() == "model-1");
         assert(record.molecule.conformer(0)[1].x == 0.9572);
-        assert(record.mapping.atom_indices[2] == 2);
         assert(!reader.next().has_value());
     }
 

@@ -164,10 +164,8 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                                                    .calculation_provenance = provenance};
     document.records.reserve(imported.molecules.size());
     for (std::size_t index = 0; index < imported.molecules.size(); ++index) {
-        document.records.push_back(
-            adapters::ChargeResultRecord{.identity = imported.records[index].identity,
-                                         .mapping = imported.records[index].mapping,
-                                         .charges = result.charges});
+        document.records.push_back(adapters::ChargeResultRecord{
+            .identity = imported.records[index].identity, .charges = result.charges});
     }
     return document;
 }

@@ -28,32 +28,9 @@ constexpr auto charge_scale = 10000.0;
     return values;
 }
 
-[[nodiscard]] auto mapping_json(const MoleculeRecordMapping& mapping) -> Json {
-    const auto& values = mapping.atom_indices;
-    if (values.empty()) {
-        return Json{{"kind", "identity"}};
-    }
-
-    const auto identity =
-        std::ranges::all_of(values, [index = std::size_t{0}](const auto& value) mutable -> bool {
-            return value.has_value() && *value == index++;
-        });
-    if (identity) {
-        return Json{{"kind", "identity"}};
-    }
-
-    Json encoded_values = Json::array();
-    for (const auto& value : values) {
-        encoded_values.push_back(value.has_value() ? Json{*value} : Json{nullptr});
-    }
-    return Json{{"kind", "source_to_native"}, {"values", std::move(encoded_values)}};
-}
-
 [[nodiscard]] auto record_json(const ChargeResultRecord& record, const std::size_t molecule_index)
     -> Json {
-    Json input{{"source", record.identity.source},
-               {"record_index", record.identity.record_index},
-               {"atom_mapping", mapping_json(record.mapping)}};
+    Json input{{"source", record.identity.source}, {"record_index", record.identity.record_index}};
     if (!record.identity.record_id.empty()) {
         input["record_id"] = record.identity.record_id;
     }

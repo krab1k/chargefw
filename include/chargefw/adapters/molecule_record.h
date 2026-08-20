@@ -17,23 +17,16 @@ struct MoleculeRecordIdentity {
     std::string record_id;
 };
 
-// Maps source atom indices to their preserved native indices. A missing value represents an
-// explicitly omitted source atom; adapters must not use it to silently reorder chemistry.
-struct MoleculeRecordMapping {
-    std::vector<std::optional<std::size_t>> atom_indices;
-};
-
 struct MoleculeRecordDiagnostic {
     std::string message;
     std::optional<std::size_t> line;
 };
 
-// A successful import result. Molecule ownership, source identity, and source-to-native mapping
-// travel together so output adapters can retain source ordering and identity.
+// A successful import result. Molecule ownership and source identity travel together so output
+// adapters can retain source ordering and identity.
 struct ImportedMoleculeRecord {
     core::Molecule molecule;
     MoleculeRecordIdentity identity;
-    MoleculeRecordMapping mapping;
     std::vector<MoleculeRecordDiagnostic> diagnostics;
 };
 

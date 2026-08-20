@@ -83,17 +83,6 @@ auto bond_order(const std::string_view value, const ::chargefw::adapters::native
     return core::bond_order_from_value(numeric_value == 4 ? 1 : numeric_value);
 }
 
-auto identity_mapping(const std::size_t count) -> std::vector<std::optional<std::size_t>> {
-    std::vector<std::optional<std::size_t>> mapping;
-    mapping.reserve(count);
-
-    for (std::size_t index = 0; index < count; ++index) {
-        mapping.emplace_back(index);
-    }
-
-    return mapping;
-}
-
 auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
                  std::vector<core::Conformer> conformers, MoleculeRecordIdentity identity,
                  std::string name, std::vector<MoleculeRecordDiagnostic> diagnostics)
@@ -102,12 +91,10 @@ auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
         name = identity.record_id;
     }
 
-    auto atom_mapping = identity_mapping(atoms.size());
     return ImportedMoleculeRecord{.molecule =
                                       core::Molecule{std::move(atoms), std::move(bonds),
                                                      std::move(conformers), std::move(name)},
                                   .identity = std::move(identity),
-                                  .mapping = {.atom_indices = std::move(atom_mapping)},
                                   .diagnostics = std::move(diagnostics)};
 }
 

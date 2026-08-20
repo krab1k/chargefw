@@ -239,8 +239,8 @@ PDB through Gemmi, and generates local `UNL` blocks for nonstructural input.
 
 ### JSON result state
 
-Schema `1.0` records source identity, source-to-native atom mapping, source-ordered assignments, totals,
-and diagnostics. Invocation-level `calculation_provenance` records requested conformer selection,
+Schema `1.0` records source identity, source-ordered assignments, totals, and diagnostics.
+Invocation-level `calculation_provenance` records requested conformer selection,
 method/parameter IDs, permissive typing, resource threshold, execution/radius/correction, structural
 input policy, and effective method/parameter/execution plus warnings. Charges are rounded to at most
 four decimal places in JSON only.

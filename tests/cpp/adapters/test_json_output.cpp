@@ -20,13 +20,11 @@ auto main() -> int {
         .generator_version = "test",
         .records =
             {{.identity = {.source = "water.sdf", .record_index = 2, .record_id = "water"},
-              .mapping = {.atom_indices = {0, 1, 2}},
               .charges = charges::ChargeSet{"formal",
                                             {{.target = {.molecule_index = 0, .conformer_index = 0},
                                               .charges = charges::AtomicCharges{{-0.87654, 0.43827,
                                                                                  0.43827}}}}}},
              {.identity = {.source = "water.sdf", .record_index = 3, .record_id = "unavailable"},
-              .mapping = {.atom_indices = {}},
               .charges = std::nullopt}},
         .calculation_provenance = adapters::CalculationProvenance{
             .requested = {.method_id = std::nullopt,
@@ -75,8 +73,7 @@ auto main() -> int {
 
     const auto& calculated = result.at("results").at(0);
     assert(calculated.at("status") == "success");
-    assert(calculated.at("input").at("atom_mapping").at("kind") == "identity");
-    assert(!calculated.at("input").contains("conformer_mapping"));
+    assert(!calculated.at("input").contains("atom_mapping"));
     assert(calculated.at("assignments").at(0).at("conformer_index") == 0);
     assert(calculated.at("assignments").at(0).at("charges").size() == 3);
     assert(calculated.at("assignments").at(0).at("charges").at(0) == -0.8765);
@@ -84,7 +81,7 @@ auto main() -> int {
 
     const auto& unavailable = result.at("results").at(1);
     assert(unavailable.at("status") == "error");
-    assert(unavailable.at("input").at("atom_mapping").at("kind") == "identity");
+    assert(!unavailable.at("input").contains("atom_mapping"));
     assert(unavailable.at("diagnostics").at(0).at("code") == "no_applicable_method");
 
     return 0;
