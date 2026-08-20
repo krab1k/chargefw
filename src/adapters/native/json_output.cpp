@@ -15,15 +15,16 @@ namespace {
 using Json = nlohmann::json;
 
 constexpr auto charge_scale = 10000.0;
+constexpr auto metric_scale = 1000.0;
 
-[[nodiscard]] auto rounded_charge(const double value) -> double {
-    return std::round(value * charge_scale) / charge_scale;
+[[nodiscard]] auto rounded(const double value, const double scale) -> double {
+    return std::round(value * scale) / scale;
 }
 
 [[nodiscard]] auto charges_json(const charges::AtomicCharges& charges) -> Json {
     Json values = Json::array();
     for (const auto value : charges.values()) {
-        values.push_back(rounded_charge(value));
+        values.push_back(rounded(value, charge_scale));
     }
     return values;
 }
@@ -127,7 +128,21 @@ constexpr auto charge_scale = 10000.0;
              optional_value(provenance.effective.execution_charge_correction)}};
     }
     effective["method_options"] = method_options_json(provenance.effective.method_options);
-    return {{"requested", std::move(requested)}, {"effective", std::move(effective)}};
+    Json result{{"requested", std::move(requested)}, {"effective", std::move(effective)}};
+    if (provenance.execution_metrics.has_value()) {
+        const auto& metrics = *provenance.execution_metrics;
+        result["execution_metrics"] = {
+            {"started_at", metrics.started_at},
+            {"ended_at", metrics.ended_at},
+            {"runtime_seconds", rounded(metrics.runtime_seconds, metric_scale)},
+            {"phases",
+             {{"parsing_seconds", rounded(metrics.parsing_seconds, metric_scale)},
+              {"applicability_seconds", rounded(metrics.applicability_seconds, metric_scale)},
+              {"computation_seconds", rounded(metrics.computation_seconds, metric_scale)},
+              {"writing_seconds", rounded(metrics.writing_seconds, metric_scale)}}},
+            {"peak_resident_memory_mb", rounded(metrics.peak_resident_memory_mb, metric_scale)}};
+    }
+    return result;
 }
 
 } // namespace

@@ -6,6 +6,7 @@
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/core/molecule_collection.h>
 
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -55,6 +56,14 @@ struct SelectionArguments {
     CLI::Option* full_atom_threshold_option = nullptr;
 };
 
+struct CalculationRun {
+    adapters::ExecutionMetrics metrics;
+    std::chrono::steady_clock::time_point started;
+};
+
+[[nodiscard]] auto utc_timestamp() -> std::string;
+[[nodiscard]] auto peak_resident_memory_mb() -> double;
+
 void add_input_options(CLI::App& command, InputArguments& arguments);
 void add_selection_options(CLI::App& command, SelectionArguments& arguments);
 [[nodiscard]] auto import_input(const InputArguments& arguments) -> ImportedCollection;
@@ -67,10 +76,9 @@ void print_applicability(const calculation::ApplicationAssessmentResult& assessm
 void print_methods();
 void print_parameter_sets(const std::string& method_id);
 
-[[nodiscard]] auto
-write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
-                          const ImportedCollection& imported,
-                          const calculation::ApplicationCalculationRequest& request,
-                          const calculation::ApplicationCalculationResult& result) -> int;
+[[nodiscard]] auto write_calculation_outputs(
+    const std::string& output_directory, const std::string& input_path,
+    const ImportedCollection& imported, const calculation::ApplicationCalculationRequest& request,
+    const calculation::ApplicationCalculationResult& result, CalculationRun& run) -> int;
 
 } // namespace chargefw::cli

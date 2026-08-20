@@ -20,6 +20,8 @@ complete the CLI/result boundary, add scientific validation, then package bindin
 - [ ] Expand facade and planning tests for multiple molecules/conformers, no-plan diagnostics, explicit
   unsupported policies, empty/tiny inputs, fragment solver failures, ownership/lifetimes, and result
   cardinality.
+- [ ] Reuse one prepared molecule collection across applicability and calculation in the application
+  facade instead of preparing the input twice.
 
 ## 2. Result contract, molecular I/O, and CLI
 

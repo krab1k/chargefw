@@ -7,6 +7,7 @@
 #include <chargefw/methods/method_registry.h>
 
 #include <algorithm>
+#include <chrono>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -276,7 +277,11 @@ auto assess(const ApplicationCalculationRequest& request) -> ApplicationAssessme
 }
 
 auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalculationResult {
+    const auto applicability_started = std::chrono::steady_clock::now();
     auto assessment = assess(request);
+    const auto applicability_seconds =
+        std::chrono::duration<double>{std::chrono::steady_clock::now() - applicability_started}
+            .count();
 
     if (!assessment.executable() &&
         (request.method_id.has_value() || request.parameter_set_id.has_value() ||
@@ -285,28 +290,36 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
     }
 
     if (!assessment.executable()) {
-        return ApplicationCalculationResult{.charges = std::nullopt,
-                                            .applicability = std::move(assessment.applicability),
-                                            .execution_policy = std::nullopt,
-                                            .execution_issues = {},
-                                            .effective_method_options = std::nullopt};
+        return ApplicationCalculationResult{
+            .charges = std::nullopt,
+            .applicability = std::move(assessment.applicability),
+            .execution_policy = std::nullopt,
+            .execution_issues = {},
+            .effective_method_options = std::nullopt,
+            .metrics = {.applicability_seconds = applicability_seconds}};
     }
 
     if (assessment.selected == nullptr || !assessment.execution_policy.has_value()) {
         throw std::logic_error{"executable calculation assessment has no selected execution plan"};
     }
 
+    const auto computation_started = std::chrono::steady_clock::now();
     const features::PreparedMoleculeCollection prepared{request.molecules};
     auto result = calculate(CalculationRequest{.molecules = prepared,
                                                .selected = *assessment.selected,
                                                .execution_policy = *assessment.execution_policy,
                                                .max_threads = request.resource_policy.max_threads});
+    const auto computation_seconds =
+        std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
+            .count();
     return ApplicationCalculationResult{.charges = std::move(result.charges),
                                         .applicability = std::move(assessment.applicability),
                                         .execution_policy = assessment.execution_policy,
                                         .execution_issues = std::move(assessment.execution_issues),
                                         .effective_method_options =
-                                            assessment.selected->method_options};
+                                            assessment.selected->method_options,
+                                        .metrics = {.applicability_seconds = applicability_seconds,
+                                                    .computation_seconds = computation_seconds}};
 }
 
 } // namespace chargefw::calculation

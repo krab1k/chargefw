@@ -148,6 +148,11 @@ options contain explicit overrides; effective options contain the complete selec
 JSON charge values are rounded to at most four decimal places; internal calculations retain native
 precision.
 
+Calculation provenance also includes `execution_metrics` with UTC start/end timestamps, phase durations for
+parsing, applicability, computation, and non-JSON output writing, plus peak resident memory in MB.
+The computation timing currently includes the second feature-preparation pass performed by the
+application facade.
+
 ## Install
 
 After configuring and building, install to a chosen prefix:

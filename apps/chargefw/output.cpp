@@ -3,16 +3,28 @@
 #include <chargefw/charges/charge_collection.h>
 
 #include <array>
+#include <chrono>
+#include <ctime>
 #include <filesystem>
+#include <format>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <print>
 #include <ranges>
+#include <sstream>
 #include <stdexcept>
+#include <sys/resource.h>
 
 namespace chargefw::cli {
 namespace {
+
+[[nodiscard]] auto result_document(const ImportedCollection& imported,
+                                   const calculation::ApplicationCalculationRequest& request,
+                                   const calculation::ApplicationCalculationResult& result,
+                                   const adapters::ExecutionMetrics& metrics)
+    -> adapters::ChargeResultDocument;
 
 [[nodiscard]] auto assignments_by_molecule(const charges::ChargeSet& charge_set,
                                            const std::size_t molecule_count)
@@ -111,7 +123,8 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
 
 [[nodiscard]] auto result_document(const ImportedCollection& imported,
                                    const calculation::ApplicationCalculationRequest& request,
-                                   const calculation::ApplicationCalculationResult& result)
+                                   const calculation::ApplicationCalculationResult& result,
+                                   const adapters::ExecutionMetrics& metrics)
     -> adapters::ChargeResultDocument {
     auto warnings = std::vector<std::string>{};
     warnings.reserve(result.execution_issues.size());
@@ -139,26 +152,28 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                                     .bonds = imported.structural_input_policy->bonds}}
                               : std::nullopt,
                       .conformer_selection = imported.conformer_selection},
-        .effective = {
-            .method_id = result.charges.has_value()
-                             ? std::optional{std::string{result.charges->method_id()}}
-                             : std::nullopt,
-            .parameter_set_id = result.charges.has_value()
-                                    ? result.charges->parameter_set_id().transform(
-                                          [](const std::string_view id) { return std::string{id}; })
-                                    : std::nullopt,
-            .execution_mode = result.execution_policy.has_value()
-                                  ? std::optional{std::string{
-                                        calculation::to_string(result.execution_policy->mode())}}
-                                  : std::nullopt,
-            .execution_radius = result.execution_policy.has_value()
-                                    ? result.execution_policy->radius()
-                                    : std::nullopt,
-            .execution_charge_correction = result.execution_policy.has_value()
-                                               ? std::optional{std::string{calculation::to_string(
-                                                     result.execution_policy->charge_correction())}}
-                                               : std::nullopt,
-            .warnings = std::move(warnings)}};
+        .effective = {.method_id = result.charges.has_value()
+                                       ? std::optional{std::string{result.charges->method_id()}}
+                                       : std::nullopt,
+                      .parameter_set_id =
+                          result.charges.has_value()
+                              ? result.charges->parameter_set_id().transform(
+                                    [](const std::string_view id) { return std::string{id}; })
+                              : std::nullopt,
+                      .execution_mode = result.execution_policy.has_value()
+                                            ? std::optional{std::string{calculation::to_string(
+                                                  result.execution_policy->mode())}}
+                                            : std::nullopt,
+                      .execution_radius = result.execution_policy.has_value()
+                                              ? result.execution_policy->radius()
+                                              : std::nullopt,
+                      .execution_charge_correction =
+                          result.execution_policy.has_value()
+                              ? std::optional{std::string{calculation::to_string(
+                                    result.execution_policy->charge_correction())}}
+                              : std::nullopt,
+                      .warnings = std::move(warnings)},
+        .execution_metrics = metrics};
     for (const auto& [method_id, options] : request.method_options) {
         provenance.requested.method_options.emplace(method_id, options);
     }
@@ -180,13 +195,39 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
 
 } // namespace
 
+auto utc_timestamp() -> std::string {
+    const auto now = std::chrono::system_clock::now();
+    const auto time = std::chrono::system_clock::to_time_t(now);
+    std::tm utc{};
+    gmtime_r(&time, &utc);
+    const auto milliseconds =
+        std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+    auto output = std::ostringstream{};
+    output << std::put_time(&utc, "%Y-%m-%dT%H:%M:%S") << '.' << std::setfill('0') << std::setw(3)
+           << milliseconds.count() << 'Z';
+    return output.str();
+}
+
+auto peak_resident_memory_mb() -> double {
+    rusage usage{};
+    if (getrusage(RUSAGE_SELF, &usage) != 0) {
+        return 0.0;
+    }
+    return static_cast<double>(usage.ru_maxrss) / 1024.0;
+}
+
 auto write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
                                const ImportedCollection& imported,
                                const calculation::ApplicationCalculationRequest& request,
-                               const calculation::ApplicationCalculationResult& result) -> int {
+                               const calculation::ApplicationCalculationResult& result,
+                               CalculationRun& run) -> int {
+    run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
     if (!result.calculated()) {
+        run.metrics.ended_at = utc_timestamp();
+        run.metrics.runtime_seconds =
+            std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
         adapters::native::json_output::JsonWriter{std::cout}.write(
-            result_document(imported, request, result));
+            result_document(imported, request, result, run.metrics));
         return 1;
     }
 
@@ -212,22 +253,29 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     }
     const auto prefix =
         directory / (std::filesystem::path{input_path}.stem().string() + ".chargefw");
-    const auto document = result_document(imported, request, result);
-    write_json(prefix.string() + ".json", document);
     const auto* charges = result.charges ? std::addressof(*result.charges) : nullptr;
     if (charges == nullptr) {
         throw std::runtime_error{"calculation result is missing charges"};
     }
+    const auto writing_started = std::chrono::steady_clock::now();
     write_mmcif(prefix.string() + ".cif", imported, *charges);
     if (structural_output) {
         std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
-        return 0;
+    } else {
+        const auto assignments = assignments_by_molecule(*charges, imported.molecules.size());
+        write_sdf(prefix.string() + ".sdf", input_path, imported, assignments,
+                  charges->method_id());
+        write_mol2(prefix.string() + ".mol2", input_path, imported, assignments);
+        std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json",
+                     prefix.string() + ".sdf", prefix.string() + ".mol2", prefix.string() + ".cif");
     }
-    const auto assignments = assignments_by_molecule(*charges, imported.molecules.size());
-    write_sdf(prefix.string() + ".sdf", input_path, imported, assignments, charges->method_id());
-    write_mol2(prefix.string() + ".mol2", input_path, imported, assignments);
-    std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json", prefix.string() + ".sdf",
-                 prefix.string() + ".mol2", prefix.string() + ".cif");
+    run.metrics.writing_seconds =
+        std::chrono::duration<double>{std::chrono::steady_clock::now() - writing_started}.count();
+    run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
+    run.metrics.ended_at = utc_timestamp();
+    run.metrics.runtime_seconds =
+        std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
+    write_json(prefix.string() + ".json", result_document(imported, request, result, run.metrics));
     return 0;
 }
 

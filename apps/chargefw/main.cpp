@@ -1,5 +1,6 @@
 #include "cli_support.h"
 
+#include <chrono>
 #include <cstddef>
 #include <exception>
 #include <iostream>
@@ -58,11 +59,19 @@ auto run(std::span<char*> arguments) -> int {
             "methods, or parameters"};
     }
 
+    auto run =
+        chargefw::cli::CalculationRun{.metrics = {}, .started = std::chrono::steady_clock::now()};
+    run.metrics.started_at = chargefw::cli::utc_timestamp();
+    const auto parsing_started = std::chrono::steady_clock::now();
     const auto imported = chargefw::cli::import_input(calculate_input);
+    run.metrics.parsing_seconds =
+        std::chrono::duration<double>{std::chrono::steady_clock::now() - parsing_started}.count();
     const auto request = chargefw::cli::make_request(imported, calculate_selection);
+    const auto result = chargefw::calculation::calculate(request);
+    run.metrics.applicability_seconds = result.metrics.applicability_seconds;
+    run.metrics.computation_seconds = result.metrics.computation_seconds;
     return chargefw::cli::write_calculation_outputs(output_directory, calculate_input.path,
-                                                    imported, request,
-                                                    chargefw::calculation::calculate(request));
+                                                    imported, request, result, run);
 }
 
 } // namespace

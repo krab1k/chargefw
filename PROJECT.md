@@ -231,6 +231,11 @@ sequential peptide/nucleotide links. There is no distance-based bond perception 
 
 Adapters preserve selected source atom order, formal charges, selected conformer identity, and record
 identity.
+
+Calculation JSON includes execution metrics for parsing, applicability, computation, non-JSON output
+writing, wall-clock timestamps, and peak resident memory. Applicability and computation timings use
+monotonic clocks; timestamps are UTC. The application facade currently prepares feature data separately
+for applicability and calculation, so computation metrics include its second preparation pass.
 MOL/SDF supports a deliberately narrow V2000/V3000 subset; MOL2 accepts standard element-prefixed atom
 types and numeric bonds. Aromatic bonds are imported as single bonds. Partial charges in MOL2 input are
 ignored rather than treated as formal charges.

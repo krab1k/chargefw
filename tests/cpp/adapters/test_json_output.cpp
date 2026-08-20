@@ -48,7 +48,16 @@ auto main() -> int {
                           .execution_radius = 8.0,
                           .execution_charge_correction = "uniform",
                           .warnings = {"full execution exceeds the shared threshold"},
-                          .method_options = {{"formal", chargefw::methods::MethodOptions{}}}}}};
+                          .method_options = {{"formal", chargefw::methods::MethodOptions{}}}},
+            .execution_metrics =
+                adapters::ExecutionMetrics{.started_at = "2026-08-20T10:00:00.000Z",
+                                           .ended_at = "2026-08-20T10:00:01.250Z",
+                                           .runtime_seconds = 1.23456,
+                                           .parsing_seconds = 0.1004,
+                                           .applicability_seconds = 0.20,
+                                           .computation_seconds = 0.80,
+                                           .writing_seconds = 0.15,
+                                           .peak_resident_memory_mb = 123.4567}}};
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(document);
@@ -71,6 +80,15 @@ auto main() -> int {
     assert(requested.at("input").at("conformers") == "all");
     assert(requested.at("method_options").at("qeq").at("overlap_term") == "Ohno");
     const auto& effective = provenance.at("effective");
+    const auto& metrics = provenance.at("execution_metrics");
+    assert(metrics.at("started_at") == "2026-08-20T10:00:00.000Z");
+    assert(metrics.at("ended_at") == "2026-08-20T10:00:01.250Z");
+    assert(metrics.at("runtime_seconds") == 1.235);
+    assert(metrics.at("phases").at("parsing_seconds") == 0.1);
+    assert(metrics.at("phases").at("applicability_seconds") == 0.20);
+    assert(metrics.at("phases").at("computation_seconds") == 0.80);
+    assert(metrics.at("phases").at("writing_seconds") == 0.15);
+    assert(metrics.at("peak_resident_memory_mb") == 123.457);
     assert(effective.at("execution").at("mode") == "cutoff");
     assert(effective.at("method").at("id") == "formal");
     assert(effective.at("parameter_set").at("id") == "test-formal");

@@ -30,6 +30,11 @@ struct CalculationResult {
     charges::ChargeSet charges;
 };
 
+struct CalculationMetrics {
+    double applicability_seconds = 0.0;
+    double computation_seconds = 0.0;
+};
+
 // Non-owning concrete execution choice produced from an applicability result. The selected
 // candidate and its classifications remain owned by the ApplicabilityResult.
 struct ExecutionPlan {
@@ -45,6 +50,7 @@ struct ApplicationCalculationResult {
     std::optional<ExecutionPolicy> execution_policy;
     std::vector<methods::ExecutionIssue> execution_issues;
     std::optional<methods::MethodOptions> effective_method_options;
+    CalculationMetrics metrics;
 
     [[nodiscard]] auto calculated() const noexcept -> bool {
         return charges.has_value();
