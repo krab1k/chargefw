@@ -37,8 +37,6 @@ complete the CLI/result boundary, add scientific validation, then package bindin
 - [ ] Add bounded-memory batch execution with deterministic record order and memory independent of
   total record count. Preserve the policy that malformed input terminates import unless a separately
   specified recovery mode is introduced.
-- [ ] Add conformer selection and support multi-conformer molecular output, or define an explicit
-  per-conformer output naming/container policy. Keep source conformer mapping unambiguous.
 - [ ] Add complete calculation provenance to SDF, MOL2, and mmCIF in format-appropriate fields. Include
   effective method options once application-facing options exist; do not duplicate JSON schema
   internals unnecessarily.

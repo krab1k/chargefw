@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chargefw/adapters/conformer_selection.h>
 #include <chargefw/adapters/molecule_record.h>
 
 #include <nlohmann/json.hpp>
@@ -17,13 +18,15 @@ namespace chargefw::adapters::native::json_input {
 // names are intentionally unsupported.
 class JsonReader {
   public:
-    explicit JsonReader(std::istream& input, std::string source = {});
+    explicit JsonReader(std::istream& input, std::string source = {},
+                        ConformerSelection conformers = ConformerSelection::all);
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 
   private:
     nlohmann::json molecule_records_;
     std::string source_;
+    ConformerSelection conformers_;
     std::size_t record_index_ = 0;
 };
 

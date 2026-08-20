@@ -20,13 +20,13 @@ auto main() -> int {
         .generator_version = "test",
         .records =
             {{.identity = {.source = "water.sdf", .record_index = 2, .record_id = "water"},
-              .mapping = {.atom_indices = {0, 1, 2}, .conformer_indices = {0}},
+              .mapping = {.atom_indices = {0, 1, 2}},
               .charges = charges::ChargeSet{"formal",
                                             {{.target = {.molecule_index = 0, .conformer_index = 0},
                                               .charges = charges::AtomicCharges{{-0.87654, 0.43827,
                                                                                  0.43827}}}}}},
              {.identity = {.source = "water.sdf", .record_index = 3, .record_id = "unavailable"},
-              .mapping = {.atom_indices = {}, .conformer_indices = {}},
+              .mapping = {.atom_indices = {}},
               .charges = std::nullopt}},
         .calculation_provenance = adapters::CalculationProvenance{
             .requested = {.method_id = std::nullopt,
@@ -38,7 +38,8 @@ auto main() -> int {
                           .execution_charge_correction = std::nullopt,
                           .structural_input_policy =
                               adapters::StructuralInputPolicyProvenance{.selection = "polymers",
-                                                                        .bonds = "hybrid"}},
+                                                                        .bonds = "hybrid"},
+                          .conformer_selection = "all"},
             .effective = {.method_id = "formal",
                           .parameter_set_id = "test-formal",
                           .execution_mode = "cutoff",
@@ -63,6 +64,7 @@ auto main() -> int {
     assert(requested.at("resource_policy").at("full_atom_threshold") == "unlimited");
     assert(requested.at("structural_input").at("selection") == "polymers");
     assert(requested.at("structural_input").at("bonds") == "hybrid");
+    assert(requested.at("input").at("conformers") == "all");
     const auto& effective = provenance.at("effective");
     assert(effective.at("execution").at("mode") == "cutoff");
     assert(effective.at("method").at("id") == "formal");
@@ -74,6 +76,7 @@ auto main() -> int {
     const auto& calculated = result.at("results").at(0);
     assert(calculated.at("status") == "success");
     assert(calculated.at("input").at("atom_mapping").at("kind") == "identity");
+    assert(!calculated.at("input").contains("conformer_mapping"));
     assert(calculated.at("assignments").at(0).at("conformer_index") == 0);
     assert(calculated.at("assignments").at(0).at("charges").size() == 3);
     assert(calculated.at("assignments").at(0).at("charges").at(0) == -0.8765);

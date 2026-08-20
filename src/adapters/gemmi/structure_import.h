@@ -13,6 +13,7 @@ namespace chargefw::adapters::gemmi::structure_import {
 
 [[nodiscard]] auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                                RecordSelection selection, BondStrategy bond_strategy,
+                               ConformerSelection conformers = ConformerSelection::all,
                                std::vector<core::Bond> explicit_bonds = {}, std::string name = {})
     -> ImportedMoleculeRecord;
 

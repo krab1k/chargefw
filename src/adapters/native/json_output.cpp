@@ -28,8 +28,8 @@ constexpr auto charge_scale = 10000.0;
     return values;
 }
 
-[[nodiscard]] auto mapping_json(const MoleculeRecordMapping& mapping, const bool atoms) -> Json {
-    const auto& values = atoms ? mapping.atom_indices : mapping.conformer_indices;
+[[nodiscard]] auto mapping_json(const MoleculeRecordMapping& mapping) -> Json {
+    const auto& values = mapping.atom_indices;
     if (values.empty()) {
         return Json{{"kind", "identity"}};
     }
@@ -53,8 +53,7 @@ constexpr auto charge_scale = 10000.0;
     -> Json {
     Json input{{"source", record.identity.source},
                {"record_index", record.identity.record_index},
-               {"atom_mapping", mapping_json(record.mapping, true)},
-               {"conformer_mapping", mapping_json(record.mapping, false)}};
+               {"atom_mapping", mapping_json(record.mapping)}};
     if (!record.identity.record_id.empty()) {
         input["record_id"] = record.identity.record_id;
     }
@@ -115,6 +114,7 @@ constexpr auto charge_scale = 10000.0;
           {"radius_angstrom", optional_value(provenance.requested.execution_radius)},
           {"charge_correction",
            optional_value(provenance.requested.execution_charge_correction)}}}};
+    requested["input"] = {{"conformers", provenance.requested.conformer_selection}};
     if (provenance.requested.structural_input_policy.has_value()) {
         requested["structural_input"] = {
             {"selection", provenance.requested.structural_input_policy->selection},

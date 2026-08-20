@@ -79,6 +79,7 @@ struct ModelAtoms {
 
 auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                  const RecordSelection selection, const BondStrategy bond_strategy,
+                 const ConformerSelection conformer_selection,
                  std::vector<core::Bond> explicit_bonds, std::string name)
     -> ImportedMoleculeRecord {
     if (structure.models.empty()) {
@@ -89,11 +90,14 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
         ::chargefw::adapters::gemmi::selection::SelectedModel{structure.models.front(), selection};
     auto first = import_reference(selected_model);
     std::vector<core::Conformer> conformers;
-    conformers.reserve(structure.models.size());
+    conformers.reserve(conformer_selection == ConformerSelection::all ? structure.models.size()
+                                                                      : 1);
     conformers.emplace_back(std::move(first.positions),
                             std::to_string(structure.models.front().num));
 
-    for (std::size_t index = 1; index < structure.models.size(); ++index) {
+    for (std::size_t index = 1;
+         index < structure.models.size() && conformer_selection == ConformerSelection::all;
+         ++index) {
         const auto selected = ::chargefw::adapters::gemmi::selection::SelectedModel{
             structure.models[index], selection};
         auto positions = conformer_positions(selected, first.atoms);

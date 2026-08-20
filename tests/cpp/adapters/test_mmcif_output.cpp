@@ -33,7 +33,7 @@ auto generated_record(std::string id, const double shift = 0.0)
         id};
     return {.molecule = std::move(molecule),
             .identity = {.source = "input.sdf", .record_index = 0, .record_id = std::move(id)},
-            .mapping = {.atom_indices = {0, 1}, .conformer_indices = {0}},
+            .mapping = {.atom_indices = {0, 1}},
             .diagnostics = {}};
 }
 

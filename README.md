@@ -112,6 +112,13 @@ For PDB/mmCIF input:
 
 These structural options are rejected for other formats.
 
+For all input formats, `--conformers first|all` selects whether the first conformer/model or every
+conformer/model is read (default `all`). The option is ignored when a molecule has no conformers.
+With `first` on PDB/mmCIF input, structural output may retain the complete source structure, but
+ChargeFW writes charges only for the first calculated conformer and maps them to the corresponding
+source atom IDs. JSON output records the selection in
+`calculation_provenance.requested.input.conformers`.
+
 Successful nonstructural calculations write:
 
 ```text
@@ -120,7 +127,7 @@ OUTPUT_DIRECTORY/<input-stem>.chargefw.{json,sdf,mol2,cif}
 
 PDB/mmCIF input writes JSON and mmCIF only. Same-format SDF/MOL2 output preserves source content where
 possible; other molecular output is generated. JSON input with multiple conformers cannot currently be
-written to SDF/MOL2 and is rejected.
+written to SDF/MOL2 and is rejected; use `--conformers first` for those output formats.
 
 `inspect` reports imported composition without loading parameters. `applicability` reports scientific
 candidates and their full/cutoff/cover availability without calculation. `methods` and `parameters`
@@ -128,11 +135,11 @@ list installed capabilities.
 
 ### JSON result
 
-Schema `1.0` contains one ordered result per imported molecule, source identity and mapping,
+Schema `1.0` contains one ordered result per imported molecule, source identity and atom mapping,
 source-ordered charge assignments, totals, and diagnostics. `calculation_provenance` records requested
-selection/classification/resource/structural policies and the effective method, parameter set,
-execution mode, radius, correction, and warnings. JSON charge values are rounded to at most four
-decimal places; internal calculations retain native precision.
+conformer selection, selection/classification/resource/structural policies, and the effective method,
+parameter set, execution mode, radius, correction, and warnings. JSON charge values are rounded to at
+most four decimal places; internal calculations retain native precision.
 
 ## Install
 

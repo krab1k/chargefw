@@ -103,14 +103,11 @@ auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
     }
 
     auto atom_mapping = identity_mapping(atoms.size());
-    auto conformer_mapping = identity_mapping(conformers.size());
-
     return ImportedMoleculeRecord{.molecule =
                                       core::Molecule{std::move(atoms), std::move(bonds),
                                                      std::move(conformers), std::move(name)},
                                   .identity = std::move(identity),
-                                  .mapping = {.atom_indices = std::move(atom_mapping),
-                                              .conformer_indices = std::move(conformer_mapping)},
+                                  .mapping = {.atom_indices = std::move(atom_mapping)},
                                   .diagnostics = std::move(diagnostics)};
 }
 

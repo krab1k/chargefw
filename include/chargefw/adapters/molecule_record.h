@@ -17,11 +17,10 @@ struct MoleculeRecordIdentity {
     std::string record_id;
 };
 
-// Maps a source atom or conformer index to its preserved native index. A missing value represents
-// an explicitly omitted source item; adapters must not use it to silently reorder chemistry.
+// Maps source atom indices to their preserved native indices. A missing value represents an
+// explicitly omitted source atom; adapters must not use it to silently reorder chemistry.
 struct MoleculeRecordMapping {
     std::vector<std::optional<std::size_t>> atom_indices;
-    std::vector<std::optional<std::size_t>> conformer_indices;
 };
 
 struct MoleculeRecordDiagnostic {

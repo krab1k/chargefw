@@ -214,8 +214,12 @@ subcommands. It selects input by extension:
 | `.cif`, `.mmcif` | Gemmi mmCIF | JSON, mmCIF |
 
 The CLI currently reads the complete collection before calculation and rejects the input on the first
-malformed record. It is not yet a bounded-memory batch runner. JSON input with multiple conformers is
-rejected by molecular output because SDF/MOL2 export currently accepts one assignment per molecule.
+malformed record. It is not yet a bounded-memory batch runner. `--conformers first|all` (default `all`)
+selects the first or all conformers/models for every reader and is ignored for molecules without
+conformers. JSON input with multiple conformers is rejected by SDF/MOL2 output because those formats
+currently accept one assignment per molecule; `--conformers first` can select a compatible output.
+Structural output may retain uncalculated source models when `first` is selected, while charge rows
+are emitted only for calculated conformers and use the corresponding source atom IDs.
 
 Structural input supports record selection (`all`, `polymers-and-ligands`, `polymers`) and connectivity
 (`none`, `explicit`, `templates`, `hybrid`). Library structural readers default to `none`; the CLI
@@ -223,7 +227,8 @@ deliberately defaults to `hybrid`. Alternate locations select blank, then `A`, t
 occurrence. Compact templates cover standard amino acids, standard RNA/DNA nucleotides, water, and
 sequential peptide/nucleotide links. There is no distance-based bond perception or full CCD provider.
 
-Adapters preserve selected source atom order, formal charges, conformer identity, and record identity.
+Adapters preserve selected source atom order, formal charges, selected conformer identity, and record
+identity.
 MOL/SDF supports a deliberately narrow V2000/V3000 subset; MOL2 accepts standard element-prefixed atom
 types and numeric bonds. Aromatic bonds are imported as single bonds. Partial charges in MOL2 input are
 ignored rather than treated as formal charges.
@@ -234,8 +239,8 @@ PDB through Gemmi, and generates local `UNL` blocks for nonstructural input.
 
 ### JSON result state
 
-Schema `1.0` records source identity, source-to-native atom/conformer mapping, source-ordered
-assignments, totals, and diagnostics. Invocation-level `calculation_provenance` records requested
+Schema `1.0` records source identity, source-to-native atom mapping, source-ordered assignments, totals,
+and diagnostics. Invocation-level `calculation_provenance` records requested conformer selection,
 method/parameter IDs, permissive typing, resource threshold, execution/radius/correction, structural
 input policy, and effective method/parameter/execution plus warnings. Charges are rounded to at most
 four decimal places in JSON only.

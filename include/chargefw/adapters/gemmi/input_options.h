@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chargefw/adapters/conformer_selection.h>
+
 #include <cstdint>
 
 namespace chargefw::adapters::gemmi {
@@ -20,6 +22,7 @@ enum class BondStrategy : std::uint8_t {
 struct InputOptions {
     RecordSelection selection = RecordSelection::all;
     BondStrategy bond_strategy = BondStrategy::none;
+    ConformerSelection conformers = ConformerSelection::all;
 };
 
 } // namespace chargefw::adapters::gemmi

@@ -29,7 +29,8 @@ PdbReader::PdbReader(std::istream& input, std::string source,
     record_ = structure_import::make_record(
         structure_,
         MoleculeRecordIdentity{.source = std::move(source), .record_index = 0, .record_id = name},
-        options.selection, options.bond_strategy, std::move(explicit_bonds), name);
+        options.selection, options.bond_strategy, options.conformers, std::move(explicit_bonds),
+        name);
 }
 
 auto PdbReader::next() -> std::optional<ImportedMoleculeRecord> {

@@ -26,6 +26,7 @@ struct ImportedCollection {
     std::optional<adapters::gemmi::mmcif_output::MmcifSource> mmcif_source;
     std::optional<adapters::gemmi::mmcif_output::PdbSource> pdb_source;
     std::optional<StructuralInputPolicy> structural_input_policy;
+    std::string conformer_selection = "all";
     Format format;
 };
 
@@ -33,6 +34,7 @@ struct InputArguments {
     std::string path;
     std::string structural_selection = "all";
     std::string structural_bonds = "hybrid";
+    std::string conformer_selection = "all";
     CLI::Option* structural_selection_option = nullptr;
     CLI::Option* structural_bonds_option = nullptr;
 };

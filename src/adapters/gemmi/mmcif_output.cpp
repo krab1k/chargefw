@@ -42,8 +42,8 @@ struct BlockMapping {
 [[nodiscard]] auto selected_structure_mapping(const ::gemmi::Structure& structure,
                                               const RecordSelection selection,
                                               const core::Molecule& molecule) -> BlockMapping {
-    if (structure.models.size() != molecule.conformer_count()) {
-        throw std::runtime_error{"structural model count does not match calculated conformers"};
+    if (molecule.conformer_count() > structure.models.size()) {
+        throw std::runtime_error{"structural source has fewer models than calculated conformers"};
     }
 
     BlockMapping mapping;

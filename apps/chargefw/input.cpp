@@ -50,6 +50,17 @@ auto read_collection(Reader& reader, const std::string& input_path,
     throw std::runtime_error{"Unsupported structural record selection: " + value};
 }
 
+[[nodiscard]] auto parse_conformer_selection(const std::string& value)
+    -> adapters::ConformerSelection {
+    if (value == "first") {
+        return adapters::ConformerSelection::first;
+    }
+    if (value == "all") {
+        return adapters::ConformerSelection::all;
+    }
+    throw std::runtime_error{"Unsupported conformer selection: " + value};
+}
+
 [[nodiscard]] auto parse_bond_strategy(const std::string& value) -> adapters::gemmi::BondStrategy {
     if (value == "none") {
         return adapters::gemmi::BondStrategy::none;
@@ -122,7 +133,8 @@ auto read_collection(const std::string& input_path,
             throw std::runtime_error{
                 "Structural input options are only supported for PDB and mmCIF input"};
         }
-        adapters::native::json_input::JsonReader reader{input, input_path};
+        adapters::native::json_input::JsonReader reader{input, input_path,
+                                                        structural_options.conformers};
         return read_collection(reader, input_path, ImportedCollection::Format::json);
     }
     if (extension == ".pdb") {
@@ -156,6 +168,8 @@ void add_input_options(CLI::App& command, InputArguments& arguments) {
     arguments.structural_bonds_option =
         command.add_option("--structural-bonds", arguments.structural_bonds,
                            "PDB/mmCIF connectivity: none, explicit, templates, or hybrid");
+    command.add_option("--conformers", arguments.conformer_selection,
+                       "Conformers to read: first or all");
 }
 
 void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
@@ -178,10 +192,12 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
 auto import_input(const InputArguments& arguments) -> ImportedCollection {
     const auto options = adapters::gemmi::InputOptions{
         .selection = parse_record_selection(arguments.structural_selection),
-        .bond_strategy = parse_bond_strategy(arguments.structural_bonds)};
+        .bond_strategy = parse_bond_strategy(arguments.structural_bonds),
+        .conformers = parse_conformer_selection(arguments.conformer_selection)};
     auto imported = read_collection(arguments.path, options,
                                     arguments.structural_selection_option->count() > 0 ||
                                         arguments.structural_bonds_option->count() > 0);
+    imported.conformer_selection = arguments.conformer_selection;
     if (imported.format == ImportedCollection::Format::pdb ||
         imported.format == ImportedCollection::Format::mmcif) {
         imported.structural_input_policy = ImportedCollection::StructuralInputPolicy{

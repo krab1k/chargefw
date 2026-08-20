@@ -10,6 +10,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <istream>
@@ -102,7 +103,8 @@ auto require_array(const Json& value, const std::string& context) -> void {
     return context + "[" + std::to_string(index) + "]";
 }
 
-[[nodiscard]] auto parse_molecule(const Json& value, MoleculeRecordIdentity identity)
+[[nodiscard]] auto parse_molecule(const Json& value, MoleculeRecordIdentity identity,
+                                  const ConformerSelection conformer_selection)
     -> ImportedMoleculeRecord {
     const std::string context{"molecules[" + std::to_string(identity.record_index) + "]"};
     require_object(value, context);
@@ -163,8 +165,11 @@ auto require_array(const Json& value, const std::string& context) -> void {
     const auto* conformers_value = optional_member(value, "conformers");
     if (conformers_value != nullptr) {
         require_array(*conformers_value, context + ".conformers");
-        conformers.reserve(conformers_value->size());
-        for (std::size_t index = 0; index < conformers_value->size(); ++index) {
+        const auto conformer_count = conformer_selection == ConformerSelection::first
+                                         ? std::min<std::size_t>(1, conformers_value->size())
+                                         : conformers_value->size();
+        conformers.reserve(conformer_count);
+        for (std::size_t index = 0; index < conformer_count; ++index) {
             const auto conformer_context = index_context(context + ".conformers", index);
             const auto& conformer_value = (*conformers_value)[index];
             require_object(conformer_value, conformer_context);
@@ -202,7 +207,8 @@ auto require_array(const Json& value, const std::string& context) -> void {
 
 } // namespace
 
-JsonReader::JsonReader(std::istream& input, std::string source) : source_{std::move(source)} {
+JsonReader::JsonReader(std::istream& input, std::string source, const ConformerSelection conformers)
+    : source_{std::move(source)}, conformers_{conformers} {
     auto document = Json::parse(input, nullptr, false);
     if (document.is_discarded()) {
         throw std::runtime_error{"invalid JSON document"};
@@ -229,7 +235,8 @@ auto JsonReader::next() -> std::optional<ImportedMoleculeRecord> {
     return parse_molecule(molecule_records_[current_record_index],
                           MoleculeRecordIdentity{.source = source_,
                                                  .record_index = current_record_index,
-                                                 .record_id = {}});
+                                                 .record_id = {}},
+                          conformers_);
 }
 
 } // namespace chargefw::adapters::native::json_input

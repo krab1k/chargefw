@@ -52,8 +52,8 @@ auto MmcifReader::next() -> std::optional<ImportedMoleculeRecord> {
             structure,
             MoleculeRecordIdentity{
                 .source = source_, .record_index = current_record_index, .record_id = block.name},
-            options_.selection, options_.bond_strategy, std::move(explicit_bonds),
-            structure.name.empty() ? block.name : structure.name);
+            options_.selection, options_.bond_strategy, options_.conformers,
+            std::move(explicit_bonds), structure.name.empty() ? block.name : structure.name);
         source_block_indices_.push_back(current_block_index);
         return record;
     }

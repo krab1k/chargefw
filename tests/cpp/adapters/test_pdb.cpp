@@ -38,7 +38,6 @@ END
     assert(first->molecule.conformer_count() == 2);
     assert(first->molecule.conformer(0)[1].x == 0.957);
     assert(first->mapping.atom_indices[1] == 1);
-    assert(first->mapping.conformer_indices[0] == 0);
 
     assert(first->molecule.conformer(1).name() == "2");
     assert(first->molecule.conformer(1)[0].x == 0.1);

@@ -136,7 +136,8 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                               ? std::optional{adapters::StructuralInputPolicyProvenance{
                                     .selection = imported.structural_input_policy->selection,
                                     .bonds = imported.structural_input_policy->bonds}}
-                              : std::nullopt},
+                              : std::nullopt,
+                      .conformer_selection = imported.conformer_selection},
         .effective = {
             .method_id = result.charges.has_value()
                              ? std::optional{std::string{result.charges->method_id()}}
