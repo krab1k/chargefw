@@ -45,8 +45,10 @@ function(chargefw_setup_dependencies)
 
     find_package(TBB 2023.1 CONFIG QUIET)
     if(NOT TARGET TBB::tbb)
+        set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
         set(TBB_TEST OFF CACHE BOOL "" FORCE)
         set(TBB_STRICT OFF CACHE BOOL "" FORCE)
+        set(CHARGEFW_TBB_FETCHED ON CACHE INTERNAL "oneTBB was fetched by ChargeFW")
         FetchContent_Declare(
                 onetbb
                 SYSTEM
@@ -58,9 +60,10 @@ function(chargefw_setup_dependencies)
     find_package(gemmi 0.7.4 CONFIG QUIET)
     if(NOT TARGET gemmi::gemmi_cpp)
         set(BUILD_GEMMI_PROGRAM OFF CACHE BOOL "" FORCE)
-        set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+        set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
         set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
         set(GEMMI_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+        set(CHARGEFW_GEMMI_FETCHED ON CACHE INTERNAL "Gemmi was fetched by ChargeFW")
         FetchContent_Declare(
                 gemmi
                 SYSTEM

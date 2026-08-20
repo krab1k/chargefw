@@ -27,7 +27,7 @@ include(cmake/sanitizers.cmake)
 chargefw_setup_dependencies()
 chargefw_setup_developer_tools()
 
-add_library(chargefw_core)
+add_library(chargefw_core SHARED)
 add_library(chargefw::core ALIAS chargefw_core)
 
 target_compile_features(chargefw_core
