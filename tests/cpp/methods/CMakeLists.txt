@@ -52,6 +52,10 @@ target_compile_definitions(test_gdac
         CHARGEFW_TEST_PARAMETER_DIR="${PROJECT_SOURCE_DIR}/data/parameters"
 )
 
+chargefw_add_test(test_tsef
+        test_tsef.cpp
+)
+
 chargefw_add_test(test_delre
         test_delre.cpp
 )
