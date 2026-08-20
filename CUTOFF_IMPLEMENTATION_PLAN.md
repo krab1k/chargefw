@@ -144,6 +144,36 @@ Cover should reuse `SpatialFragment`, not introduce a second molecule type. Exec
 must define pivots, a solve halo, retained interior atoms, source mapping, and deterministic overlap
 reconciliation.
 
+### Agreed serial-cover semantics
+
+Cover reduces the number of fragment solves relative to cutoff: one spatial fragment is solved for each
+pivot rather than for each source atom. It is a new approximation and deliberately does not reproduce
+the archived ChargeFW2 degree-based/averaging implementation.
+
+For a source molecule and conformer with cover radius `R`:
+
+1. The solve halo for a pivot is the existing `SpatialFragment` centered on that pivot with radius
+   `R`. Its induced molecule, source-order mappings, geometry, and projected classification are used
+   unchanged by the ordinary method calculation path.
+2. The retained interior is the subset of halo atoms within 3 Å of the pivot. Halo-only atoms supply
+   calculation context and never directly contribute an output charge. This spatial rule approximates
+   the archived central-plus-two-bond-shell intent for ordinary covalent structures while remaining
+   independent of bond perception and bounded by the solve halo. Since the minimum cover radius is 8 Å,
+   every retained estimate has at least a 5 Å spatial boundary buffer. The fixed retained radius and
+   resulting boundary-buffer width must be recorded in cover diagnostics.
+3. Pivots and ownership are constructed serially in source-index order. Repeatedly select the
+   lowest-index source atom without an owner, make it a pivot, and assign that pivot every currently
+   unowned retained-interior atom. The pivot itself is always retained.
+4. If retained interiors overlap, first-pivot ownership is the reconciliation rule; later pivots do
+   not overwrite or average an already owned source charge. Consequently every source atom has exactly
+   one contributing estimate, including isolated atoms and disconnected components.
+5. Each halo receives the existing method-declared fragment target-charge policy. After all owned
+   charges are assembled in source order, the existing selected final correction (`none` or `uniform`)
+   targets the method-declared whole-molecule charge.
+
+Initial execution is deterministic and serial per molecule/conformer. Parallel cover scheduling and
+automatic built-in cover capability are deferred until this policy has focused numerical validation.
+
 Before declaring any method cover-capable, tests must prove:
 
 - deterministic pivot and contribution selection;
