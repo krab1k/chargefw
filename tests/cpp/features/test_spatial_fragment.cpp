@@ -66,8 +66,6 @@ auto main() -> int {
 
     assert(std::ranges::equal(fragment.local_to_source_atom_indices(),
                               std::vector<std::size_t>{0, 1, 2}));
-    assert(std::ranges::equal(fragment.source_to_local_atom_indices(),
-                              std::vector<std::size_t>{0, 1, 2, features::no_source_index}));
     assert(std::ranges::equal(fragment.local_to_source_bond_indices(),
                               std::vector<std::size_t>{0, 1}));
 

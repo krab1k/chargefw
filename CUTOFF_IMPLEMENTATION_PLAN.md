@@ -88,7 +88,7 @@ available it continues to the next candidate. It never silently forces discourag
 - one induced molecule and source conformer;
 - selected atoms in source order and an explicit center-local index;
 - induced source bonds;
-- local-to-source atom/bond mappings and source-to-local atom lookup;
+- local-to-source atom/bond mappings;
 - projected atom/bond classifications.
 
 Cutoff ownership is outside the fragment. The executor:
@@ -101,9 +101,8 @@ Cutoff ownership is outside the fragment. The executor:
 5. validates and retains only the mapped center charge;
 6. applies the selected final correction to source-ordered results.
 
-The dense source-to-local mapping is convenient but redundant. Reassess it before retaining many
-fragments or parallelizing; a builder-local lookup may be preferable. Do not optimize before the
-serial reference behavior is covered by compatibility and convergence tests.
+The builder uses a temporary dense source-to-local lookup while inducing source bonds, then discards it
+before returning the fragment. Fragments retain only local-to-source mappings required after building.
 
 ## Method semantics
 

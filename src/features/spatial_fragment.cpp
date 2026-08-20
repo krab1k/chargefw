@@ -17,6 +17,8 @@
 namespace chargefw::features {
 namespace {
 
+inline constexpr auto no_local_index = std::numeric_limits<std::size_t>::max();
+
 auto validate_radius(const double radius) -> void {
     if (!std::isfinite(radius) || radius <= 0.0) {
         throw std::invalid_argument{"fragment radius must be finite and strictly positive"};
@@ -132,13 +134,11 @@ class SpatialFragmentBuilder::SpatialIndex {
 
 SpatialFragment::SpatialFragment(core::Molecule molecule,
                                  std::vector<std::size_t> local_to_source_atom_indices,
-                                 std::vector<std::size_t> source_to_local_atom_indices,
                                  std::vector<std::size_t> local_to_source_bond_indices,
                                  const std::size_t center_local_atom_index,
                                  const std::size_t source_conformer_index)
     : molecule_{std::move(molecule)},
       local_to_source_atom_indices_{std::move(local_to_source_atom_indices)},
-      source_to_local_atom_indices_{std::move(source_to_local_atom_indices)},
       local_to_source_bond_indices_{std::move(local_to_source_bond_indices)},
       center_local_atom_index_{center_local_atom_index},
       source_conformer_index_{source_conformer_index} {}
@@ -158,11 +158,6 @@ auto SpatialFragment::center_local_atom_index() const noexcept -> std::size_t {
 auto SpatialFragment::local_to_source_atom_indices() const noexcept
     -> std::span<const std::size_t> {
     return local_to_source_atom_indices_;
-}
-
-auto SpatialFragment::source_to_local_atom_indices() const noexcept
-    -> std::span<const std::size_t> {
-    return source_to_local_atom_indices_;
 }
 
 auto SpatialFragment::local_to_source_bond_indices() const noexcept
@@ -194,13 +189,13 @@ auto SpatialFragmentBuilder::build(const std::size_t center_atom_index, const do
     selected_source_atom_indices.push_back(center_atom_index);
     std::ranges::sort(selected_source_atom_indices);
 
-    std::vector<std::size_t> source_to_local_atom_indices(molecule.atom_count(), no_source_index);
+    std::vector<std::size_t> source_to_local_atom_indices(molecule.atom_count(), no_local_index);
     std::vector<core::Atom> atoms;
     std::vector<core::Position> positions;
     atoms.reserve(selected_source_atom_indices.size());
     positions.reserve(selected_source_atom_indices.size());
 
-    auto center_local_atom_index = no_source_index;
+    auto center_local_atom_index = no_local_index;
     for (std::size_t local_index = 0; local_index < selected_source_atom_indices.size();
          ++local_index) {
         const auto source_index = selected_source_atom_indices[local_index];
@@ -225,7 +220,7 @@ auto SpatialFragmentBuilder::build(const std::size_t center_atom_index, const do
         const auto& source_bond = molecule.bond(source_bond_index);
         const auto first_local = source_to_local_atom_indices[source_bond.first_atom_index()];
         const auto second_local = source_to_local_atom_indices[source_bond.second_atom_index()];
-        if (first_local == no_source_index || second_local == no_source_index) {
+        if (first_local == no_local_index || second_local == no_local_index) {
             continue;
         }
 
@@ -239,9 +234,7 @@ auto SpatialFragmentBuilder::build(const std::size_t center_atom_index, const do
     return SpatialFragment{core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers),
                                           std::string{molecule.name()}},
                            std::move(selected_source_atom_indices),
-                           std::move(source_to_local_atom_indices),
-                           std::move(local_to_source_bond_indices),
-                           center_local_atom_index,
+                           std::move(local_to_source_bond_indices), center_local_atom_index,
                            geometry.conformer_index()};
 }
 
