@@ -1,6 +1,6 @@
 #include <chargefw/methods/method_calculation.h>
 
-#include "calculation/selected_candidate_validation.h"
+#include "methods/applicable_method_execution.h"
 
 #include <chargefw/core/molecule.h>
 #include <chargefw/methods/calculation_input.h>
@@ -43,34 +43,6 @@ auto validate_calculated_charges(const Method& method, const features::PreparedM
                                     " charges for molecule '" +
                                     std::string{molecule.molecule().name()} + "' with " +
                                     std::to_string(expected_size) + " atoms"};
-    }
-}
-
-[[nodiscard]] auto parameter_set_id_for(const ApplicableMethod& selected)
-    -> std::optional<std::string> {
-    if (!selected.uses_parameters()) {
-        return std::nullopt;
-    }
-
-    return std::string{selected.parameter_set->id()};
-}
-
-auto validate_coordinate_targets(const ApplicableMethod& selected,
-                                 const features::PreparedMoleculeCollection& prepared_collection)
-    -> void {
-    if (!selected.method->requirements().coordinates) {
-        return;
-    }
-
-    for (std::size_t molecule_index = 0; molecule_index < prepared_collection.size();
-         ++molecule_index) {
-        const auto& molecule = prepared_collection[molecule_index].molecule();
-
-        if (molecule.conformer_count() == 0) {
-            throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
-                                        "' requires coordinates, but molecule " +
-                                        std::to_string(molecule_index) + " has no conformers"};
-        }
     }
 }
 
@@ -118,8 +90,8 @@ auto validate_coordinate_targets(const ApplicableMethod& selected,
 auto calculate_charges(const ApplicableMethod& selected,
                        const features::PreparedMoleculeCollection& prepared_collection,
                        const std::size_t max_threads) -> charges::ChargeSet {
-    calculation::detail::validate_selected_candidate(selected, prepared_collection);
-    validate_coordinate_targets(selected, prepared_collection);
+    detail::validate_selected_candidate(selected, prepared_collection);
+    detail::validate_coordinate_targets(selected, prepared_collection);
 
     const auto geometry_dependent = selected.method->requirements().coordinates;
 
@@ -177,7 +149,7 @@ auto calculate_charges(const ApplicableMethod& selected,
     }
 
     return charges::ChargeSet{std::string{selected.method->id()}, std::move(assignments),
-                              parameter_set_id_for(selected)};
+                              detail::parameter_set_id_for(selected)};
 }
 
 } // namespace chargefw::methods

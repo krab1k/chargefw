@@ -1,13 +1,13 @@
-#include "calculation/selected_candidate_validation.h"
+#include "methods/applicable_method_execution.h"
 
 #include <chargefw/methods/method.h>
 
 #include <stdexcept>
 #include <string>
 
-namespace chargefw::calculation::detail {
+namespace chargefw::methods::detail {
 
-auto validate_selected_candidate(const methods::ApplicableMethod& selected,
+auto validate_selected_candidate(const ApplicableMethod& selected,
                                  const features::PreparedMoleculeCollection& molecules) -> void {
     if (selected.method == nullptr) {
         throw std::invalid_argument{"selected applicable method has no method"};
@@ -37,4 +37,24 @@ auto validate_selected_candidate(const methods::ApplicableMethod& selected,
     }
 }
 
-} // namespace chargefw::calculation::detail
+auto validate_coordinate_targets(const ApplicableMethod& selected,
+                                 const features::PreparedMoleculeCollection& molecules) -> void {
+    if (!selected.method->requirements().coordinates) {
+        return;
+    }
+
+    for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
+        if (molecules[molecule_index].molecule().conformer_count() == 0) {
+            throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
+                                        "' requires coordinates, but molecule " +
+                                        std::to_string(molecule_index) + " has no conformers"};
+        }
+    }
+}
+
+auto parameter_set_id_for(const ApplicableMethod& selected) -> std::optional<std::string> {
+    return selected.uses_parameters() ? std::optional{std::string{selected.parameter_set->id()}}
+                                      : std::nullopt;
+}
+
+} // namespace chargefw::methods::detail

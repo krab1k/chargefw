@@ -2,7 +2,7 @@
 
 #include "calculation/parallel_for.h"
 #include "calculation/reduced_execution.h"
-#include "calculation/selected_candidate_validation.h"
+#include "methods/applicable_method_execution.h"
 
 #include <chargefw/features/conformer_features.h>
 #include <chargefw/features/spatial_fragment.h>
@@ -117,8 +117,9 @@ auto calculate_cover_charges(const methods::ApplicableMethod& selected,
                              const features::PreparedMoleculeCollection& molecules,
                              const ExecutionPolicy& policy, const std::size_t max_threads)
     -> charges::ChargeSet {
+    methods::detail::validate_selected_candidate(selected, molecules);
+    methods::detail::validate_coordinate_targets(selected, molecules);
     detail::validate_reduced_request(selected, policy, ExecutionMode::cover);
-    detail::validate_selected_candidate(selected, molecules);
     const auto radius = policy.radius();
     if (!radius.has_value()) {
         throw std::logic_error{"validated cover execution policy has no radius"};
@@ -163,7 +164,7 @@ auto calculate_cover_charges(const methods::ApplicableMethod& selected,
     }
 
     return charges::ChargeSet{std::string{selected.method->id()}, std::move(assignments),
-                              detail::parameter_set_id_for(selected)};
+                              methods::detail::parameter_set_id_for(selected)};
 }
 
 } // namespace chargefw::calculation

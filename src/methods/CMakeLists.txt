@@ -9,7 +9,9 @@ target_sources(chargefw_core
         builtin_methods.cpp
         method.cpp
         method_calculation.cpp
+        applicable_method_execution.cpp
         calculation_input.cpp
+        applicable_method_execution.h
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS

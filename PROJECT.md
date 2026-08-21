@@ -165,6 +165,9 @@ Cover shares classification projection, fragment target charges, validation, and
 cutoff. Execution is parallel over independent molecule/conformer targets, or over pivot fragments
 when calculating one target; nested scheduling is avoided and result materialization remains
 source-ordered.
+
+All execution modes validate selected-candidate parameter/classification invariants and reject
+coordinate-dependent candidates for molecules without conformers before calculation.
 Method-neutral regression tests cover serial pivot ownership, retained-interior coverage and first-pivot
 overlap reconciliation, fragment/whole target charges and correction, and bit-identical serial versus
 parallel source-ordered output.

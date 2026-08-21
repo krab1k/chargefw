@@ -93,6 +93,16 @@ auto make_qeq_parameters() -> parameters::ParameterSet {
                                                     {.name = "hardness", .value = 13.364}}}}}};
 }
 
+template <typename Callable> auto throws_invalid_argument(Callable&& callable) -> bool {
+    try {
+        std::forward<Callable>(callable)();
+    } catch (const std::invalid_argument&) {
+        return true;
+    }
+
+    return false;
+}
+
 auto make_eqeqc_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
@@ -169,7 +179,8 @@ auto make_charged_water() -> core::Molecule {
 }
 
 auto assert_reduced_matches_full(
-    const std::string_view method_id, std::vector<parameters::ParameterSet> parameter_sets = {},
+    const std::string_view method_id,
+    const std::vector<parameters::ParameterSet>& parameter_sets = {},
     core::Molecule molecule = chargefw::test::make_two_conformer_water()) -> void {
     const auto molecules = core::MoleculeCollection{std::vector{std::move(molecule)}};
     const auto full = calculation::calculate(
@@ -230,12 +241,26 @@ auto main() -> int {
         const auto policy = mode == calculation::ExecutionMode::full
                                 ? calculation::ExecutionPolicy{}
                                 : calculation::ExecutionPolicy{mode, 8.0};
-        try {
+        assert(throws_invalid_argument([&] -> void {
             static_cast<void>(calculation::calculate(
                 {.molecules = prepared, .selected = invalid_selected, .execution_policy = policy}));
-            assert(false);
-        } catch (const std::invalid_argument&) {
-        }
+        }));
+    }
+
+    const auto no_conformer_collection = core::MoleculeCollection{
+        std::vector{core::Molecule{std::vector{core::Atom{1}}, {}, {}, "no-conformer"}}};
+    const features::PreparedMoleculeCollection no_conformer_prepared{no_conformer_collection};
+    for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
+                            calculation::ExecutionMode::cover}) {
+        const auto policy = mode == calculation::ExecutionMode::full
+                                ? calculation::ExecutionPolicy{}
+                                : calculation::ExecutionPolicy{mode, 8.0};
+        const calculation::CalculationRequest request{
+            .molecules = no_conformer_prepared, .selected = selected, .execution_policy = policy};
+        const auto calculate_request = [&request] -> void {
+            static_cast<void>(calculation::calculate(request));
+        };
+        assert(throws_invalid_argument(calculate_request));
     }
 
     const auto corrected = calculation::calculate(

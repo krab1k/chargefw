@@ -5,11 +5,9 @@ target_sources(chargefw_core
         cutoff_execution.cpp
         execution_policy.cpp
         reduced_execution.cpp
-        selected_candidate_validation.cpp
         cover_execution.h
         parallel_for.h
         reduced_execution.h
-        selected_candidate_validation.h
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS

@@ -6,7 +6,6 @@
 #include <chargefw/methods/method.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
-#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -19,10 +18,6 @@ auto validate_reduced_request(const methods::ApplicableMethod& selected,
     if (policy.mode() != mode) {
         throw std::invalid_argument{"reduced executor received an unexpected execution policy"};
     }
-    if (selected.method == nullptr) {
-        throw std::invalid_argument{"selected applicable method has no method"};
-    }
-
     const auto requirements = selected.method->requirements();
     const auto supports_mode = mode == ExecutionMode::cutoff
                                    ? requirements.resources.supports_cutoff
@@ -36,10 +31,6 @@ auto validate_reduced_request(const methods::ApplicableMethod& selected,
         methods::FragmentTargetChargePolicy::unsupported) {
         throw std::invalid_argument{"method '" + std::string{selected.method->id()} +
                                     "' has no fragment target-charge policy"};
-    }
-    if (selected.method->requires_parameters() && !selected.uses_parameters()) {
-        throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
-                                    "' requires parameters, but no parameter set is attached"};
     }
 }
 
@@ -73,23 +64,6 @@ auto final_target_charge(const methods::FragmentTargetChargePolicy policy,
     throw std::invalid_argument{"unsupported fragment target-charge policy"};
 }
 
-auto validate_fragment_charges(const methods::Method& method,
-                               const features::SpatialFragment& fragment,
-                               const charges::AtomicCharges& charges) -> void {
-    if (charges.size() != fragment.molecule().atom_count()) {
-        throw std::runtime_error{"method '" + std::string{method.id()} + "' produced " +
-                                 std::to_string(charges.size()) + " fragment charges for " +
-                                 std::to_string(fragment.molecule().atom_count()) + " atoms"};
-    }
-
-    for (const auto value : charges.values()) {
-        if (!std::isfinite(value)) {
-            throw std::runtime_error{"method '" + std::string{method.id()} +
-                                     "' produced a non-finite fragment charge"};
-        }
-    }
-}
-
 auto apply_charge_correction(std::vector<double>& values, const double target_charge,
                              const ChargeCorrectionPolicy policy) -> void {
     if (policy == ChargeCorrectionPolicy::none || values.empty()) {
@@ -107,13 +81,6 @@ auto apply_charge_correction(std::vector<double>& values, const double target_ch
     for (auto& value : values) {
         value += delta;
     }
-}
-
-auto parameter_set_id_for(const methods::ApplicableMethod& selected) -> std::optional<std::string> {
-    if (!selected.uses_parameters()) {
-        return std::nullopt;
-    }
-    return std::string{selected.parameter_set->id()};
 }
 
 auto calculate_fragment_charges(const methods::ApplicableMethod& selected,
@@ -143,7 +110,11 @@ auto calculate_fragment_charges(const methods::ApplicableMethod& selected,
         prepared_fragment, selected.method_options, target_charge, &geometry,
         parameter_view ? std::addressof(*parameter_view) : nullptr};
     const auto charges = selected.method->calculate(input);
-    validate_fragment_charges(*selected.method, fragment, charges);
+    if (charges.size() != fragment.molecule().atom_count()) {
+        throw std::runtime_error{"method '" + std::string{selected.method->id()} + "' produced " +
+                                 std::to_string(charges.size()) + " fragment charges for " +
+                                 std::to_string(fragment.molecule().atom_count()) + " atoms"};
+    }
     return charges;
 }
 

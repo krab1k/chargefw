@@ -15,8 +15,6 @@ accuracy studies are deliberately separate from implementation-completion work.
 - [ ] Expand facade and planning tests for multiple molecules/conformers, no-plan diagnostics, explicit
   unsupported policies, empty/tiny inputs, fragment solver failures, ownership/lifetimes, and result
   cardinality.
-- [ ] Share selected-candidate validation between full and cutoff execution; cutoff currently does not
-  reject classifications attached to a method that does not use parameters.
 
 ## 2. Result contract, molecular I/O, and CLI
 
