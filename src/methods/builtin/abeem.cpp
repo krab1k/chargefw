@@ -50,10 +50,6 @@ namespace {
 }
 
 [[nodiscard]] auto interaction(const double k, const double distance_value) -> double {
-    if (distance_value <= 0.0) {
-        throw std::logic_error{"ABEEM requires positive distances"};
-    }
-
     return k / distance_value;
 }
 

@@ -17,6 +17,7 @@ class Method;
 enum class PrerequisiteIssueKind : std::uint8_t {
     invalid_options,
     missing_feature,
+    invalid_geometry,
     unsupported_molecule,
     missing_parameters,
     parameter_classification_failed,

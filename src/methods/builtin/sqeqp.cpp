@@ -15,10 +15,6 @@ namespace {
 
 [[nodiscard]] auto interaction(const double distance, const double width_i, const double width_j)
     -> double {
-    if (distance <= 0.0) {
-        throw std::logic_error{"SQE+qp requires positive interatomic distances"};
-    }
-
     const auto width_sum = 2.0 * width_i * width_i + 2.0 * width_j * width_j;
 
     if (width_sum == 0.0) {

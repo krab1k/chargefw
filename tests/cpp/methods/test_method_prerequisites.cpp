@@ -1,6 +1,9 @@
 #include "support/test_molecules.h"
 
+#include <chargefw/core/atom.h>
+#include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule_collection.h>
+#include <chargefw/core/position.h>
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/calculation_input.h>
@@ -124,6 +127,27 @@ auto main() -> int {
     assert(!missing_coordinates);
     assert(missing_coordinates.issues().size() == 1);
     assert(missing_coordinates.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
+
+    const core::Molecule coincident_atoms{
+        std::vector{core::Atom{1}, core::Atom{1}},
+        {},
+        std::vector{core::Conformer{{core::Position{.x = 1.5, .y = -2.25, .z = 3.75},
+                                     core::Position{.x = 1.5, .y = -2.25, .z = 3.75}},
+                                    "first"},
+                    core::Conformer{{core::Position{}, core::Position{.x = -0.0}}, "second"}}};
+    const features::PreparedMolecule prepared_coincident_atoms{coincident_atoms};
+    const auto coincident_atoms_result = coordinates_method.check_method_prerequisites(
+        {.prepared_molecule = prepared_coincident_atoms, .method_options = empty_options});
+    assert(!coincident_atoms_result);
+    assert(coincident_atoms_result.issues().size() == 2);
+    assert(coincident_atoms_result.issues()[0].kind ==
+           methods::PrerequisiteIssueKind::invalid_geometry);
+    assert(coincident_atoms_result.issues()[0].atom_index == 1);
+    assert(coincident_atoms_result.issues()[0].message.contains("conformer 0"));
+    assert(coincident_atoms_result.issues()[1].kind ==
+           methods::PrerequisiteIssueKind::invalid_geometry);
+    assert(coincident_atoms_result.issues()[1].atom_index == 1);
+    assert(coincident_atoms_result.issues()[1].message.contains("conformer 1"));
 
     const DenseMethod dense_method;
 

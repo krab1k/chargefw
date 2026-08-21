@@ -16,10 +16,6 @@ namespace {
 
 [[nodiscard]] auto overlap_term(const double distance, const double hardness_i,
                                 const double hardness_j, const std::string& type) -> double {
-    if (distance <= 0.0) {
-        throw std::logic_error{"QEq requires positive interatomic distances"};
-    }
-
     if (hardness_i <= 0.0 || hardness_j <= 0.0) {
         throw std::logic_error{"QEq atom parameter 'hardness' must be positive"};
     }
