@@ -1,6 +1,7 @@
 #include "calculation/cutoff_execution.h"
 #include "calculation/parallel_for.h"
 #include "calculation/reduced_execution.h"
+#include "calculation/selected_candidate_validation.h"
 
 #include <chargefw/core/molecule.h>
 #include <chargefw/features/conformer_features.h>
@@ -63,14 +64,10 @@ auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
                               const ExecutionPolicy& policy, const std::size_t max_threads)
     -> charges::ChargeSet {
     detail::validate_reduced_request(selected, policy, ExecutionMode::cutoff);
+    detail::validate_selected_candidate(selected, molecules);
     const auto radius = policy.radius();
     if (!radius.has_value()) {
         throw std::logic_error{"validated cutoff execution policy has no radius"};
-    }
-
-    if (selected.uses_parameters() && selected.classifications.size() != molecules.size()) {
-        throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
-                                    "' has an invalid number of classifications"};
     }
 
     struct Target {

@@ -1,5 +1,7 @@
 #include <chargefw/methods/method_calculation.h>
 
+#include "calculation/selected_candidate_validation.h"
+
 #include <chargefw/core/molecule.h>
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method.h>
@@ -10,7 +12,6 @@
 
 #include <optional>
 #include <stdexcept>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -30,40 +31,6 @@ namespace {
     }
 
     return features::ConformerFeatures{molecule.molecule(), *conformer_index};
-}
-
-auto validate_selected_candidate(const ApplicableMethod& selected,
-                                 const features::PreparedMoleculeCollection& molecules) -> void {
-    if (selected.method == nullptr) {
-        throw std::invalid_argument{"selected applicable method has no method"};
-    }
-
-    if (selected.method->requires_parameters() && !selected.uses_parameters()) {
-        throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
-                                    "' requires parameters, but no parameter set is attached"};
-    }
-
-    if (!selected.method->requires_parameters() && selected.uses_parameters()) {
-        throw std::invalid_argument{
-            "selected method '" + std::string{selected.method->id()} +
-            "' does not require parameters, but a parameter set is attached"};
-    }
-
-    if (!selected.uses_parameters()) {
-        if (!selected.classifications.empty()) {
-            throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
-                                        "' has classifications, but no parameter set"};
-        }
-
-        return;
-    }
-
-    if (selected.classifications.size() != molecules.size()) {
-        throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
-                                    "' has " + std::to_string(selected.classifications.size()) +
-                                    " classifications for " + std::to_string(molecules.size()) +
-                                    " molecules"};
-    }
 }
 
 auto validate_calculated_charges(const Method& method, const features::PreparedMolecule& molecule,
@@ -151,7 +118,7 @@ auto validate_coordinate_targets(const ApplicableMethod& selected,
 auto calculate_charges(const ApplicableMethod& selected,
                        const features::PreparedMoleculeCollection& prepared_collection,
                        const std::size_t max_threads) -> charges::ChargeSet {
-    validate_selected_candidate(selected, prepared_collection);
+    calculation::detail::validate_selected_candidate(selected, prepared_collection);
     validate_coordinate_targets(selected, prepared_collection);
 
     const auto geometry_dependent = selected.method->requirements().coordinates;

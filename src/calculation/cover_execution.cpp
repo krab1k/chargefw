@@ -2,6 +2,7 @@
 
 #include "calculation/parallel_for.h"
 #include "calculation/reduced_execution.h"
+#include "calculation/selected_candidate_validation.h"
 
 #include <chargefw/features/conformer_features.h>
 #include <chargefw/features/spatial_fragment.h>
@@ -117,15 +118,11 @@ auto calculate_cover_charges(const methods::ApplicableMethod& selected,
                              const ExecutionPolicy& policy, const std::size_t max_threads)
     -> charges::ChargeSet {
     detail::validate_reduced_request(selected, policy, ExecutionMode::cover);
+    detail::validate_selected_candidate(selected, molecules);
     const auto radius = policy.radius();
     if (!radius.has_value()) {
         throw std::logic_error{"validated cover execution policy has no radius"};
     }
-    if (selected.uses_parameters() && selected.classifications.size() != molecules.size()) {
-        throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
-                                    "' has an invalid number of classifications"};
-    }
-
     struct Target {
         std::size_t molecule_index;
         std::size_t conformer_index;

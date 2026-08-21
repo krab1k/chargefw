@@ -24,6 +24,7 @@
 #include <cmath>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -221,6 +222,21 @@ auto main() -> int {
     const auto collection = core::MoleculeCollection{std::vector{charged_molecule}};
     const features::PreparedMoleculeCollection prepared{collection};
     const methods::ApplicableMethod selected{.method = &zero_method, .parameter_set = nullptr};
+
+    const methods::ApplicableMethod invalid_selected{
+        .method = &zero_method, .parameter_set = nullptr, .classifications = {{}}};
+    for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
+                            calculation::ExecutionMode::cover}) {
+        const auto policy = mode == calculation::ExecutionMode::full
+                                ? calculation::ExecutionPolicy{}
+                                : calculation::ExecutionPolicy{mode, 8.0};
+        try {
+            static_cast<void>(calculation::calculate(
+                {.molecules = prepared, .selected = invalid_selected, .execution_policy = policy}));
+            assert(false);
+        } catch (const std::invalid_argument&) {
+        }
+    }
 
     const auto corrected = calculation::calculate(
         {.molecules = prepared,
