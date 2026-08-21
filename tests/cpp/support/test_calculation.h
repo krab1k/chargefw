@@ -1,5 +1,8 @@
 #pragma once
 
+#include "support/test_assertions.h"
+#include "support/test_molecules.h"
+
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
@@ -9,7 +12,9 @@
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/models/parameter_set.h>
 
+#include <array>
 #include <cassert>
+#include <cstddef>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -76,6 +81,76 @@ inline auto assert_conformer_dependent(const charges::ChargeSet& charge_set,
         assert(assignment.target.molecule_index == 0);
         assert(assignment.target.conformer_index == conformer_index);
     }
+}
+
+/// Asserts the chemically expected charge shape on neutral water: the oxygen carries the
+/// negative charge, both hydrogens carry equal positive charge, and the molecule is neutral.
+inline auto assert_neutral_water_charges(const charges::AtomicCharges& charges,
+                                         const double tolerance) -> void {
+    assert(charges.size() == 3);
+    assert(charges[0] < 0.0);
+    assert(charges[1] > 0.0);
+    assert(charges[2] > 0.0);
+    assert_close(charges[1], charges[2], tolerance);
+    assert_close(charges.total(), 0.0, tolerance);
+}
+
+inline auto assert_same_charges(const charges::AtomicCharges& actual,
+                                const charges::AtomicCharges& expected, const double tolerance)
+    -> void {
+    assert(actual.size() == expected.size());
+
+    for (std::size_t atom_index = 0; atom_index < actual.size(); ++atom_index) {
+        assert_close(actual[atom_index], expected[atom_index], tolerance);
+    }
+}
+
+/// Method-agnostic invariant: charges must not depend on atom numbering or bond endpoint
+/// order. Verifies a relabeled water (same physical molecule, permuted indices) and a
+/// bond-flipped water against the plain-water reference.
+inline auto
+assert_water_charges_labeling_invariant(std::string_view method_id,
+                                        std::vector<parameters::ParameterSet> parameter_sets = {},
+                                        const methods::MethodOptions* method_options = nullptr,
+                                        const double tolerance = 1.0e-9) -> void {
+    static constexpr std::array new_to_old{std::size_t{2}, std::size_t{0}, std::size_t{1}};
+
+    const auto reference =
+        calculate_single_method(make_water(), method_id, parameter_sets, method_options);
+    const auto& reference_charges = reference.assignment(0).charges;
+
+    const auto relabeled = calculate_single_method(relabel_atoms(make_water(), new_to_old),
+                                                   method_id, parameter_sets, method_options);
+    const auto& relabeled_charges = relabeled.assignment(0).charges;
+
+    assert(relabeled_charges.size() == reference_charges.size());
+    for (std::size_t atom_index = 0; atom_index < new_to_old.size(); ++atom_index) {
+        assert_close(relabeled_charges[atom_index], reference_charges[new_to_old.at(atom_index)],
+                     tolerance);
+    }
+
+    const auto flipped = calculate_single_method(flip_bond_directions(make_water()), method_id,
+                                                 std::move(parameter_sets), method_options);
+    assert_same_charges(flipped.assignment(0).charges, reference_charges, tolerance);
+}
+
+/// Method-agnostic invariant for topology-only methods: geometry must not influence charges.
+/// Verifies that a molecule with two distinct conformers yields a single conformer-independent
+/// assignment identical to the conformer-free result.
+inline auto
+assert_water_charges_geometry_independent(std::string_view method_id,
+                                          std::vector<parameters::ParameterSet> parameter_sets = {},
+                                          const methods::MethodOptions* method_options = nullptr,
+                                          const double tolerance = 1.0e-9) -> void {
+    const auto reference =
+        calculate_single_method(make_water_graph(), method_id, parameter_sets, method_options);
+
+    const auto two_conformer = calculate_method(make_two_conformer_water(), method_id,
+                                                std::move(parameter_sets), method_options);
+    assert_conformer_independent(two_conformer);
+
+    assert_same_charges(two_conformer.assignment(0).charges, reference.assignment(0).charges,
+                        tolerance);
 }
 
 } // namespace chargefw::test
