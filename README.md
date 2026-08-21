@@ -15,7 +15,6 @@ SMILES/chemistry-preparation tool.
 | [PROJECT.md](PROJECT.md) | Implemented architecture, capabilities, limits, and product direction |
 | [TODO.md](TODO.md) | Unfinished deliverables and acceptance criteria |
 | [AGENTS.md](AGENTS.md) | Repository boundaries and implementation rules |
-| [CUTOFF_IMPLEMENTATION_PLAN.md](CUTOFF_IMPLEMENTATION_PLAN.md) | Reduced-execution design record and remaining validation |
 
 ## Requirements
 

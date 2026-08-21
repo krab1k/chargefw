@@ -12,6 +12,15 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 - [ ] Emit explicit-full threshold warnings before fragment/solver allocation as well as retaining them
   in result provenance.
+- [ ] Record reduced-execution diagnostics in result provenance: per-target fragment or pivot counts,
+  retained/owned atom counts, and cover overlap reconciliation, together with the fixed 3 Å retained
+  interior and the resulting boundary buffer. Mode, radius, and correction are already recorded.
+- [ ] Do not promote cover in automatic selection beyond its post-cutoff fallback position until
+  full-versus-cover validation (Section 3) proves deterministic pivot and contribution selection,
+  complete per-atom ownership, context-only boundary atoms, deterministic overlap reconciliation,
+  explicit target-charge/final-correction behavior, and convergence with charge conservation over the
+  maintained corpus. Automatic planning keeps preferring cutoff before cover; no hidden second atom
+  threshold such as ChargeFW2's 80,000-atom switch may be introduced.
 - [ ] Expand facade and planning tests for multiple molecules/conformers, no-plan diagnostics, explicit
   unsupported policies, empty/tiny inputs, fragment solver failures, ownership/lifetimes, and result
   cardinality.
@@ -54,11 +63,13 @@ remain explicit approximations until their method-specific validation is complet
 - [ ] Reproduce and document ChargeFW2 cutoff behavior for applicable EEM/QEq-like methods, with focused
   fixtures, per-method tolerances, and intentional deviations. Do not force SFKEEM into the generic
   fragment target-charge policy.
+- [ ] Validate SMP/QEq archived behavior, fragment target charge, parameters, and numerical convergence
+  before enabling any reduced execution; it remains full-only until then.
 - [ ] Add numerical comparison cases for every method and parameter set, including neutral, ionic,
   disconnected, multi-conformer, unsupported-parameter, and failure cases where applicable.
 - [ ] Establish a full-versus-cutoff/cover corpus across molecule sizes, methods, radii, charge states,
-  and conformers. Report accuracy, charge conservation, runtime, peak memory, and scaling; define
-  supported error envelopes rather than implying exact equivalence.
+  disconnected systems, and conformers. Report accuracy, charge conservation, runtime, peak memory, and
+  scaling; define supported error envelopes rather than implying exact equivalence.
 - [ ] Add robustness coverage for singular/ill-conditioned systems, zero-distance and degenerate
   conformers, unsupported formal-charge cases, and fragment solver failures.
 - [ ] Audit every method's prerequisites, diagnostics, publication citation, and numerical validation.

@@ -200,8 +200,10 @@ memory and convergence toward full execution:
 Hardware, build, parameter data, charge state, and structure affect these observations. They are
 regression-investigation references only, not automatic-policy evidence or compatibility tolerances.
 
-See [CUTOFF_IMPLEMENTATION_PLAN.md](CUTOFF_IMPLEMENTATION_PLAN.md) for the retained design decisions
-and validation still required.
+Automatic planning examines candidates in deterministic method/parameter priority order and selects,
+per candidate, non-discouraged full execution, then cutoff, then cover; it never silently forces
+discouraged full execution. Unfinished reduced-execution work and its validation gates are tracked in
+[TODO.md](TODO.md).
 
 ## Methods and parameters
 

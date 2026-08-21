@@ -7,9 +7,7 @@ Read this file before changing the repository. Then read only the relevant secti
 - [PROJECT.md](PROJECT.md): implemented architecture, capabilities, compatibility state, and product
   direction;
 - [TODO.md](TODO.md): unfinished deliverables and their acceptance criteria;
-- [README.md](README.md): supported build, test, installation, and CLI usage;
-- [CUTOFF_IMPLEMENTATION_PLAN.md](CUTOFF_IMPLEMENTATION_PLAN.md): reduced-execution design decisions
-  and remaining cutoff/cover validation work.
+- [README.md](README.md): supported build, test, installation, and CLI usage.
 
 Keep ownership clear. Update the owning document when a change makes it stale; do not copy the same
 status or instructions into several files. Completed work belongs in `PROJECT.md`, not as checked
