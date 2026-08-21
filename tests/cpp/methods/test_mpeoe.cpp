@@ -1,52 +1,44 @@
 #include "support/test_calculation.h"
+#include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
-#include <chargefw/core/atom.h>
-#include <chargefw/core/bond.h>
-#include <chargefw/core/molecule.h>
-#include <chargefw/parameters/io/parameter_set_io.h>
+#include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/bond_parameters.h>
+#include <chargefw/parameters/models/common_parameters.h>
+#include <chargefw/parameters/models/parameter_key.h>
+#include <chargefw/parameters/models/parameter_set.h>
+#include <chargefw/parameters/models/parameter_set_metadata.h>
 
 #include <cassert>
 #include <cmath>
-#include <filesystem>
-#include <utility>
 #include <vector>
 
-namespace core = chargefw::core;
 namespace parameters = chargefw::parameters;
 
 namespace {
 
-#ifndef CHARGEFW_TEST_PARAMETER_DIR
-#error "CHARGEFW_TEST_PARAMETER_DIR must be defined"
-#endif
-
-auto make_methane() -> core::Molecule {
-    std::vector atoms{core::Atom{6, 0, "C"}, core::Atom{1, 0, "H1"}, core::Atom{1, 0, "H2"},
-                      core::Atom{1, 0, "H3"}, core::Atom{1, 0, "H4"}};
-
-    std::vector bonds{
-        core::Bond{0, 1, core::BondOrder::SINGLE}, core::Bond{0, 2, core::BondOrder::SINGLE},
-        core::Bond{0, 3, core::BondOrder::SINGLE}, core::Bond{0, 4, core::BondOrder::SINGLE}};
-
-    return core::Molecule{std::move(atoms), std::move(bonds), {}, "methane"};
-}
-
-auto load_mpeoe_parameters() -> std::vector<parameters::ParameterSet> {
-    const auto path = std::filesystem::path{CHARGEFW_TEST_PARAMETER_DIR} / "MPEOE_original.json";
-
-    std::vector<parameters::ParameterSet> parameter_sets;
-    parameter_sets.push_back(parameters::load_parameter_set_json_file(path));
-    return parameter_sets;
+auto make_mpeoe_parameters() -> parameters::ParameterSet {
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{
+            .id = "test-mpeoe", .method_id = "mpeoe", .name = "Test MPEOE parameters"},
+        parameters::CommonParameters{{{.name = "Hplus", .value = 3.435}}},
+        parameters::AtomParameters{
+            {{.key = chargefw::test::hbo_atom_key(1, "1"),
+              .parameters = {{.name = "A", .value = 7.674}, {.name = "B", .value = 28.689}}},
+             {.key = chargefw::test::hbo_atom_key(6, "1"),
+              .parameters = {{.name = "A", .value = 7.976}, {.name = "B", .value = 4.625}}}}},
+        parameters::BondParameters{{{.key = chargefw::test::plain_bond_key(),
+                                     .parameters = {{.name = "f", .value = 0.505}}}}}};
 }
 
 } // namespace
 
 auto main() -> int {
-    const auto charge_set =
-        chargefw::test::calculate_single_method(make_methane(), "mpeoe", load_mpeoe_parameters());
+    const auto charge_set = chargefw::test::calculate_single_method(
+        chargefw::test::make_methane_graph(), "mpeoe", {make_mpeoe_parameters()});
 
-    chargefw::test::assert_calculation_provenance(charge_set, "mpeoe", "MPEOE_original");
-    assert(charge_set.size() == 1);
+    chargefw::test::assert_calculation_provenance(charge_set, "mpeoe", "test-mpeoe");
+    chargefw::test::assert_conformer_independent(charge_set);
 
     const auto& charges = charge_set.assignment(0).charges;
 
