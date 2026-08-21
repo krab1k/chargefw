@@ -1,9 +1,40 @@
 #include <chargefw/core/position.h>
 #include <chargefw/features/conformer_features.h>
 
+#include <algorithm>
+#include <cmath>
+#include <map>
 #include <stdexcept>
 
 namespace chargefw::features {
+namespace {
+
+struct PositionKeyLess {
+    [[nodiscard]] auto operator()(const core::Position& first,
+                                  const core::Position& second) const noexcept -> bool {
+        const auto normalize = [](const double value) noexcept -> double {
+            return value == 0.0 ? 0.0 : value;
+        };
+
+        const auto first_x = normalize(first.x);
+        const auto first_y = normalize(first.y);
+        const auto first_z = normalize(first.z);
+        const auto second_x = normalize(second.x);
+        const auto second_y = normalize(second.y);
+        const auto second_z = normalize(second.z);
+
+        if (first_x != second_x) {
+            return first_x < second_x;
+        }
+        if (first_y != second_y) {
+            return first_y < second_y;
+        }
+        return first_z < second_z;
+    }
+};
+
+} // namespace
+
 ConformerFeatures::ConformerFeatures(const core::Molecule& molecule,
                                      const std::size_t conformer_index)
     : molecule_{&molecule}, conformer_index_{conformer_index} {
@@ -31,6 +62,35 @@ auto ConformerFeatures::squared_distance(const std::size_t first_atom_index,
 auto ConformerFeatures::distance(const std::size_t first_atom_index,
                                  const std::size_t second_atom_index) const -> double {
     return core::distance(position(first_atom_index), position(second_atom_index));
+}
+
+auto ConformerFeatures::first_nonfinite_atom_index() const noexcept -> std::optional<std::size_t> {
+    const auto positions = molecule_->conformer(conformer_index_).positions();
+    const auto found = std::ranges::find_if(positions, [](const core::Position& position) -> bool {
+        return !std::isfinite(position.x) || !std::isfinite(position.y) ||
+               !std::isfinite(position.z);
+    });
+
+    if (found == positions.end()) {
+        return std::nullopt;
+    }
+    return static_cast<std::size_t>(found - positions.begin());
+}
+
+auto ConformerFeatures::coincident_atom_indices() const
+    -> std::optional<std::pair<std::size_t, std::size_t>> {
+    const auto positions = molecule_->conformer(conformer_index_).positions();
+    std::map<core::Position, std::size_t, PositionKeyLess> first_atom_by_position;
+
+    for (std::size_t atom_index = 0; atom_index < positions.size(); ++atom_index) {
+        const auto [found, inserted] =
+            first_atom_by_position.emplace(positions[atom_index], atom_index);
+        if (!inserted) {
+            return std::pair{found->second, atom_index};
+        }
+    }
+
+    return std::nullopt;
 }
 
 auto ConformerFeatures::validate_conformer_index() const -> void {

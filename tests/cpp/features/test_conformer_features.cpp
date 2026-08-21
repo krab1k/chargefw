@@ -8,6 +8,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
@@ -61,6 +62,25 @@ auto main() -> int {
     }
 
     assert(rejected_bad_atom);
+
+    const core::Molecule geometric_edge_cases{
+        std::vector{core::Atom{1}, core::Atom{1}},
+        {},
+        std::vector{core::Conformer{{core::Position{}, core::Position{-0.0}}, "duplicate"},
+                    core::Conformer{{core::Position{},
+                                     core::Position{.x = std::numeric_limits<double>::infinity()}},
+                                    "nonfinite"}}};
+
+    const features::ConformerFeatures duplicate{geometric_edge_cases, 0};
+    assert(!duplicate.first_nonfinite_atom_index().has_value());
+    const auto coincident = duplicate.coincident_atom_indices();
+    assert(coincident.has_value());
+    assert(coincident->first == 0);
+    assert(coincident->second == 1);
+
+    const features::ConformerFeatures nonfinite{geometric_edge_cases, 1};
+    assert(nonfinite.first_nonfinite_atom_index() == 1);
+    assert(!nonfinite.coincident_atom_indices().has_value());
 
     return 0;
 }
