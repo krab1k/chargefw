@@ -9,7 +9,6 @@
 
 #include <array>
 #include <cstddef>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -20,10 +19,6 @@ constexpr auto alpha = 14.4;
 
 [[nodiscard]] auto k(const int distance) -> double {
     constexpr std::array values{0.556, 0.778, 1.000, 1.053, 1.087, 1.091};
-
-    if (distance <= 0) {
-        throw std::logic_error{"TSEF bond distance must be positive"};
-    }
 
     if (std::cmp_greater(distance, values.size())) {
         return values.back();
