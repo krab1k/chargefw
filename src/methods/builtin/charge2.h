@@ -35,7 +35,8 @@ class Charge2Method final : public Method {
                              .description = "Number of Charge2 iterations",
                              .type = MethodOptionType::integer,
                              .default_value = 10,
-                             .choices = {}}};
+                             .choices = {},
+                             .minimum = 1}};
         return {option_schema.data(), option_schema.size()};
     }
 

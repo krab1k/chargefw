@@ -1,6 +1,7 @@
 #include <chargefw/methods/method_options.h>
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -47,6 +48,36 @@ namespace {
 [[nodiscard]] auto choices_contain(const std::vector<MethodOptionValue>& choices,
                                    const MethodOptionValue& value) -> bool {
     return std::ranges::find(choices, value) != choices.end();
+}
+
+[[nodiscard]] auto numeric_value(const MethodOptionValue& value) -> double {
+    if (const auto* integer = std::get_if<int>(&value); integer != nullptr) {
+        return static_cast<double>(*integer);
+    }
+
+    return std::get<double>(value);
+}
+
+auto validate_bounds(const MethodOptionSpec& option, const MethodOptionValue& value) -> void {
+    if (!option.minimum.has_value() && !option.maximum.has_value()) {
+        return;
+    }
+
+    const auto number = numeric_value(value);
+    if (option.minimum.has_value() &&
+        (number < numeric_value(*option.minimum) ||
+         (!option.minimum_inclusive && number == numeric_value(*option.minimum)))) {
+        throw std::invalid_argument{"method option '" + std::string{option.id} + "' must be " +
+                                    (option.minimum_inclusive ? "at least " : "greater than ") +
+                                    std::to_string(numeric_value(*option.minimum))};
+    }
+    if (option.maximum.has_value() &&
+        (number > numeric_value(*option.maximum) ||
+         (!option.maximum_inclusive && number == numeric_value(*option.maximum)))) {
+        throw std::invalid_argument{"method option '" + std::string{option.id} + "' must be " +
+                                    (option.maximum_inclusive ? "at most " : "less than ") +
+                                    std::to_string(numeric_value(*option.maximum))};
+    }
 }
 
 [[nodiscard]] auto find_spec(std::span<const MethodOptionSpec> schema, const std::string_view id)
@@ -102,6 +133,31 @@ auto validate_method_option_schema(std::span<const MethodOptionSpec> schema) -> 
                 std::string{type_name(option.type)} + "'"};
         }
 
+        if ((option.minimum.has_value() || option.maximum.has_value()) &&
+            option.type != MethodOptionType::integer &&
+            option.type != MethodOptionType::floating_point) {
+            throw std::invalid_argument{"method option '" + std::string{option.id} +
+                                        "' has numeric bounds but is not numeric"};
+        }
+        if ((option.minimum.has_value() && !value_matches_type(*option.minimum, option.type)) ||
+            (option.maximum.has_value() && !value_matches_type(*option.maximum, option.type))) {
+            throw std::invalid_argument{"method option '" + std::string{option.id} +
+                                        "' has a bound with an unexpected type"};
+        }
+        if ((option.minimum.has_value() && !std::isfinite(numeric_value(*option.minimum))) ||
+            (option.maximum.has_value() && !std::isfinite(numeric_value(*option.maximum)))) {
+            throw std::invalid_argument{"method option '" + std::string{option.id} +
+                                        "' has a non-finite bound"};
+        }
+        if (option.minimum.has_value() && option.maximum.has_value() &&
+            (numeric_value(*option.minimum) > numeric_value(*option.maximum) ||
+             (numeric_value(*option.minimum) == numeric_value(*option.maximum) &&
+              (!option.minimum_inclusive || !option.maximum_inclusive)))) {
+            throw std::invalid_argument{"method option '" + std::string{option.id} +
+                                        "' has an empty numeric range"};
+        }
+        validate_bounds(option, option.default_value);
+
         for (const auto& choice : option.choices) {
             if (!value_matches_type(choice, option.type)) {
                 throw std::invalid_argument{
@@ -109,6 +165,7 @@ auto validate_method_option_schema(std::span<const MethodOptionSpec> schema) -> 
                     std::string{type_name(value_type(choice))} + "', expected '" +
                     std::string{type_name(option.type)} + "'"};
             }
+            validate_bounds(option, choice);
         }
 
         if (!option.choices.empty() && !choices_contain(option.choices, option.default_value)) {
@@ -152,6 +209,7 @@ auto validate_method_options(std::span<const MethodOptionSpec> schema, const Met
             throw std::invalid_argument{"method option '" + id +
                                         "' is not one of the allowed choices"};
         }
+        validate_bounds(*spec, value);
     }
 
     for (const auto& option : schema) {

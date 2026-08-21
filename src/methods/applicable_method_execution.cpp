@@ -13,6 +13,8 @@ auto validate_selected_candidate(const ApplicableMethod& selected,
         throw std::invalid_argument{"selected applicable method has no method"};
     }
 
+    validate_method_options(selected.method->option_schema(), selected.method_options);
+
     if (selected.method->requires_parameters() != selected.uses_parameters()) {
         throw std::invalid_argument{
             "selected method '" + std::string{selected.method->id()} +

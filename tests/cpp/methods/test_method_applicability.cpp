@@ -202,10 +202,25 @@ auto main() -> int {
 
     const auto& registry = methods::method_registry();
     const auto* dummy = registry.find("dummy");
+    const auto* gdac = registry.find("gdac");
     const auto* mgc = registry.find("mgc");
 
     assert(dummy != nullptr);
+    assert(gdac != nullptr);
     assert(mgc != nullptr);
+
+    auto invalid_gdac_options = methods::MethodOptions{};
+    invalid_gdac_options.set("iters", 0);
+    const std::vector<const methods::Method*> gdac_methods{gdac};
+    const auto invalid_gdac_result = methods::find_applicable_methods(
+        {.molecules = prepared_collection,
+         .methods = gdac_methods,
+         .parameter_sets = {},
+         .method_options = {{"gdac", std::move(invalid_gdac_options)}}});
+    assert(invalid_gdac_result.empty());
+    assert(invalid_gdac_result.rejected.size() == 1);
+    assert(invalid_gdac_result.rejected[0].issues[0].kind ==
+           methods::PrerequisiteIssueKind::invalid_options);
 
     const AtomParameterMethod atom_parameter_method;
 

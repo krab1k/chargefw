@@ -38,7 +38,8 @@ class GDACMethod final : public Method {
                              .description = "Number of GDAC iterations",
                              .type = MethodOptionType::integer,
                              .default_value = 7,
-                             .choices = {}}};
+                             .choices = {},
+                             .minimum = 1}};
         return {option_schema.data(), option_schema.size()};
     }
 

@@ -49,14 +49,6 @@ auto DENRMethod::calculate(const CalculationInput& input) const -> charges::Atom
     const auto dt = options.get<double>("step");
     const auto iterations = options.get<int>("iterations");
 
-    if (dt <= 0.0) {
-        throw std::invalid_argument{"DENR option 'step' must be positive"};
-    }
-
-    if (iterations < 0) {
-        throw std::invalid_argument{"DENR option 'iterations' must be non-negative"};
-    }
-
     const Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n, n);
     const Eigen::MatrixXd A = I + dt * L * eta;
 

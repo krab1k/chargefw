@@ -39,7 +39,9 @@ auto main() -> int {
                                   .description = "Search radius",
                                   .type = methods::MethodOptionType::floating_point,
                                   .default_value = 1.5,
-                                  .choices = {}},
+                                  .choices = {},
+                                  .minimum = 0.0,
+                                  .minimum_inclusive = false},
         methods::MethodOptionSpec{.id = "label",
                                   .description = "Label",
                                   .type = methods::MethodOptionType::string,
@@ -68,6 +70,23 @@ auto main() -> int {
     assert(rejects_invalid_argument([&schema] -> void {
         auto invalid_options = methods::make_default_options(schema);
         invalid_options.set("limit", 50.0);
+        methods::validate_method_options(schema, invalid_options);
+    }));
+
+    const std::array mismatched_bound_schema{
+        methods::MethodOptionSpec{.id = "limit",
+                                  .description = "Iteration limit",
+                                  .type = methods::MethodOptionType::integer,
+                                  .default_value = 1,
+                                  .choices = {},
+                                  .minimum = 0.0}};
+    assert(rejects_invalid_argument([&mismatched_bound_schema] -> void {
+        methods::validate_method_option_schema(mismatched_bound_schema);
+    }));
+
+    assert(rejects_invalid_argument([&schema] -> void {
+        auto invalid_options = methods::make_default_options(schema);
+        invalid_options.set("radius", 0.0);
         methods::validate_method_options(schema, invalid_options);
     }));
 

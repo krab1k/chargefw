@@ -34,12 +34,15 @@ class DENRMethod final : public Method {
                              .description = "DENR relaxation step size",
                              .type = MethodOptionType::floating_point,
                              .default_value = 0.1,
-                             .choices = {}},
+                             .choices = {},
+                             .minimum = 0.0,
+                             .minimum_inclusive = false},
             MethodOptionSpec{.id = "iterations",
                              .description = "Number of DENR iterations",
                              .type = MethodOptionType::integer,
                              .default_value = 3,
-                             .choices = {}}};
+                             .choices = {},
+                             .minimum = 0}};
 
         return {option_schema.data(), option_schema.size()};
     }

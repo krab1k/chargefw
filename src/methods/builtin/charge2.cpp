@@ -67,10 +67,6 @@ struct Charge2Shells {
 auto Charge2Method::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto iterations = input.method_options().get<int>("iters");
 
-    if (iterations <= 0) {
-        throw std::invalid_argument{"Charge2 option 'iters' must be positive"};
-    }
-
     const auto& molecule = input.molecule();
     const auto& parameters = input.parameters();
     const auto& table = core::periodic_table();

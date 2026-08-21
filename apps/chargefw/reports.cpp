@@ -92,6 +92,14 @@ void print_methods() {
                                option.choices[index]);
                 }
             }
+            if (option.minimum.has_value()) {
+                std::print("{}", option.minimum_inclusive ? " minimum>=" : " minimum>");
+                std::visit([](const auto& value) { std::print("{}", value); }, *option.minimum);
+            }
+            if (option.maximum.has_value()) {
+                std::print("{}", option.maximum_inclusive ? " maximum<=" : " maximum<");
+                std::visit([](const auto& value) { std::print("{}", value); }, *option.maximum);
+            }
             std::println();
         }
     }

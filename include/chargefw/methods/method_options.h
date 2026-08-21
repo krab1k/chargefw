@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -21,6 +22,10 @@ struct MethodOptionSpec {
     MethodOptionType type;
     MethodOptionValue default_value;
     std::vector<MethodOptionValue> choices;
+    std::optional<MethodOptionValue> minimum = std::nullopt;
+    bool minimum_inclusive = true;
+    std::optional<MethodOptionValue> maximum = std::nullopt;
+    bool maximum_inclusive = true;
 };
 
 class MethodOptions {

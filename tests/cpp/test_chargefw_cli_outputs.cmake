@@ -133,7 +133,8 @@ if(NOT applicability_result EQUAL 0 OR NOT applicability_output MATCHES "applica
 endif()
 
 execute_process(COMMAND "${CHARGEFW_CLI}" methods OUTPUT_VARIABLE methods_output)
-if(NOT methods_output MATCHES "formal")
+if(NOT methods_output MATCHES "formal" OR NOT methods_output MATCHES "minimum>=1" OR
+   NOT methods_output MATCHES "minimum>0")
     message(FATAL_ERROR "methods output does not list formal")
 endif()
 

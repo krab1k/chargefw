@@ -27,10 +27,6 @@ namespace {
 auto MPEOEMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto iterations = input.method_options().get<int>("iters");
 
-    if (iterations <= 0) {
-        throw std::invalid_argument{"MPEOE option 'iters' must be positive"};
-    }
-
     const auto& molecule = input.molecule();
     const auto& parameters = input.parameters();
 

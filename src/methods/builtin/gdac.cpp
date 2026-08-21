@@ -35,10 +35,6 @@ auto GDACMethod::add_method_specific_prerequisite_issues(const MethodPrerequisit
 auto GDACMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto iterations = input.method_options().get<int>("iters");
 
-    if (iterations <= 0) {
-        throw std::invalid_argument{"GDAC option 'iters' must be positive"};
-    }
-
     const auto& molecule = input.molecule();
     const auto& geometry = input.geometry();
     const auto& parameters = input.parameters();
