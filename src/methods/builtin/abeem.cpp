@@ -1,5 +1,7 @@
 #include "methods/builtin/abeem.h"
 
+#include "methods/builtin/element_prerequisites.h"
+
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/periodic_table.h>
 #include <chargefw/core/position.h>
@@ -8,7 +10,6 @@
 #include <Eigen/LU>
 
 #include <cstddef>
-#include <stdexcept>
 #include <vector>
 
 namespace chargefw::methods::builtin {
@@ -34,10 +35,6 @@ namespace {
     const auto second_weight = second_element.covalent_radius;
     const auto weight_sum = first_weight + second_weight;
 
-    if (weight_sum <= 0.0) {
-        throw std::logic_error{"ABEEM requires positive covalent radii for bond centers"};
-    }
-
     const auto& [x1, y1, z1] = geometry.position(bond.first_atom_index());
     const auto& [x2, y2, z2] = geometry.position(bond.second_atom_index());
 
@@ -61,6 +58,14 @@ namespace {
 }
 
 } // namespace
+
+auto ABEEMMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                          PrerequisiteResult& result) const
+    -> void {
+    detail::add_element_prerequisite_issues(
+        input, result, "ABEEM requires a positive covalent radius",
+        [](const core::Element& element) -> bool { return element.covalent_radius > 0.0; });
+}
 
 auto ABEEMMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto& molecule = input.molecule();

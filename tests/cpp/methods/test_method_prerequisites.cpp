@@ -99,9 +99,11 @@ auto main() -> int {
     const auto empty_options = methods::MethodOptions{};
 
     const auto& registry = methods::method_registry();
+    const auto* abeem = registry.find("abeem");
     const auto* dummy = registry.find("dummy");
     const auto* formal = registry.find("formal");
 
+    assert(abeem != nullptr);
     assert(dummy != nullptr);
     assert(formal != nullptr);
 
@@ -146,6 +148,17 @@ auto main() -> int {
     assert(coordinates_collection_result.issues().size() == 1);
     assert(coordinates_collection_result.issues()[0].kind ==
            methods::PrerequisiteIssueKind::missing_feature);
+
+    const core::Molecule berkelium_molecule{
+        std::vector{core::Atom{97}}, {}, std::vector{core::Conformer{{core::Position{}}}}};
+    const features::PreparedMolecule prepared_berkelium{berkelium_molecule};
+
+    const auto abeem_result = abeem->check_method_prerequisites(
+        {.prepared_molecule = prepared_berkelium, .method_options = empty_options});
+    assert(!abeem_result);
+    assert(abeem_result.issues().size() == 1);
+    assert(abeem_result.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
+    assert(abeem_result.issues()[0].atom_index == 0);
 
     return 0;
 }

@@ -1,28 +1,22 @@
 #include "methods/builtin/mgc.h"
 
+#include "methods/builtin/element_prerequisites.h"
+
 #include <chargefw/core/periodic_table.h>
 
 #include <Eigen/LU>
 
 #include <cmath>
 #include <cstddef>
-#include <stdexcept>
-#include <string>
 #include <vector>
 
 namespace chargefw::methods::builtin {
-namespace {
-
-[[nodiscard]] auto chi0(const core::Element& element) -> double {
-    if (element.electronegativity <= 0.0) {
-        throw std::logic_error{"MGC requires positive electronegativity for element '" +
-                               std::string{element.symbol} + "'"};
-    }
-
-    return element.electronegativity;
+auto MGCMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                        PrerequisiteResult& result) const -> void {
+    detail::add_element_prerequisite_issues(
+        input, result, "MGC requires a positive element electronegativity",
+        [](const core::Element& element) -> bool { return element.electronegativity > 0.0; });
 }
-
-} // namespace
 
 auto MGCMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto& molecule = input.molecule();
@@ -43,7 +37,7 @@ auto MGCMethod::calculate(const CalculationInput& input) const -> charges::Atomi
         const auto& atom = molecule.atom(static_cast<std::size_t>(i));
         const auto& element = table.element(atom.atomic_number());
 
-        X0(i) = chi0(element);
+        X0(i) = element.electronegativity;
         S(i, i) = 1.0;
         log_sum += std::log(X0(i));
     }
