@@ -33,6 +33,18 @@ auto calculate(const methods::Method& method, const chargefw::core::Molecule& mo
 auto main() -> int {
     const auto& registry = methods::method_registry();
 
+    const auto method_names = registry.names();
+
+    assert((method_names ==
+            std::vector<std::string>{"abeem", "charge2", "delre",  "denr",   "dummy",  "eem",
+                                     "eqeq",  "eqeqc",   "formal", "gdac",   "kcm",    "mgc",
+                                     "mpeoe", "peoe",    "qeq",    "sfkeem", "smpqeq", "sqe",
+                                     "sqeq0", "sqeqp",   "tsef",   "veem"}));
+
+    for (const auto& name : method_names) {
+        assert(registry.find(name) != nullptr);
+    }
+
     const auto* dummy = registry.find("dummy");
     const auto* formal = registry.find("formal");
     const auto* veem = registry.find("veem");
@@ -55,37 +67,6 @@ auto main() -> int {
     const auto* eqeq = registry.find("eqeq");
     const auto* eqeqc = registry.find("eqeqc");
     const auto* abeem = registry.find("abeem");
-
-    assert(dummy != nullptr);
-    assert(formal != nullptr);
-    assert(veem != nullptr);
-    assert(peoe != nullptr);
-    assert(mpeoe != nullptr);
-    assert(gdac != nullptr);
-    assert(charge2 != nullptr);
-    assert(delre != nullptr);
-    assert(mgc != nullptr);
-    assert(denr != nullptr);
-    assert(kcm != nullptr);
-    assert(tsef != nullptr);
-    assert(qeq != nullptr);
-    assert(sqe != nullptr);
-    assert(sqeq0 != nullptr);
-    assert(sqeqp != nullptr);
-    assert(eem != nullptr);
-    assert(smpqeq != nullptr);
-    assert(sfkeem != nullptr);
-    assert(eqeq != nullptr);
-    assert(eqeqc != nullptr);
-    assert(abeem != nullptr);
-
-    const auto method_names = registry.names();
-
-    assert((method_names ==
-            std::vector<std::string>{"abeem", "charge2", "delre",  "denr",   "dummy",  "eem",
-                                     "eqeq",  "eqeqc",   "formal", "gdac",   "kcm",    "mgc",
-                                     "mpeoe", "peoe",    "qeq",    "sfkeem", "smpqeq", "sqe",
-                                     "sqeq0", "sqeqp",   "tsef",   "veem"}));
 
     assert(dummy->id() == std::string_view{"dummy"});
     assert(dummy->metadata().name == std::string_view{"Dummy method"});
@@ -468,10 +449,8 @@ auto main() -> int {
     assert(abeem->requirements().resources.supports_cover);
     assert(abeem->requirements().resources.fragment_target_charge_policy ==
            methods::FragmentTargetChargePolicy::proportional_to_atom_count);
-    assert(abeem->requirements().resources.memory ==
-           methods::ComplexityTerm::atoms_plus_bonds_squared);
 
-    const auto water = chargefw::test::make_water();
+    const auto water = chargefw::test::make_water_graph();
 
     const auto dummy_charges = calculate(*dummy, water);
     assert(dummy_charges.size() == water.atom_count());

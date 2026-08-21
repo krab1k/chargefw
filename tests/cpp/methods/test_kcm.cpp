@@ -31,17 +31,21 @@ auto make_parameter_set() -> parameters::ParameterSet {
 } // namespace
 
 auto main() -> int {
-    const auto charge_set = chargefw::test::calculate_single_method(chargefw::test::make_water(),
-                                                                    "kcm", {make_parameter_set()});
+    const auto charge_set = chargefw::test::calculate_single_method(
+        chargefw::test::make_water_graph(), "kcm", {make_parameter_set()});
     const auto& charges = charge_set.assignment(0).charges;
 
     chargefw::test::assert_calculation_provenance(charge_set, "kcm", "test-kcm");
+    chargefw::test::assert_conformer_independent(charge_set);
 
     assert(charges.size() == 3);
     chargefw::test::assert_close(charges[0], -0.4, 1.0e-12);
     chargefw::test::assert_close(charges[1], 0.2, 1.0e-12);
     chargefw::test::assert_close(charges[2], 0.2, 1.0e-12);
     chargefw::test::assert_close(charges.total(), 0.0, 1.0e-12);
+
+    chargefw::test::assert_water_charges_labeling_invariant("kcm", {make_parameter_set()});
+    chargefw::test::assert_water_charges_geometry_independent("kcm", {make_parameter_set()});
 
     return 0;
 }

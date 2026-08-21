@@ -32,5 +32,8 @@ auto main() -> int {
     chargefw::test::assert_calculation_provenance(workflow_charge_set, "veem", std::nullopt);
     chargefw::test::assert_conformer_independent(workflow_charge_set);
 
+    chargefw::test::assert_water_charges_geometry_independent("veem");
+    chargefw::test::assert_water_charges_labeling_invariant("veem");
+
     return 0;
 }
