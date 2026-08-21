@@ -1,3 +1,4 @@
+#include "support/test_assertions.h"
 #include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
@@ -8,7 +9,6 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
 #include <cassert>
-#include <cmath>
 #include <vector>
 
 namespace parameters = chargefw::parameters;
@@ -28,10 +28,6 @@ auto make_parameter_set() -> parameters::ParameterSet {
                                                     {.name = "hardness", .value = 1.0}}}}}};
 }
 
-auto assert_close(const double actual, const double expected) -> void {
-    assert(std::abs(actual - expected) < 1.0e-12);
-}
-
 } // namespace
 
 auto main() -> int {
@@ -42,10 +38,10 @@ auto main() -> int {
     chargefw::test::assert_calculation_provenance(charge_set, "kcm", "test-kcm");
 
     assert(charges.size() == 3);
-    assert_close(charges[0], -0.4);
-    assert_close(charges[1], 0.2);
-    assert_close(charges[2], 0.2);
-    assert_close(charges.total(), 0.0);
+    chargefw::test::assert_close(charges[0], -0.4, 1.0e-12);
+    chargefw::test::assert_close(charges[1], 0.2, 1.0e-12);
+    chargefw::test::assert_close(charges[2], 0.2, 1.0e-12);
+    chargefw::test::assert_close(charges.total(), 0.0, 1.0e-12);
 
     return 0;
 }

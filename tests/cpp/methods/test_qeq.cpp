@@ -1,3 +1,4 @@
+#include "support/test_assertions.h"
 #include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
@@ -28,10 +29,6 @@ auto make_parameter_set() -> parameters::ParameterSet {
                                                     {.name = "hardness", .value = 13.364}}}}}};
 }
 
-auto assert_close(const double actual, const double expected) -> void {
-    assert(std::abs(actual - expected) < 1.0e-8);
-}
-
 } // namespace
 
 auto main() -> int {
@@ -43,10 +40,10 @@ auto main() -> int {
     chargefw::test::assert_conformer_dependent(charge_set, 2);
 
     assert(charges.size() == 3);
-    assert_close(charges[0], -0.22710866);
-    assert_close(charges[1], 0.11355540);
-    assert_close(charges[2], 0.11355326);
-    assert_close(charges.total(), 0.0);
+    chargefw::test::assert_close(charges[0], -0.22710866, 1.0e-8);
+    chargefw::test::assert_close(charges[1], 0.11355540, 1.0e-8);
+    chargefw::test::assert_close(charges[2], 0.11355326, 1.0e-8);
+    chargefw::test::assert_close(charges.total(), 0.0, 1.0e-8);
     assert(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
 
     return 0;

@@ -1,3 +1,4 @@
+#include "support/test_assertions.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
@@ -155,16 +156,6 @@ auto make_permissive_peoe_parameter_set() -> chargefw::parameters::ParameterSet 
                              {.name = "C", .value = 1.0}}}}}};
 }
 
-template <typename Callable> auto throws_invalid_argument(Callable&& callable) -> bool {
-    try {
-        std::forward<Callable>(callable)();
-    } catch (const std::invalid_argument&) {
-        return true;
-    }
-
-    return false;
-}
-
 auto calculate_automatically(
     const features::PreparedMoleculeCollection& molecules,
     std::span<const methods::Method* const> candidate_methods,
@@ -225,7 +216,7 @@ auto main() -> int {
     assert(parallel_result.charges.assignment(0).charges[0] == 10.0);
     assert(parallel_result.charges.assignment(1).charges[0] == 10.0);
 
-    assert(throws_invalid_argument([&] -> void {
+    assert(chargefw::test::throws_invalid_argument([&] -> void {
         static_cast<void>(
             calculation::calculate({.molecules = prepared,
                                     .selected = *selected,
@@ -284,7 +275,7 @@ auto main() -> int {
     assert(permissive_calculation_result.charges->assignment(0).charges[0] == 3.0);
     assert(permissive_calculation_result.charges->assignment(0).charges[1] == 3.0);
 
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
             .parameter_sets = {make_permissive_peoe_parameter_set()},
@@ -318,7 +309,7 @@ auto main() -> int {
 
     auto invalid_peoe_options = methods::MethodOptions{};
     invalid_peoe_options.set("iters", std::string{"one"});
-    assert(throws_invalid_argument([&] -> void {
+    assert(chargefw::test::throws_invalid_argument([&] -> void {
         static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
             .parameter_sets = {make_permissive_peoe_parameter_set()},
@@ -372,7 +363,7 @@ auto main() -> int {
            std::optional<double>{calculation::default_automatic_reduced_radius});
     assert(automatic_fallback_result.execution_issues.empty());
 
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
@@ -405,7 +396,7 @@ auto main() -> int {
     assert(unlimited_result.charges->method_id() == std::string_view{"mgc"});
     assert(unlimited_result.execution_issues.empty());
 
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
@@ -414,7 +405,7 @@ auto main() -> int {
                 calculation::ExecutionSelectionKind::cutoff, 8.0}}));
     }));
 
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
@@ -422,7 +413,7 @@ auto main() -> int {
             .parameter_set_id = std::nullopt}));
     }));
 
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::calculate(calculation::ApplicationCalculationRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},

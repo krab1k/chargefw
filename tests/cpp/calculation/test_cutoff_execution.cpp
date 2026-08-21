@@ -1,3 +1,4 @@
+#include "support/test_assertions.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
@@ -91,16 +92,6 @@ auto make_qeq_parameters() -> parameters::ParameterSet {
                                     {.key = chargefw::test::plain_atom_key(8),
                                      .parameters = {{.name = "electronegativity", .value = 8.741},
                                                     {.name = "hardness", .value = 13.364}}}}}};
-}
-
-template <typename Callable> auto throws_invalid_argument(Callable&& callable) -> bool {
-    try {
-        std::forward<Callable>(callable)();
-    } catch (const std::invalid_argument&) {
-        return true;
-    }
-
-    return false;
 }
 
 auto make_eqeqc_parameters() -> parameters::ParameterSet {
@@ -241,7 +232,7 @@ auto main() -> int {
         const auto policy = mode == calculation::ExecutionMode::full
                                 ? calculation::ExecutionPolicy{}
                                 : calculation::ExecutionPolicy{mode, 8.0};
-        assert(throws_invalid_argument([&] -> void {
+        assert(chargefw::test::throws_invalid_argument([&] -> void {
             static_cast<void>(calculation::calculate(
                 {.molecules = prepared, .selected = invalid_selected, .execution_policy = policy}));
         }));
@@ -260,7 +251,7 @@ auto main() -> int {
         const auto calculate_request = [&request] -> void {
             static_cast<void>(calculation::calculate(request));
         };
-        assert(throws_invalid_argument(calculate_request));
+        assert(chargefw::test::throws_invalid_argument(calculate_request));
     }
 
     const auto corrected = calculation::calculate(

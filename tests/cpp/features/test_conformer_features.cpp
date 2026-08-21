@@ -1,3 +1,5 @@
+#include "support/test_assertions.h"
+
 #include "support/test_molecules.h"
 
 #include <chargefw/core/atom.h>
@@ -7,7 +9,6 @@
 #include <chargefw/features/conformer_features.h>
 
 #include <cassert>
-#include <cmath>
 #include <limits>
 #include <stdexcept>
 #include <type_traits>
@@ -15,14 +16,6 @@
 
 namespace core = chargefw::core;
 namespace features = chargefw::features;
-
-namespace {
-
-auto approximately_equal(const double first, const double second, const double tolerance) -> bool {
-    return std::abs(first - second) <= tolerance;
-}
-
-} // namespace
 
 auto main() -> int {
     static_assert(!std::is_constructible_v<features::ConformerFeatures, core::Molecule&&>);
@@ -36,12 +29,12 @@ auto main() -> int {
     assert(geometry.conformer_index() == 0);
 
     const auto& oxygen = geometry.position(0);
-    assert(approximately_equal(oxygen.x, 0.0, 1e-12));
-    assert(approximately_equal(oxygen.y, 0.0, 1e-12));
-    assert(approximately_equal(oxygen.z, 0.0, 1e-12));
+    chargefw::test::assert_close(oxygen.x, 0.0, 1e-12);
+    chargefw::test::assert_close(oxygen.y, 0.0, 1e-12);
+    chargefw::test::assert_close(oxygen.z, 0.0, 1e-12);
 
-    assert(approximately_equal(geometry.squared_distance(0, 1), 0.9572 * 0.9572, 1e-12));
-    assert(approximately_equal(geometry.distance(0, 1), 0.9572, 1e-12));
+    chargefw::test::assert_close(geometry.squared_distance(0, 1), 0.9572 * 0.9572, 1e-12);
+    chargefw::test::assert_close(geometry.distance(0, 1), 0.9572, 1e-12);
 
     bool rejected_bad_conformer = false;
 

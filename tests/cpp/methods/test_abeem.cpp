@@ -1,3 +1,4 @@
+#include "support/test_assertions.h"
 #include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
@@ -45,10 +46,6 @@ auto make_parameter_set() -> parameters::ParameterSet {
                                                     {.name = "D", .value = 0.5}}}}}};
 }
 
-auto assert_close(const double actual, const double expected) -> void {
-    assert(std::abs(actual - expected) < 1.0e-4);
-}
-
 } // namespace
 
 auto main() -> int {
@@ -63,8 +60,8 @@ auto main() -> int {
     assert(charges[0] < 0.0);
     assert(charges[1] > 0.0);
     assert(charges[2] > 0.0);
-    assert_close(charges[1], charges[2]);
-    assert_close(charges.total(), 0.0);
+    chargefw::test::assert_close(charges[1], charges[2], 1.0e-4);
+    chargefw::test::assert_close(charges.total(), 0.0, 1.0e-4);
     assert(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
 
     return 0;

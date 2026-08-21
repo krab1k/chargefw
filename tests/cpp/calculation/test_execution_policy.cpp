@@ -1,25 +1,12 @@
+#include "support/test_assertions.h"
+
 #include <chargefw/calculation/execution_policy.h>
 
 #include <cassert>
 #include <limits>
 #include <optional>
-#include <stdexcept>
 
 namespace calculation = chargefw::calculation;
-
-namespace {
-
-template <typename Callable> auto throws_invalid_argument(Callable&& callable) -> bool {
-    try {
-        callable();
-    } catch (const std::invalid_argument&) {
-        return true;
-    }
-
-    return false;
-}
-
-} // namespace
 
 auto main() -> int {
     assert(calculation::execution_selection_kind_from_string("auto") ==
@@ -30,14 +17,14 @@ auto main() -> int {
            calculation::ExecutionSelectionKind::cutoff);
     assert(calculation::execution_selection_kind_from_string("cover") ==
            calculation::ExecutionSelectionKind::cover);
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::execution_selection_kind_from_string("unknown"));
     }));
     assert(calculation::charge_correction_policy_from_string("none") ==
            calculation::ChargeCorrectionPolicy::none);
     assert(calculation::charge_correction_policy_from_string("uniform") ==
            calculation::ChargeCorrectionPolicy::uniform);
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::charge_correction_policy_from_string("unknown"));
     }));
     assert(calculation::to_string(calculation::ExecutionSelectionKind::automatic) == "auto");
@@ -52,22 +39,22 @@ auto main() -> int {
     assert(full_policy.mode() == calculation::ExecutionMode::full);
     assert(!full_policy.radius().has_value());
     assert(full_policy.charge_correction() == calculation::ChargeCorrectionPolicy::none);
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::full, 8.0});
     }));
 
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff});
     }));
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::cover,
                                                        std::numeric_limits<double>::quiet_NaN()});
     }));
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff,
                                                        std::numeric_limits<double>::infinity()});
     }));
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 7.99});
     }));
 
@@ -95,19 +82,19 @@ auto main() -> int {
         calculation::ChargeCorrectionPolicy::uniform};
     assert(corrected_cutoff_selection.charge_correction() ==
            std::optional{calculation::ChargeCorrectionPolicy::uniform});
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic, 7.99});
     }));
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full, 8.0});
     }));
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff});
     }));
-    assert(throws_invalid_argument([] -> void {
+    assert(chargefw::test::throws_invalid_argument([] -> void {
         static_cast<void>(
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full, std::nullopt,
                                             calculation::ChargeCorrectionPolicy::uniform});

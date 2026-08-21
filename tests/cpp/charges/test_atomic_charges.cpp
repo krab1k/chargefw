@@ -1,20 +1,13 @@
+#include "support/test_assertions.h"
+
 #include <chargefw/charges/atomic_charges.h>
 
 #include <cassert>
-#include <cmath>
 #include <limits>
 #include <stdexcept>
 #include <vector>
 
 namespace charges = chargefw::charges;
-
-namespace {
-
-auto approximately_equal(const double first, const double second) -> bool {
-    return std::abs(first - second) <= 1e-12;
-}
-
-} // namespace
 
 auto main() -> int {
     const charges::AtomicCharges values{{0.2, -0.1, -0.1}};
@@ -22,13 +15,13 @@ auto main() -> int {
     assert(values.size() == 3);
     assert(!values.empty());
     assert(values.values().size() == 3);
-    assert(approximately_equal(values.total(), 0.0));
-    assert(approximately_equal(values[0], 0.2));
-    assert(approximately_equal(values.at(2), -0.1));
+    chargefw::test::assert_close(values.total(), 0.0, 1e-12);
+    chargefw::test::assert_close(values[0], 0.2, 1e-12);
+    chargefw::test::assert_close(values.at(2), -0.1, 1e-12);
 
     const charges::AtomicCharges empty_values{std::vector<double>{}};
     assert(empty_values.empty());
-    assert(approximately_equal(empty_values.total(), 0.0));
+    chargefw::test::assert_close(empty_values.total(), 0.0, 1e-12);
 
     bool rejected_bad_index = false;
 

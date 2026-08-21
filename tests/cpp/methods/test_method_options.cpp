@@ -1,3 +1,5 @@
+#include "support/test_assertions.h"
+
 #include <chargefw/methods/method_options.h>
 
 #include <array>
@@ -7,21 +9,6 @@
 #include <string_view>
 
 namespace methods = chargefw::methods;
-
-namespace {
-
-template <typename Function>
-[[nodiscard]] auto rejects_invalid_argument(Function function) -> bool {
-    try {
-        function();
-    } catch (const std::invalid_argument&) {
-        return true;
-    }
-
-    return false;
-}
-
-} // namespace
 
 auto main() -> int {
     const std::array schema{
@@ -64,10 +51,10 @@ auto main() -> int {
 
     methods::validate_method_options(schema, options);
 
-    assert(rejects_invalid_argument(
+    assert(chargefw::test::throws_invalid_argument(
         [&schema] -> void { methods::validate_method_options(schema, methods::MethodOptions{}); }));
 
-    assert(rejects_invalid_argument([&schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&schema] -> void {
         auto invalid_options = methods::make_default_options(schema);
         invalid_options.set("limit", 50.0);
         methods::validate_method_options(schema, invalid_options);
@@ -80,17 +67,17 @@ auto main() -> int {
                                   .default_value = 1,
                                   .choices = {},
                                   .minimum = 0.0}};
-    assert(rejects_invalid_argument([&mismatched_bound_schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&mismatched_bound_schema] -> void {
         methods::validate_method_option_schema(mismatched_bound_schema);
     }));
 
-    assert(rejects_invalid_argument([&schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&schema] -> void {
         auto invalid_options = methods::make_default_options(schema);
         invalid_options.set("radius", 0.0);
         methods::validate_method_options(schema, invalid_options);
     }));
 
-    assert(rejects_invalid_argument([&schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&schema] -> void {
         auto invalid_options = methods::make_default_options(schema);
         invalid_options.set("extra", true);
         methods::validate_method_options(schema, invalid_options);
@@ -131,13 +118,13 @@ auto main() -> int {
     auto choice_options = methods::make_default_options(choice_schema);
     methods::validate_method_options(choice_schema, choice_options);
 
-    assert(rejects_invalid_argument([&choice_schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&choice_schema] -> void {
         auto invalid_options = methods::make_default_options(choice_schema);
         invalid_options.set("mode", std::string{"slow"});
         methods::validate_method_options(choice_schema, invalid_options);
     }));
 
-    assert(rejects_invalid_argument([&choice_schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&choice_schema] -> void {
         auto invalid_options = methods::make_default_options(choice_schema);
         invalid_options.set("limit", 100);
         methods::validate_method_options(choice_schema, invalid_options);
@@ -155,7 +142,7 @@ auto main() -> int {
                                   .default_value = 50,
                                   .choices = {}}};
 
-    assert(rejects_invalid_argument([&duplicate_id_schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&duplicate_id_schema] -> void {
         methods::validate_method_option_schema(duplicate_id_schema);
     }));
 
@@ -166,7 +153,7 @@ auto main() -> int {
                                   .default_value = 25.0,
                                   .choices = {}}};
 
-    assert(rejects_invalid_argument([&wrong_default_type_schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&wrong_default_type_schema] -> void {
         methods::validate_method_option_schema(wrong_default_type_schema);
     }));
 
@@ -177,7 +164,7 @@ auto main() -> int {
                                   .default_value = 25,
                                   .choices = {25, 50.0}}};
 
-    assert(rejects_invalid_argument([&wrong_choice_type_schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&wrong_choice_type_schema] -> void {
         methods::validate_method_option_schema(wrong_choice_type_schema);
     }));
 
@@ -188,7 +175,7 @@ auto main() -> int {
                                   .default_value = 25,
                                   .choices = {50, 100}}};
 
-    assert(rejects_invalid_argument([&default_not_allowed_schema] -> void {
+    assert(chargefw::test::throws_invalid_argument([&default_not_allowed_schema] -> void {
         methods::validate_method_option_schema(default_not_allowed_schema);
     }));
 

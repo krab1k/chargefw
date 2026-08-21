@@ -1,3 +1,4 @@
+#include "support/test_assertions.h"
 #include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include <chargefw/core/atom.h>
@@ -17,7 +18,6 @@
 #include <chargefw/parameters/models/parameter_view.h>
 
 #include <cassert>
-#include <cmath>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -90,10 +90,6 @@ auto calculate_delre(const methods::Method& method, const core::Molecule& molecu
     return method.calculate(input);
 }
 
-auto assert_close(const double actual, const double expected) -> void {
-    assert(std::abs(actual - expected) < 1.0e-12);
-}
-
 } // namespace
 
 auto main() -> int {
@@ -119,10 +115,10 @@ auto main() -> int {
         const auto charges = calculate_delre(*delre, molecule, parameter_set, classification);
 
         assert(charges.size() == 3);
-        assert_close(charges[0], -1.25);
-        assert_close(charges[1], 0.625);
-        assert_close(charges[2], 0.625);
-        assert_close(charges.total(), 0.0);
+        chargefw::test::assert_close(charges[0], -1.25, 1.0e-12);
+        chargefw::test::assert_close(charges[1], 0.625, 1.0e-12);
+        chargefw::test::assert_close(charges[2], 0.625, 1.0e-12);
+        chargefw::test::assert_close(charges.total(), 0.0, 1.0e-12);
     }
 
     {
@@ -135,10 +131,10 @@ auto main() -> int {
         const auto charges = calculate_delre(*delre, molecule, parameter_set, classification);
 
         assert(charges.size() == 3);
-        assert_close(charges[0], 0.625);
-        assert_close(charges[1], -1.25);
-        assert_close(charges[2], 0.625);
-        assert_close(charges.total(), 0.0);
+        chargefw::test::assert_close(charges[0], 0.625, 1.0e-12);
+        chargefw::test::assert_close(charges[1], -1.25, 1.0e-12);
+        chargefw::test::assert_close(charges[2], 0.625, 1.0e-12);
+        chargefw::test::assert_close(charges.total(), 0.0, 1.0e-12);
     }
 
     return 0;

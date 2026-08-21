@@ -1,3 +1,5 @@
+#include "support/test_assertions.h"
+
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
@@ -35,16 +37,6 @@ auto make_molecule() -> core::Molecule {
                                      core::Position{.x = 4.0}, core::Position{.x = 20.0}},
                                     "model-2"}};
     return core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers), "fragment"};
-}
-
-template <typename Exception, typename Callable> auto throws(Callable&& callable) -> bool {
-    try {
-        std::forward<Callable>(callable)();
-    } catch (const Exception&) {
-        return true;
-    }
-
-    return false;
 }
 
 } // namespace
@@ -137,7 +129,7 @@ auto main() -> int {
     assert(single_atom_fragment.center_local_atom_index() == 0);
 
     const features::ConformerFeatures unrelated_geometry{single_atom_molecule, 0};
-    assert(throws<std::invalid_argument>([&prepared, &unrelated_geometry] {
+    assert(chargefw::test::throws<std::invalid_argument>([&prepared, &unrelated_geometry] {
         [[maybe_unused]] const features::SpatialFragmentBuilder invalid{prepared,
                                                                         unrelated_geometry};
     }));
@@ -151,27 +143,28 @@ auto main() -> int {
         "nonfinite"};
     const features::PreparedMolecule nonfinite_prepared{nonfinite_molecule};
     const features::ConformerFeatures nonfinite_geometry{nonfinite_molecule, 0};
-    assert(throws<std::invalid_argument>([&nonfinite_prepared, &nonfinite_geometry] {
-        [[maybe_unused]] const features::SpatialFragmentBuilder invalid{nonfinite_prepared,
-                                                                        nonfinite_geometry};
-    }));
+    assert(
+        chargefw::test::throws<std::invalid_argument>([&nonfinite_prepared, &nonfinite_geometry] {
+            [[maybe_unused]] const features::SpatialFragmentBuilder invalid{nonfinite_prepared,
+                                                                            nonfinite_geometry};
+        }));
 
     const core::Molecule empty_molecule{{}, {}, {core::Conformer{{}, "empty"}}, "empty"};
     const features::PreparedMolecule empty_prepared{empty_molecule};
     const features::ConformerFeatures empty_geometry{empty_molecule, 0};
     const features::SpatialFragmentBuilder empty_builder{empty_prepared, empty_geometry};
-    assert(throws<std::out_of_range>(
+    assert(chargefw::test::throws<std::out_of_range>(
         [&empty_builder] { static_cast<void>(empty_builder.build(0, 1.0)); }));
-    assert(throws<std::out_of_range>(
+    assert(chargefw::test::throws<std::out_of_range>(
         [&first_builder] { static_cast<void>(first_builder.build(4, 1.0)); }));
-    assert(throws<std::invalid_argument>(
+    assert(chargefw::test::throws<std::invalid_argument>(
         [&first_builder] { static_cast<void>(first_builder.build(1, 0.0)); }));
-    assert(throws<std::invalid_argument>(
+    assert(chargefw::test::throws<std::invalid_argument>(
         [&first_builder] { static_cast<void>(first_builder.build(1, -1.0)); }));
-    assert(throws<std::invalid_argument>([&first_builder] {
+    assert(chargefw::test::throws<std::invalid_argument>([&first_builder] {
         static_cast<void>(first_builder.build(1, std::numeric_limits<double>::quiet_NaN()));
     }));
-    assert(throws<std::invalid_argument>([&first_builder] {
+    assert(chargefw::test::throws<std::invalid_argument>([&first_builder] {
         static_cast<void>(first_builder.build(1, std::numeric_limits<double>::infinity()));
     }));
 
