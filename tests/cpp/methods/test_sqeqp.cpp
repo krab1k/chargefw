@@ -1,3 +1,4 @@
+#include "support/test_assertions.h"
 #include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
@@ -45,13 +46,11 @@ auto main() -> int {
     chargefw::test::assert_calculation_provenance(charge_set, "sqeqp", "test-sqeqp");
     chargefw::test::assert_conformer_dependent(charge_set, 2);
 
-    assert(charges.size() == 3);
-    assert(charges[0] < 0.0);
-    assert(charges[1] > 0.0);
-    assert(charges[2] > 0.0);
-    assert(std::abs(charges[1] - charges[2]) < 1.0e-4);
-    assert(std::abs(charges.total()) < 1.0e-12);
+    chargefw::test::assert_neutral_water_charges(charges, 1.0e-4);
+    chargefw::test::assert_close(charges.total(), 0.0, 1.0e-12);
     assert(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
+
+    chargefw::test::assert_water_charges_labeling_invariant("sqeqp", {make_parameter_set()});
 
     return 0;
 }

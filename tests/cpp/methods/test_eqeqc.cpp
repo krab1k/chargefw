@@ -45,5 +45,7 @@ auto main() -> int {
     chargefw::test::assert_close(charges.total(), 0.0, 1.0e-8);
     assert(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
 
+    chargefw::test::assert_water_charges_labeling_invariant("eqeqc", {make_parameter_set()});
+
     return 0;
 }

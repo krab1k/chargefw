@@ -56,12 +56,7 @@ auto main() -> int {
     const auto& charges = charge_set.assignment(0).charges;
 
     chargefw::test::assert_calculation_provenance(charge_set, "gdac", "gdac-test");
-    assert(charges.size() == 3);
-    assert(charges[0] < 0.0);
-    assert(charges[1] > 0.0);
-    assert(charges[2] > 0.0);
-    assert(std::abs(charges[1] - charges[2]) < 1.0e-4);
-    assert(std::abs(charges.total()) < 1.0e-4);
+    chargefw::test::assert_neutral_water_charges(charges, 1.0e-4);
 
     const auto charged_pair = chargefw::test::make_formally_charged_pair();
     const features::PreparedMolecule prepared_charged_pair{charged_pair};
@@ -104,6 +99,8 @@ auto main() -> int {
     assert(std::abs(second_charges.total()) < 1.0e-4);
 
     assert(std::abs(first_charges[0] - second_charges[0]) > 1.0e-4);
+
+    chargefw::test::assert_water_charges_labeling_invariant("gdac", {parameter_set}, &options);
 
     return 0;
 }

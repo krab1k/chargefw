@@ -18,14 +18,6 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto bond_key(const int first_atomic_number, const int second_atomic_number)
-    -> parameters::BondParameterKey {
-    return {.first_atom = chargefw::test::plain_atom_key(first_atomic_number),
-            .second_atom = chargefw::test::plain_atom_key(second_atomic_number),
-            .bond = {.classification = parameters::BondParameterClassificationKind::PLAIN,
-                     .type = "*"}};
-}
-
 auto make_parameter_set() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
@@ -39,7 +31,7 @@ auto make_parameter_set() -> parameters::ParameterSet {
                                      .parameters = {{.name = "a", .value = 2.0},
                                                     {.name = "b", .value = 10.0},
                                                     {.name = "c", .value = 0.5}}}}},
-        parameters::BondParameters{{{.key = bond_key(8, 1),
+        parameters::BondParameters{{{.key = chargefw::test::plain_bond_key(8, 1),
                                      .parameters = {{.name = "A", .value = 1.0},
                                                     {.name = "B", .value = 10.0},
                                                     {.name = "C", .value = 0.5},
@@ -56,13 +48,10 @@ auto main() -> int {
     chargefw::test::assert_calculation_provenance(charge_set, "abeem", "test-abeem");
     chargefw::test::assert_conformer_dependent(charge_set, 2);
 
-    assert(charges.size() == 3);
-    assert(charges[0] < 0.0);
-    assert(charges[1] > 0.0);
-    assert(charges[2] > 0.0);
-    chargefw::test::assert_close(charges[1], charges[2], 1.0e-4);
-    chargefw::test::assert_close(charges.total(), 0.0, 1.0e-4);
+    chargefw::test::assert_neutral_water_charges(charges, 1.0e-4);
     assert(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
+
+    chargefw::test::assert_water_charges_labeling_invariant("abeem", {make_parameter_set()});
 
     return 0;
 }
