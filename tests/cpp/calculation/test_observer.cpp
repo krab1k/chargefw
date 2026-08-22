@@ -19,9 +19,9 @@ namespace methods = chargefw::methods;
 
 namespace {
 
-[[nodiscard]] auto calculate_application(calculation::ApplicationAssessmentRequest request,
+[[nodiscard]] auto calculate_application(const calculation::AssessmentRequest& request,
                                          const calculation::CalculationObserver* observer = nullptr)
-    -> calculation::ApplicationExecutionResult {
+    -> calculation::ExecutionResult {
     const auto max_threads = request.resource_policy.max_threads;
     auto assessment = calculation::assess(request);
     return calculation::calculate(std::move(assessment), max_threads, observer);
@@ -67,7 +67,7 @@ class CancelAfterFirstTarget : public calculation::CalculationObserver {
 auto main() -> int {
     // --- Test 1: null observer produces the same result as before ---
     {
-        const auto result = calculate_application(calculation::ApplicationAssessmentRequest{
+        const auto result = calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "formal",
@@ -83,7 +83,7 @@ auto main() -> int {
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
-            calculation::ApplicationAssessmentRequest{
+            calculation::AssessmentRequest{
                 .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
                 .parameter_sets = {},
                 .method_id = "formal",
@@ -136,7 +136,7 @@ auto main() -> int {
     // --- Test 3: assessment does not emit calculation observer events ---
     {
         const auto observer = RecordingObserver{};
-        const auto assessment = calculation::assess(calculation::ApplicationAssessmentRequest{
+        const auto assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "formal",
@@ -150,7 +150,7 @@ auto main() -> int {
     // --- Test 4: threshold warnings remain assessment data before computation ---
     {
         const auto observer = RecordingObserver{};
-        auto assessment = calculation::assess(calculation::ApplicationAssessmentRequest{
+        auto assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "mgc",
@@ -173,7 +173,7 @@ auto main() -> int {
     {
         const auto observer = CancelAfterFirstTarget{};
         const auto result = calculate_application(
-            calculation::ApplicationAssessmentRequest{
+            calculation::AssessmentRequest{
                 .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
                 .parameter_sets = {},
                 .method_id = "formal",
@@ -190,7 +190,7 @@ auto main() -> int {
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
-            calculation::ApplicationAssessmentRequest{
+            calculation::AssessmentRequest{
                 .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
                 .parameter_sets = {},
                 .execution_selection =
@@ -221,7 +221,7 @@ auto main() -> int {
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
-            calculation::ApplicationAssessmentRequest{
+            calculation::AssessmentRequest{
                 .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
                 .parameter_sets = {},
                 .execution_selection =
@@ -246,7 +246,7 @@ auto main() -> int {
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
-            calculation::ApplicationAssessmentRequest{
+            calculation::AssessmentRequest{
                 .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water(),
                                                                   chargefw::test::make_water()}},
                 .parameter_sets = {},

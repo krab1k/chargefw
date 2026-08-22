@@ -25,7 +25,7 @@ struct ExecutionPlan {
 
 // Owns application assessment inputs so adapters and bindings do not need to manage native method
 // pointers, parameter spans, or prepared-feature lifetimes.
-struct ApplicationAssessmentRequest {
+struct AssessmentRequest {
     core::MoleculeCollection molecules;
     std::vector<parameters::ParameterSet> parameter_sets;
     std::optional<std::string> method_id;
@@ -39,17 +39,16 @@ struct ApplicationAssessmentRequest {
 // Owns prepared application inputs and their applicability/execution-plan assessment. The contained
 // candidates reference methods from the registry and the owned parameter sets below. Move this
 // result into calculate() to execute without repeating preparation or classification.
-class ApplicationAssessmentResult {
+class AssessmentResult {
   public:
-    ApplicationAssessmentResult(core::MoleculeCollection molecules,
-                                std::vector<parameters::ParameterSet> parameter_sets,
-                                bool requires_executable_plan);
-    ApplicationAssessmentResult(const ApplicationAssessmentResult&) = delete;
-    auto operator=(const ApplicationAssessmentResult&) -> ApplicationAssessmentResult& = delete;
-    ApplicationAssessmentResult(ApplicationAssessmentResult&&) noexcept = default;
-    auto operator=(ApplicationAssessmentResult&&) noexcept
-        -> ApplicationAssessmentResult& = default;
-    ~ApplicationAssessmentResult();
+    AssessmentResult(core::MoleculeCollection molecules,
+                     std::vector<parameters::ParameterSet> parameter_sets,
+                     bool requires_executable_plan);
+    AssessmentResult(const AssessmentResult&) = delete;
+    auto operator=(const AssessmentResult&) -> AssessmentResult& = delete;
+    AssessmentResult(AssessmentResult&&) noexcept = default;
+    auto operator=(AssessmentResult&&) noexcept -> AssessmentResult& = default;
+    ~AssessmentResult();
 
     [[nodiscard]] auto prepared_molecules() const noexcept
         -> const features::PreparedMoleculeCollection&;
@@ -90,7 +89,6 @@ class ApplicationAssessmentResult {
 // Resolves registered methods, applies classification policy, and selects a concrete execution plan
 // without running a charge calculation. Explicit unavailable method or parameter-set IDs are
 // errors; an unavailable explicit execution plan is reported as no plan.
-[[nodiscard]] auto assess(const ApplicationAssessmentRequest& request)
-    -> ApplicationAssessmentResult;
+[[nodiscard]] auto assess(const AssessmentRequest& request) -> AssessmentResult;
 
 } // namespace chargefw::calculation

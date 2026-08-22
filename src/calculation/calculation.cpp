@@ -31,13 +31,13 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
     throw std::invalid_argument{"unknown execution policy"};
 }
 
-auto calculate(ApplicationAssessmentResult assessment, const std::size_t max_threads,
-               const CalculationObserver* observer) -> ApplicationExecutionResult {
+auto calculate(AssessmentResult assessment, const std::size_t max_threads,
+               const CalculationObserver* observer) -> ExecutionResult {
     if (!assessment.executable()) {
         if (assessment.requires_executable_plan()) {
             throw std::invalid_argument{"requested calculation selection has no executable plan"};
         }
-        return ApplicationExecutionResult{
+        return ExecutionResult{
             .charges = std::nullopt,
             .applicability = std::move(assessment.applicability),
             .execution_policy = std::nullopt,
@@ -80,7 +80,7 @@ auto calculate(ApplicationAssessmentResult assessment, const std::size_t max_thr
                 .elapsed_seconds = computation_seconds,
             });
         }
-        return ApplicationExecutionResult{
+        return ExecutionResult{
             .charges = std::move(result.charges),
             .applicability = std::move(assessment.applicability),
             .execution_policy = assessment.execution_policy,
@@ -100,7 +100,7 @@ auto calculate(ApplicationAssessmentResult assessment, const std::size_t max_thr
                 .elapsed_seconds = computation_seconds,
             });
         }
-        return ApplicationExecutionResult{
+        return ExecutionResult{
             .charges = std::nullopt,
             .applicability = std::move(assessment.applicability),
             .execution_policy = assessment.execution_policy,

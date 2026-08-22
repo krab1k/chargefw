@@ -39,8 +39,8 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-[[nodiscard]] auto calculate_application(calculation::ApplicationAssessmentRequest request)
-    -> calculation::ApplicationExecutionResult {
+[[nodiscard]] auto calculate_application(const calculation::AssessmentRequest& request)
+    -> calculation::ExecutionResult {
     const auto max_threads = request.resource_policy.max_threads;
     auto assessment = calculation::assess(request);
     return calculation::calculate(std::move(assessment), max_threads);
@@ -182,15 +182,15 @@ auto assert_reduced_matches_full(
     core::Molecule molecule = chargefw::test::make_two_conformer_water()) -> void {
     const auto molecules = core::MoleculeCollection{std::vector{std::move(molecule)}};
     const auto full = calculate_application(
-        calculation::ApplicationAssessmentRequest{.molecules = molecules,
-                                                  .parameter_sets = parameter_sets,
-                                                  .method_id = std::string{method_id},
-                                                  .resource_policy = {.max_threads = 2}});
+        calculation::AssessmentRequest{.molecules = molecules,
+                                       .parameter_sets = parameter_sets,
+                                       .method_id = std::string{method_id},
+                                       .resource_policy = {.max_threads = 2}});
     assert(full.calculated());
 
     for (const auto selection_kind : {calculation::ExecutionSelectionKind::cutoff,
                                       calculation::ExecutionSelectionKind::cover}) {
-        const auto reduced = calculate_application(calculation::ApplicationAssessmentRequest{
+        const auto reduced = calculate_application(calculation::AssessmentRequest{
             .molecules = molecules,
             .parameter_sets = parameter_sets,
             .method_id = std::string{method_id},
@@ -292,7 +292,7 @@ auto main() -> int {
 
     assert_reduced_matches_full("eem", {make_eem_parameters()});
 
-    const auto automatic_cutoff = calculate_application(calculation::ApplicationAssessmentRequest{
+    const auto automatic_cutoff = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {make_eem_parameters()},
         .method_id = "eem",
@@ -302,15 +302,13 @@ auto main() -> int {
     assert(automatic_cutoff.execution_policy->radius() ==
            std::optional<double>{calculation::default_automatic_reduced_radius});
 
-    const auto overridden_automatic_cutoff =
-        calculate_application(calculation::ApplicationAssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {make_eem_parameters()},
-            .method_id = "eem",
-            .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic,
-                                                8.0},
-            .resource_policy = {.full_atom_threshold = 2}});
+    const auto overridden_automatic_cutoff = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {make_eem_parameters()},
+        .method_id = "eem",
+        .execution_selection =
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic, 8.0},
+        .resource_policy = {.full_atom_threshold = 2}});
     assert(overridden_automatic_cutoff.calculated());
     assert(overridden_automatic_cutoff.execution_policy->mode() ==
            calculation::ExecutionMode::cutoff);

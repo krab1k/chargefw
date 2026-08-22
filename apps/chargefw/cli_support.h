@@ -69,16 +69,18 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments);
 [[nodiscard]] auto import_input(const InputArguments& arguments) -> ImportedCollection;
 [[nodiscard]] auto make_request(const ImportedCollection& imported,
                                 const SelectionArguments& arguments)
-    -> calculation::ApplicationAssessmentRequest;
+    -> calculation::AssessmentRequest;
 
 void print_inspection(const ImportedCollection& imported);
-void print_applicability(const calculation::ApplicationAssessmentResult& assessment);
+void print_applicability(const calculation::AssessmentResult& assessment);
 void print_methods();
 void print_parameter_sets(const std::string& method_id);
 
-[[nodiscard]] auto write_calculation_outputs(
-    const std::string& output_directory, const std::string& input_path,
-    const ImportedCollection& imported, const calculation::ApplicationAssessmentRequest& request,
-    const calculation::ApplicationExecutionResult& result, CalculationRun& run) -> int;
+[[nodiscard]] auto write_calculation_outputs(const std::string& output_directory,
+                                             const std::string& input_path,
+                                             const ImportedCollection& imported,
+                                             const calculation::AssessmentRequest& request,
+                                             const calculation::ExecutionResult& result,
+                                             CalculationRun& run) -> int;
 
 } // namespace chargefw::cli

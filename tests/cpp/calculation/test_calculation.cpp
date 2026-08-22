@@ -32,8 +32,8 @@ namespace methods = chargefw::methods;
 
 namespace {
 
-[[nodiscard]] auto calculate_application(calculation::ApplicationAssessmentRequest request)
-    -> calculation::ApplicationExecutionResult {
+[[nodiscard]] auto calculate_application(const calculation::AssessmentRequest& request)
+    -> calculation::ExecutionResult {
     const auto max_threads = request.resource_policy.max_threads;
     auto assessment = calculation::assess(request);
     return calculation::calculate(std::move(assessment), max_threads);
@@ -168,7 +168,7 @@ auto calculate_automatically(
     std::span<const methods::Method* const> candidate_methods,
     std::span<const chargefw::parameters::ParameterSet> parameter_sets,
     const chargefw::parameters::ClassificationOptions classification_options = {})
-    -> calculation::ApplicationExecutionResult {
+    -> calculation::ExecutionResult {
     auto applicability =
         methods::find_applicable_methods({.molecules = molecules,
                                           .methods = candidate_methods,
@@ -283,33 +283,31 @@ auto main() -> int {
     assert(permissive_calculation_result.charges->assignment(0).charges[1] == 3.0);
 
     assert(chargefw::test::throws_invalid_argument([] -> void {
-        static_cast<void>(calculate_application(calculation::ApplicationAssessmentRequest{
+        static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
             .parameter_sets = {make_permissive_peoe_parameter_set()},
             .method_id = "peoe",
             .parameter_set_id = "permissive-peoe-parameters"}));
     }));
 
-    const auto permissive_application_result =
-        calculate_application(calculation::ApplicationAssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
-            .parameter_sets = {make_permissive_peoe_parameter_set()},
-            .method_id = "peoe",
-            .parameter_set_id = "permissive-peoe-parameters",
-            .classification_options = {.permissive_types = true}});
+    const auto permissive_application_result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
+        .parameter_sets = {make_permissive_peoe_parameter_set()},
+        .method_id = "peoe",
+        .parameter_set_id = "permissive-peoe-parameters",
+        .classification_options = {.permissive_types = true}});
     assert(permissive_application_result.calculated());
     assert(permissive_application_result.charges->method_id() == std::string_view{"peoe"});
 
     auto peoe_options = methods::MethodOptions{};
     peoe_options.set("iters", 1);
-    const auto configured_peoe_result =
-        calculate_application(calculation::ApplicationAssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
-            .parameter_sets = {make_permissive_peoe_parameter_set()},
-            .method_id = "peoe",
-            .parameter_set_id = "permissive-peoe-parameters",
-            .method_options = {{"peoe", peoe_options}},
-            .classification_options = {.permissive_types = true}});
+    const auto configured_peoe_result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
+        .parameter_sets = {make_permissive_peoe_parameter_set()},
+        .method_id = "peoe",
+        .parameter_set_id = "permissive-peoe-parameters",
+        .method_options = {{"peoe", peoe_options}},
+        .classification_options = {.permissive_types = true}});
     assert(configured_peoe_result.calculated());
     assert(configured_peoe_result.effective_method_options.has_value());
     assert(configured_peoe_result.effective_method_options->get<int>("iters") == 1);
@@ -317,7 +315,7 @@ auto main() -> int {
     auto invalid_peoe_options = methods::MethodOptions{};
     invalid_peoe_options.set("iters", std::string{"one"});
     assert(chargefw::test::throws_invalid_argument([&] -> void {
-        static_cast<void>(calculate_application(calculation::ApplicationAssessmentRequest{
+        static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
             .parameter_sets = {make_permissive_peoe_parameter_set()},
             .method_id = "peoe",
@@ -326,7 +324,7 @@ auto main() -> int {
             .classification_options = {.permissive_types = true}}));
     }));
 
-    const auto application_result = calculate_application(calculation::ApplicationAssessmentRequest{
+    const auto application_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {},
         .method_id = "formal",
@@ -343,7 +341,7 @@ auto main() -> int {
     assert(application_result.execution_policy->mode() == calculation::ExecutionMode::full);
     assert(application_result.execution_issues.empty());
 
-    auto assessment = calculation::assess(calculation::ApplicationAssessmentRequest{
+    auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {},
         .method_id = "formal",
@@ -360,11 +358,10 @@ auto main() -> int {
     assert(assessed_result.charges->method_id() == std::string_view{"formal"});
     assert(assessed_result.metrics.applicability_seconds >= 0.0);
 
-    const auto automatic_fallback_result =
-        calculate_application(calculation::ApplicationAssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .resource_policy = {.full_atom_threshold = 2}});
+    const auto automatic_fallback_result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {},
+        .resource_policy = {.full_atom_threshold = 2}});
     assert(automatic_fallback_result.calculated());
     assert(automatic_fallback_result.charges->method_id() == std::string_view{"eqeq"});
     assert(automatic_fallback_result.execution_policy.has_value());
@@ -375,21 +372,20 @@ auto main() -> int {
     assert(automatic_fallback_result.execution_issues.empty());
 
     assert(chargefw::test::throws_invalid_argument([] -> void {
-        static_cast<void>(calculate_application(calculation::ApplicationAssessmentRequest{
+        static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "mgc",
             .resource_policy = {.full_atom_threshold = 2}}));
     }));
 
-    const auto explicit_full_result =
-        calculate_application(calculation::ApplicationAssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .method_id = "mgc",
-            .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-            .resource_policy = {.full_atom_threshold = 2}});
+    const auto explicit_full_result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {},
+        .method_id = "mgc",
+        .execution_selection =
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
+        .resource_policy = {.full_atom_threshold = 2}});
     assert(explicit_full_result.calculated());
     assert(explicit_full_result.charges->method_id() == std::string_view{"mgc"});
     assert(explicit_full_result.execution_policy.has_value());
@@ -398,7 +394,7 @@ auto main() -> int {
     assert(explicit_full_result.execution_issues[0].kind ==
            methods::ExecutionIssueKind::resource_threshold_exceeded);
 
-    const auto unlimited_result = calculate_application(calculation::ApplicationAssessmentRequest{
+    const auto unlimited_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {},
         .method_id = "mgc",
@@ -408,7 +404,7 @@ auto main() -> int {
     assert(unlimited_result.execution_issues.empty());
 
     assert(chargefw::test::throws_invalid_argument([] -> void {
-        static_cast<void>(calculate_application(calculation::ApplicationAssessmentRequest{
+        static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "mgc",
@@ -417,7 +413,7 @@ auto main() -> int {
     }));
 
     assert(chargefw::test::throws_invalid_argument([] -> void {
-        static_cast<void>(calculate_application(calculation::ApplicationAssessmentRequest{
+        static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "missing",
@@ -425,7 +421,7 @@ auto main() -> int {
     }));
 
     assert(chargefw::test::throws_invalid_argument([] -> void {
-        static_cast<void>(calculate_application(calculation::ApplicationAssessmentRequest{
+        static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "formal",

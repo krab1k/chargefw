@@ -73,7 +73,7 @@ namespace {
                          .issues = assessment.issues};
 }
 
-[[nodiscard]] auto application_methods(const ApplicationAssessmentRequest& request)
+[[nodiscard]] auto application_methods(const AssessmentRequest& request)
     -> std::vector<const methods::Method*> {
     const auto& registry = methods::method_registry();
     if (request.method_id.has_value()) {
@@ -92,7 +92,7 @@ namespace {
     return result;
 }
 
-auto validate_application_method_options(const ApplicationAssessmentRequest& request) -> void {
+auto validate_application_method_options(const AssessmentRequest& request) -> void {
     const auto& registry = methods::method_registry();
     for (const auto& [method_id, overrides] : request.method_options) {
         const auto* method = registry.find(method_id);
@@ -112,7 +112,7 @@ auto validate_application_method_options(const ApplicationAssessmentRequest& req
     }
 }
 
-[[nodiscard]] auto application_parameter_sets(const ApplicationAssessmentRequest& request)
+[[nodiscard]] auto application_parameter_sets(const AssessmentRequest& request)
     -> std::vector<parameters::ParameterSet> {
     if (!request.parameter_set_id.has_value()) {
         return request.parameter_sets;
@@ -129,8 +129,7 @@ auto validate_application_method_options(const ApplicationAssessmentRequest& req
     return {*found};
 }
 
-auto assess_prepared(const ApplicationAssessmentRequest& request,
-                     ApplicationAssessmentResult& result) -> void {
+auto assess_prepared(const AssessmentRequest& request, AssessmentResult& result) -> void {
     result.applicability =
         methods::find_applicable_methods({.molecules = result.prepared_molecules(),
                                           .methods = application_methods(request),
@@ -148,18 +147,17 @@ auto assess_prepared(const ApplicationAssessmentRequest& request,
 
 } // namespace
 
-ApplicationAssessmentResult::ApplicationAssessmentResult(
-    core::MoleculeCollection molecules,
-    std::vector<parameters::ParameterSet> supplied_parameter_sets,
-    const bool requires_executable_plan)
+AssessmentResult::AssessmentResult(core::MoleculeCollection molecules,
+                                   std::vector<parameters::ParameterSet> supplied_parameter_sets,
+                                   const bool requires_executable_plan)
     : parameter_sets{std::move(supplied_parameter_sets)},
       requires_executable_plan_{requires_executable_plan},
       molecules_{std::make_unique<core::MoleculeCollection>(std::move(molecules))},
       prepared_molecules_{std::make_unique<features::PreparedMoleculeCollection>(*molecules_)} {}
 
-ApplicationAssessmentResult::~ApplicationAssessmentResult() = default;
+AssessmentResult::~AssessmentResult() = default;
 
-auto ApplicationAssessmentResult::prepared_molecules() const noexcept
+auto AssessmentResult::prepared_molecules() const noexcept
     -> const features::PreparedMoleculeCollection& {
     return *prepared_molecules_;
 }
@@ -230,10 +228,10 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
     throw std::invalid_argument{"unknown execution selection"};
 }
 
-auto assess(const ApplicationAssessmentRequest& request) -> ApplicationAssessmentResult {
+auto assess(const AssessmentRequest& request) -> AssessmentResult {
     const auto started = std::chrono::steady_clock::now();
     validate_application_method_options(request);
-    auto result = ApplicationAssessmentResult{
+    auto result = AssessmentResult{
         request.molecules, application_parameter_sets(request),
         request.method_id.has_value() || request.parameter_set_id.has_value() ||
             request.execution_selection.kind() != ExecutionSelectionKind::automatic};

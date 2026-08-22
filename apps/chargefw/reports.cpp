@@ -33,7 +33,7 @@ void print_inspection(const ImportedCollection& imported) {
     }
 }
 
-void print_applicability(const calculation::ApplicationAssessmentResult& assessment) {
+void print_applicability(const calculation::AssessmentResult& assessment) {
     std::println("applicable candidates: {}", assessment.applicability.applicable.size());
     for (const auto& candidate : assessment.applicability.applicable) {
         std::print("applicable method={} parameter_set={}", candidate.method->id(),

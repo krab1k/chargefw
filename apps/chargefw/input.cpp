@@ -276,7 +276,7 @@ auto import_input(const InputArguments& arguments) -> ImportedCollection {
 }
 
 auto make_request(const ImportedCollection& imported, const SelectionArguments& arguments)
-    -> calculation::ApplicationAssessmentRequest {
+    -> calculation::AssessmentRequest {
     auto method_options = std::unordered_map<std::string, methods::MethodOptions>{};
     for (const auto& text : arguments.method_options) {
         const auto [method_id, option] = parse_method_option(text);

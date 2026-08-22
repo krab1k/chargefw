@@ -101,7 +101,7 @@ candidate selection. `select_execution_plan()` additionally resolves a concrete 
 
 ### Owned application workflow
 
-`ApplicationAssessmentRequest` owns molecules and parameter sets and accepts optional method and
+`AssessmentRequest` owns molecules and parameter sets and accepts optional method and
 parameter-set IDs, classification options, an `ExecutionSelection`, and a `ResourcePolicy`.
 
 - `assess()` prepares molecules, finds applicable candidates, and selects a concrete plan without
@@ -144,7 +144,7 @@ hard failures.
 The calculation facade and executors report progress and support cooperative cancellation through an
 optional, per-request `CalculationObserver` (`include/chargefw/calculation/observer.h`). The observer
 is non-owning: callers retain the object and pass a pointer through `CalculationRequest` or
-`ApplicationAssessmentRequest`. A null observer (the default) is zero-overhead — the executors take
+`AssessmentRequest`. A null observer (the default) is zero-overhead — the executors take
 the existing `parallel_for_indexed` fast path without any progress checks.
 
 Events are structured as `CalculationProgress` snapshots carrying the execution mode, method ID,
@@ -162,14 +162,14 @@ Three event tiers exist:
   guaranteeing 100% completion.
 
 Selected-plan warnings, including explicit-full execution above the resource threshold, are retained
-in `ApplicationAssessmentResult::execution_issues` before execution begins. Callers may report them
+in `AssessmentResult::execution_issues` before execution begins. Callers may report them
 before calling `calculate(std::move(assessment), ...)`; they are also retained in
-`ApplicationExecutionResult::execution_issues` for result provenance.
+`ExecutionResult::execution_issues` for result provenance.
 
 Cooperative cancellation: `cancelled()` is polled at each target and fragment iteration boundary,
 including immediately after `target_started`. When it returns true, `CalculationCancelled` is thrown
 and propagated through oneTBB to the application facade, which returns
-`ApplicationExecutionResult{.cancelled = true}` with no charges. Low-level `calculate()` propagates
+`ExecutionResult{.cancelled = true}` with no charges. Low-level `calculate()` propagates
 the exception. The observer contract requires its callbacks and `cancelled` to be thread-safe and
 must not throw; the observer is purely observational and must not mutate method options, parameters,
 execution policy, geometry, or selection.

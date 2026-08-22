@@ -33,7 +33,7 @@ struct CalculationMetrics {
 };
 
 // Result of the application-facing facade, which performs applicability and automatic selection.
-struct ApplicationExecutionResult {
+struct ExecutionResult {
     std::optional<charges::ChargeSet> charges;
     methods::ApplicabilityResult applicability;
     std::optional<ExecutionPolicy> execution_policy;
@@ -53,8 +53,7 @@ struct ApplicationExecutionResult {
 
 // Executes a plan returned by assess() without repeating preparation or applicability assessment.
 // The assessment is consumed because the result owns its classifications and parameter data.
-[[nodiscard]] auto calculate(ApplicationAssessmentResult assessment, std::size_t max_threads = 0,
-                             const CalculationObserver* observer = nullptr)
-    -> ApplicationExecutionResult;
+[[nodiscard]] auto calculate(AssessmentResult assessment, std::size_t max_threads = 0,
+                             const CalculationObserver* observer = nullptr) -> ExecutionResult;
 
 } // namespace chargefw::calculation
