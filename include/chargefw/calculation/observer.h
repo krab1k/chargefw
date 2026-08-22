@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chargefw/calculation/execution_policy.h>
-#include <chargefw/methods/method_applicability.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -72,10 +71,6 @@ class CalculationObserver {
     virtual ~CalculationObserver() = default;
 
     virtual void on_progress(const CalculationProgress& /*progress*/) const {}
-
-    // Called after assessment and before computation for each selected-plan warning, such as an
-    // explicit full execution above the configured resource threshold.
-    virtual void on_execution_warning(const methods::ExecutionIssue& /*warning*/) const {}
 
     // When true, the running calculation is asked to stop as soon as control returns to a
     // cancellation check point. Checked at the fragment tier inside progress_for_indexed.

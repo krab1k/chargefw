@@ -3,14 +3,9 @@
 #include <chargefw/calculation/assessment.h>
 #include <chargefw/calculation/observer.h>
 #include <chargefw/charges/charge_collection.h>
-#include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
-#include <chargefw/parameters/classification/classification_result.h>
-#include <chargefw/parameters/models/parameter_set.h>
 
 #include <optional>
-#include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace chargefw::calculation {
@@ -38,7 +33,7 @@ struct CalculationMetrics {
 };
 
 // Result of the application-facing facade, which performs applicability and automatic selection.
-struct ApplicationCalculationResult {
+struct ApplicationExecutionResult {
     std::optional<charges::ChargeSet> charges;
     methods::ApplicabilityResult applicability;
     std::optional<ExecutionPolicy> execution_policy;
@@ -52,22 +47,6 @@ struct ApplicationCalculationResult {
     }
 };
 
-// Owns facade inputs so language bindings and adapters do not need to manage native method
-// pointers, parameter spans, or prepared-feature lifetimes. This request performs applicability,
-// selection, and execution through the one-shot calculate() convenience facade.
-struct ApplicationCalculationRequest {
-    core::MoleculeCollection molecules;
-    std::vector<parameters::ParameterSet> parameter_sets;
-    std::optional<std::string> method_id;
-    std::optional<std::string> parameter_set_id;
-    std::unordered_map<std::string, methods::MethodOptions> method_options;
-    parameters::ClassificationOptions classification_options{};
-    ExecutionSelection execution_selection{};
-    ResourcePolicy resource_policy{};
-    // Optional, non-owning observer for the one-shot calculation convenience facade.
-    const CalculationObserver* observer = nullptr;
-};
-
 // Executes an already applicable and selected candidate. Its stored parameter classifications are
 // used directly; classification policy is not reconsidered during execution.
 [[nodiscard]] auto calculate(const CalculationRequest& request) -> CalculationResult;
@@ -76,13 +55,6 @@ struct ApplicationCalculationRequest {
 // The assessment is consumed because the result owns its classifications and parameter data.
 [[nodiscard]] auto calculate(ApplicationAssessmentResult assessment, std::size_t max_threads = 0,
                              const CalculationObserver* observer = nullptr)
-    -> ApplicationCalculationResult;
-
-// Convenience facade: calculates an owned molecule collection using registered methods and caller-
-// owned parameter data. Omitted IDs enable deterministic automatic selection. Specified IDs
-// restrict selection to the exact method or parameter set; unavailable or inapplicable selections
-// are errors.
-[[nodiscard]] auto calculate(const ApplicationCalculationRequest& request)
-    -> ApplicationCalculationResult;
+    -> ApplicationExecutionResult;
 
 } // namespace chargefw::calculation

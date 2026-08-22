@@ -101,14 +101,13 @@ candidate selection. `select_execution_plan()` additionally resolves a concrete 
 
 ### Owned application workflow
 
-`ApplicationCalculationRequest` owns molecules and parameter sets and accepts optional method and
+`ApplicationAssessmentRequest` owns molecules and parameter sets and accepts optional method and
 parameter-set IDs, classification options, an `ExecutionSelection`, and a `ResourcePolicy`.
 
 - `assess()` prepares molecules, finds applicable candidates, and selects a concrete plan without
   calculating. Its result owns the prepared collection and classifications.
 - `calculate(std::move(assessment), max_threads, observer)` executes an assessment without repeating
-  preparation or classification. Thread limits and observation are execution-only inputs. The one-shot
-  `calculate(request)` facade remains as a convenience wrapper.
+  preparation or classification. Thread limits and observation are execution-only inputs.
 - Omitted IDs use deterministic ranking: method priority, parameter-set priority, method ID, then
   parameter-set ID.
 - Explicit unavailable/inapplicable IDs or unsupported explicit execution fail; there is no fallback.
@@ -145,7 +144,7 @@ hard failures.
 The calculation facade and executors report progress and support cooperative cancellation through an
 optional, per-request `CalculationObserver` (`include/chargefw/calculation/observer.h`). The observer
 is non-owning: callers retain the object and pass a pointer through `CalculationRequest` or
-`ApplicationCalculationRequest`. A null observer (the default) is zero-overhead — the executors take
+`ApplicationAssessmentRequest`. A null observer (the default) is zero-overhead — the executors take
 the existing `parallel_for_indexed` fast path without any progress checks.
 
 Events are structured as `CalculationProgress` snapshots carrying the execution mode, method ID,
@@ -162,15 +161,15 @@ Three event tiers exist:
   per pivot fragment). Throttled to one event per 100 ms via an atomic CAS, with a final event
   guaranteeing 100% completion.
 
-Selected-plan warnings, including explicit-full execution above the resource threshold, are delivered
-to `CalculationObserver::on_execution_warning()` after assessment and before fragment/solver
-allocation. The issues are also retained in `ApplicationCalculationResult::execution_issues` for
-result provenance.
+Selected-plan warnings, including explicit-full execution above the resource threshold, are retained
+in `ApplicationAssessmentResult::execution_issues` before execution begins. Callers may report them
+before calling `calculate(std::move(assessment), ...)`; they are also retained in
+`ApplicationExecutionResult::execution_issues` for result provenance.
 
 Cooperative cancellation: `cancelled()` is polled at each target and fragment iteration boundary,
 including immediately after `target_started`. When it returns true, `CalculationCancelled` is thrown
 and propagated through oneTBB to the application facade, which returns
-`ApplicationCalculationResult{.cancelled = true}` with no charges. Low-level `calculate()` propagates
+`ApplicationExecutionResult{.cancelled = true}` with no charges. Low-level `calculate()` propagates
 the exception. The observer contract requires its callbacks and `cancelled` to be thread-safe and
 must not throw; the observer is purely observational and must not mutate method options, parameters,
 execution policy, geometry, or selection.

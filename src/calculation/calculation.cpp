@@ -32,9 +32,12 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
 }
 
 auto calculate(ApplicationAssessmentResult assessment, const std::size_t max_threads,
-               const CalculationObserver* observer) -> ApplicationCalculationResult {
+               const CalculationObserver* observer) -> ApplicationExecutionResult {
     if (!assessment.executable()) {
-        return ApplicationCalculationResult{
+        if (assessment.requires_executable_plan()) {
+            throw std::invalid_argument{"requested calculation selection has no executable plan"};
+        }
+        return ApplicationExecutionResult{
             .charges = std::nullopt,
             .applicability = std::move(assessment.applicability),
             .execution_policy = std::nullopt,
@@ -50,12 +53,6 @@ auto calculate(ApplicationAssessmentResult assessment, const std::size_t max_thr
     const auto mode = assessment.execution_policy->mode();
     const auto method_id = assessment.selected->method->id();
     const auto effective_method_options = assessment.selected->method_options;
-
-    if (observer != nullptr) {
-        for (const auto& warning : assessment.execution_issues) {
-            observer->on_execution_warning(warning);
-        }
-    }
 
     const auto computation_started = std::chrono::steady_clock::now();
     if (observer != nullptr) {
@@ -83,7 +80,7 @@ auto calculate(ApplicationAssessmentResult assessment, const std::size_t max_thr
                 .elapsed_seconds = computation_seconds,
             });
         }
-        return ApplicationCalculationResult{
+        return ApplicationExecutionResult{
             .charges = std::move(result.charges),
             .applicability = std::move(assessment.applicability),
             .execution_policy = assessment.execution_policy,
@@ -103,7 +100,7 @@ auto calculate(ApplicationAssessmentResult assessment, const std::size_t max_thr
                 .elapsed_seconds = computation_seconds,
             });
         }
-        return ApplicationCalculationResult{
+        return ApplicationExecutionResult{
             .charges = std::nullopt,
             .applicability = std::move(assessment.applicability),
             .execution_policy = assessment.execution_policy,
@@ -113,16 +110,6 @@ auto calculate(ApplicationAssessmentResult assessment, const std::size_t max_thr
                         .computation_seconds = computation_seconds},
             .cancelled = true};
     }
-}
-
-auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalculationResult {
-    auto assessment = assess(request);
-    if (!assessment.executable() &&
-        (request.method_id.has_value() || request.parameter_set_id.has_value() ||
-         request.execution_selection.kind() != ExecutionSelectionKind::automatic)) {
-        throw std::invalid_argument{"requested calculation selection has no executable plan"};
-    }
-    return calculate(std::move(assessment), request.resource_policy.max_threads, request.observer);
 }
 
 } // namespace chargefw::calculation

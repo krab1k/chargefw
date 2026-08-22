@@ -9,11 +9,11 @@
 
 #include <memory>
 #include <optional>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace chargefw::calculation {
-
-struct ApplicationCalculationRequest;
 
 // Non-owning concrete execution choice produced from an applicability result. The selected
 // candidate and its classifications remain owned by the ApplicabilityResult.
@@ -23,13 +23,27 @@ struct ExecutionPlan {
     std::vector<methods::ExecutionIssue> issues;
 };
 
+// Owns application assessment inputs so adapters and bindings do not need to manage native method
+// pointers, parameter spans, or prepared-feature lifetimes.
+struct ApplicationAssessmentRequest {
+    core::MoleculeCollection molecules;
+    std::vector<parameters::ParameterSet> parameter_sets;
+    std::optional<std::string> method_id;
+    std::optional<std::string> parameter_set_id;
+    std::unordered_map<std::string, methods::MethodOptions> method_options;
+    parameters::ClassificationOptions classification_options{};
+    ExecutionSelection execution_selection{};
+    ResourcePolicy resource_policy{};
+};
+
 // Owns prepared application inputs and their applicability/execution-plan assessment. The contained
 // candidates reference methods from the registry and the owned parameter sets below. Move this
 // result into calculate() to execute without repeating preparation or classification.
 class ApplicationAssessmentResult {
   public:
     ApplicationAssessmentResult(core::MoleculeCollection molecules,
-                                std::vector<parameters::ParameterSet> parameter_sets);
+                                std::vector<parameters::ParameterSet> parameter_sets,
+                                bool requires_executable_plan);
     ApplicationAssessmentResult(const ApplicationAssessmentResult&) = delete;
     auto operator=(const ApplicationAssessmentResult&) -> ApplicationAssessmentResult& = delete;
     ApplicationAssessmentResult(ApplicationAssessmentResult&&) noexcept = default;
@@ -51,7 +65,12 @@ class ApplicationAssessmentResult {
         return execution_policy.has_value();
     }
 
+    [[nodiscard]] auto requires_executable_plan() const noexcept -> bool {
+        return requires_executable_plan_;
+    }
+
   private:
+    bool requires_executable_plan_ = false;
     std::unique_ptr<core::MoleculeCollection> molecules_;
     std::unique_ptr<features::PreparedMoleculeCollection> prepared_molecules_;
 };
@@ -71,7 +90,7 @@ class ApplicationAssessmentResult {
 // Resolves registered methods, applies classification policy, and selects a concrete execution plan
 // without running a charge calculation. Explicit unavailable method or parameter-set IDs are
 // errors; an unavailable explicit execution plan is reported as no plan.
-[[nodiscard]] auto assess(const ApplicationCalculationRequest& request)
+[[nodiscard]] auto assess(const ApplicationAssessmentRequest& request)
     -> ApplicationAssessmentResult;
 
 } // namespace chargefw::calculation

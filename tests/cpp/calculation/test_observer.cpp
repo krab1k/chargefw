@@ -19,20 +19,20 @@ namespace methods = chargefw::methods;
 
 namespace {
 
-// Thread-safe recording observer. Captures progress events and warnings for later assertions.
+[[nodiscard]] auto calculate_application(calculation::ApplicationAssessmentRequest request,
+                                         const calculation::CalculationObserver* observer = nullptr)
+    -> calculation::ApplicationExecutionResult {
+    const auto max_threads = request.resource_policy.max_threads;
+    auto assessment = calculation::assess(request);
+    return calculation::calculate(std::move(assessment), max_threads, observer);
+}
+
+// Thread-safe recording observer. Captures progress events for later assertions.
 class RecordingObserver : public calculation::CalculationObserver {
   public:
     void on_progress(const calculation::CalculationProgress& progress) const override {
         const std::scoped_lock lock{mutex_};
         events_.push_back(progress);
-        if (progress.phase == calculation::CalculationPhase::computation_started) {
-            warnings_precede_computation_ = !warnings_.empty();
-        }
-    }
-
-    void on_execution_warning(const methods::ExecutionIssue& warning) const override {
-        const std::scoped_lock lock{mutex_};
-        warnings_.push_back(warning);
     }
 
     [[nodiscard]] auto events() const -> std::vector<calculation::CalculationProgress> {
@@ -40,21 +40,9 @@ class RecordingObserver : public calculation::CalculationObserver {
         return events_;
     }
 
-    [[nodiscard]] auto warnings() const -> std::vector<methods::ExecutionIssue> {
-        const std::scoped_lock lock{mutex_};
-        return warnings_;
-    }
-
-    [[nodiscard]] auto warnings_precede_computation() const -> bool {
-        const std::scoped_lock lock{mutex_};
-        return warnings_precede_computation_;
-    }
-
   private:
     mutable std::mutex mutex_;
     mutable std::vector<calculation::CalculationProgress> events_;
-    mutable std::vector<methods::ExecutionIssue> warnings_;
-    mutable bool warnings_precede_computation_ = false;
 };
 
 // Observer that cancels after the first target_started event.
@@ -79,7 +67,7 @@ class CancelAfterFirstTarget : public calculation::CalculationObserver {
 auto main() -> int {
     // --- Test 1: null observer produces the same result as before ---
     {
-        const auto result = calculation::calculate(calculation::ApplicationCalculationRequest{
+        const auto result = calculate_application(calculation::ApplicationAssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "formal",
@@ -94,13 +82,14 @@ auto main() -> int {
     // --- Test 2: computation and target phases are emitted in order ---
     {
         const auto observer = RecordingObserver{};
-        const auto result = calculation::calculate(calculation::ApplicationCalculationRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .method_id = "formal",
-            .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-            .observer = &observer});
+        const auto result = calculate_application(
+            calculation::ApplicationAssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+                .parameter_sets = {},
+                .method_id = "formal",
+                .execution_selection =
+                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
+            &observer);
 
         assert(result.calculated());
         assert(!result.cancelled);
@@ -147,54 +136,51 @@ auto main() -> int {
     // --- Test 3: assessment does not emit calculation observer events ---
     {
         const auto observer = RecordingObserver{};
-        const auto assessment = calculation::assess(calculation::ApplicationCalculationRequest{
+        const auto assessment = calculation::assess(calculation::ApplicationAssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "formal",
             .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-            .observer = &observer});
+                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
         assert(assessment.executable());
         assert(observer.events().empty());
-        assert(observer.warnings().empty());
     }
 
-    // --- Test 4: threshold warnings are reported before computation ---
+    // --- Test 4: threshold warnings remain assessment data before computation ---
     {
         const auto observer = RecordingObserver{};
-        const auto result = calculation::calculate(calculation::ApplicationCalculationRequest{
+        auto assessment = calculation::assess(calculation::ApplicationAssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "mgc",
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-            .resource_policy = {.full_atom_threshold = 2},
-            .observer = &observer});
+            .resource_policy = {.full_atom_threshold = 2}});
 
+        assert(assessment.execution_issues.size() == 1);
+        assert(assessment.execution_issues[0].kind ==
+               methods::ExecutionIssueKind::resource_threshold_exceeded);
+        assert(observer.events().empty());
+
+        const auto result = calculation::calculate(std::move(assessment), 1, &observer);
         assert(result.calculated());
         assert(!result.cancelled);
-        assert(result.execution_issues.size() == 1);
-        assert(result.execution_issues[0].kind ==
-               methods::ExecutionIssueKind::resource_threshold_exceeded);
-
-        const auto warnings = observer.warnings();
-        assert(warnings.size() == 1);
-        assert(warnings[0].kind == methods::ExecutionIssueKind::resource_threshold_exceeded);
-        assert(observer.warnings_precede_computation());
+        assert(observer.events()[0].phase == calculation::CalculationPhase::computation_started);
     }
 
     // --- Test 5: cancellation produces cancelled result ---
     {
         const auto observer = CancelAfterFirstTarget{};
-        const auto result = calculation::calculate(calculation::ApplicationCalculationRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .method_id = "formal",
-            .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-            .resource_policy = {.max_threads = 1},
-            .observer = &observer});
+        const auto result = calculate_application(
+            calculation::ApplicationAssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+                .parameter_sets = {},
+                .method_id = "formal",
+                .execution_selection =
+                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
+                .resource_policy = {.max_threads = 1}},
+            &observer);
 
         assert(result.cancelled);
         assert(!result.calculated());
@@ -203,14 +189,15 @@ auto main() -> int {
     // --- Test 6: cutoff execution emits fragment progress ---
     {
         const auto observer = RecordingObserver{};
-        const auto result = calculation::calculate(calculation::ApplicationCalculationRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
-                                                calculation::minimum_reduced_radius},
-            .resource_policy = {.max_threads = 1},
-            .observer = &observer});
+        const auto result = calculate_application(
+            calculation::ApplicationAssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+                .parameter_sets = {},
+                .execution_selection =
+                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
+                                                    calculation::minimum_reduced_radius},
+                .resource_policy = {.max_threads = 1}},
+            &observer);
 
         assert(result.calculated());
         assert(!result.cancelled);
@@ -233,14 +220,15 @@ auto main() -> int {
     // --- Test 7: cover execution emits pivot-selection and fragment progress ---
     {
         const auto observer = RecordingObserver{};
-        const auto result = calculation::calculate(calculation::ApplicationCalculationRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cover,
-                                                calculation::minimum_reduced_radius},
-            .resource_policy = {.max_threads = 1},
-            .observer = &observer});
+        const auto result = calculate_application(
+            calculation::ApplicationAssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+                .parameter_sets = {},
+                .execution_selection =
+                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cover,
+                                                    calculation::minimum_reduced_radius},
+                .resource_policy = {.max_threads = 1}},
+            &observer);
 
         assert(result.calculated());
         assert(!result.cancelled);
@@ -257,15 +245,16 @@ auto main() -> int {
     // --- Test 8: multi-molecule target events carry correct molecule_index ---
     {
         const auto observer = RecordingObserver{};
-        const auto result = calculation::calculate(calculation::ApplicationCalculationRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water(),
-                                                              chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .method_id = "formal",
-            .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-            .resource_policy = {.max_threads = 1},
-            .observer = &observer});
+        const auto result = calculate_application(
+            calculation::ApplicationAssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water(),
+                                                                  chargefw::test::make_water()}},
+                .parameter_sets = {},
+                .method_id = "formal",
+                .execution_selection =
+                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
+                .resource_policy = {.max_threads = 1}},
+            &observer);
 
         assert(result.calculated());
         assert(!result.cancelled);

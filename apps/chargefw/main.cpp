@@ -7,15 +7,9 @@
 #include <print>
 #include <span>
 #include <stdexcept>
+#include <utility>
 
 namespace {
-
-class WarningPrinter final : public chargefw::calculation::CalculationObserver {
-  public:
-    void on_execution_warning(const chargefw::methods::ExecutionIssue& warning) const override {
-        std::println(std::cerr, "Warning: {}", warning.message);
-    }
-};
 
 auto run(std::span<char*> arguments) -> int {
     CLI::App app{"ChargeFW molecular charge calculation and inspection."};
@@ -73,10 +67,13 @@ auto run(std::span<char*> arguments) -> int {
     const auto imported = chargefw::cli::import_input(calculate_input);
     run.metrics.parsing_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - parsing_started}.count();
-    auto request = chargefw::cli::make_request(imported, calculate_selection);
-    const auto warning_printer = WarningPrinter{};
-    request.observer = &warning_printer;
-    const auto result = chargefw::calculation::calculate(request);
+    const auto request = chargefw::cli::make_request(imported, calculate_selection);
+    auto assessment = chargefw::calculation::assess(request);
+    for (const auto& warning : assessment.execution_issues) {
+        std::println(std::cerr, "Warning: {}", warning.message);
+    }
+    const auto result = chargefw::calculation::calculate(std::move(assessment),
+                                                         request.resource_policy.max_threads);
     run.metrics.applicability_seconds = result.metrics.applicability_seconds;
     run.metrics.computation_seconds = result.metrics.computation_seconds;
     return chargefw::cli::write_calculation_outputs(output_directory, calculate_input.path,

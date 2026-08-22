@@ -21,8 +21,8 @@ namespace chargefw::cli {
 namespace {
 
 [[nodiscard]] auto result_document(const ImportedCollection& imported,
-                                   const calculation::ApplicationCalculationRequest& request,
-                                   const calculation::ApplicationCalculationResult& result,
+                                   const calculation::ApplicationAssessmentRequest& request,
+                                   const calculation::ApplicationExecutionResult& result,
                                    const adapters::ExecutionMetrics& metrics)
     -> adapters::ChargeResultDocument;
 
@@ -122,8 +122,8 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
 }
 
 [[nodiscard]] auto result_document(const ImportedCollection& imported,
-                                   const calculation::ApplicationCalculationRequest& request,
-                                   const calculation::ApplicationCalculationResult& result,
+                                   const calculation::ApplicationAssessmentRequest& request,
+                                   const calculation::ApplicationExecutionResult& result,
                                    const adapters::ExecutionMetrics& metrics)
     -> adapters::ChargeResultDocument {
     auto warnings = std::vector<std::string>{};
@@ -218,8 +218,8 @@ auto peak_resident_memory_mb() -> double {
 
 auto write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
                                const ImportedCollection& imported,
-                               const calculation::ApplicationCalculationRequest& request,
-                               const calculation::ApplicationCalculationResult& result,
+                               const calculation::ApplicationAssessmentRequest& request,
+                               const calculation::ApplicationExecutionResult& result,
                                CalculationRun& run) -> int {
     run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
     if (!result.calculated()) {
