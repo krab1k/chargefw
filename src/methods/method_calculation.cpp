@@ -10,6 +10,7 @@
 
 #include "calculation/parallel_for.h"
 
+#include <chrono>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -89,7 +90,8 @@ auto validate_calculated_charges(const Method& method, const features::PreparedM
 
 auto calculate_charges(const ApplicableMethod& selected,
                        const features::PreparedMoleculeCollection& prepared_collection,
-                       const std::size_t max_threads) -> charges::ChargeSet {
+                       const std::size_t max_threads,
+                       const calculation::CalculationObserver* observer) -> charges::ChargeSet {
     detail::validate_selected_candidate(selected, prepared_collection);
     detail::validate_coordinate_targets(selected, prepared_collection);
 
@@ -123,11 +125,30 @@ auto calculate_charges(const ApplicableMethod& selected,
         }
     }
 
+    const auto computation_start = std::chrono::steady_clock::now();
+
     std::vector<std::optional<charges::ChargeAssignment>> calculated(targets.size());
     ::chargefw::calculation::detail::parallel_for_indexed(
         targets.size(), max_threads, [&](const std::size_t target_index) {
             const auto& target = targets[target_index];
             const auto& prepared_molecule = prepared_collection[target.molecule_index];
+
+            const ::chargefw::calculation::detail::ProgressContext target_ctx{
+                .observer = observer,
+                .mode = ::chargefw::calculation::ExecutionMode::full,
+                .method_id = selected.method->id(),
+                .target_index = target_index,
+                .target_count = targets.size(),
+                .molecule_index = target.molecule_index,
+                .conformer_index = target.conformer_index,
+                .computation_start = computation_start,
+            };
+
+            ::chargefw::calculation::detail::check_cancellation(observer);
+            ::chargefw::calculation::detail::emit_target_event(
+                observer, ::chargefw::calculation::CalculationPhase::target_started, target_ctx);
+            ::chargefw::calculation::detail::check_cancellation(observer);
+
             auto atomic_charges =
                 selected.uses_parameters()
                     ? calculate_with_parameters(selected, prepared_molecule,
@@ -140,6 +161,9 @@ auto calculate_charges(const ApplicableMethod& selected,
                 .target = charges::ChargeTarget{.molecule_index = target.molecule_index,
                                                 .conformer_index = target.conformer_index},
                 .charges = std::move(atomic_charges)};
+
+            ::chargefw::calculation::detail::emit_target_event(
+                observer, ::chargefw::calculation::CalculationPhase::target_finished, target_ctx);
         });
 
     std::vector<charges::ChargeAssignment> assignments;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chargefw/calculation/execution_policy.h>
+#include <chargefw/calculation/observer.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
@@ -24,6 +25,8 @@ struct CalculationRequest {
     ExecutionPolicy execution_policy{};
     // Zero delegates the worker count to the oneTBB runtime.
     std::size_t max_threads = 0;
+    // Optional, non-owning observer for progress and cancellation. Nullptr means no observation.
+    const CalculationObserver* observer = nullptr;
 };
 
 struct CalculationResult {
@@ -51,6 +54,7 @@ struct ApplicationCalculationResult {
     std::vector<methods::ExecutionIssue> execution_issues;
     std::optional<methods::MethodOptions> effective_method_options;
     CalculationMetrics metrics;
+    bool cancelled = false;
 
     [[nodiscard]] auto calculated() const noexcept -> bool {
         return charges.has_value();
@@ -83,6 +87,8 @@ struct ApplicationCalculationRequest {
     parameters::ClassificationOptions classification_options{};
     ExecutionSelection execution_selection{};
     ResourcePolicy resource_policy{};
+    // Optional, non-owning observer for progress and cancellation. Nullptr means no observation.
+    const CalculationObserver* observer = nullptr;
 };
 
 // Selects the applicable candidate with the highest method priority, then the highest parameter-set

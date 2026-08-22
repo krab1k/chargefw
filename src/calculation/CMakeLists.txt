@@ -15,4 +15,5 @@ target_sources(chargefw_core
          FILES
          ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/calculation.h
          ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/execution_policy.h
+         ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/observer.h
 )

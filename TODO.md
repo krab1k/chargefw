@@ -10,8 +10,6 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
 
-- [ ] Emit explicit-full threshold warnings before fragment/solver allocation as well as retaining them
-  in result provenance.
 - [ ] Record reduced-execution diagnostics in result provenance: per-target fragment or pivot counts,
   retained/owned atom counts, and cover overlap reconciliation, together with the fixed 3 Å retained
   interior and the resulting boundary buffer. Mode, radius, and correction are already recorded.

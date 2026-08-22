@@ -9,6 +9,7 @@
 #include <chargefw/methods/method.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -28,8 +29,8 @@ calculate_target(const methods::ApplicableMethod& selected,
                  const features::PreparedMolecule& source,
                  const parameters::ParameterClassification* source_classification,
                  const std::size_t conformer_index, const double radius,
-                 const ChargeCorrectionPolicy charge_correction, const std::size_t max_threads)
-    -> charges::AtomicCharges {
+                 const ChargeCorrectionPolicy charge_correction, const std::size_t max_threads,
+                 const detail::ProgressContext& progress_ctx) -> charges::AtomicCharges {
     const auto& source_molecule = source.molecule();
     auto values = std::vector<double>(source_molecule.atom_count());
     const auto requirements = selected.method->requirements();
@@ -71,8 +72,8 @@ calculate_target(const methods::ApplicableMethod& selected,
         throw std::logic_error{"cover calculation left a source atom without an owner"};
     }
 
-    ::chargefw::calculation::detail::parallel_for_indexed(
-        work_items.size(), max_threads, [&](const std::size_t work_item_index) {
+    ::chargefw::calculation::detail::progress_for_indexed(
+        work_items.size(), max_threads, progress_ctx, [&](const std::size_t work_item_index) {
             const auto pivot_source_atom_index =
                 work_items[work_item_index].pivot_source_atom_index;
 
@@ -115,8 +116,8 @@ calculate_target(const methods::ApplicableMethod& selected,
 
 auto calculate_cover_charges(const methods::ApplicableMethod& selected,
                              const features::PreparedMoleculeCollection& molecules,
-                             const ExecutionPolicy& policy, const std::size_t max_threads)
-    -> charges::ChargeSet {
+                             const ExecutionPolicy& policy, const std::size_t max_threads,
+                             const CalculationObserver* observer) -> charges::ChargeSet {
     methods::detail::validate_selected_candidate(selected, molecules);
     methods::detail::validate_coordinate_targets(selected, molecules);
     detail::validate_reduced_request(selected, policy, ExecutionMode::cover);
@@ -139,6 +140,8 @@ auto calculate_cover_charges(const methods::ApplicableMethod& selected,
         }
     }
 
+    const auto computation_start = std::chrono::steady_clock::now();
+
     std::vector<std::optional<charges::ChargeAssignment>> calculated(targets.size());
     const auto target_threads = targets.size() > 1 ? max_threads : 1;
     ::chargefw::calculation::detail::parallel_for_indexed(
@@ -149,12 +152,30 @@ auto calculate_cover_charges(const methods::ApplicableMethod& selected,
                 selected.uses_parameters()
                     ? std::addressof(selected.classifications[target.molecule_index])
                     : nullptr;
+
+            const detail::ProgressContext target_ctx{
+                .observer = observer,
+                .mode = ExecutionMode::cover,
+                .method_id = selected.method->id(),
+                .target_index = target_index,
+                .target_count = targets.size(),
+                .molecule_index = target.molecule_index,
+                .conformer_index = target.conformer_index,
+                .computation_start = computation_start,
+            };
+
+            detail::check_cancellation(observer);
+            detail::emit_target_event(observer, CalculationPhase::target_started, target_ctx);
+            detail::check_cancellation(observer);
+
             calculated[target_index] = charges::ChargeAssignment{
                 .target = charges::ChargeTarget{.molecule_index = target.molecule_index,
                                                 .conformer_index = target.conformer_index},
                 .charges = calculate_target(
                     selected, molecule, classification, target.conformer_index, *radius,
-                    policy.charge_correction(), target_threads == 1 ? max_threads : 1)};
+                    policy.charge_correction(), target_threads == 1 ? max_threads : 1, target_ctx)};
+
+            detail::emit_target_event(observer, CalculationPhase::target_finished, target_ctx);
         });
 
     std::vector<charges::ChargeAssignment> assignments;

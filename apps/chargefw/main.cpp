@@ -10,6 +10,13 @@
 
 namespace {
 
+class WarningPrinter final : public chargefw::calculation::CalculationObserver {
+  public:
+    void on_execution_warning(const chargefw::methods::ExecutionIssue& warning) const override {
+        std::println(std::cerr, "Warning: {}", warning.message);
+    }
+};
+
 auto run(std::span<char*> arguments) -> int {
     CLI::App app{"ChargeFW molecular charge calculation and inspection."};
     chargefw::cli::InputArguments calculate_input;
@@ -66,7 +73,9 @@ auto run(std::span<char*> arguments) -> int {
     const auto imported = chargefw::cli::import_input(calculate_input);
     run.metrics.parsing_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - parsing_started}.count();
-    const auto request = chargefw::cli::make_request(imported, calculate_selection);
+    auto request = chargefw::cli::make_request(imported, calculate_selection);
+    const auto warning_printer = WarningPrinter{};
+    request.observer = &warning_printer;
     const auto result = chargefw::calculation::calculate(request);
     run.metrics.applicability_seconds = result.metrics.applicability_seconds;
     run.metrics.computation_seconds = result.metrics.computation_seconds;

@@ -138,6 +138,41 @@ Scientific applicability is independent of the resource warning. Missing coordin
 formal charges, element properties, required parameter coverage, or other method prerequisites remain
 hard failures.
 
+### Calculation observability
+
+The calculation facade and executors report progress and support cooperative cancellation through an
+optional, per-request `CalculationObserver` (`include/chargefw/calculation/observer.h`). The observer
+is non-owning: callers retain the object and pass a pointer through `CalculationRequest` or
+`ApplicationCalculationRequest`. A null observer (the default) is zero-overhead — the executors take
+the existing `parallel_for_indexed` fast path without any progress checks.
+
+Events are structured as `CalculationProgress` snapshots carrying the execution mode, method ID,
+target and fragment index/count, molecule/conformer identity, and elapsed seconds. Non-owning views
+in the snapshot are valid only during the callback.
+
+Three event tiers exist:
+
+- **Computation phases** — `computation_started/finished`. Emitted once each by `calculate()` and
+  carry the effective mode and method ID. Assessment is not observed.
+- **Per-target events** — `target_started/finished` for each molecule+conformer pair. Emitted by the
+  executors with correct per-target `molecule_index` and `conformer_index`.
+- **Fragment events** — `fragment_finished` for cutoff (one per center-atom fragment) and cover (one
+  per pivot fragment). Throttled to one event per 100 ms via an atomic CAS, with a final event
+  guaranteeing 100% completion.
+
+Selected-plan warnings, including explicit-full execution above the resource threshold, are delivered
+to `CalculationObserver::on_execution_warning()` after assessment and before fragment/solver
+allocation. The issues are also retained in `ApplicationCalculationResult::execution_issues` for
+result provenance.
+
+Cooperative cancellation: `cancelled()` is polled at each target and fragment iteration boundary,
+including immediately after `target_started`. When it returns true, `CalculationCancelled` is thrown
+and propagated through oneTBB to the application facade, which returns
+`ApplicationCalculationResult{.cancelled = true}` with no charges. Low-level `calculate()` propagates
+the exception. The observer contract requires its callbacks and `cancelled` to be thread-safe and
+must not throw; the observer is purely observational and must not mutate method options, parameters,
+execution policy, geometry, or selection.
+
 ### Implemented reduced methods
 
 Cutoff and explicit serial cover are declared for:
@@ -274,9 +309,7 @@ Current limitations:
   output directory;
 - import and calculation exceptions are not represented as owned record-scoped result entries;
 - exit statuses do not distinguish invalid requests from calculation failures;
-- SDF, MOL2, and mmCIF do not yet carry the complete JSON provenance;
-- explicit-full threshold warnings are retained in the result but are not emitted before solver
-  allocation.
+- SDF, MOL2, and mmCIF do not yet carry the complete JSON provenance.
 
 ## Build, installation, and distribution
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chargefw/calculation/execution_policy.h>
+#include <chargefw/calculation/observer.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method_applicability.h>
@@ -12,6 +13,8 @@ namespace chargefw::calculation {
 [[nodiscard]] auto calculate_cover_charges(const methods::ApplicableMethod& selected,
                                            const features::PreparedMoleculeCollection& molecules,
                                            const ExecutionPolicy& policy,
-                                           std::size_t max_threads = 0) -> charges::ChargeSet;
+                                           std::size_t max_threads = 0,
+                                           const CalculationObserver* observer = nullptr)
+    -> charges::ChargeSet;
 
 } // namespace chargefw::calculation
