@@ -9,10 +9,10 @@
 
 namespace chargefw::methods {
 
-[[nodiscard]] auto
-calculate_charges(const ApplicableMethod& selected,
-                  const features::PreparedMoleculeCollection& prepared_collection,
-                  std::size_t max_threads = 0,
-                  const calculation::CalculationObserver* observer = nullptr) -> charges::ChargeSet;
+[[nodiscard]] auto calculate_charges(
+    const ApplicableMethod& selected,
+    const features::PreparedMoleculeCollection& prepared_collection, std::size_t max_threads = 0,
+    const calculation::CalculationObserver& observer = calculation::default_calculation_observer())
+    -> charges::ChargeSet;
 
 } // namespace chargefw::methods

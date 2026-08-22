@@ -141,11 +141,11 @@ hard failures.
 
 ### Calculation observability
 
-The calculation facade and executors report progress and support cooperative cancellation through an
-optional, per-request `CalculationObserver` (`include/chargefw/calculation/observer.h`). The observer
-is non-owning: callers retain the object and pass a pointer through `CalculationRequest` or
-`AssessmentRequest`. A null observer (the default) is zero-overhead — the executors take
-the existing `parallel_for_indexed` fast path without any progress checks.
+Calculations report progress and support cooperative cancellation through a per-request
+`CalculationObserver` (`include/chargefw/calculation/observer.h`). The observer is non-owning:
+callers retain the object and pass a reference through `CalculationRequest` or `calculate()`. Calls
+that do not need progress use the stateless `default_calculation_observer()`; execution always uses
+the same observed loop.
 
 Events are structured as `CalculationProgress` snapshots carrying the execution mode, method ID,
 target and fragment index/count, molecule/conformer identity, and elapsed seconds. Non-owning views

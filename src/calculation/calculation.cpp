@@ -32,7 +32,7 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
 }
 
 auto calculate(AssessmentResult assessment, const std::size_t max_threads,
-               const CalculationObserver* observer) -> ExecutionResult {
+               const CalculationObserver& observer) -> ExecutionResult {
     if (!assessment.executable()) {
         if (assessment.requires_executable_plan()) {
             throw std::invalid_argument{"requested calculation selection has no executable plan"};
@@ -55,13 +55,11 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
     const auto effective_method_options = assessment.selected->method_options;
 
     const auto computation_started = std::chrono::steady_clock::now();
-    if (observer != nullptr) {
-        observer->on_progress(CalculationProgress{
-            .phase = CalculationPhase::computation_started,
-            .mode = mode,
-            .method_id = method_id,
-        });
-    }
+    observer.on_progress(CalculationProgress{
+        .phase = CalculationPhase::computation_started,
+        .mode = mode,
+        .method_id = method_id,
+    });
 
     try {
         auto result = calculate(CalculationRequest{.molecules = assessment.prepared_molecules(),
@@ -72,14 +70,12 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
         const auto computation_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
                 .count();
-        if (observer != nullptr) {
-            observer->on_progress(CalculationProgress{
-                .phase = CalculationPhase::computation_finished,
-                .mode = mode,
-                .method_id = method_id,
-                .elapsed_seconds = computation_seconds,
-            });
-        }
+        observer.on_progress(CalculationProgress{
+            .phase = CalculationPhase::computation_finished,
+            .mode = mode,
+            .method_id = method_id,
+            .elapsed_seconds = computation_seconds,
+        });
         return ExecutionResult{
             .charges = std::move(result.charges),
             .applicability = std::move(assessment.applicability),
@@ -92,14 +88,12 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
         const auto computation_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
                 .count();
-        if (observer != nullptr) {
-            observer->on_progress(CalculationProgress{
-                .phase = CalculationPhase::computation_finished,
-                .mode = mode,
-                .method_id = method_id,
-                .elapsed_seconds = computation_seconds,
-            });
-        }
+        observer.on_progress(CalculationProgress{
+            .phase = CalculationPhase::computation_finished,
+            .mode = mode,
+            .method_id = method_id,
+            .elapsed_seconds = computation_seconds,
+        });
         return ExecutionResult{
             .charges = std::nullopt,
             .applicability = std::move(assessment.applicability),

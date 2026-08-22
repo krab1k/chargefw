@@ -91,7 +91,7 @@ auto validate_calculated_charges(const Method& method, const features::PreparedM
 auto calculate_charges(const ApplicableMethod& selected,
                        const features::PreparedMoleculeCollection& prepared_collection,
                        const std::size_t max_threads,
-                       const calculation::CalculationObserver* observer) -> charges::ChargeSet {
+                       const calculation::CalculationObserver& observer) -> charges::ChargeSet {
     detail::validate_selected_candidate(selected, prepared_collection);
     detail::validate_coordinate_targets(selected, prepared_collection);
 

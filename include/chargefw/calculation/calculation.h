@@ -19,8 +19,9 @@ struct CalculationRequest {
     ExecutionPolicy execution_policy{};
     // Zero delegates the worker count to the oneTBB runtime.
     std::size_t max_threads = 0;
-    // Optional, non-owning observer for progress and cancellation. Nullptr means no observation.
-    const CalculationObserver* observer = nullptr;
+    // Non-owning observer for progress and cancellation.
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+    const CalculationObserver& observer = default_calculation_observer();
 };
 
 struct CalculationResult {
@@ -54,6 +55,7 @@ struct ExecutionResult {
 // Executes a plan returned by assess() without repeating preparation or applicability assessment.
 // The assessment is consumed because the result owns its classifications and parameter data.
 [[nodiscard]] auto calculate(AssessmentResult assessment, std::size_t max_threads = 0,
-                             const CalculationObserver* observer = nullptr) -> ExecutionResult;
+                             const CalculationObserver& observer = default_calculation_observer())
+    -> ExecutionResult;
 
 } // namespace chargefw::calculation

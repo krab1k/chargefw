@@ -19,8 +19,9 @@ namespace methods = chargefw::methods;
 
 namespace {
 
-[[nodiscard]] auto calculate_application(const calculation::AssessmentRequest& request,
-                                         const calculation::CalculationObserver* observer = nullptr)
+[[nodiscard]] auto calculate_application(
+    const calculation::AssessmentRequest& request,
+    const calculation::CalculationObserver& observer = calculation::default_calculation_observer())
     -> calculation::ExecutionResult {
     const auto max_threads = request.resource_policy.max_threads;
     auto assessment = calculation::assess(request);
@@ -89,7 +90,7 @@ auto main() -> int {
                 .method_id = "formal",
                 .execution_selection =
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
-            &observer);
+            observer);
 
         assert(result.calculated());
         assert(!result.cancelled);
@@ -163,7 +164,7 @@ auto main() -> int {
                methods::ExecutionIssueKind::resource_threshold_exceeded);
         assert(observer.events().empty());
 
-        const auto result = calculation::calculate(std::move(assessment), 1, &observer);
+        const auto result = calculation::calculate(std::move(assessment), 1, observer);
         assert(result.calculated());
         assert(!result.cancelled);
         assert(observer.events()[0].phase == calculation::CalculationPhase::computation_started);
@@ -180,7 +181,7 @@ auto main() -> int {
                 .execution_selection =
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
                 .resource_policy = {.max_threads = 1}},
-            &observer);
+            observer);
 
         assert(result.cancelled);
         assert(!result.calculated());
@@ -197,7 +198,7 @@ auto main() -> int {
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
                                                     calculation::minimum_reduced_radius},
                 .resource_policy = {.max_threads = 1}},
-            &observer);
+            observer);
 
         assert(result.calculated());
         assert(!result.cancelled);
@@ -228,7 +229,7 @@ auto main() -> int {
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cover,
                                                     calculation::minimum_reduced_radius},
                 .resource_policy = {.max_threads = 1}},
-            &observer);
+            observer);
 
         assert(result.calculated());
         assert(!result.cancelled);
@@ -254,7 +255,7 @@ auto main() -> int {
                 .execution_selection =
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
                 .resource_policy = {.max_threads = 1}},
-            &observer);
+            observer);
 
         assert(result.calculated());
         assert(!result.cancelled);

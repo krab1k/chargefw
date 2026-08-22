@@ -53,7 +53,8 @@ auto parallel_for_indexed(const std::size_t count, const std::size_t max_threads
 // Context carried through a parallel loop for progress emission. observer, mode, and method_id are
 // shared; target_index/molecule_index/conformer_index identify the enclosing target.
 struct ProgressContext {
-    const CalculationObserver* observer = nullptr;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+    const CalculationObserver& observer;
     ExecutionMode mode{};
     std::string_view method_id;
     std::size_t target_index{};
@@ -65,20 +66,17 @@ struct ProgressContext {
 
 // Throws CalculationCancelled if the observer requests termination. Called by executors at
 // cancellation check points (start of each target iteration).
-inline auto check_cancellation(const CalculationObserver* observer) -> void {
-    if (observer != nullptr && observer->cancelled()) {
+inline auto check_cancellation(const CalculationObserver& observer) -> void {
+    if (observer.cancelled()) {
         throw CalculationCancelled{};
     }
 }
 
 // Emits a single target-tier progress event. Called by executors at the start and end of each
 // target iteration, where the per-target molecule_index and conformer_index are known.
-inline auto emit_target_event(const CalculationObserver* observer, const CalculationPhase phase,
+inline auto emit_target_event(const CalculationObserver& observer, const CalculationPhase phase,
                               const ProgressContext& ctx) -> void {
-    if (observer == nullptr) {
-        return;
-    }
-    observer->on_progress(CalculationProgress{
+    observer.on_progress(CalculationProgress{
         .phase = phase,
         .mode = ctx.mode,
         .method_id = ctx.method_id,
@@ -95,8 +93,7 @@ inline auto emit_target_event(const CalculationObserver* observer, const Calcula
 // Minimum interval between fragment-tier progress events, in nanoseconds.
 inline constexpr std::int64_t fragment_throttle_ns = 100'000'000; // 100 ms
 
-// Fragment-tier loop with throttled progress emission and cooperative cancellation. When observer
-// is null, delegates directly to parallel_for_indexed with zero overhead. Otherwise checks
+// Fragment-tier loop with throttled progress emission and cooperative cancellation. Checks
 // cancellation at the start of each iteration and emits a throttled fragment_finished event
 // carrying the completed count, then a final event after the loop so the observer sees 100%
 // completion.
@@ -106,12 +103,12 @@ inline constexpr std::int64_t fragment_throttle_ns = 100'000'000; // 100 ms
 template <typename Function>
 auto progress_for_indexed(const std::size_t count, const std::size_t max_threads,
                           const ProgressContext& ctx, Function&& function) -> void {
-    if (ctx.observer == nullptr || count == 0) {
+    if (count == 0) {
         parallel_for_indexed(count, max_threads, std::forward<Function>(function));
         return;
     }
 
-    const auto* observer = ctx.observer;
+    const auto& observer = ctx.observer;
 
     const auto elapsed = [&ctx]() -> double {
         return std::chrono::duration<double>{std::chrono::steady_clock::now() -
@@ -123,7 +120,7 @@ auto progress_for_indexed(const std::size_t count, const std::size_t max_threads
     std::atomic<std::size_t> completed{0};
 
     auto wrapped = [&](const std::size_t index) {
-        if (observer->cancelled()) {
+        if (observer.cancelled()) {
             throw CalculationCancelled{};
         }
         function(index);
@@ -135,7 +132,7 @@ auto progress_for_indexed(const std::size_t count, const std::size_t max_threads
         auto last = last_emit_ns.load(std::memory_order_relaxed);
         if (now_ns - last >= fragment_throttle_ns) {
             if (last_emit_ns.compare_exchange_strong(last, now_ns, std::memory_order_relaxed)) {
-                observer->on_progress(CalculationProgress{
+                observer.on_progress(CalculationProgress{
                     .phase = CalculationPhase::fragment_finished,
                     .mode = ctx.mode,
                     .method_id = ctx.method_id,
@@ -153,7 +150,7 @@ auto progress_for_indexed(const std::size_t count, const std::size_t max_threads
     parallel_for_indexed(count, max_threads, wrapped);
 
     // Final event so the observer sees 100% completion.
-    observer->on_progress(CalculationProgress{
+    observer.on_progress(CalculationProgress{
         .phase = CalculationPhase::fragment_finished,
         .mode = ctx.mode,
         .method_id = ctx.method_id,

@@ -117,7 +117,7 @@ calculate_target(const methods::ApplicableMethod& selected,
 auto calculate_cover_charges(const methods::ApplicableMethod& selected,
                              const features::PreparedMoleculeCollection& molecules,
                              const ExecutionPolicy& policy, const std::size_t max_threads,
-                             const CalculationObserver* observer) -> charges::ChargeSet {
+                             const CalculationObserver& observer) -> charges::ChargeSet {
     methods::detail::validate_selected_candidate(selected, molecules);
     methods::detail::validate_coordinate_targets(selected, molecules);
     detail::validate_reduced_request(selected, policy, ExecutionMode::cover);

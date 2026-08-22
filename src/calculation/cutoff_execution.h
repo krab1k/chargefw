@@ -10,11 +10,11 @@
 
 namespace chargefw::calculation {
 
-[[nodiscard]] auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
-                                            const features::PreparedMoleculeCollection& molecules,
-                                            const ExecutionPolicy& policy,
-                                            std::size_t max_threads = 0,
-                                            const CalculationObserver* observer = nullptr)
+[[nodiscard]] auto
+calculate_cutoff_charges(const methods::ApplicableMethod& selected,
+                         const features::PreparedMoleculeCollection& molecules,
+                         const ExecutionPolicy& policy, std::size_t max_threads = 0,
+                         const CalculationObserver& observer = default_calculation_observer())
     -> charges::ChargeSet;
 
 } // namespace chargefw::calculation

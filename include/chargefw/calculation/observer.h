@@ -54,8 +54,8 @@ struct CalculationProgress {
 };
 
 // Cooperative, per-request observer of calculation progress. The observer is non-owning: callers
-// retain the object and pass a pointer through the request structs. Executor callbacks can run from
-// oneTBB worker threads; implementations must be thread-safe.
+// retain the object and pass a reference through calculation requests. Executor callbacks can run
+// from oneTBB worker threads; implementations must be thread-safe.
 //
 // The observer is purely observational: it must not mutate method options, parameters, execution
 // policy, geometry, or selection. Implementations must not throw; exceptions would propagate as
@@ -78,6 +78,12 @@ class CalculationObserver {
         return false;
     }
 };
+
+// Stateless observer used when callers do not need progress or cancellation handling.
+[[nodiscard]] inline auto default_calculation_observer() -> const CalculationObserver& {
+    static const auto observer = CalculationObserver{};
+    return observer;
+}
 
 // Thrown when a cooperative cancellation request is observed mid-calculation. The facade catches
 // it and converts the result to a clean cancellation rather than a partial charge set.
