@@ -95,6 +95,7 @@ Use `chargefw COMMAND --help` for the complete option list.
 - `--full-atom-threshold COUNT|unlimited` changes the automatic full-execution safeguard (default
   20,000 atoms).
 - `--threads COUNT` limits calculation concurrency; `0` uses the oneTBB default.
+- `--progress` displays a live calculation progress bar on standard error.
 - `--method-option METHOD.OPTION=VALUE` supplies a repeatable, method-scoped option override. For
   automatic method selection, include the method ID; `chargefw methods` lists option schemas,
   defaults, and choices.

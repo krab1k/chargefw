@@ -91,7 +91,7 @@ inline auto emit_target_event(const CalculationObserver& observer, const Calcula
 }
 
 // Minimum interval between fragment-tier progress events, in nanoseconds.
-inline constexpr std::int64_t fragment_throttle_ns = 100'000'000; // 100 ms
+inline constexpr std::int64_t fragment_throttle_ns = 200'000'000; // 200 ms
 
 // Fragment-tier loop with throttled progress emission and cooperative cancellation. Checks
 // cancellation at the start of each iteration and emits a throttled fragment_finished event

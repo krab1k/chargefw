@@ -11,6 +11,9 @@ foreach(mode IN ITEMS full cutoff cover)
     if(NOT mode STREQUAL "full")
         list(APPEND execution_arguments --radius 8)
     endif()
+    if(mode STREQUAL "cutoff")
+        list(APPEND execution_arguments --progress)
+    endif()
 
     execute_process(
             COMMAND "${CMAKE_COMMAND}" -E env
@@ -22,6 +25,9 @@ foreach(mode IN ITEMS full cutoff cover)
     )
     if(NOT mode_result EQUAL 0)
         message(FATAL_ERROR "${mode} CLI calculation failed: ${mode_error}")
+    endif()
+    if(mode STREQUAL "cutoff" AND NOT mode_error MATCHES "Calculating eem")
+        message(FATAL_ERROR "cutoff CLI progress output was not emitted: ${mode_error}")
     endif()
 
     file(READ "${mode_output_prefix}.json" mode_json)

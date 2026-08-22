@@ -1,15 +1,64 @@
 #include "cli_support.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <exception>
 #include <iostream>
+#include <mutex>
 #include <print>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace {
+
+class TerminalProgressObserver final : public chargefw::calculation::CalculationObserver {
+  public:
+    void on_progress(const chargefw::calculation::CalculationProgress& progress) const override {
+        const std::scoped_lock lock{mutex_};
+        switch (progress.phase) {
+        case chargefw::calculation::CalculationPhase::computation_started:
+            std::print(std::cerr, "Calculating {}...\n", progress.method_id);
+            break;
+        case chargefw::calculation::CalculationPhase::target_finished:
+            ++completed_targets_;
+            render("Targets", completed_targets_, progress.target_count);
+            break;
+        case chargefw::calculation::CalculationPhase::fragment_finished:
+            render("Fragments", progress.fragment_index, progress.fragment_count,
+                   progress.target_index + 1, progress.target_count);
+            break;
+        case chargefw::calculation::CalculationPhase::computation_finished:
+            std::print(std::cerr, "\n");
+            break;
+        default:
+            break;
+        }
+        std::cerr.flush();
+    }
+
+  private:
+    static constexpr std::size_t bar_width = 30;
+
+    void render(const std::string_view label, const std::size_t complete, const std::size_t total,
+                const std::optional<std::size_t> target_index = std::nullopt,
+                const std::optional<std::size_t> target_count = std::nullopt) const {
+        const auto filled = total == 0 ? 0U : std::min(bar_width, complete * bar_width / total);
+        auto bar = std::string(bar_width, ' ');
+        std::fill_n(bar.begin(), filled, '=');
+        if (target_index.has_value() && target_count.has_value()) {
+            std::print(std::cerr, "\r{} {}/{} [{}] {}/{}", label, *target_index, *target_count, bar,
+                       complete, total);
+            return;
+        }
+        std::print(std::cerr, "\r{} [{}] {}/{}", label, bar, complete, total);
+    }
+
+    mutable std::mutex mutex_;
+    mutable std::size_t completed_targets_ = 0;
+};
 
 auto run(std::span<char*> arguments) -> int {
     CLI::App app{"ChargeFW molecular charge calculation and inspection."};
@@ -20,6 +69,7 @@ auto run(std::span<char*> arguments) -> int {
     chargefw::cli::SelectionArguments applicability_selection;
     std::string output_directory;
     std::string parameter_method;
+    bool progress = false;
     auto* calculate = app.add_subcommand("calculate", "Calculate and write partial charges");
     auto* inspect = app.add_subcommand("inspect", "Inspect imported molecular records");
     auto* applicability = app.add_subcommand("applicability", "Report applicable charge methods");
@@ -28,6 +78,7 @@ auto run(std::span<char*> arguments) -> int {
     chargefw::cli::add_input_options(*calculate, calculate_input);
     calculate->add_option("output", output_directory, "Output directory")->required();
     chargefw::cli::add_selection_options(*calculate, calculate_selection);
+    calculate->add_flag("--progress", progress, "Show calculation progress on standard error");
     chargefw::cli::add_input_options(*inspect, inspect_input);
     chargefw::cli::add_input_options(*applicability, applicability_input);
     chargefw::cli::add_selection_options(*applicability, applicability_selection);
@@ -72,8 +123,12 @@ auto run(std::span<char*> arguments) -> int {
     for (const auto& warning : assessment.execution_issues) {
         std::println(std::cerr, "Warning: {}", warning.message);
     }
-    const auto result = chargefw::calculation::calculate(std::move(assessment),
-                                                         request.resource_policy.max_threads);
+    const auto progress_observer = TerminalProgressObserver{};
+    const auto& observer =
+        progress ? static_cast<const chargefw::calculation::CalculationObserver&>(progress_observer)
+                 : chargefw::calculation::default_calculation_observer();
+    const auto result = chargefw::calculation::calculate(
+        std::move(assessment), request.resource_policy.max_threads, observer);
     run.metrics.applicability_seconds = result.metrics.applicability_seconds;
     run.metrics.computation_seconds = result.metrics.computation_seconds;
     return chargefw::cli::write_calculation_outputs(output_directory, calculate_input.path,
