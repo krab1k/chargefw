@@ -5,262 +5,12 @@
 
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_calculation.h>
-#include <chargefw/methods/method_registry.h>
 
-#include <algorithm>
 #include <chrono>
 #include <stdexcept>
-#include <string>
-#include <string_view>
-#include <vector>
+#include <utility>
 
 namespace chargefw::calculation {
-namespace {
-
-[[nodiscard]] auto parameter_priority_of(const methods::ApplicableMethod& candidate) noexcept
-    -> unsigned int {
-    if (candidate.parameter_set == nullptr) {
-        return 0;
-    }
-
-    return candidate.parameter_set->priority();
-}
-
-[[nodiscard]] auto parameter_id_of(const methods::ApplicableMethod& candidate) noexcept
-    -> std::string_view {
-    if (candidate.parameter_set == nullptr) {
-        return {};
-    }
-
-    return candidate.parameter_set->id();
-}
-
-[[nodiscard]] auto ranks_before(const methods::ApplicableMethod& first,
-                                const methods::ApplicableMethod& second) noexcept -> bool {
-    const auto first_method_priority = first.method->metadata().priority;
-    const auto second_method_priority = second.method->metadata().priority;
-
-    if (first_method_priority != second_method_priority) {
-        return first_method_priority > second_method_priority;
-    }
-
-    const auto first_parameter_priority = parameter_priority_of(first);
-    const auto second_parameter_priority = parameter_priority_of(second);
-
-    if (first_parameter_priority != second_parameter_priority) {
-        return first_parameter_priority > second_parameter_priority;
-    }
-
-    if (first.method->id() != second.method->id()) {
-        return first.method->id() < second.method->id();
-    }
-
-    return parameter_id_of(first) < parameter_id_of(second);
-}
-
-[[nodiscard]] auto assessment_for(const methods::ApplicableMethod& candidate,
-                                  const ExecutionMode mode) -> const methods::ExecutionAssessment* {
-    const auto found =
-        std::ranges::find_if(candidate.execution_assessments,
-                             [mode](const methods::ExecutionAssessment& assessment) -> bool {
-                                 return assessment.mode == mode;
-                             });
-    return found == candidate.execution_assessments.end() ? nullptr : &*found;
-}
-
-[[nodiscard]] auto ranked_candidates(const methods::ApplicabilityResult& applicability)
-    -> std::vector<const methods::ApplicableMethod*> {
-    auto candidates = std::vector<const methods::ApplicableMethod*>{};
-    candidates.reserve(applicability.applicable.size());
-
-    for (const auto& candidate : applicability.applicable) {
-        candidates.push_back(&candidate);
-    }
-
-    std::ranges::sort(candidates, [](const auto* first, const auto* second) -> bool {
-        return ranks_before(*first, *second);
-    });
-    return candidates;
-}
-
-[[nodiscard]] auto plan_for(const methods::ApplicableMethod& candidate, const ExecutionMode mode,
-                            const std::optional<double> radius,
-                            const ChargeCorrectionPolicy charge_correction,
-                            const methods::ExecutionAssessment& assessment) -> ExecutionPlan {
-    return ExecutionPlan{.selected = &candidate,
-                         .policy = ExecutionPolicy{mode, radius, charge_correction},
-                         .issues = assessment.issues};
-}
-
-[[nodiscard]] auto application_methods(const ApplicationCalculationRequest& request)
-    -> std::vector<const methods::Method*> {
-    const auto& registry = methods::method_registry();
-
-    if (request.method_id.has_value()) {
-        const auto* method = registry.find(*request.method_id);
-
-        if (method == nullptr) {
-            throw std::invalid_argument{"method '" + *request.method_id + "' is not registered"};
-        }
-
-        return {method};
-    }
-
-    std::vector<const methods::Method*> result;
-    result.reserve(registry.methods().size());
-
-    for (const auto& method : registry.methods()) {
-        result.push_back(method.get());
-    }
-
-    return result;
-}
-
-auto validate_application_method_options(const ApplicationCalculationRequest& request) -> void {
-    const auto& registry = methods::method_registry();
-    for (const auto& [method_id, overrides] : request.method_options) {
-        const auto* method = registry.find(method_id);
-        if (method == nullptr) {
-            throw std::invalid_argument{"method '" + method_id + "' is not registered"};
-        }
-        if (request.method_id.has_value() && method_id != *request.method_id) {
-            throw std::invalid_argument{"method options supplied for '" + method_id +
-                                        "' but method '" + *request.method_id + "' was requested"};
-        }
-
-        auto options = methods::make_default_options(method->option_schema());
-        for (const auto& [id, value] : overrides.values()) {
-            options.set(id, value);
-        }
-        methods::validate_method_options(method->option_schema(), options);
-    }
-}
-
-[[nodiscard]] auto application_parameter_sets(const ApplicationCalculationRequest& request)
-    -> std::vector<parameters::ParameterSet> {
-    if (!request.parameter_set_id.has_value()) {
-        return request.parameter_sets;
-    }
-
-    const auto found = std::ranges::find_if(
-        request.parameter_sets, [&request](const parameters::ParameterSet& parameter_set) -> bool {
-            return parameter_set.id() == *request.parameter_set_id;
-        });
-
-    if (found == request.parameter_sets.end()) {
-        throw std::invalid_argument{"parameter set '" + *request.parameter_set_id +
-                                    "' was not provided"};
-    }
-
-    return {*found};
-}
-
-[[nodiscard]] auto assess_prepared(const ApplicationCalculationRequest& request,
-                                   const features::PreparedMoleculeCollection& prepared)
-    -> ApplicationAssessmentResult {
-    validate_application_method_options(request);
-    const auto candidate_methods = application_methods(request);
-    auto result = ApplicationAssessmentResult{.parameter_sets = application_parameter_sets(request),
-                                              .applicability = {},
-                                              .selected = nullptr,
-                                              .execution_policy = std::nullopt,
-                                              .execution_issues = {}};
-
-    result.applicability =
-        methods::find_applicable_methods({.molecules = prepared,
-                                          .methods = candidate_methods,
-                                          .parameter_sets = result.parameter_sets,
-                                          .classification_options = request.classification_options,
-                                          .resource_policy = request.resource_policy,
-                                          .method_options = request.method_options});
-    const auto plan = select_execution_plan(result.applicability, request.execution_selection);
-
-    if (!plan.has_value()) {
-        return result;
-    }
-
-    result.execution_policy = plan->policy;
-    result.selected = plan->selected;
-    result.execution_issues = plan->issues;
-    return result;
-}
-
-} // namespace
-
-auto select_applicable_method(const methods::ApplicabilityResult& applicability)
-    -> const methods::ApplicableMethod* {
-    if (applicability.empty()) {
-        return nullptr;
-    }
-
-    return &*std::ranges::min_element(applicability.applicable, ranks_before);
-}
-
-auto select_execution_plan(const methods::ApplicabilityResult& applicability,
-                           const ExecutionSelection& selection) -> std::optional<ExecutionPlan> {
-    const auto candidates = ranked_candidates(applicability);
-
-    const auto select_mode =
-        [&candidates, &selection](const ExecutionMode mode,
-                                  const bool allow_warnings) -> std::optional<ExecutionPlan> {
-        for (const auto* candidate : candidates) {
-            const auto* assessment = assessment_for(*candidate, mode);
-            if (assessment == nullptr ||
-                assessment->availability == methods::ExecutionAvailability::unsupported ||
-                (!allow_warnings && assessment->availability ==
-                                        methods::ExecutionAvailability::available_with_warning)) {
-                continue;
-            }
-
-            const auto radius =
-                mode == ExecutionMode::full ? std::optional<double>{} : selection.radius();
-            const auto charge_correction =
-                mode == ExecutionMode::full
-                    ? ChargeCorrectionPolicy::none
-                    : selection.charge_correction().value_or(ChargeCorrectionPolicy::uniform);
-            return plan_for(*candidate, mode, radius, charge_correction, *assessment);
-        }
-
-        return std::nullopt;
-    };
-
-    switch (selection.kind()) {
-    case ExecutionSelectionKind::automatic: {
-        const auto radius = selection.radius().value_or(default_automatic_reduced_radius);
-        for (const auto* candidate : candidates) {
-            const auto* full = assessment_for(*candidate, ExecutionMode::full);
-            if (full != nullptr &&
-                full->availability == methods::ExecutionAvailability::available) {
-                return plan_for(*candidate, ExecutionMode::full, std::nullopt,
-                                ChargeCorrectionPolicy::none, *full);
-            }
-
-            const auto* cutoff = assessment_for(*candidate, ExecutionMode::cutoff);
-            if (cutoff != nullptr &&
-                cutoff->availability != methods::ExecutionAvailability::unsupported) {
-                return plan_for(*candidate, ExecutionMode::cutoff, radius,
-                                ChargeCorrectionPolicy::uniform, *cutoff);
-            }
-
-            const auto* cover = assessment_for(*candidate, ExecutionMode::cover);
-            if (cover != nullptr &&
-                cover->availability != methods::ExecutionAvailability::unsupported) {
-                return plan_for(*candidate, ExecutionMode::cover, radius,
-                                ChargeCorrectionPolicy::uniform, *cover);
-            }
-        }
-        return std::nullopt;
-    }
-    case ExecutionSelectionKind::full:
-        return select_mode(ExecutionMode::full, true);
-    case ExecutionSelectionKind::cutoff:
-        return select_mode(ExecutionMode::cutoff, false);
-    case ExecutionSelectionKind::cover:
-        return select_mode(ExecutionMode::cover, false);
-    }
-
-    throw std::invalid_argument{"unknown execution selection"};
-}
 
 auto calculate(const CalculationRequest& request) -> CalculationResult {
     switch (request.execution_policy.mode()) {
@@ -281,25 +31,8 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
     throw std::invalid_argument{"unknown execution policy"};
 }
 
-auto assess(const ApplicationCalculationRequest& request) -> ApplicationAssessmentResult {
-    const features::PreparedMoleculeCollection prepared{request.molecules};
-    return assess_prepared(request, prepared);
-}
-
-auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalculationResult {
-    const auto* observer = request.observer;
-
-    const auto started = std::chrono::steady_clock::now();
-    const features::PreparedMoleculeCollection prepared{request.molecules};
-    auto assessment = assess_prepared(request, prepared);
-    const auto applicability_seconds =
-        std::chrono::duration<double>{std::chrono::steady_clock::now() - started}.count();
-    if (!assessment.executable() &&
-        (request.method_id.has_value() || request.parameter_set_id.has_value() ||
-         request.execution_selection.kind() != ExecutionSelectionKind::automatic)) {
-        throw std::invalid_argument{"requested calculation selection has no executable plan"};
-    }
-
+auto calculate(ApplicationAssessmentResult assessment, const std::size_t max_threads,
+               const CalculationObserver* observer) -> ApplicationCalculationResult {
     if (!assessment.executable()) {
         return ApplicationCalculationResult{
             .charges = std::nullopt,
@@ -307,7 +40,7 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
             .execution_policy = std::nullopt,
             .execution_issues = {},
             .effective_method_options = std::nullopt,
-            .metrics = {.applicability_seconds = applicability_seconds}};
+            .metrics = {.applicability_seconds = assessment.applicability_seconds}};
     }
 
     if (assessment.selected == nullptr || !assessment.execution_policy.has_value()) {
@@ -316,8 +49,8 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
 
     const auto mode = assessment.execution_policy->mode();
     const auto method_id = assessment.selected->method->id();
+    const auto effective_method_options = assessment.selected->method_options;
 
-    // Emit selected-plan warnings before fragment/solver allocation.
     if (observer != nullptr) {
         for (const auto& warning : assessment.execution_issues) {
             observer->on_execution_warning(warning);
@@ -334,12 +67,11 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
     }
 
     try {
-        auto result =
-            calculate(CalculationRequest{.molecules = prepared,
-                                         .selected = *assessment.selected,
-                                         .execution_policy = *assessment.execution_policy,
-                                         .max_threads = request.resource_policy.max_threads,
-                                         .observer = observer});
+        auto result = calculate(CalculationRequest{.molecules = assessment.prepared_molecules(),
+                                                   .selected = *assessment.selected,
+                                                   .execution_policy = *assessment.execution_policy,
+                                                   .max_threads = max_threads,
+                                                   .observer = observer});
         const auto computation_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
                 .count();
@@ -356,8 +88,8 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
             .applicability = std::move(assessment.applicability),
             .execution_policy = assessment.execution_policy,
             .execution_issues = std::move(assessment.execution_issues),
-            .effective_method_options = assessment.selected->method_options,
-            .metrics = {.applicability_seconds = applicability_seconds,
+            .effective_method_options = effective_method_options,
+            .metrics = {.applicability_seconds = assessment.applicability_seconds,
                         .computation_seconds = computation_seconds}};
     } catch (const CalculationCancelled&) {
         const auto computation_seconds =
@@ -377,10 +109,20 @@ auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalcu
             .execution_policy = assessment.execution_policy,
             .execution_issues = std::move(assessment.execution_issues),
             .effective_method_options = std::nullopt,
-            .metrics = {.applicability_seconds = applicability_seconds,
+            .metrics = {.applicability_seconds = assessment.applicability_seconds,
                         .computation_seconds = computation_seconds},
             .cancelled = true};
     }
+}
+
+auto calculate(const ApplicationCalculationRequest& request) -> ApplicationCalculationResult {
+    auto assessment = assess(request);
+    if (!assessment.executable() &&
+        (request.method_id.has_value() || request.parameter_set_id.has_value() ||
+         request.execution_selection.kind() != ExecutionSelectionKind::automatic)) {
+        throw std::invalid_argument{"requested calculation selection has no executable plan"};
+    }
+    return calculate(std::move(assessment), request.resource_policy.max_threads, request.observer);
 }
 
 } // namespace chargefw::calculation

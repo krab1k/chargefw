@@ -105,8 +105,10 @@ candidate selection. `select_execution_plan()` additionally resolves a concrete 
 parameter-set IDs, classification options, an `ExecutionSelection`, and a `ResourcePolicy`.
 
 - `assess()` prepares molecules, finds applicable candidates, and selects a concrete plan without
-  calculating.
-- `calculate()` prepares once, then reuses that collection for assessment and execution.
+  calculating. Its result owns the prepared collection and classifications.
+- `calculate(std::move(assessment), max_threads, observer)` executes an assessment without repeating
+  preparation or classification. Thread limits and observation are execution-only inputs. The one-shot
+  `calculate(request)` facade remains as a convenience wrapper.
 - Omitted IDs use deterministic ranking: method priority, parameter-set priority, method ID, then
   parameter-set ID.
 - Explicit unavailable/inapplicable IDs or unsupported explicit execution fail; there is no fallback.

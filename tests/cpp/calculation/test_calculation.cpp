@@ -337,7 +337,7 @@ auto main() -> int {
     assert(application_result.execution_policy->mode() == calculation::ExecutionMode::full);
     assert(application_result.execution_issues.empty());
 
-    const auto assessment = calculation::assess(calculation::ApplicationCalculationRequest{
+    auto assessment = calculation::assess(calculation::ApplicationCalculationRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {},
         .method_id = "formal",
@@ -348,6 +348,11 @@ auto main() -> int {
     assert(assessment.selected != nullptr);
     assert(assessment.selected->method->id() == std::string_view{"formal"});
     assert(assessment.execution_policy->mode() == calculation::ExecutionMode::full);
+
+    const auto assessed_result = calculation::calculate(std::move(assessment), 1);
+    assert(assessed_result.calculated());
+    assert(assessed_result.charges->method_id() == std::string_view{"formal"});
+    assert(assessed_result.metrics.applicability_seconds >= 0.0);
 
     const auto automatic_fallback_result =
         calculation::calculate(calculation::ApplicationCalculationRequest{

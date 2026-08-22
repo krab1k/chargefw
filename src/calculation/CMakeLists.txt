@@ -1,6 +1,7 @@
 target_sources(chargefw_core
-        PRIVATE
-        calculation.cpp
+         PRIVATE
+         assessment.cpp
+         calculation.cpp
         cover_execution.cpp
         cutoff_execution.cpp
         execution_policy.cpp
@@ -13,7 +14,8 @@ target_sources(chargefw_core
         BASE_DIRS
         ${PROJECT_SOURCE_DIR}/include
          FILES
-         ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/calculation.h
+          ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/calculation.h
+          ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/assessment.h
          ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/execution_policy.h
          ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/observer.h
 )
