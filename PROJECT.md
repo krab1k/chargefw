@@ -156,8 +156,9 @@ that do not need progress use the stateless `default_calculation_observer()`; ex
 the same observed loop.
 
 Events are structured as `CalculationProgress` snapshots carrying the execution mode, method ID,
-target and fragment index/count, molecule/conformer identity, and elapsed seconds. Non-owning views
-in the snapshot are valid only during the callback.
+target index/count, completed-fragment count/total, molecule/conformer identity, and elapsed seconds.
+Target indices are zero-based; completed-fragment counts start at one and are not fragment identifiers.
+Non-owning views in the snapshot are valid only during the callback.
 
 Three event tiers exist:
 
@@ -169,10 +170,10 @@ Three event tiers exist:
   executors with correct per-target `molecule_index` and `conformer_index`.
 - **Fragment progress** — `fragment_progress` reports aggregate completed/total counts for cutoff
   (center-atom fragments) and cover (pivot fragments). The first completed fragment is reported
-  immediately; later snapshots are throttled to one per 200 ms via an atomic CAS. Counts increase
+  immediately; later snapshots are throttled to one per 200 ms. Counts strictly increase per target
   among emitted snapshots but may skip completed fragments. A non-empty successful target has exactly
-  one terminal `count/count` snapshot; empty targets have none. Parallel callbacks may run
-  concurrently, so callback arrival order does not establish completion order.
+  one terminal `count/count` snapshot; empty targets have none. Parallel callbacks for different
+  targets may run concurrently, so global callback arrival order does not establish completion order.
 
 Selected-plan warnings, including explicit-full execution above the resource threshold, are available
 through `AssessmentResult::execution_issues()` before execution begins. Callers may report them

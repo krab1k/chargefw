@@ -27,7 +27,7 @@ class TerminalProgressObserver final : public chargefw::calculation::Calculation
             render("Targets", completed_targets_, progress.target_count);
             break;
         case chargefw::calculation::CalculationPhase::fragment_progress:
-            render("Fragments", progress.fragment_index, progress.fragment_count,
+            render("Fragments", progress.completed_fragment_count, progress.fragment_count,
                    progress.target_index + 1, progress.target_count);
             break;
         case chargefw::calculation::CalculationPhase::computation_finished:

@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
@@ -99,8 +100,10 @@ inline constexpr std::int64_t fragment_throttle_ns = 200'000'000; // 200 ms
 // Fragment-tier loop with throttled progress emission and cooperative cancellation. Checks
 // cancellation at the start of each iteration. The first completed fragment is reported
 // immediately; subsequent snapshots are throttled and a terminal snapshot is emitted only when
-// the throttled snapshots have not already reported full completion. Parallel callbacks can run
-// concurrently, so observers must not use callback arrival order to infer completion order.
+// the throttled snapshots have not already reported full completion. Snapshots for an individual
+// target are serialized, so their completed_fragment_count values strictly increase. Callbacks for
+// different targets can run concurrently, so observers must not use global callback arrival order
+// to infer completion order.
 //
 // Target-tier events are NOT emitted here — executors emit them via check_cancellation() and
 // emit_target_event() so per-target molecule/conformer identity is correctly populated.
@@ -123,20 +126,22 @@ auto progress_for_indexed(const std::size_t count, const std::size_t max_threads
     constexpr auto no_fragment_event = std::numeric_limits<std::int64_t>::min();
     std::atomic<std::int64_t> last_emit_ns{no_fragment_event};
     std::atomic<std::size_t> completed{0};
-    std::atomic<std::size_t> last_emitted_completed{0};
+    auto emission_mutex = std::mutex{};
+    auto last_emitted_completed = std::size_t{0};
 
     const auto emit_progress = [&](const std::size_t done) {
-        auto emitted = last_emitted_completed.load(std::memory_order_relaxed);
-        while (emitted < done && !last_emitted_completed.compare_exchange_weak(
-                                     emitted, done, std::memory_order_relaxed)) {
+        const auto lock = std::scoped_lock{emission_mutex};
+        if (done <= last_emitted_completed) {
+            return;
         }
+        last_emitted_completed = done;
         report_progress(observer, CalculationProgress{
                                       .phase = CalculationPhase::fragment_progress,
                                       .mode = ctx.mode,
                                       .method_id = ctx.method_id,
                                       .target_index = ctx.target_index,
                                       .target_count = ctx.target_count,
-                                      .fragment_index = done,
+                                      .completed_fragment_count = done,
                                       .fragment_count = count,
                                       .molecule_index = ctx.molecule_index,
                                       .conformer_index = ctx.conformer_index,
@@ -163,7 +168,7 @@ auto progress_for_indexed(const std::size_t count, const std::size_t max_threads
     };
     parallel_for_indexed(count, max_threads, wrapped);
 
-    if (last_emitted_completed.load(std::memory_order_relaxed) != count) {
+    if (last_emitted_completed != count) {
         emit_progress(count);
     }
 }

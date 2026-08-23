@@ -42,8 +42,10 @@ struct CalculationProgress {
     std::size_t target_index{};
     std::size_t target_count{};
 
-    // Fragment tier: completed and total fragment counts within the current target.
-    std::size_t fragment_index{};
+    // Fragment tier: aggregate completed and total fragment counts within the current target.
+    // completed_fragment_count is in [1, fragment_count], may skip values due to throttling, and is
+    // not a fragment identifier or zero-based index.
+    std::size_t completed_fragment_count{};
     std::size_t fragment_count{};
 
     // Molecule and conformer identifying the current target.

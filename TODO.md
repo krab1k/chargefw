@@ -9,12 +9,6 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
-- [ ] Clarify and stabilize the public observer progress data model. `fragment_index` currently means
-  completed-fragment count rather than an index, unlike zero-based target indices; rename it to a
-  completion-count field or otherwise document a consistent convention before bindings depend on it.
-  Ensure test observers do not retain `CalculationProgress::method_id` after callbacks, since it is a
-  non-owning `string_view` valid only during the callback; use an owned test event snapshot instead.
-  Verify progress count monotonicity and terminal snapshots under serial and parallel cutoff/cover.
 - [ ] Complete observer and facade tests for report/error boundaries. Existing coverage should be
   extended for rejected report identity, no-plan diagnostics, explicit unsupported policies, empty and
   tiny collections, fragment solver failures, ownership/lifetimes, result cardinality, and all

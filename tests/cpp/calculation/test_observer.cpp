@@ -43,7 +43,7 @@ struct RecordedProgress {
     std::string method_id;
     std::size_t target_index{};
     std::size_t target_count{};
-    std::size_t fragment_index{};
+    std::size_t completed_fragment_count{};
     std::size_t fragment_count{};
     std::size_t molecule_index{};
     std::optional<std::size_t> conformer_index{};
@@ -56,7 +56,7 @@ struct RecordedProgress {
                             .method_id = std::string{progress.method_id},
                             .target_index = progress.target_index,
                             .target_count = progress.target_count,
-                            .fragment_index = progress.fragment_index,
+                            .completed_fragment_count = progress.completed_fragment_count,
                             .fragment_count = progress.fragment_count,
                             .molecule_index = progress.molecule_index,
                             .conformer_index = progress.conformer_index,
@@ -139,13 +139,16 @@ auto assert_single_terminal_fragment_progress(const std::vector<RecordedProgress
                                               const std::size_t fragment_count) -> void {
     assert(!events.empty());
     assert(std::count_if(events.begin(), events.end(), [fragment_count](const auto& event) {
-               return event.fragment_index == fragment_count &&
+               return event.completed_fragment_count == fragment_count &&
                       event.fragment_count == fragment_count;
            }) == 1);
     for (const auto& event : events) {
-        assert(event.fragment_index > 0);
-        assert(event.fragment_index <= event.fragment_count);
+        assert(event.completed_fragment_count > 0);
+        assert(event.completed_fragment_count <= event.fragment_count);
         assert(event.fragment_count == fragment_count);
+    }
+    for (std::size_t index = 1; index < events.size(); ++index) {
+        assert(events[index - 1].completed_fragment_count < events[index].completed_fragment_count);
     }
 }
 
