@@ -9,15 +9,6 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
-- [ ] Make calculation terminal-event RAII single-owner and exception-safe by construction.
-  `ComputationFinishedEmitter` has a custom destructor but implicitly copyable special members, so an
-  accidental copy would emit duplicate `computation_finished` events. It also invokes a potentially
-  throwing `CalculationObserver::on_progress()` from a `noexcept` destructor, terminating the process
-  instead of honoring the documented observer contract. Delete copy/move operations or use a
-  single-owner scope guard, make callback exception behavior representable in the observer interface
-  (prefer a `noexcept` virtual callback) or explicitly handle it, and test success, cancellation,
-  validation failure, solver failure, and an observer implementation that violates the callback
-  contract.
 - [ ] Consolidate calculation target orchestration shared by full, cutoff, and cover execution. Each
   executor independently constructs molecule/conformer targets, allocates source-order result slots,
   schedules outer parallel work, constructs progress contexts, polls cancellation, emits target

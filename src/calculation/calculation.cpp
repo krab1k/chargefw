@@ -3,6 +3,7 @@
 #include "calculation/cover_execution.h"
 #include "calculation/cutoff_execution.h"
 #include "calculation/full_execution.h"
+#include "calculation/observer_notifications.h"
 
 #include <chargefw/methods/method.h>
 
@@ -21,14 +22,21 @@ class ComputationFinishedEmitter {
                                const std::chrono::steady_clock::time_point started) noexcept
         : observer_{observer}, mode_{mode}, method_id_{method_id}, started_{started} {}
 
+    ComputationFinishedEmitter(const ComputationFinishedEmitter&) = delete;
+    auto operator=(const ComputationFinishedEmitter&) -> ComputationFinishedEmitter& = delete;
+    ComputationFinishedEmitter(ComputationFinishedEmitter&&) = delete;
+    auto operator=(ComputationFinishedEmitter&&) -> ComputationFinishedEmitter& = delete;
+
     ~ComputationFinishedEmitter() noexcept {
-        observer_.on_progress(CalculationProgress{
-            .phase = CalculationPhase::computation_finished,
-            .mode = mode_,
-            .method_id = method_id_,
-            .elapsed_seconds =
-                std::chrono::duration<double>{std::chrono::steady_clock::now() - started_}.count(),
-        });
+        detail::report_progress(observer_, CalculationProgress{
+                                               .phase = CalculationPhase::computation_finished,
+                                               .mode = mode_,
+                                               .method_id = method_id_,
+                                               .elapsed_seconds =
+                                                   std::chrono::duration<double>{
+                                                       std::chrono::steady_clock::now() - started_}
+                                                       .count(),
+                                           });
     }
 
   private:
@@ -86,13 +94,13 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
     const auto effective_method_options = selected.method_options;
 
     const auto computation_started = std::chrono::steady_clock::now();
-    observer.on_progress(CalculationProgress{
-        .phase = CalculationPhase::computation_started,
-        .mode = mode,
-        .method_id = method_id,
-    });
     const auto computation_finished =
         ComputationFinishedEmitter{observer, mode, method_id, computation_started};
+    detail::report_progress(observer, CalculationProgress{
+                                          .phase = CalculationPhase::computation_started,
+                                          .mode = mode,
+                                          .method_id = method_id,
+                                      });
 
     try {
         auto result =

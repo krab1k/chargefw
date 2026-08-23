@@ -59,11 +59,11 @@ struct CalculationProgress {
 // from oneTBB worker threads; implementations must be thread-safe.
 //
 // The observer is purely observational: it must not mutate method options, parameters, execution
-// policy, geometry, or selection. Implementations must not throw; exceptions would propagate as
-// calculation failures. A computation_finished event is emitted after every computation_started,
-// including when a non-cancellation calculation exception propagates. Returning true from
-// cancelled() requests early termination; the application facade converts this into a cancelled
-// result with no partial charges.
+// policy, geometry, or selection. Implementations should not throw; callback exceptions are ignored
+// so they cannot affect calculation control flow. A computation_finished event is emitted after
+// every computation_started, including when a non-cancellation calculation exception propagates.
+// Returning true from cancelled() requests early termination; the application facade converts this
+// into a cancelled result with no partial charges.
 class CalculationObserver {
   public:
     CalculationObserver() = default;

@@ -15,6 +15,8 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <limits>
 #include <mutex>
+#include <stdexcept>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -33,22 +35,48 @@ namespace {
     return calculation::calculate(std::move(assessment), max_threads, observer);
 }
 
-// Thread-safe recording observer. Captures progress events for later assertions.
+struct RecordedProgress {
+    calculation::CalculationPhase phase{};
+    calculation::ExecutionMode mode{};
+    std::string method_id;
+    std::size_t target_index{};
+    std::size_t target_count{};
+    std::size_t fragment_index{};
+    std::size_t fragment_count{};
+    std::size_t molecule_index{};
+    std::optional<std::size_t> conformer_index{};
+    double elapsed_seconds{};
+};
+
+[[nodiscard]] auto snapshot(const calculation::CalculationProgress& progress) -> RecordedProgress {
+    return RecordedProgress{.phase = progress.phase,
+                            .mode = progress.mode,
+                            .method_id = std::string{progress.method_id},
+                            .target_index = progress.target_index,
+                            .target_count = progress.target_count,
+                            .fragment_index = progress.fragment_index,
+                            .fragment_count = progress.fragment_count,
+                            .molecule_index = progress.molecule_index,
+                            .conformer_index = progress.conformer_index,
+                            .elapsed_seconds = progress.elapsed_seconds};
+}
+
+// Thread-safe recording observer. Captures owned progress snapshots for later assertions.
 class RecordingObserver : public calculation::CalculationObserver {
   public:
     void on_progress(const calculation::CalculationProgress& progress) const override {
         const std::scoped_lock lock{mutex_};
-        events_.push_back(progress);
+        events_.push_back(snapshot(progress));
     }
 
-    [[nodiscard]] auto events() const -> std::vector<calculation::CalculationProgress> {
+    [[nodiscard]] auto events() const -> std::vector<RecordedProgress> {
         const std::scoped_lock lock{mutex_};
         return events_;
     }
 
   private:
     mutable std::mutex mutex_;
-    mutable std::vector<calculation::CalculationProgress> events_;
+    mutable std::vector<RecordedProgress> events_;
 };
 
 // Observer that cancels after the first target_started event.
@@ -56,7 +84,7 @@ class CancelAfterFirstTarget : public calculation::CalculationObserver {
   public:
     void on_progress(const calculation::CalculationProgress& progress) const override {
         const std::scoped_lock lock{mutex_};
-        events_.push_back(progress);
+        events_.push_back(snapshot(progress));
         if (progress.phase == calculation::CalculationPhase::target_started) {
             cancel_ = true;
         }
@@ -66,20 +94,20 @@ class CancelAfterFirstTarget : public calculation::CalculationObserver {
         return cancel_;
     }
 
-    [[nodiscard]] auto events() const -> std::vector<calculation::CalculationProgress> {
+    [[nodiscard]] auto events() const -> std::vector<RecordedProgress> {
         const std::scoped_lock lock{mutex_};
         return events_;
     }
 
   private:
     mutable std::mutex mutex_;
-    mutable std::vector<calculation::CalculationProgress> events_;
+    mutable std::vector<RecordedProgress> events_;
     mutable std::atomic<bool> cancel_{false};
 };
 
 [[nodiscard]] auto fragment_progress_events(const RecordingObserver& observer)
-    -> std::vector<calculation::CalculationProgress> {
-    auto result = std::vector<calculation::CalculationProgress>{};
+    -> std::vector<RecordedProgress> {
+    auto result = std::vector<RecordedProgress>{};
     for (const auto& event : observer.events()) {
         if (event.phase == calculation::CalculationPhase::fragment_progress) {
             result.push_back(event);
@@ -88,9 +116,25 @@ class CancelAfterFirstTarget : public calculation::CalculationObserver {
     return result;
 }
 
-auto assert_single_terminal_fragment_progress(const RecordingObserver& observer,
+class ThrowOnTerminalObserver final : public calculation::CalculationObserver {
+  public:
+    void on_progress(const calculation::CalculationProgress& progress) const override {
+        if (progress.phase == calculation::CalculationPhase::computation_finished) {
+            terminal_callbacks_.fetch_add(1, std::memory_order_relaxed);
+            throw std::runtime_error{"observer failure"};
+        }
+    }
+
+    [[nodiscard]] auto terminal_callbacks() const noexcept -> std::size_t {
+        return terminal_callbacks_.load(std::memory_order_relaxed);
+    }
+
+  private:
+    mutable std::atomic<std::size_t> terminal_callbacks_{0};
+};
+
+auto assert_single_terminal_fragment_progress(const std::vector<RecordedProgress>& events,
                                               const std::size_t fragment_count) -> void {
-    const auto events = fragment_progress_events(observer);
     assert(!events.empty());
     assert(std::count_if(events.begin(), events.end(), [fragment_count](const auto& event) {
                return event.fragment_index == fragment_count &&
@@ -319,7 +363,24 @@ auto main() -> int {
                }) == 1);
     }
 
-    // --- Test 8: serial cutoff execution emits aggregate fragment progress ---
+    // --- Test 8: a terminal observer callback failure does not terminate calculation ---
+    {
+        const auto observer = ThrowOnTerminalObserver{};
+        const auto result = calculate_application(
+            calculation::AssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+                .parameter_sets = {},
+                .method_id = "formal",
+                .execution_selection =
+                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
+            observer);
+
+        assert(result.calculated());
+        assert(!result.cancelled);
+        assert(observer.terminal_callbacks() == 1);
+    }
+
+    // --- Test 9: serial cutoff execution emits aggregate fragment progress ---
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -337,7 +398,8 @@ auto main() -> int {
 
         const auto fragment_events = fragment_progress_events(observer);
         assert(!fragment_events.empty());
-        assert_single_terminal_fragment_progress(observer, fragment_events.front().fragment_count);
+        assert_single_terminal_fragment_progress(fragment_events,
+                                                 fragment_events.front().fragment_count);
     }
 
     // --- Test 9: serial cover execution emits aggregate multi-pivot progress ---
@@ -358,7 +420,8 @@ auto main() -> int {
 
         const auto fragment_events = fragment_progress_events(observer);
         assert(!fragment_events.empty());
-        assert_single_terminal_fragment_progress(observer, fragment_events.front().fragment_count);
+        assert_single_terminal_fragment_progress(fragment_events,
+                                                 fragment_events.front().fragment_count);
     }
 
     // --- Test 10: multi-molecule target events carry correct molecule_index ---
@@ -434,15 +497,14 @@ auto main() -> int {
         assert(result.calculated());
 
         for (const auto target_index : {std::size_t{0}, std::size_t{1}}) {
-            const auto target_observer = RecordingObserver{};
+            auto target_events = std::vector<RecordedProgress>{};
             for (const auto& event : fragment_progress_events(observer)) {
                 if (event.target_index == target_index) {
-                    target_observer.on_progress(event);
+                    target_events.push_back(event);
                 }
             }
-            const auto target_events = fragment_progress_events(target_observer);
             assert(!target_events.empty());
-            assert_single_terminal_fragment_progress(target_observer,
+            assert_single_terminal_fragment_progress(target_events,
                                                      target_events.front().fragment_count);
         }
     }
