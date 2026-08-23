@@ -114,6 +114,8 @@ parameter-set IDs, classification options, an `ExecutionSelection`, and a `Resou
   preparation or classification. Its result retains the owned value-only report, so applicability
   diagnostics remain valid after the assessment and its parameter data are destroyed. Thread limits and
   observation are execution-only inputs.
+- Rejected application-facing candidates retain the method identity from the selected applicability
+  method list, including explicitly requested methods, rather than using registry ordering.
 - Omitted IDs use deterministic ranking: method priority, parameter-set priority, method ID, then
   parameter-set ID.
 - Explicit unavailable/inapplicable IDs or unsupported explicit execution fail; there is no fallback.

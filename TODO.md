@@ -9,6 +9,56 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
+- [ ] Replace partial moved-from object protocols at the CLI/application boundary with explicit owned
+  partitions. The calculate path moves an `ImportedCollection` into request creation and an
+  `AssessmentRequest` into assessment, then continues to read records, provenance, and thread policy
+  from the moved-from objects. This is currently implementation-dependent, requires
+  `bugprone-use-after-move` suppressions, and will break if a future callee moves the complete object.
+  Separate transferable execution input from retained source/export records and requested provenance,
+  capture execution-only values before transfer, and remove the suppressions. Apply the transfer path
+  to applicability-only CLI execution too, which currently needlessly copies molecules despite not
+  needing the imported collection after assessment. Test calculate and applicability behavior,
+  provenance, source mapping, warning output, and peak-memory-sensitive multi-record paths.
+- [ ] Define move semantics for `AssessmentResult` as a single ownership unit. Its prepared features
+  refer to a separately owned molecule collection held in another `unique_ptr`, while defaulted move
+  assignment replaces those members independently. Do not rely on destructor ordering of a
+  non-owning prepared view: either delete move assignment if it is not a supported operation, or hold
+  molecules and prepared features in one private state object with explicit invariant-preserving move
+  operations. Add tests covering move construction, permitted move assignment if retained, execution
+  after relocation, and destruction under ASan when practical.
+- [ ] Make calculation terminal-event RAII single-owner and exception-safe by construction.
+  `ComputationFinishedEmitter` has a custom destructor but implicitly copyable special members, so an
+  accidental copy would emit duplicate `computation_finished` events. It also invokes a potentially
+  throwing `CalculationObserver::on_progress()` from a `noexcept` destructor, terminating the process
+  instead of honoring the documented observer contract. Delete copy/move operations or use a
+  single-owner scope guard, make callback exception behavior representable in the observer interface
+  (prefer a `noexcept` virtual callback) or explicitly handle it, and test success, cancellation,
+  validation failure, solver failure, and an observer implementation that violates the callback
+  contract.
+- [ ] Consolidate calculation target orchestration shared by full, cutoff, and cover execution. Each
+  executor independently constructs molecule/conformer targets, allocates source-order result slots,
+  schedules outer parallel work, constructs progress contexts, polls cancellation, emits target
+  events, materializes assignments, and builds `ChargeSet`. Introduce a calculation-internal target
+  executor with mode-specific target calculation callbacks while keeping full scientific calculation
+  and reduced fragment algorithms separate. Preserve no-nested-scheduling behavior, source ordering,
+  target/conformer identity, error context, thread limits, cancellation checkpoints, and bit-identical
+  serial/parallel results; add shared executor tests before removing duplicated paths.
+- [ ] Clarify and stabilize the public observer progress data model. `fragment_index` currently means
+  completed-fragment count rather than an index, unlike zero-based target indices; rename it to a
+  completion-count field or otherwise document a consistent convention before bindings depend on it.
+  Ensure test observers do not retain `CalculationProgress::method_id` after callbacks, since it is a
+  non-owning `string_view` valid only during the callback; use an owned test event snapshot instead.
+  Verify progress count monotonicity and terminal snapshots under serial and parallel cutoff/cover.
+- [ ] Complete observer and facade tests for report/error boundaries. Existing coverage should be
+  extended for rejected report identity, no-plan diagnostics, explicit unsupported policies, empty and
+  tiny collections, fragment solver failures, ownership/lifetimes, result cardinality, and all
+  successful/cancelled/exceptional terminal event paths. Include lvalue-versus-rvalue assessment
+  behavior and multi-molecule/multi-conformer source ordering.
+- [ ] Align calculation documentation and build metadata with the final executor architecture. The
+  architecture diagram and layer description currently describe full/cutoff dispatch while cover is
+  also an implemented executor. Update `PROJECT.md` to state full/cutoff/cover dispatch accurately,
+  keep observability contracts synchronized with code, and normalize indentation in
+  `src/calculation/CMakeLists.txt` under the repository formatting discipline.
 - [ ] Record reduced-execution diagnostics in result provenance: per-target fragment or pivot counts,
   retained/owned atom counts, and cover overlap reconciliation, together with the fixed 3 Å retained
   interior and the resulting boundary buffer. Mode, radius, and correction are already recorded.

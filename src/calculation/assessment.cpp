@@ -167,9 +167,10 @@ AssessmentResult::AssessmentResult(core::MoleculeCollection molecules,
 AssessmentResult::~AssessmentResult() = default;
 
 auto AssessmentResult::assess_prepared(const AssessmentRequest& request) -> void {
+    const auto selected_methods = application_methods(request);
     applicability_ =
         methods::find_applicable_methods({.molecules = prepared_molecules(),
-                                          .methods = application_methods(request),
+                                          .methods = selected_methods,
                                           .parameter_sets = parameter_sets_,
                                           .classification_options = request.classification_options,
                                           .resource_policy = request.resource_policy,
@@ -200,10 +201,9 @@ auto AssessmentResult::assess_prepared(const AssessmentRequest& request) -> void
             .execution_assessments = candidate.execution_assessments});
     }
     applicability_report_.rejected.reserve(applicability_.rejected.size());
-    const auto& registry = methods::method_registry();
     for (const auto& candidate : applicability_.rejected) {
         applicability_report_.rejected.push_back(RejectedCandidateReport{
-            .method_id = std::string{registry.methods()[candidate.method_index]->id()},
+            .method_id = std::string{selected_methods.at(candidate.method_index)->id()},
             .parameter_set_id = candidate.parameter_set_index.has_value()
                                     ? std::optional{std::string{
                                           parameter_sets_[*candidate.parameter_set_index].id()}}

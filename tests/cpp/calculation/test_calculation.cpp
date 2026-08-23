@@ -2,6 +2,7 @@
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
+#include <algorithm>
 #include <cassert>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/core/atom.h>
@@ -381,6 +382,37 @@ auto main() -> int {
             .method_options = {{"peoe", invalid_peoe_options}},
             .classification_options = {.permissive_types = true}}));
     }));
+
+    const auto rejected_explicit_assessment = calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .method_id = "smpqeq"});
+    assert(!rejected_explicit_assessment.executable());
+    assert(rejected_explicit_assessment.applicability().rejected.size() == 1);
+    assert(rejected_explicit_assessment.applicability().rejected[0].method_id == "smpqeq");
+    assert(!rejected_explicit_assessment.applicability().rejected[0].issues.empty());
+
+    const auto rejected_parameter_assessment = calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
+        .parameter_sets = {make_permissive_peoe_parameter_set()},
+        .method_id = "peoe",
+        .parameter_set_id = "permissive-peoe-parameters"});
+    assert(!rejected_parameter_assessment.executable());
+    assert(rejected_parameter_assessment.applicability().rejected.size() == 1);
+    assert(rejected_parameter_assessment.applicability().rejected[0].method_id == "peoe");
+    assert(rejected_parameter_assessment.applicability().rejected[0].parameter_set_id ==
+           std::optional<std::string>{"permissive-peoe-parameters"});
+
+    auto automatic_rejected_assessment = calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}}});
+    const auto automatic_rejected_result =
+        calculation::calculate(std::move(automatic_rejected_assessment));
+    const auto rejected_smpqeq =
+        std::ranges::find_if(automatic_rejected_result.applicability.rejected,
+                             [](const calculation::RejectedCandidateReport& candidate) {
+                                 return candidate.method_id == "smpqeq";
+                             });
+    assert(rejected_smpqeq != automatic_rejected_result.applicability.rejected.end());
+    assert(!rejected_smpqeq->issues.empty());
 
     const auto application_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},

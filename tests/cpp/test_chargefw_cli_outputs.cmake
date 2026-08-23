@@ -138,6 +138,18 @@ if(NOT applicability_result EQUAL 0 OR NOT applicability_output MATCHES "applica
     message(FATAL_ERROR "applicability output is incomplete: ${applicability_output}")
 endif()
 
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" applicability --method smpqeq "${CHARGEFW_INPUT}"
+        RESULT_VARIABLE rejected_applicability_result
+        OUTPUT_VARIABLE rejected_applicability_output
+)
+if(NOT rejected_applicability_result EQUAL 0 OR
+   NOT rejected_applicability_output MATCHES "rejected method=smpqeq")
+    message(FATAL_ERROR "rejected applicability output has incorrect method identity: ${rejected_applicability_output}")
+endif()
+
 execute_process(COMMAND "${CHARGEFW_CLI}" methods OUTPUT_VARIABLE methods_output)
 if(NOT methods_output MATCHES "formal" OR NOT methods_output MATCHES "minimum>=1" OR
    NOT methods_output MATCHES "minimum>0")
