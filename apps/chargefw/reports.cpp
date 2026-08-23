@@ -34,10 +34,11 @@ void print_inspection(const ImportedCollection& imported) {
 }
 
 void print_applicability(const calculation::AssessmentResult& assessment) {
-    std::println("applicable candidates: {}", assessment.applicability.applicable.size());
-    for (const auto& candidate : assessment.applicability.applicable) {
-        std::print("applicable method={} parameter_set={}", candidate.method->id(),
-                   candidate.parameter_set == nullptr ? "-" : candidate.parameter_set->id());
+    const auto& report = assessment.applicability();
+    std::println("applicable candidates: {}", report.applicable.size());
+    for (const auto& candidate : report.applicable) {
+        std::print("applicable method={} parameter_set={}", candidate.method_id,
+                   candidate.parameter_set_id.value_or("-"));
         for (const auto& execution : candidate.execution_assessments) {
             const auto mode = execution.mode == calculation::ExecutionMode::full     ? "full"
                               : execution.mode == calculation::ExecutionMode::cutoff ? "cutoff"
@@ -49,30 +50,28 @@ void print_applicability(const calculation::AssessmentResult& assessment) {
         }
         std::println();
     }
-    std::println("rejected candidates: {}", assessment.applicability.rejected.size());
-    const auto& registry = methods::method_registry();
-    for (const auto& rejected : assessment.applicability.rejected) {
-        std::print("rejected method={}", registry.methods()[rejected.method_index]->id());
-        if (rejected.parameter_set_index.has_value()) {
-            std::print(" parameter_set={}",
-                       assessment.parameter_sets[*rejected.parameter_set_index].id());
+    std::println("rejected candidates: {}", report.rejected.size());
+    for (const auto& rejected : report.rejected) {
+        std::print("rejected method={}", rejected.method_id);
+        if (rejected.parameter_set_id.has_value()) {
+            std::print(" parameter_set={}", *rejected.parameter_set_id);
         }
         for (const auto& issue : rejected.issues) {
             std::print("; {}", issue.message);
         }
         std::println();
     }
-    if (assessment.selected == nullptr) {
+    if (!report.selected_candidate_index.has_value()) {
         std::println("selected execution: none");
         return;
     }
-    std::println(
-        "selected method={} parameter_set={} execution={}", assessment.selected->method->id(),
-        assessment.selected->parameter_set == nullptr ? "-"
-                                                      : assessment.selected->parameter_set->id(),
-        assessment.execution_policy->mode() == calculation::ExecutionMode::full     ? "full"
-        : assessment.execution_policy->mode() == calculation::ExecutionMode::cutoff ? "cutoff"
-                                                                                    : "cover");
+    const auto& selected = report.applicable.at(*report.selected_candidate_index);
+    std::println("selected method={} parameter_set={} execution={}", selected.method_id,
+                 selected.parameter_set_id.value_or("-"),
+                 assessment.execution_policy()->mode() == calculation::ExecutionMode::full ? "full"
+                 : assessment.execution_policy()->mode() == calculation::ExecutionMode::cutoff
+                     ? "cutoff"
+                     : "cover");
 }
 
 void print_methods() {

@@ -7,6 +7,7 @@
 #include <chargefw/parameters/classification/classification_result.h>
 #include <chargefw/parameters/models/parameter_set.h>
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -14,6 +15,12 @@
 #include <vector>
 
 namespace chargefw::calculation {
+
+class AssessmentResult;
+class CalculationObserver;
+struct AssessmentRequest;
+struct ExecutionResult;
+[[nodiscard]] auto assess(const AssessmentRequest& request) -> AssessmentResult;
 
 // Non-owning concrete execution choice produced from an applicability result. The selected
 // candidate and its classifications remain owned by the ApplicabilityResult.
@@ -36,8 +43,31 @@ struct AssessmentRequest {
     ResourcePolicy resource_policy{};
 };
 
-// Owns prepared application inputs and their applicability/execution-plan assessment. The contained
-// candidates reference methods from the registry and the owned parameter sets below. Move this
+// Value-only applicability data for application callers. It deliberately contains no registry or
+// parameter-set pointers, so it remains valid after an assessment is consumed by calculate().
+struct ApplicableCandidateReport {
+    std::string method_id;
+    std::optional<std::string> parameter_set_id;
+    std::vector<methods::ExecutionAssessment> execution_assessments;
+};
+
+struct RejectedCandidateReport {
+    std::string method_id;
+    std::optional<std::string> parameter_set_id;
+    std::vector<methods::PrerequisiteIssue> issues;
+};
+
+struct ApplicabilityReport {
+    std::vector<ApplicableCandidateReport> applicable;
+    std::vector<RejectedCandidateReport> rejected;
+    std::optional<std::size_t> selected_candidate_index;
+
+    [[nodiscard]] auto empty() const noexcept -> bool {
+        return applicable.empty();
+    }
+};
+
+// Owns prepared application inputs and their applicability/execution-plan assessment. Move this
 // result into calculate() to execute without repeating preparation or classification.
 class AssessmentResult {
   public:
@@ -53,15 +83,14 @@ class AssessmentResult {
     [[nodiscard]] auto prepared_molecules() const noexcept
         -> const features::PreparedMoleculeCollection&;
 
-    std::vector<parameters::ParameterSet> parameter_sets;
-    methods::ApplicabilityResult applicability;
-    const methods::ApplicableMethod* selected = nullptr;
-    std::optional<ExecutionPolicy> execution_policy;
-    std::vector<methods::ExecutionIssue> execution_issues;
-    double applicability_seconds = 0.0;
+    [[nodiscard]] auto applicability() const noexcept -> const ApplicabilityReport&;
+    [[nodiscard]] auto execution_policy() const noexcept -> const std::optional<ExecutionPolicy>&;
+    [[nodiscard]] auto execution_issues() const noexcept
+        -> const std::vector<methods::ExecutionIssue>&;
+    [[nodiscard]] auto applicability_seconds() const noexcept -> double;
 
     [[nodiscard]] auto executable() const noexcept -> bool {
-        return execution_policy.has_value();
+        return execution_policy_.has_value();
     }
 
     [[nodiscard]] auto requires_executable_plan() const noexcept -> bool {
@@ -69,6 +98,19 @@ class AssessmentResult {
     }
 
   private:
+    auto assess_prepared(const AssessmentRequest& request) -> void;
+
+    friend auto assess(const AssessmentRequest& request) -> AssessmentResult;
+    friend auto calculate(AssessmentResult assessment, std::size_t max_threads,
+                          const CalculationObserver& observer) -> ExecutionResult;
+
+    std::vector<parameters::ParameterSet> parameter_sets_;
+    methods::ApplicabilityResult applicability_;
+    ApplicabilityReport applicability_report_;
+    std::optional<std::size_t> selected_candidate_index_;
+    std::optional<ExecutionPolicy> execution_policy_;
+    std::vector<methods::ExecutionIssue> execution_issues_;
+    double applicability_seconds_ = 0.0;
     bool requires_executable_plan_ = false;
     std::unique_ptr<core::MoleculeCollection> molecules_;
     std::unique_ptr<features::PreparedMoleculeCollection> prepared_molecules_;
@@ -80,15 +122,9 @@ class AssessmentResult {
 [[nodiscard]] auto select_applicable_method(const methods::ApplicabilityResult& applicability)
     -> const methods::ApplicableMethod*;
 
-// Selects a concrete execution plan from scientifically applicable candidates. Automatic selection
-// considers only non-discouraged full execution until a reduced executor is implemented.
+// Selects a concrete execution plan from scientifically applicable candidates.
 [[nodiscard]] auto select_execution_plan(const methods::ApplicabilityResult& applicability,
                                          const ExecutionSelection& selection)
     -> std::optional<ExecutionPlan>;
-
-// Resolves registered methods, applies classification policy, and selects a concrete execution plan
-// without running a charge calculation. Explicit unavailable method or parameter-set IDs are
-// errors; an unavailable explicit execution plan is reported as no plan.
-[[nodiscard]] auto assess(const AssessmentRequest& request) -> AssessmentResult;
 
 } // namespace chargefw::calculation

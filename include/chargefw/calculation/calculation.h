@@ -36,7 +36,7 @@ struct CalculationMetrics {
 // Result of the application-facing facade, which performs applicability and automatic selection.
 struct ExecutionResult {
     std::optional<charges::ChargeSet> charges;
-    methods::ApplicabilityResult applicability;
+    ApplicabilityReport applicability;
     std::optional<ExecutionPolicy> execution_policy;
     std::vector<methods::ExecutionIssue> execution_issues;
     std::optional<methods::MethodOptions> effective_method_options;

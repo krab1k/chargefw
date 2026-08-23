@@ -10,6 +10,39 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
 
+- [ ] Keep execution orchestration and observability in `calculation`, not `methods`. The observer
+  currently makes the public methods calculation API depend on the calculation layer, even though
+  target traversal, progress, cancellation, and thread scheduling are execution concerns. Introduce
+  a calculation-layer full executor consistent with cutoff and cover, emit target events there, and
+  keep methods as stateless algorithms operating on their ordinary calculation inputs. Preserve all
+  existing full-mode validation, source ordering, max-thread behavior, cancellation checkpoints, and
+  facade/low-level API behavior with focused dependency and execution regression tests.
+- [ ] Eliminate avoidable copies from the owned assessment workflow. `assess(const AssessmentRequest&)`
+  copies molecules and parameter sets into `AssessmentResult`; the CLI can consequently retain the
+  imported collection, request collection, and assessment collection while calculating a large input.
+  Support transfer of an owning request (or an explicit rvalue path) into assessment, retain only the
+  lightweight request/provenance data needed after transfer, and document the resulting ownership
+  semantics. Verify reduced-mode planning and execution on large multi-molecule/conformer fixtures
+  without changing selection, provenance, source mappings, or result cardinality.
+- [ ] Complete and test the observer terminal-event contract. A computation start event is emitted,
+  but ordinary calculation exceptions bypass `computation_finished`; cancellation alone is handled.
+  Define whether failures end with `computation_finished` or a new explicit failure event, implement
+  the choice with exception-safe scope management, and ensure terminal progress output is restored on
+  success, cancellation, validation failure, and solver failure. The contract must remain safe for
+  callbacks from oneTBB worker threads and must not hide or translate non-cancellation calculation
+  exceptions at the low-level boundary.
+- [ ] Correct fragment-progress event semantics. The throttle timestamp starts at zero, so the first
+  completed fragment is emitted immediately and the unconditional final emission can duplicate the
+  same 100% snapshot for one-fragment or fast targets. Emit no duplicate terminal completion, define
+  the exact monotonic/count semantics under parallel completion, and test cutoff and cover for empty,
+  one-fragment, multi-fragment, serial, and parallel targets. Either implement `fragment_started` with
+  documented throttling/cancellation semantics or remove this currently un-emitted public enum value.
+- [ ] Reconcile observability and execution documentation with implementation. Select one fragment
+  throttle interval and use it consistently: `PROJECT.md` says 100 ms while `parallel_for.h` uses
+  200 ms. Update the stale claim that the application facade prepares features separately for
+  applicability and calculation and includes a second preparation pass in computation timing; the
+  assessment workflow now retains prepared features for execution. Keep `PROJECT.md` as the sole
+  architecture/status source and `README.md` as concise user-facing behavior/build guidance.
 - [ ] Record reduced-execution diagnostics in result provenance: per-target fragment or pivot counts,
   retained/owned atom counts, and cover overlap reconciliation, together with the fixed 3 Å retained
   interior and the resulting boundary buffer. Mode, radius, and correction are already recorded.

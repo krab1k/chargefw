@@ -159,8 +159,8 @@ auto main() -> int {
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
             .resource_policy = {.full_atom_threshold = 2}});
 
-        assert(assessment.execution_issues.size() == 1);
-        assert(assessment.execution_issues[0].kind ==
+        assert(assessment.execution_issues().size() == 1);
+        assert(assessment.execution_issues()[0].kind ==
                methods::ExecutionIssueKind::resource_threshold_exceeded);
         assert(observer.events().empty());
 

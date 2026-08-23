@@ -16,6 +16,7 @@
 #include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
+#include <concepts>
 #include <limits>
 #include <optional>
 #include <span>
@@ -31,6 +32,12 @@ namespace features = chargefw::features;
 namespace methods = chargefw::methods;
 
 namespace {
+
+template <typename T>
+concept HasPublicParameterSets = requires(T& value) { value.parameter_sets; };
+
+template <typename T>
+concept HasPublicSelectedCandidate = requires(T& value) { value.selected; };
 
 [[nodiscard]] auto calculate_application(const calculation::AssessmentRequest& request)
     -> calculation::ExecutionResult {
@@ -163,12 +170,21 @@ auto make_permissive_peoe_parameter_set() -> chargefw::parameters::ParameterSet 
                              {.name = "C", .value = 1.0}}}}}};
 }
 
+struct AutomaticCalculationResult {
+    std::optional<charges::ChargeSet> charges;
+    methods::ApplicabilityResult applicability;
+
+    [[nodiscard]] auto calculated() const noexcept -> bool {
+        return charges.has_value();
+    }
+};
+
 auto calculate_automatically(
     const features::PreparedMoleculeCollection& molecules,
     std::span<const methods::Method* const> candidate_methods,
     std::span<const chargefw::parameters::ParameterSet> parameter_sets,
     const chargefw::parameters::ClassificationOptions classification_options = {})
-    -> calculation::ExecutionResult {
+    -> AutomaticCalculationResult {
     auto applicability =
         methods::find_applicable_methods({.molecules = molecules,
                                           .methods = candidate_methods,
@@ -187,6 +203,9 @@ auto calculate_automatically(
 } // namespace
 
 auto main() -> int {
+    static_assert(!HasPublicParameterSets<calculation::AssessmentResult>);
+    static_assert(!HasPublicSelectedCandidate<calculation::AssessmentResult>);
+
     const auto prepared = make_prepared_water();
     const FixedChargeMethod higher_priority{"higher", 10, 10.0};
     const FixedChargeMethod lower_priority{"lower", 1, 1.0};
@@ -299,6 +318,26 @@ auto main() -> int {
     assert(permissive_application_result.calculated());
     assert(permissive_application_result.charges->method_id() == std::string_view{"peoe"});
 
+    // The returned report owns its IDs and does not retain parameter-set pointers from the consumed
+    // assessment. Moving the assessment before execution must preserve the indexed selected plan.
+    const auto owned_parameterized_result = []() -> calculation::ExecutionResult {
+        auto assessment = calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
+            .parameter_sets = {make_permissive_peoe_parameter_set()},
+            .method_id = "peoe",
+            .parameter_set_id = "permissive-peoe-parameters",
+            .classification_options = {.permissive_types = true}});
+        auto relocated_assessment = std::move(assessment);
+        return calculation::calculate(std::move(relocated_assessment));
+    }();
+    assert(owned_parameterized_result.calculated());
+    assert(owned_parameterized_result.applicability.applicable.size() == 1);
+    assert(owned_parameterized_result.applicability.applicable[0].method_id == "peoe");
+    assert(owned_parameterized_result.applicability.applicable[0].parameter_set_id ==
+           std::optional<std::string>{"permissive-peoe-parameters"});
+    assert(owned_parameterized_result.applicability.selected_candidate_index ==
+           std::optional<std::size_t>{0});
+
     auto peoe_options = methods::MethodOptions{};
     peoe_options.set("iters", 1);
     const auto configured_peoe_result = calculate_application(calculation::AssessmentRequest{
@@ -348,10 +387,10 @@ auto main() -> int {
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
     assert(assessment.executable());
-    assert(assessment.applicability.applicable.size() == 1);
-    assert(assessment.selected != nullptr);
-    assert(assessment.selected->method->id() == std::string_view{"formal"});
-    assert(assessment.execution_policy->mode() == calculation::ExecutionMode::full);
+    assert(assessment.applicability().applicable.size() == 1);
+    assert(assessment.applicability().selected_candidate_index == std::optional<std::size_t>{0});
+    assert(assessment.applicability().applicable[0].method_id == "formal");
+    assert(assessment.execution_policy()->mode() == calculation::ExecutionMode::full);
 
     const auto assessed_result = calculation::calculate(std::move(assessment), 1);
     assert(assessed_result.calculated());

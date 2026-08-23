@@ -120,7 +120,7 @@ auto run(std::span<char*> arguments) -> int {
         std::chrono::duration<double>{std::chrono::steady_clock::now() - parsing_started}.count();
     const auto request = chargefw::cli::make_request(imported, calculate_selection);
     auto assessment = chargefw::calculation::assess(request);
-    for (const auto& warning : assessment.execution_issues) {
+    for (const auto& warning : assessment.execution_issues()) {
         std::println(std::cerr, "Warning: {}", warning.message);
     }
     const auto progress_observer = TerminalProgressObserver{};

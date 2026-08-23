@@ -105,9 +105,12 @@ candidate selection. `select_execution_plan()` additionally resolves a concrete 
 parameter-set IDs, classification options, an `ExecutionSelection`, and a `ResourcePolicy`.
 
 - `assess()` prepares molecules, finds applicable candidates, and selects a concrete plan without
-  calculating. Its result owns the prepared collection and classifications.
+  calculating. Its result keeps the executable parameter/classification state private and exposes a
+  const value-only applicability report.
 - `calculate(std::move(assessment), max_threads, observer)` executes an assessment without repeating
-  preparation or classification. Thread limits and observation are execution-only inputs.
+  preparation or classification. Its result retains the owned value-only report, so applicability
+  diagnostics remain valid after the assessment and its parameter data are destroyed. Thread limits and
+  observation are execution-only inputs.
 - Omitted IDs use deterministic ranking: method priority, parameter-set priority, method ID, then
   parameter-set ID.
 - Explicit unavailable/inapplicable IDs or unsupported explicit execution fail; there is no fallback.
@@ -161,8 +164,8 @@ Three event tiers exist:
   per pivot fragment). Throttled to one event per 100 ms via an atomic CAS, with a final event
   guaranteeing 100% completion.
 
-Selected-plan warnings, including explicit-full execution above the resource threshold, are retained
-in `AssessmentResult::execution_issues` before execution begins. Callers may report them
+Selected-plan warnings, including explicit-full execution above the resource threshold, are available
+through `AssessmentResult::execution_issues()` before execution begins. Callers may report them
 before calling `calculate(std::move(assessment), ...)`; they are also retained in
 `ExecutionResult::execution_issues` for result provenance.
 

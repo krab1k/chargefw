@@ -39,20 +39,23 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
         }
         return ExecutionResult{
             .charges = std::nullopt,
-            .applicability = std::move(assessment.applicability),
+            .applicability = std::move(assessment.applicability_report_),
             .execution_policy = std::nullopt,
             .execution_issues = {},
             .effective_method_options = std::nullopt,
-            .metrics = {.applicability_seconds = assessment.applicability_seconds}};
+            .metrics = {.applicability_seconds = assessment.applicability_seconds_}};
     }
 
-    if (assessment.selected == nullptr || !assessment.execution_policy.has_value()) {
+    if (!assessment.selected_candidate_index_.has_value() ||
+        !assessment.execution_policy_.has_value()) {
         throw std::logic_error{"executable calculation assessment has no selected execution plan"};
     }
 
-    const auto mode = assessment.execution_policy->mode();
-    const auto method_id = assessment.selected->method->id();
-    const auto effective_method_options = assessment.selected->method_options;
+    const auto& selected =
+        assessment.applicability_.applicable.at(*assessment.selected_candidate_index_);
+    const auto mode = assessment.execution_policy_->mode();
+    const auto method_id = selected.method->id();
+    const auto effective_method_options = selected.method_options;
 
     const auto computation_started = std::chrono::steady_clock::now();
     observer.on_progress(CalculationProgress{
@@ -62,11 +65,12 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
     });
 
     try {
-        auto result = calculate(CalculationRequest{.molecules = assessment.prepared_molecules(),
-                                                   .selected = *assessment.selected,
-                                                   .execution_policy = *assessment.execution_policy,
-                                                   .max_threads = max_threads,
-                                                   .observer = observer});
+        auto result =
+            calculate(CalculationRequest{.molecules = assessment.prepared_molecules(),
+                                         .selected = selected,
+                                         .execution_policy = *assessment.execution_policy_,
+                                         .max_threads = max_threads,
+                                         .observer = observer});
         const auto computation_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
                 .count();
@@ -78,11 +82,11 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
         });
         return ExecutionResult{
             .charges = std::move(result.charges),
-            .applicability = std::move(assessment.applicability),
-            .execution_policy = assessment.execution_policy,
-            .execution_issues = std::move(assessment.execution_issues),
+            .applicability = std::move(assessment.applicability_report_),
+            .execution_policy = assessment.execution_policy_,
+            .execution_issues = std::move(assessment.execution_issues_),
             .effective_method_options = effective_method_options,
-            .metrics = {.applicability_seconds = assessment.applicability_seconds,
+            .metrics = {.applicability_seconds = assessment.applicability_seconds_,
                         .computation_seconds = computation_seconds}};
     } catch (const CalculationCancelled&) {
         const auto computation_seconds =
@@ -96,11 +100,11 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
         });
         return ExecutionResult{
             .charges = std::nullopt,
-            .applicability = std::move(assessment.applicability),
-            .execution_policy = assessment.execution_policy,
-            .execution_issues = std::move(assessment.execution_issues),
+            .applicability = std::move(assessment.applicability_report_),
+            .execution_policy = assessment.execution_policy_,
+            .execution_issues = std::move(assessment.execution_issues_),
             .effective_method_options = std::nullopt,
-            .metrics = {.applicability_seconds = assessment.applicability_seconds,
+            .metrics = {.applicability_seconds = assessment.applicability_seconds_,
                         .computation_seconds = computation_seconds},
             .cancelled = true};
     }

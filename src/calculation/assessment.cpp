@@ -129,37 +129,85 @@ auto validate_application_method_options(const AssessmentRequest& request) -> vo
     return {*found};
 }
 
-auto assess_prepared(const AssessmentRequest& request, AssessmentResult& result) -> void {
-    result.applicability =
-        methods::find_applicable_methods({.molecules = result.prepared_molecules(),
-                                          .methods = application_methods(request),
-                                          .parameter_sets = result.parameter_sets,
-                                          .classification_options = request.classification_options,
-                                          .resource_policy = request.resource_policy,
-                                          .method_options = request.method_options});
-    const auto plan = select_execution_plan(result.applicability, request.execution_selection);
-    if (plan.has_value()) {
-        result.execution_policy = plan->policy;
-        result.selected = plan->selected;
-        result.execution_issues = plan->issues;
-    }
-}
-
 } // namespace
 
 AssessmentResult::AssessmentResult(core::MoleculeCollection molecules,
                                    std::vector<parameters::ParameterSet> supplied_parameter_sets,
                                    const bool requires_executable_plan)
-    : parameter_sets{std::move(supplied_parameter_sets)},
+    : parameter_sets_{std::move(supplied_parameter_sets)},
       requires_executable_plan_{requires_executable_plan},
       molecules_{std::make_unique<core::MoleculeCollection>(std::move(molecules))},
       prepared_molecules_{std::make_unique<features::PreparedMoleculeCollection>(*molecules_)} {}
 
 AssessmentResult::~AssessmentResult() = default;
 
+auto AssessmentResult::assess_prepared(const AssessmentRequest& request) -> void {
+    applicability_ =
+        methods::find_applicable_methods({.molecules = prepared_molecules(),
+                                          .methods = application_methods(request),
+                                          .parameter_sets = parameter_sets_,
+                                          .classification_options = request.classification_options,
+                                          .resource_policy = request.resource_policy,
+                                          .method_options = request.method_options});
+    const auto plan = select_execution_plan(applicability_, request.execution_selection);
+    if (plan.has_value()) {
+        const auto selected = std::ranges::find_if(
+            applicability_.applicable, [&plan](const methods::ApplicableMethod& candidate) {
+                return &candidate == plan->selected;
+            });
+        if (selected == applicability_.applicable.end()) {
+            throw std::logic_error{
+                "execution plan selected a candidate outside its applicability result"};
+        }
+        selected_candidate_index_ =
+            static_cast<std::size_t>(std::distance(applicability_.applicable.begin(), selected));
+        execution_policy_ = plan->policy;
+        execution_issues_ = plan->issues;
+    }
+
+    applicability_report_.applicable.reserve(applicability_.applicable.size());
+    for (const auto& candidate : applicability_.applicable) {
+        applicability_report_.applicable.push_back(ApplicableCandidateReport{
+            .method_id = std::string{candidate.method->id()},
+            .parameter_set_id = candidate.parameter_set == nullptr
+                                    ? std::nullopt
+                                    : std::optional{std::string{candidate.parameter_set->id()}},
+            .execution_assessments = candidate.execution_assessments});
+    }
+    applicability_report_.rejected.reserve(applicability_.rejected.size());
+    const auto& registry = methods::method_registry();
+    for (const auto& candidate : applicability_.rejected) {
+        applicability_report_.rejected.push_back(RejectedCandidateReport{
+            .method_id = std::string{registry.methods()[candidate.method_index]->id()},
+            .parameter_set_id = candidate.parameter_set_index.has_value()
+                                    ? std::optional{std::string{
+                                          parameter_sets_[*candidate.parameter_set_index].id()}}
+                                    : std::nullopt,
+            .issues = candidate.issues});
+    }
+    applicability_report_.selected_candidate_index = selected_candidate_index_;
+}
+
 auto AssessmentResult::prepared_molecules() const noexcept
     -> const features::PreparedMoleculeCollection& {
     return *prepared_molecules_;
+}
+
+auto AssessmentResult::applicability() const noexcept -> const ApplicabilityReport& {
+    return applicability_report_;
+}
+
+auto AssessmentResult::execution_policy() const noexcept -> const std::optional<ExecutionPolicy>& {
+    return execution_policy_;
+}
+
+auto AssessmentResult::execution_issues() const noexcept
+    -> const std::vector<methods::ExecutionIssue>& {
+    return execution_issues_;
+}
+
+auto AssessmentResult::applicability_seconds() const noexcept -> double {
+    return applicability_seconds_;
 }
 
 auto select_applicable_method(const methods::ApplicabilityResult& applicability)
@@ -235,8 +283,8 @@ auto assess(const AssessmentRequest& request) -> AssessmentResult {
         request.molecules, application_parameter_sets(request),
         request.method_id.has_value() || request.parameter_set_id.has_value() ||
             request.execution_selection.kind() != ExecutionSelectionKind::automatic};
-    assess_prepared(request, result);
-    result.applicability_seconds =
+    result.assess_prepared(request);
+    result.applicability_seconds_ =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - started}.count();
     return result;
 }
