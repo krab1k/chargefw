@@ -1,6 +1,6 @@
 #include "calculation/cutoff_execution.h"
-#include "calculation/parallel_for.h"
 #include "calculation/reduced_execution.h"
+#include "calculation/target_execution.h"
 #include "methods/applicable_method_execution.h"
 
 #include <chargefw/core/molecule.h>
@@ -10,12 +10,10 @@
 #include <chargefw/methods/method.h>
 #include <chargefw/parameters/classification/parameter_classification.h>
 
-#include <chrono>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <vector>
 
 namespace chargefw::calculation {
 namespace {
@@ -73,67 +71,15 @@ auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
         throw std::logic_error{"validated cutoff execution policy has no radius"};
     }
 
-    struct Target {
-        std::size_t molecule_index;
-        std::size_t conformer_index;
-    };
-
-    std::vector<Target> targets;
-    for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
-        const auto& molecule = molecules[molecule_index];
-        for (std::size_t conformer_index = 0;
-             conformer_index < molecule.molecule().conformer_count(); ++conformer_index) {
-            targets.push_back(
-                Target{.molecule_index = molecule_index, .conformer_index = conformer_index});
-        }
-    }
-
-    const auto computation_start = std::chrono::steady_clock::now();
-
-    std::vector<std::optional<charges::ChargeAssignment>> calculated(targets.size());
-    const auto target_threads = targets.size() > 1 ? max_threads : 1;
-    ::chargefw::calculation::detail::parallel_for_indexed(
-        targets.size(), target_threads, [&](const std::size_t target_index) {
-            const auto& target = targets[target_index];
-            const auto& molecule = molecules[target.molecule_index];
-            const auto* classification =
-                selected.uses_parameters()
-                    ? std::addressof(selected.classifications[target.molecule_index])
-                    : nullptr;
-
-            const detail::ProgressContext target_ctx{
-                .observer = observer,
-                .mode = ExecutionMode::cutoff,
-                .method_id = selected.method->id(),
-                .target_index = target_index,
-                .target_count = targets.size(),
-                .molecule_index = target.molecule_index,
-                .conformer_index = target.conformer_index,
-                .computation_start = computation_start,
-            };
-
-            detail::check_cancellation(observer);
-            detail::emit_target_event(observer, CalculationPhase::target_started, target_ctx);
-            detail::check_cancellation(observer);
-
-            calculated[target_index] = charges::ChargeAssignment{
-                .target = charges::ChargeTarget{.molecule_index = target.molecule_index,
-                                                .conformer_index = target.conformer_index},
-                .charges = calculate_target(
-                    selected, molecule, classification, target.conformer_index, *radius,
-                    policy.charge_correction(), target_threads == 1 ? max_threads : 1, target_ctx)};
-
-            detail::emit_target_event(observer, CalculationPhase::target_finished, target_ctx);
+    return detail::execute_calculation_targets(
+        selected, molecules, ExecutionMode::cutoff, true, true, max_threads, observer,
+        [&](const features::PreparedMolecule& molecule,
+            const parameters::ParameterClassification* classification,
+            const std::optional<std::size_t> conformer_index, const std::size_t target_max_threads,
+            const detail::ProgressContext& target_ctx) {
+            return calculate_target(selected, molecule, classification, *conformer_index, *radius,
+                                    policy.charge_correction(), target_max_threads, target_ctx);
         });
-
-    std::vector<charges::ChargeAssignment> assignments;
-    assignments.reserve(calculated.size());
-    for (auto& assignment : calculated) {
-        assignments.push_back(std::move(*assignment));
-    }
-
-    return charges::ChargeSet{std::string{selected.method->id()}, std::move(assignments),
-                              methods::detail::parameter_set_id_for(selected)};
 }
 
 } // namespace chargefw::calculation

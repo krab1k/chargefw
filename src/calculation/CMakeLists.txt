@@ -11,6 +11,7 @@ target_sources(chargefw_core
          full_execution.h
         parallel_for.h
         reduced_execution.h
+        target_execution.h
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS

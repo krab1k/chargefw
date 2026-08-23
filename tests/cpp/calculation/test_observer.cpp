@@ -15,12 +15,14 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <limits>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace calculation = chargefw::calculation;
+namespace charges = chargefw::charges;
 namespace core = chargefw::core;
 namespace methods = chargefw::methods;
 
@@ -506,6 +508,54 @@ auto main() -> int {
             assert(!target_events.empty());
             assert_single_terminal_fragment_progress(target_events,
                                                      target_events.front().fragment_count);
+        }
+    }
+
+    // --- Test 13: every execution mode preserves source target ordering and identity ---
+    for (const auto selection_kind :
+         {calculation::ExecutionSelectionKind::full, calculation::ExecutionSelectionKind::cutoff,
+          calculation::ExecutionSelectionKind::cover}) {
+        const auto observer = RecordingObserver{};
+        const auto result = calculate_application(
+            calculation::AssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{
+                    chargefw::test::make_two_conformer_water(), chargefw::test::make_water()}},
+                .parameter_sets = {},
+                .method_id = "eqeq",
+                .execution_selection =
+                    selection_kind == calculation::ExecutionSelectionKind::full
+                        ? calculation::ExecutionSelection{selection_kind}
+                        : calculation::ExecutionSelection{selection_kind,
+                                                          calculation::minimum_reduced_radius},
+                .resource_policy = {.max_threads = 1}},
+            observer);
+        assert(result.calculated());
+        assert(result.charges->size() == 3);
+
+        const auto expected_targets = std::vector<charges::ChargeTarget>{
+            {.molecule_index = 0, .conformer_index = 0},
+            {.molecule_index = 0, .conformer_index = 1},
+            {.molecule_index = 1, .conformer_index = 0},
+        };
+        for (std::size_t index = 0; index < expected_targets.size(); ++index) {
+            assert(result.charges->assignment(index).target.molecule_index ==
+                   expected_targets[index].molecule_index);
+            assert(result.charges->assignment(index).target.conformer_index ==
+                   expected_targets[index].conformer_index);
+        }
+
+        auto target_starts = std::vector<RecordedProgress>{};
+        for (const auto& event : observer.events()) {
+            if (event.phase == calculation::CalculationPhase::target_started) {
+                target_starts.push_back(event);
+            }
+        }
+        assert(target_starts.size() == expected_targets.size());
+        for (std::size_t index = 0; index < target_starts.size(); ++index) {
+            assert(target_starts[index].target_index == index);
+            assert(target_starts[index].target_count == expected_targets.size());
+            assert(target_starts[index].molecule_index == expected_targets[index].molecule_index);
+            assert(target_starts[index].conformer_index == expected_targets[index].conformer_index);
         }
     }
 

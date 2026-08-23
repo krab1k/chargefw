@@ -9,14 +9,6 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
-- [ ] Consolidate calculation target orchestration shared by full, cutoff, and cover execution. Each
-  executor independently constructs molecule/conformer targets, allocates source-order result slots,
-  schedules outer parallel work, constructs progress contexts, polls cancellation, emits target
-  events, materializes assignments, and builds `ChargeSet`. Introduce a calculation-internal target
-  executor with mode-specific target calculation callbacks while keeping full scientific calculation
-  and reduced fragment algorithms separate. Preserve no-nested-scheduling behavior, source ordering,
-  target/conformer identity, error context, thread limits, cancellation checkpoints, and bit-identical
-  serial/parallel results; add shared executor tests before removing duplicated paths.
 - [ ] Clarify and stabilize the public observer progress data model. `fragment_index` currently means
   completed-fragment count rather than an index, unlike zero-based target indices; rename it to a
   completion-count field or otherwise document a consistent convention before bindings depend on it.

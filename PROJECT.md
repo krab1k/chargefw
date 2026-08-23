@@ -56,7 +56,7 @@ calculation::select_execution_plan()
                           |
                           v
 calculation::calculate()
-  full method execution or shared parallel cutoff executor
+  shared target executor + full/cutoff/cover calculation callback
                           |
                           v
 charges::ChargeSet + application/export provenance
@@ -68,7 +68,8 @@ charges::ChargeSet + application/export provenance
 - `features` owns derived topology/geometry state and `SpatialFragment`.
 - `parameters` owns immutable matching data and classification.
 - `methods` owns stateless algorithms, requirements, applicability, and the registry.
-- `calculation` owns resource policy, deterministic planning, full/cutoff dispatch, and facades.
+- `calculation` owns resource policy, deterministic planning, shared full/cutoff/cover dispatch, and
+  facades.
 - `adapters` translate representations and preserve source identity/mapping; they do not select methods
   or duplicate scientific policy.
 
