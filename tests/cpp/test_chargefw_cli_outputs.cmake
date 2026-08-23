@@ -39,6 +39,21 @@ foreach(mode IN ITEMS full cutoff cover)
     file(REMOVE_RECURSE "${mode_output_directory}")
 endforeach()
 
+set(warning_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_warning")
+file(REMOVE_RECURSE "${warning_output_directory}")
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" calculate --method eem --execution full --full-atom-threshold 0
+                "${CHARGEFW_INPUT}" "${warning_output_directory}"
+        RESULT_VARIABLE warning_result
+        ERROR_VARIABLE warning_error
+)
+if(NOT warning_result EQUAL 0 OR NOT warning_error MATCHES "Warning: ")
+    message(FATAL_ERROR "Explicit-full warning was not emitted: ${warning_error}")
+endif()
+file(REMOVE_RECURSE "${warning_output_directory}")
+
 execute_process(
         COMMAND "${CMAKE_COMMAND}" -E env
                 "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"

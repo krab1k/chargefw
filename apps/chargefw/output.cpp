@@ -20,8 +20,8 @@
 namespace chargefw::cli {
 namespace {
 
-[[nodiscard]] auto result_document(const ImportedCollection& imported,
-                                   const calculation::AssessmentRequest& request,
+[[nodiscard]] auto result_document(const ImportedExportContext& export_context,
+                                   const adapters::RequestedCalculationProvenance& requested,
                                    const calculation::ExecutionResult& result,
                                    const adapters::ExecutionMetrics& metrics)
     -> adapters::ChargeResultDocument;
@@ -64,42 +64,43 @@ void write_json(const std::filesystem::path& path, const adapters::ChargeResultD
     adapters::native::json_output::JsonWriter{output}.write(document);
 }
 
-void write_mmcif(const std::filesystem::path& path, const ImportedCollection& imported,
+void write_mmcif(const std::filesystem::path& path, const ImportedExportContext& export_context,
                  const charges::ChargeSet& charges) {
     auto output = std::ofstream{path};
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
     auto writer = adapters::gemmi::mmcif_output::MmcifWriter{output};
-    if (imported.mmcif_source.has_value()) {
-        writer.write_mmcif(imported.records, charges, *imported.mmcif_source, "ChargeFW", "0.0.1");
-    } else if (imported.pdb_source.has_value()) {
-        writer.write_pdb(imported.records.front(), charges, *imported.pdb_source, "ChargeFW",
-                         "0.0.1");
+    if (export_context.mmcif_source.has_value()) {
+        writer.write_mmcif(export_context.records, charges, *export_context.mmcif_source,
+                           "ChargeFW", "0.0.1");
+    } else if (export_context.pdb_source.has_value()) {
+        writer.write_pdb(export_context.records.front(), charges, *export_context.pdb_source,
+                         "ChargeFW", "0.0.1");
     } else {
-        writer.write_generated(imported.records, charges, "ChargeFW", "0.0.1");
+        writer.write_generated(export_context.records, charges, "ChargeFW", "0.0.1");
     }
 }
 
 void write_mol2(const std::filesystem::path& path, const std::string& input_path,
-                const ImportedCollection& imported,
+                const ImportedExportContext& export_context,
                 const std::span<const charges::ChargeAssignment> assignments) {
     auto output = std::ofstream{path, std::ios::binary};
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
     auto writer = adapters::native::mol2_output::Mol2Writer{output};
-    if (imported.format == ImportedCollection::Format::mol2) {
+    if (export_context.format == ImportedExportContext::Format::mol2) {
         writer.write_preserving_source(input_path, assignments);
         return;
     }
-    for (std::size_t index = 0; index < imported.records.size(); ++index) {
-        writer.write_generated(imported.records[index].molecule, assignments[index]);
+    for (std::size_t index = 0; index < export_context.records.size(); ++index) {
+        writer.write_generated(export_context.records[index].molecule, assignments[index]);
     }
 }
 
 void write_sdf(const std::filesystem::path& path, const std::string& input_path,
-               const ImportedCollection& imported,
+               const ImportedExportContext& export_context,
                const std::span<const charges::ChargeAssignment> assignments,
                const std::string_view method) {
     auto output = std::ofstream{path, std::ios::binary};
@@ -109,20 +110,20 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
     auto writer = adapters::native::sdf_output::SdfWriter{output};
     const auto properties = std::array{adapters::native::sdf_output::ChargeProperty{
         .charge_type_id = 1, .assignments = assignments, .method = method}};
-    if (imported.format == ImportedCollection::Format::sdf) {
+    if (export_context.format == ImportedExportContext::Format::sdf) {
         writer.write_preserving_source(input_path, properties);
         return;
     }
-    for (std::size_t index = 0; index < imported.records.size(); ++index) {
+    for (std::size_t index = 0; index < export_context.records.size(); ++index) {
         const auto property = std::array{adapters::native::sdf_output::ChargeProperty{
             .charge_type_id = 1, .assignments = assignments.subspan(index, 1), .method = method}};
-        writer.write_generated(imported.records[index].molecule, property,
+        writer.write_generated(export_context.records[index].molecule, property,
                                adapters::native::sdf_output::MolFormat::v2000);
     }
 }
 
-[[nodiscard]] auto result_document(const ImportedCollection& imported,
-                                   const calculation::AssessmentRequest& request,
+[[nodiscard]] auto result_document(const ImportedExportContext& export_context,
+                                   const adapters::RequestedCalculationProvenance& requested,
                                    const calculation::ExecutionResult& result,
                                    const adapters::ExecutionMetrics& metrics)
     -> adapters::ChargeResultDocument {
@@ -132,26 +133,7 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
         warnings.push_back(issue.message);
     }
     auto provenance = adapters::CalculationProvenance{
-        .requested = {.method_id = request.method_id,
-                      .parameter_set_id = request.parameter_set_id,
-                      .permissive_types = request.classification_options.permissive_types,
-                      .full_atom_threshold = request.resource_policy.full_atom_threshold,
-                      .max_threads = request.resource_policy.max_threads,
-                      .execution_kind =
-                          std::string{calculation::to_string(request.execution_selection.kind())},
-                      .execution_radius = request.execution_selection.radius(),
-                      .execution_charge_correction =
-                          request.execution_selection.charge_correction().transform(
-                              [](const calculation::ChargeCorrectionPolicy policy) {
-                                  return std::string{calculation::to_string(policy)};
-                              }),
-                      .structural_input_policy =
-                          imported.structural_input_policy.has_value()
-                              ? std::optional{adapters::StructuralInputPolicyProvenance{
-                                    .selection = imported.structural_input_policy->selection,
-                                    .bonds = imported.structural_input_policy->bonds}}
-                              : std::nullopt,
-                      .conformer_selection = imported.conformer_selection},
+        .requested = requested,
         .effective = {.method_id = result.charges.has_value()
                                        ? std::optional{std::string{result.charges->method_id()}}
                                        : std::nullopt,
@@ -174,9 +156,6 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                               : std::nullopt,
                       .warnings = std::move(warnings)},
         .execution_metrics = metrics};
-    for (const auto& [method_id, options] : request.method_options) {
-        provenance.requested.method_options.emplace(method_id, options);
-    }
     if (result.effective_method_options.has_value() && result.charges.has_value()) {
         provenance.effective.method_options.emplace(std::string{result.charges->method_id()},
                                                     *result.effective_method_options);
@@ -185,8 +164,8 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                                                    .generator_version = "0.0.1",
                                                    .records = {},
                                                    .calculation_provenance = provenance};
-    document.records.reserve(imported.records.size());
-    for (const auto& record : imported.records) {
+    document.records.reserve(export_context.records.size());
+    for (const auto& record : export_context.records) {
         document.records.push_back(
             adapters::ChargeResultRecord{.identity = record.identity, .charges = result.charges});
     }
@@ -216,9 +195,37 @@ auto peak_resident_memory_mb() -> double {
     return static_cast<double>(usage.ru_maxrss) / 1024.0;
 }
 
+auto make_requested_provenance(const ImportedExportContext& export_context,
+                               const calculation::AssessmentRequest& request)
+    -> adapters::RequestedCalculationProvenance {
+    auto requested = adapters::RequestedCalculationProvenance{
+        .method_id = request.method_id,
+        .parameter_set_id = request.parameter_set_id,
+        .permissive_types = request.classification_options.permissive_types,
+        .full_atom_threshold = request.resource_policy.full_atom_threshold,
+        .max_threads = request.resource_policy.max_threads,
+        .execution_kind = std::string{calculation::to_string(request.execution_selection.kind())},
+        .execution_radius = request.execution_selection.radius(),
+        .execution_charge_correction = request.execution_selection.charge_correction().transform(
+            [](const calculation::ChargeCorrectionPolicy policy) {
+                return std::string{calculation::to_string(policy)};
+            }),
+        .structural_input_policy =
+            export_context.structural_input_policy.has_value()
+                ? std::optional{adapters::StructuralInputPolicyProvenance{
+                      .selection = export_context.structural_input_policy->selection,
+                      .bonds = export_context.structural_input_policy->bonds}}
+                : std::nullopt,
+        .conformer_selection = export_context.conformer_selection};
+    for (const auto& [method_id, options] : request.method_options) {
+        requested.method_options.emplace(method_id, options);
+    }
+    return requested;
+}
+
 auto write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
-                               const ImportedCollection& imported,
-                               const calculation::AssessmentRequest& request,
+                               const ImportedExportContext& export_context,
+                               const adapters::RequestedCalculationProvenance& requested,
                                const calculation::ExecutionResult& result, CalculationRun& run)
     -> int {
     run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
@@ -227,17 +234,18 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
         run.metrics.runtime_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
         adapters::native::json_output::JsonWriter{std::cout}.write(
-            result_document(imported, request, result, run.metrics));
+            result_document(export_context, requested, result, run.metrics));
         return 1;
     }
 
-    const auto structural_output = imported.format == ImportedCollection::Format::pdb ||
-                                   imported.format == ImportedCollection::Format::mmcif;
-    if (!structural_output && imported.format == ImportedCollection::Format::json &&
-        std::ranges::any_of(imported.records, [](const adapters::ImportedMoleculeRecord& record) {
-            const auto& molecule = record.molecule;
-            return molecule.conformer_count() > 1;
-        })) {
+    const auto structural_output = export_context.format == ImportedExportContext::Format::pdb ||
+                                   export_context.format == ImportedExportContext::Format::mmcif;
+    if (!structural_output && export_context.format == ImportedExportContext::Format::json &&
+        std::ranges::any_of(export_context.records,
+                            [](const adapters::ImportedMoleculeRecord& record) {
+                                const auto& molecule = record.molecule;
+                                return molecule.conformer_count() > 1;
+                            })) {
         throw std::runtime_error{
             "JSON input with multiple conformers cannot be written to SDF or MOL2"};
     }
@@ -259,14 +267,14 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
         throw std::runtime_error{"calculation result is missing charges"};
     }
     const auto writing_started = std::chrono::steady_clock::now();
-    write_mmcif(prefix.string() + ".cif", imported, *charges);
+    write_mmcif(prefix.string() + ".cif", export_context, *charges);
     if (structural_output) {
         std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
     } else {
-        const auto assignments = assignments_by_molecule(*charges, imported.records.size());
-        write_sdf(prefix.string() + ".sdf", input_path, imported, assignments,
+        const auto assignments = assignments_by_molecule(*charges, export_context.records.size());
+        write_sdf(prefix.string() + ".sdf", input_path, export_context, assignments,
                   charges->method_id());
-        write_mol2(prefix.string() + ".mol2", input_path, imported, assignments);
+        write_mol2(prefix.string() + ".mol2", input_path, export_context, assignments);
         std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json",
                      prefix.string() + ".sdf", prefix.string() + ".mol2", prefix.string() + ".cif");
     }
@@ -276,7 +284,8 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     run.metrics.ended_at = utc_timestamp();
     run.metrics.runtime_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
-    write_json(prefix.string() + ".json", result_document(imported, request, result, run.metrics));
+    write_json(prefix.string() + ".json",
+               result_document(export_context, requested, result, run.metrics));
     return 0;
 }
 

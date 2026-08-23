@@ -105,11 +105,10 @@ candidate selection. `select_execution_plan()` additionally resolves a concrete 
 parameter-set IDs, classification options, an `ExecutionSelection`, and a `ResourcePolicy`.
 
 - `assess(request)` copies an lvalue request's molecule and parameter inputs; `assess(std::move(request))`
-  transfers them. The consuming overload leaves the request's molecule and parameter-set containers
-  moved from while retaining the lightweight selection/provenance fields needed during assessment.
-  Both forms prepare molecules, find applicable candidates, and select a concrete plan without
-  calculating. Their result keeps the executable parameter/classification state private and exposes a
-  const value-only applicability report.
+  snapshots its selection configuration, then transfers its execution inputs. Callers must not inspect a
+  request after it is consumed. Both forms prepare molecules, find applicable candidates, and select a
+  concrete plan without calculating. Their result keeps the executable parameter/classification state
+  private and exposes a const value-only applicability report.
 - `calculate(std::move(assessment), max_threads, observer)` executes an assessment without repeating
   preparation or classification. Its result retains the owned value-only report, so applicability
   diagnostics remain valid after the assessment and its parameter data are destroyed. Thread limits and
@@ -287,7 +286,10 @@ selects the first or all conformers/models for every reader and is ignored for m
 conformers. JSON input with multiple conformers is rejected by SDF/MOL2 output because those formats
 currently accept one assignment per molecule; `--conformers first` can select a compatible output.
 Structural output may retain uncalculated source models when `first` is selected, while charge rows
-are emitted only for calculated conformers and use the corresponding source atom IDs.
+are emitted only for calculated conformers and use the corresponding source atom IDs. The CLI partitions
+imported execution molecules from retained source/export context before assessment. It snapshots requested
+provenance and execution thread policy before consuming the assessment request; applicability-only
+execution transfers imported molecules because it has no export phase.
 
 Structural input supports record selection (`all`, `polymers-and-ligands`, `polymers`) and connectivity
 (`none`, `explicit`, `templates`, `hybrid`). Library structural readers default to `none`; the CLI

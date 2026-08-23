@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -22,9 +23,8 @@ struct AssessmentRequest;
 struct ExecutionResult;
 // Copies the owned molecule and parameter inputs into the assessment result.
 [[nodiscard]] auto assess(const AssessmentRequest& request) -> AssessmentResult;
-// Transfers the owned molecule and parameter inputs into the assessment result. The request retains
-// its selection and provenance fields, but its molecule and parameter-set containers are moved
-// from.
+// Snapshots selection configuration and transfers execution inputs into the assessment result.
+// Callers must not inspect the request after passing it to this consuming overload.
 [[nodiscard]] auto assess(AssessmentRequest&& request) -> AssessmentResult;
 
 // Non-owning concrete execution choice produced from an applicability result. The selected
@@ -103,7 +103,12 @@ class AssessmentResult {
     }
 
   private:
-    auto assess_prepared(const AssessmentRequest& request) -> void;
+    auto
+    assess_prepared(std::span<const methods::Method* const> selected_methods,
+                    const parameters::ClassificationOptions& classification_options,
+                    const ResourcePolicy& resource_policy,
+                    const std::unordered_map<std::string, methods::MethodOptions>& method_options,
+                    const ExecutionSelection& execution_selection) -> void;
 
     friend auto assess(const AssessmentRequest& request) -> AssessmentResult;
     friend auto assess(AssessmentRequest&& request) -> AssessmentResult;

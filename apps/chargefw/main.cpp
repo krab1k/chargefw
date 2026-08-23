@@ -100,9 +100,9 @@ auto run(std::span<char*> arguments) -> int {
         return 0;
     }
     if (*applicability) {
-        const auto imported = chargefw::cli::import_input(applicability_input);
+        auto imported = chargefw::cli::import_input(applicability_input);
         chargefw::cli::print_applicability(chargefw::calculation::assess(
-            chargefw::cli::make_request(imported, applicability_selection)));
+            chargefw::cli::make_request(std::move(imported.molecules), applicability_selection)));
         return 0;
     }
     if (!*calculate) {
@@ -118,7 +118,11 @@ auto run(std::span<char*> arguments) -> int {
     auto imported = chargefw::cli::import_input(calculate_input);
     run.metrics.parsing_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - parsing_started}.count();
-    auto request = chargefw::cli::make_request(std::move(imported), calculate_selection);
+    auto export_context = std::move(imported.export_context);
+    auto request = chargefw::cli::make_request(std::move(imported.molecules), calculate_selection);
+    const auto requested_provenance =
+        chargefw::cli::make_requested_provenance(export_context, request);
+    const auto max_threads = request.resource_policy.max_threads;
     auto assessment = chargefw::calculation::assess(std::move(request));
     for (const auto& warning : assessment.execution_issues()) {
         std::println(std::cerr, "Warning: {}", warning.message);
@@ -127,16 +131,12 @@ auto run(std::span<char*> arguments) -> int {
     const auto& observer =
         progress ? static_cast<const chargefw::calculation::CalculationObserver&>(progress_observer)
                  : chargefw::calculation::default_calculation_observer();
-    // NOLINTNEXTLINE(bugprone-use-after-move)
-    const auto result = chargefw::calculation::calculate(
-        std::move(assessment), request.resource_policy.max_threads, observer);
+    const auto result =
+        chargefw::calculation::calculate(std::move(assessment), max_threads, observer);
     run.metrics.applicability_seconds = result.metrics.applicability_seconds;
     run.metrics.computation_seconds = result.metrics.computation_seconds;
-    // `assess()` and `make_request()` transfer only their heavy owned inputs; retained provenance
-    // and source records remain valid for execution and export.
-    // NOLINTNEXTLINE(bugprone-use-after-move)
-    return chargefw::cli::write_calculation_outputs(output_directory, calculate_input.path,
-                                                    imported, request, result, run);
+    return chargefw::cli::write_calculation_outputs(
+        output_directory, calculate_input.path, export_context, requested_provenance, result, run);
 }
 
 } // namespace

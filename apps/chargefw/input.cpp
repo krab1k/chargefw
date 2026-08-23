@@ -18,7 +18,7 @@ namespace {
 
 template <typename Reader>
 auto read_collection(Reader& reader, const std::string& input_path,
-                     const ImportedCollection::Format format) -> ImportedCollection {
+                     const ImportedExportContext::Format format) -> ImportedCollection {
     std::vector<core::Molecule> molecules;
     std::vector<adapters::ImportedMoleculeRecord> records;
 
@@ -34,8 +34,7 @@ auto read_collection(Reader& reader, const std::string& input_path,
 
     return ImportedCollection{.molecules =
                                   core::MoleculeCollection{std::move(molecules), input_path},
-                              .records = std::move(records),
-                              .format = format};
+                              .export_context = {.records = std::move(records), .format = format}};
 }
 
 [[nodiscard]] auto parse_record_selection(const std::string& value)
@@ -175,7 +174,7 @@ auto read_collection(const std::string& input_path,
                 "Structural input options are only supported for PDB and mmCIF input"};
         }
         adapters::native::sdf_input::SdfReader reader{input, input_path};
-        return read_collection(reader, input_path, ImportedCollection::Format::sdf);
+        return read_collection(reader, input_path, ImportedExportContext::Format::sdf);
     }
     if (extension == ".mol") {
         if (structural_options_requested) {
@@ -183,7 +182,7 @@ auto read_collection(const std::string& input_path,
                 "Structural input options are only supported for PDB and mmCIF input"};
         }
         adapters::native::mol_input::MolReader reader{input, input_path};
-        return read_collection(reader, input_path, ImportedCollection::Format::mol);
+        return read_collection(reader, input_path, ImportedExportContext::Format::mol);
     }
     if (extension == ".mol2") {
         if (structural_options_requested) {
@@ -191,7 +190,7 @@ auto read_collection(const std::string& input_path,
                 "Structural input options are only supported for PDB and mmCIF input"};
         }
         adapters::native::mol2_input::Mol2Reader reader{input, input_path};
-        return read_collection(reader, input_path, ImportedCollection::Format::mol2);
+        return read_collection(reader, input_path, ImportedExportContext::Format::mol2);
     }
     if (extension == ".json") {
         if (structural_options_requested) {
@@ -200,19 +199,19 @@ auto read_collection(const std::string& input_path,
         }
         adapters::native::json_input::JsonReader reader{input, input_path,
                                                         structural_options.conformers};
-        return read_collection(reader, input_path, ImportedCollection::Format::json);
+        return read_collection(reader, input_path, ImportedExportContext::Format::json);
     }
     if (extension == ".pdb") {
         adapters::gemmi::pdb_input::PdbReader reader{input, input_path, structural_options};
-        auto result = read_collection(reader, input_path, ImportedCollection::Format::pdb);
-        result.pdb_source = adapters::gemmi::mmcif_output::PdbSource{
+        auto result = read_collection(reader, input_path, ImportedExportContext::Format::pdb);
+        result.export_context.pdb_source = adapters::gemmi::mmcif_output::PdbSource{
             .structure = reader.source_structure(), .selection = reader.options().selection};
         return result;
     }
     if (extension == ".cif" || extension == ".mmcif") {
         adapters::gemmi::mmcif_input::MmcifReader reader{input, input_path, structural_options};
-        auto result = read_collection(reader, input_path, ImportedCollection::Format::mmcif);
-        result.mmcif_source = adapters::gemmi::mmcif_output::MmcifSource{
+        auto result = read_collection(reader, input_path, ImportedExportContext::Format::mmcif);
+        result.export_context.mmcif_source = adapters::gemmi::mmcif_output::MmcifSource{
             .document = reader.source_document(),
             .block_indices = reader.source_block_indices(),
             .selection = reader.options().selection};
@@ -266,11 +265,12 @@ auto import_input(const InputArguments& arguments) -> ImportedCollection {
     auto imported = read_collection(arguments.path, options,
                                     arguments.structural_selection_option->count() > 0 ||
                                         arguments.structural_bonds_option->count() > 0);
-    imported.conformer_selection = arguments.conformer_selection;
-    if (imported.format == ImportedCollection::Format::pdb ||
-        imported.format == ImportedCollection::Format::mmcif) {
-        imported.structural_input_policy = ImportedCollection::StructuralInputPolicy{
-            .selection = arguments.structural_selection, .bonds = arguments.structural_bonds};
+    imported.export_context.conformer_selection = arguments.conformer_selection;
+    if (imported.export_context.format == ImportedExportContext::Format::pdb ||
+        imported.export_context.format == ImportedExportContext::Format::mmcif) {
+        imported.export_context.structural_input_policy =
+            ImportedExportContext::StructuralInputPolicy{
+                .selection = arguments.structural_selection, .bonds = arguments.structural_bonds};
     }
     return imported;
 }
@@ -305,17 +305,6 @@ auto make_request(core::MoleculeCollection molecules, const SelectionArguments& 
                         ? std::optional<std::size_t>{calculation::default_full_atom_threshold}
                         : parse_full_atom_threshold(arguments.full_atom_threshold),
                 .max_threads = arguments.max_threads}};
-}
-
-auto make_request(const ImportedCollection& imported, const SelectionArguments& arguments)
-    -> calculation::AssessmentRequest {
-    return make_request(imported.molecules, arguments);
-}
-
-// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved): records remain for export.
-auto make_request(ImportedCollection&& imported, const SelectionArguments& arguments)
-    -> calculation::AssessmentRequest {
-    return make_request(std::move(imported.molecules), arguments);
 }
 
 } // namespace chargefw::cli

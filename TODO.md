@@ -9,16 +9,6 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
-- [ ] Replace partial moved-from object protocols at the CLI/application boundary with explicit owned
-  partitions. The calculate path moves an `ImportedCollection` into request creation and an
-  `AssessmentRequest` into assessment, then continues to read records, provenance, and thread policy
-  from the moved-from objects. This is currently implementation-dependent, requires
-  `bugprone-use-after-move` suppressions, and will break if a future callee moves the complete object.
-  Separate transferable execution input from retained source/export records and requested provenance,
-  capture execution-only values before transfer, and remove the suppressions. Apply the transfer path
-  to applicability-only CLI execution too, which currently needlessly copies molecules despite not
-  needing the imported collection after assessment. Test calculate and applicability behavior,
-  provenance, source mapping, warning output, and peak-memory-sensitive multi-record paths.
 - [ ] Define move semantics for `AssessmentResult` as a single ownership unit. Its prepared features
   refer to a separately owned molecule collection held in another `unique_ptr`, while defaulted move
   assignment replaces those members independently. Do not rely on destructor ordering of a

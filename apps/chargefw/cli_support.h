@@ -14,7 +14,7 @@
 
 namespace chargefw::cli {
 
-struct ImportedCollection {
+struct ImportedExportContext {
     enum class Format : std::uint8_t { sdf, mol, mol2, json, pdb, mmcif };
 
     struct StructuralInputPolicy {
@@ -22,13 +22,17 @@ struct ImportedCollection {
         std::string bonds;
     };
 
-    core::MoleculeCollection molecules;
     std::vector<adapters::ImportedMoleculeRecord> records;
     std::optional<adapters::gemmi::mmcif_output::MmcifSource> mmcif_source;
     std::optional<adapters::gemmi::mmcif_output::PdbSource> pdb_source;
     std::optional<StructuralInputPolicy> structural_input_policy;
     std::string conformer_selection = "all";
     Format format;
+};
+
+struct ImportedCollection {
+    core::MoleculeCollection molecules;
+    ImportedExportContext export_context;
 };
 
 struct InputArguments {
@@ -67,22 +71,22 @@ struct CalculationRun {
 void add_input_options(CLI::App& command, InputArguments& arguments);
 void add_selection_options(CLI::App& command, SelectionArguments& arguments);
 [[nodiscard]] auto import_input(const InputArguments& arguments) -> ImportedCollection;
-[[nodiscard]] auto make_request(const ImportedCollection& imported,
+[[nodiscard]] auto make_request(core::MoleculeCollection molecules,
                                 const SelectionArguments& arguments)
     -> calculation::AssessmentRequest;
-[[nodiscard]] auto make_request(ImportedCollection&& imported, const SelectionArguments& arguments)
-    -> calculation::AssessmentRequest;
+[[nodiscard]] auto make_requested_provenance(const ImportedExportContext& export_context,
+                                             const calculation::AssessmentRequest& request)
+    -> adapters::RequestedCalculationProvenance;
 
 void print_inspection(const ImportedCollection& imported);
 void print_applicability(const calculation::AssessmentResult& assessment);
 void print_methods();
 void print_parameter_sets(const std::string& method_id);
 
-[[nodiscard]] auto write_calculation_outputs(const std::string& output_directory,
-                                             const std::string& input_path,
-                                             const ImportedCollection& imported,
-                                             const calculation::AssessmentRequest& request,
-                                             const calculation::ExecutionResult& result,
-                                             CalculationRun& run) -> int;
+[[nodiscard]] auto
+write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
+                          const ImportedExportContext& export_context,
+                          const adapters::RequestedCalculationProvenance& requested,
+                          const calculation::ExecutionResult& result, CalculationRun& run) -> int;
 
 } // namespace chargefw::cli

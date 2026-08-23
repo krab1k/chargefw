@@ -166,16 +166,20 @@ AssessmentResult::AssessmentResult(core::MoleculeCollection molecules,
 
 AssessmentResult::~AssessmentResult() = default;
 
-auto AssessmentResult::assess_prepared(const AssessmentRequest& request) -> void {
-    const auto selected_methods = application_methods(request);
+auto AssessmentResult::assess_prepared(
+    const std::span<const methods::Method* const> selected_methods,
+    const parameters::ClassificationOptions& classification_options,
+    const ResourcePolicy& resource_policy,
+    const std::unordered_map<std::string, methods::MethodOptions>& method_options,
+    const ExecutionSelection& execution_selection) -> void {
     applicability_ =
         methods::find_applicable_methods({.molecules = prepared_molecules(),
                                           .methods = selected_methods,
                                           .parameter_sets = parameter_sets_,
-                                          .classification_options = request.classification_options,
-                                          .resource_policy = request.resource_policy,
-                                          .method_options = request.method_options});
-    const auto plan = select_execution_plan(applicability_, request.execution_selection);
+                                          .classification_options = classification_options,
+                                          .resource_policy = resource_policy,
+                                          .method_options = method_options});
+    const auto plan = select_execution_plan(applicability_, execution_selection);
     if (plan.has_value()) {
         const auto selected = std::ranges::find_if(
             applicability_.applicable, [&plan](const methods::ApplicableMethod& candidate) {
@@ -203,7 +207,7 @@ auto AssessmentResult::assess_prepared(const AssessmentRequest& request) -> void
     applicability_report_.rejected.reserve(applicability_.rejected.size());
     for (const auto& candidate : applicability_.rejected) {
         applicability_report_.rejected.push_back(RejectedCandidateReport{
-            .method_id = std::string{selected_methods.at(candidate.method_index)->id()},
+            .method_id = std::string{selected_methods[candidate.method_index]->id()},
             .parameter_set_id = candidate.parameter_set_index.has_value()
                                     ? std::optional{std::string{
                                           parameter_sets_[*candidate.parameter_set_index].id()}}
@@ -304,23 +308,31 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
 auto assess(const AssessmentRequest& request) -> AssessmentResult {
     const auto started = std::chrono::steady_clock::now();
     validate_application_method_options(request);
+    const auto selected_methods = application_methods(request);
     auto result = AssessmentResult{request.molecules, application_parameter_sets(request),
                                    requires_executable_plan(request)};
-    result.assess_prepared(request);
+    result.assess_prepared(selected_methods, request.classification_options,
+                           request.resource_policy, request.method_options,
+                           request.execution_selection);
     result.applicability_seconds_ =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - started}.count();
     return result;
 }
 
-// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved): only heavy owned members
-// move.
 auto assess(AssessmentRequest&& request) -> AssessmentResult {
     const auto started = std::chrono::steady_clock::now();
     validate_application_method_options(request);
+    const auto selected_methods = application_methods(request);
+    const auto classification_options = request.classification_options;
+    const auto execution_selection = request.execution_selection;
+    const auto resource_policy = request.resource_policy;
+    const auto executable_plan_required = requires_executable_plan(request);
     retain_requested_parameter_set(request);
+    auto method_options = std::move(request.method_options);
     auto result = AssessmentResult{std::move(request.molecules), std::move(request.parameter_sets),
-                                   requires_executable_plan(request)};
-    result.assess_prepared(request);
+                                   executable_plan_required};
+    result.assess_prepared(selected_methods, classification_options, resource_policy,
+                           method_options, execution_selection);
     result.applicability_seconds_ =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - started}.count();
     return result;
