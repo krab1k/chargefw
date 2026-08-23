@@ -115,11 +115,11 @@ auto run(std::span<char*> arguments) -> int {
         chargefw::cli::CalculationRun{.metrics = {}, .started = std::chrono::steady_clock::now()};
     run.metrics.started_at = chargefw::cli::utc_timestamp();
     const auto parsing_started = std::chrono::steady_clock::now();
-    const auto imported = chargefw::cli::import_input(calculate_input);
+    auto imported = chargefw::cli::import_input(calculate_input);
     run.metrics.parsing_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - parsing_started}.count();
-    const auto request = chargefw::cli::make_request(imported, calculate_selection);
-    auto assessment = chargefw::calculation::assess(request);
+    auto request = chargefw::cli::make_request(std::move(imported), calculate_selection);
+    auto assessment = chargefw::calculation::assess(std::move(request));
     for (const auto& warning : assessment.execution_issues()) {
         std::println(std::cerr, "Warning: {}", warning.message);
     }
@@ -127,10 +127,14 @@ auto run(std::span<char*> arguments) -> int {
     const auto& observer =
         progress ? static_cast<const chargefw::calculation::CalculationObserver&>(progress_observer)
                  : chargefw::calculation::default_calculation_observer();
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     const auto result = chargefw::calculation::calculate(
         std::move(assessment), request.resource_policy.max_threads, observer);
     run.metrics.applicability_seconds = result.metrics.applicability_seconds;
     run.metrics.computation_seconds = result.metrics.computation_seconds;
+    // `assess()` and `make_request()` transfer only their heavy owned inputs; retained provenance
+    // and source records remain valid for execution and export.
+    // NOLINTNEXTLINE(bugprone-use-after-move)
     return chargefw::cli::write_calculation_outputs(output_directory, calculate_input.path,
                                                     imported, request, result, run);
 }

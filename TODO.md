@@ -10,20 +10,6 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
 
-- [ ] Keep execution orchestration and observability in `calculation`, not `methods`. The observer
-  currently makes the public methods calculation API depend on the calculation layer, even though
-  target traversal, progress, cancellation, and thread scheduling are execution concerns. Introduce
-  a calculation-layer full executor consistent with cutoff and cover, emit target events there, and
-  keep methods as stateless algorithms operating on their ordinary calculation inputs. Preserve all
-  existing full-mode validation, source ordering, max-thread behavior, cancellation checkpoints, and
-  facade/low-level API behavior with focused dependency and execution regression tests.
-- [ ] Eliminate avoidable copies from the owned assessment workflow. `assess(const AssessmentRequest&)`
-  copies molecules and parameter sets into `AssessmentResult`; the CLI can consequently retain the
-  imported collection, request collection, and assessment collection while calculating a large input.
-  Support transfer of an owning request (or an explicit rvalue path) into assessment, retain only the
-  lightweight request/provenance data needed after transfer, and document the resulting ownership
-  semantics. Verify reduced-mode planning and execution on large multi-molecule/conformer fixtures
-  without changing selection, provenance, source mappings, or result cardinality.
 - [ ] Complete and test the observer terminal-event contract. A computation start event is emitted,
   but ordinary calculation exceptions bypass `computation_finished`; cancellation alone is handled.
   Define whether failures end with `computation_finished` or a new explicit failure event, implement

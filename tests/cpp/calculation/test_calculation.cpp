@@ -338,6 +338,25 @@ auto main() -> int {
     assert(owned_parameterized_result.applicability.selected_candidate_index ==
            std::optional<std::size_t>{0});
 
+    // Rvalue assessment transfers the request's heavy inputs while preserving its lightweight
+    // selection data until assessment has completed.
+    auto consuming_request = calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water(),
+                                                          chargefw::test::make_water()}},
+        .parameter_sets = {},
+        .method_id = "formal",
+        .execution_selection =
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}};
+    auto consuming_assessment = calculation::assess(std::move(consuming_request));
+    assert(consuming_assessment.executable());
+    assert(consuming_assessment.applicability().selected_candidate_index ==
+           std::optional<std::size_t>{0});
+    const auto consuming_result = calculation::calculate(std::move(consuming_assessment));
+    assert(consuming_result.calculated());
+    assert(consuming_result.charges->size() == 2);
+    assert(consuming_result.charges->assignment(0).target.molecule_index == 0);
+    assert(consuming_result.charges->assignment(1).target.molecule_index == 1);
+
     auto peoe_options = methods::MethodOptions{};
     peoe_options.set("iters", 1);
     const auto configured_peoe_result = calculate_application(calculation::AssessmentRequest{

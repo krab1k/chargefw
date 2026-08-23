@@ -104,8 +104,11 @@ candidate selection. `select_execution_plan()` additionally resolves a concrete 
 `AssessmentRequest` owns molecules and parameter sets and accepts optional method and
 parameter-set IDs, classification options, an `ExecutionSelection`, and a `ResourcePolicy`.
 
-- `assess()` prepares molecules, finds applicable candidates, and selects a concrete plan without
-  calculating. Its result keeps the executable parameter/classification state private and exposes a
+- `assess(request)` copies an lvalue request's molecule and parameter inputs; `assess(std::move(request))`
+  transfers them. The consuming overload leaves the request's molecule and parameter-set containers
+  moved from while retaining the lightweight selection/provenance fields needed during assessment.
+  Both forms prepare molecules, find applicable candidates, and select a concrete plan without
+  calculating. Their result keeps the executable parameter/classification state private and exposes a
   const value-only applicability report.
 - `calculate(std::move(assessment), max_threads, observer)` executes an assessment without repeating
   preparation or classification. Its result retains the owned value-only report, so applicability

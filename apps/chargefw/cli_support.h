@@ -70,6 +70,8 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments);
 [[nodiscard]] auto make_request(const ImportedCollection& imported,
                                 const SelectionArguments& arguments)
     -> calculation::AssessmentRequest;
+[[nodiscard]] auto make_request(ImportedCollection&& imported, const SelectionArguments& arguments)
+    -> calculation::AssessmentRequest;
 
 void print_inspection(const ImportedCollection& imported);
 void print_applicability(const calculation::AssessmentResult& assessment);

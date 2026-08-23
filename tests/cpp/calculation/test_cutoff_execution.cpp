@@ -39,10 +39,10 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-[[nodiscard]] auto calculate_application(const calculation::AssessmentRequest& request)
+[[nodiscard]] auto calculate_application(calculation::AssessmentRequest request)
     -> calculation::ExecutionResult {
     const auto max_threads = request.resource_policy.max_threads;
-    auto assessment = calculation::assess(request);
+    auto assessment = calculation::assess(std::move(request));
     return calculation::calculate(std::move(assessment), max_threads);
 }
 
@@ -180,7 +180,7 @@ auto assert_reduced_matches_full(
     const std::string_view method_id,
     const std::vector<parameters::ParameterSet>& parameter_sets = {},
     core::Molecule molecule = chargefw::test::make_two_conformer_water()) -> void {
-    const auto molecules = core::MoleculeCollection{std::vector{std::move(molecule)}};
+    const auto molecules = core::MoleculeCollection{std::vector{molecule, std::move(molecule)}};
     const auto full = calculate_application(
         calculation::AssessmentRequest{.molecules = molecules,
                                        .parameter_sets = parameter_sets,

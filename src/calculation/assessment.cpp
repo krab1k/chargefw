@@ -129,6 +129,31 @@ auto validate_application_method_options(const AssessmentRequest& request) -> vo
     return {*found};
 }
 
+auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
+    if (!request.parameter_set_id.has_value()) {
+        return;
+    }
+
+    const auto found = std::ranges::find_if(
+        request.parameter_sets, [&request](const parameters::ParameterSet& parameter_set) {
+            return parameter_set.id() == *request.parameter_set_id;
+        });
+    if (found == request.parameter_sets.end()) {
+        throw std::invalid_argument{"parameter set '" + *request.parameter_set_id +
+                                    "' was not provided"};
+    }
+
+    std::erase_if(request.parameter_sets,
+                  [&request](const parameters::ParameterSet& parameter_set) {
+                      return parameter_set.id() != *request.parameter_set_id;
+                  });
+}
+
+[[nodiscard]] auto requires_executable_plan(const AssessmentRequest& request) -> bool {
+    return request.method_id.has_value() || request.parameter_set_id.has_value() ||
+           request.execution_selection.kind() != ExecutionSelectionKind::automatic;
+}
+
 } // namespace
 
 AssessmentResult::AssessmentResult(core::MoleculeCollection molecules,
@@ -279,10 +304,22 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
 auto assess(const AssessmentRequest& request) -> AssessmentResult {
     const auto started = std::chrono::steady_clock::now();
     validate_application_method_options(request);
-    auto result = AssessmentResult{
-        request.molecules, application_parameter_sets(request),
-        request.method_id.has_value() || request.parameter_set_id.has_value() ||
-            request.execution_selection.kind() != ExecutionSelectionKind::automatic};
+    auto result = AssessmentResult{request.molecules, application_parameter_sets(request),
+                                   requires_executable_plan(request)};
+    result.assess_prepared(request);
+    result.applicability_seconds_ =
+        std::chrono::duration<double>{std::chrono::steady_clock::now() - started}.count();
+    return result;
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved): only heavy owned members
+// move.
+auto assess(AssessmentRequest&& request) -> AssessmentResult {
+    const auto started = std::chrono::steady_clock::now();
+    validate_application_method_options(request);
+    retain_requested_parameter_set(request);
+    auto result = AssessmentResult{std::move(request.molecules), std::move(request.parameter_sets),
+                                   requires_executable_plan(request)};
     result.assess_prepared(request);
     result.applicability_seconds_ =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - started}.count();

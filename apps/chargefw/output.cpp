@@ -93,8 +93,8 @@ void write_mol2(const std::filesystem::path& path, const std::string& input_path
         writer.write_preserving_source(input_path, assignments);
         return;
     }
-    for (std::size_t index = 0; index < imported.molecules.size(); ++index) {
-        writer.write_generated(imported.molecules[index], assignments[index]);
+    for (std::size_t index = 0; index < imported.records.size(); ++index) {
+        writer.write_generated(imported.records[index].molecule, assignments[index]);
     }
 }
 
@@ -113,10 +113,10 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
         writer.write_preserving_source(input_path, properties);
         return;
     }
-    for (std::size_t index = 0; index < imported.molecules.size(); ++index) {
+    for (std::size_t index = 0; index < imported.records.size(); ++index) {
         const auto property = std::array{adapters::native::sdf_output::ChargeProperty{
             .charge_type_id = 1, .assignments = assignments.subspan(index, 1), .method = method}};
-        writer.write_generated(imported.molecules[index], property,
+        writer.write_generated(imported.records[index].molecule, property,
                                adapters::native::sdf_output::MolFormat::v2000);
     }
 }
@@ -185,10 +185,10 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                                                    .generator_version = "0.0.1",
                                                    .records = {},
                                                    .calculation_provenance = provenance};
-    document.records.reserve(imported.molecules.size());
-    for (std::size_t index = 0; index < imported.molecules.size(); ++index) {
-        document.records.push_back(adapters::ChargeResultRecord{
-            .identity = imported.records[index].identity, .charges = result.charges});
+    document.records.reserve(imported.records.size());
+    for (const auto& record : imported.records) {
+        document.records.push_back(
+            adapters::ChargeResultRecord{.identity = record.identity, .charges = result.charges});
     }
     return document;
 }
@@ -234,7 +234,8 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     const auto structural_output = imported.format == ImportedCollection::Format::pdb ||
                                    imported.format == ImportedCollection::Format::mmcif;
     if (!structural_output && imported.format == ImportedCollection::Format::json &&
-        std::ranges::any_of(imported.molecules.molecules(), [](const core::Molecule& molecule) {
+        std::ranges::any_of(imported.records, [](const adapters::ImportedMoleculeRecord& record) {
+            const auto& molecule = record.molecule;
             return molecule.conformer_count() > 1;
         })) {
         throw std::runtime_error{
@@ -262,7 +263,7 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     if (structural_output) {
         std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
     } else {
-        const auto assignments = assignments_by_molecule(*charges, imported.molecules.size());
+        const auto assignments = assignments_by_molecule(*charges, imported.records.size());
         write_sdf(prefix.string() + ".sdf", input_path, imported, assignments,
                   charges->method_id());
         write_mol2(prefix.string() + ".mol2", input_path, imported, assignments);

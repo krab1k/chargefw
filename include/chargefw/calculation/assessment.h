@@ -20,7 +20,12 @@ class AssessmentResult;
 class CalculationObserver;
 struct AssessmentRequest;
 struct ExecutionResult;
+// Copies the owned molecule and parameter inputs into the assessment result.
 [[nodiscard]] auto assess(const AssessmentRequest& request) -> AssessmentResult;
+// Transfers the owned molecule and parameter inputs into the assessment result. The request retains
+// its selection and provenance fields, but its molecule and parameter-set containers are moved
+// from.
+[[nodiscard]] auto assess(AssessmentRequest&& request) -> AssessmentResult;
 
 // Non-owning concrete execution choice produced from an applicability result. The selected
 // candidate and its classifications remain owned by the ApplicabilityResult.
@@ -101,6 +106,7 @@ class AssessmentResult {
     auto assess_prepared(const AssessmentRequest& request) -> void;
 
     friend auto assess(const AssessmentRequest& request) -> AssessmentResult;
+    friend auto assess(AssessmentRequest&& request) -> AssessmentResult;
     friend auto calculate(AssessmentResult assessment, std::size_t max_threads,
                           const CalculationObserver& observer) -> ExecutionResult;
 

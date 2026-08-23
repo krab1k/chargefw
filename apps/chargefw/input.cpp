@@ -275,14 +275,14 @@ auto import_input(const InputArguments& arguments) -> ImportedCollection {
     return imported;
 }
 
-auto make_request(const ImportedCollection& imported, const SelectionArguments& arguments)
+auto make_request(core::MoleculeCollection molecules, const SelectionArguments& arguments)
     -> calculation::AssessmentRequest {
     auto method_options = std::unordered_map<std::string, methods::MethodOptions>{};
     for (const auto& text : arguments.method_options) {
         const auto [method_id, option] = parse_method_option(text);
         method_options[method_id].set(option.first, option.second);
     }
-    return {.molecules = imported.molecules,
+    return {.molecules = std::move(molecules),
             .parameter_sets = parameters::load_default_parameter_sets(),
             .method_id = arguments.method_option->count() == 0 ? std::nullopt
                                                                : std::optional{arguments.method_id},
@@ -305,6 +305,17 @@ auto make_request(const ImportedCollection& imported, const SelectionArguments& 
                         ? std::optional<std::size_t>{calculation::default_full_atom_threshold}
                         : parse_full_atom_threshold(arguments.full_atom_threshold),
                 .max_threads = arguments.max_threads}};
+}
+
+auto make_request(const ImportedCollection& imported, const SelectionArguments& arguments)
+    -> calculation::AssessmentRequest {
+    return make_request(imported.molecules, arguments);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved): records remain for export.
+auto make_request(ImportedCollection&& imported, const SelectionArguments& arguments)
+    -> calculation::AssessmentRequest {
+    return make_request(std::move(imported.molecules), arguments);
 }
 
 } // namespace chargefw::cli

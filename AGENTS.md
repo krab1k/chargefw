@@ -65,7 +65,7 @@ Do not merge prototype or archived behavior wholesale.
 ## Change discipline
 
 1. Inspect the relevant public headers, implementation, tests, and `PROJECT.md` section first.
-2. Make the smallest coherent change and keep unrelated formatting out of the diff.
+2. Make the smallest coherent change and run clang-format each time on modified files.
 3. Add focused tests for behavior changes, especially numerical, mapping, applicability, and policy
    cases.
 4. Follow the validation cadence below. Build the directly affected target and run its focused test first;
