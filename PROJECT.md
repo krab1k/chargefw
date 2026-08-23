@@ -56,7 +56,7 @@ calculation::select_execution_plan()
                           |
                           v
 calculation::calculate()
-  shared target executor + full/cutoff/cover calculation callback
+  mode dispatch -> full/cutoff/cover executor -> shared target execution
                           |
                           v
 charges::ChargeSet + application/export provenance
@@ -195,7 +195,7 @@ ownership after lvalue/rvalue assessment, and source-ordered multi-molecule/mult
 
 ### Implemented reduced methods
 
-Cutoff and explicit serial cover are declared for:
+Cutoff and cover are declared for:
 
 ```text
 abeem, eem, eqeq, eqeqc, qeq, sqe, sqeq0, sqeqp

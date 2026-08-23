@@ -1,14 +1,14 @@
 target_sources(chargefw_core
-         PRIVATE
-         assessment.cpp
-         calculation.cpp
+        PRIVATE
+        assessment.cpp
+        calculation.cpp
         cover_execution.cpp
         cutoff_execution.cpp
         full_execution.cpp
         execution_policy.cpp
         reduced_execution.cpp
         cover_execution.h
-         full_execution.h
+        full_execution.h
         parallel_for.h
         reduced_execution.h
         target_execution.h
@@ -16,9 +16,9 @@ target_sources(chargefw_core
         FILE_SET HEADERS
         BASE_DIRS
         ${PROJECT_SOURCE_DIR}/include
-         FILES
-          ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/calculation.h
-          ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/assessment.h
-         ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/execution_policy.h
-         ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/observer.h
+        FILES
+        ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/calculation.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/assessment.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/execution_policy.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/calculation/observer.h
 )

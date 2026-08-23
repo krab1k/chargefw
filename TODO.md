@@ -9,11 +9,6 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
-- [ ] Align calculation documentation and build metadata with the final executor architecture. The
-  architecture diagram and layer description currently describe full/cutoff dispatch while cover is
-  also an implemented executor. Update `PROJECT.md` to state full/cutoff/cover dispatch accurately,
-  keep observability contracts synchronized with code, and normalize indentation in
-  `src/calculation/CMakeLists.txt` under the repository formatting discipline.
 - [ ] Record reduced-execution diagnostics in result provenance: per-target fragment or pivot counts,
   retained/owned atom counts, and cover overlap reconciliation, together with the fixed 3 Å retained
   interior and the resulting boundary buffer. Mode, radius, and correction are already recorded.
