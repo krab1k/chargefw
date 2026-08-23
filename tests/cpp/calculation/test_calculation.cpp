@@ -521,5 +521,82 @@ auto main() -> int {
             .parameter_set_id = "missing"}));
     }));
 
+    // Explicit unsupported execution does not fall back to another mode and requires an executable
+    // plan when passed to the facade.
+    auto unsupported_cover_assessment = calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .method_id = "formal",
+        .execution_selection = calculation::ExecutionSelection{
+            calculation::ExecutionSelectionKind::cover, calculation::minimum_reduced_radius}});
+    assert(!unsupported_cover_assessment.executable());
+    assert(unsupported_cover_assessment.requires_executable_plan());
+    assert(unsupported_cover_assessment.applicability().applicable.size() == 1);
+    assert(chargefw::test::throws_invalid_argument([&] -> void {
+        static_cast<void>(calculation::calculate(std::move(unsupported_cover_assessment)));
+    }));
+
+    // Empty collections and empty targets retain their distinct cardinalities: no collection
+    // entries produce no assignments, while an empty molecule still produces one source assignment.
+    const auto empty_collection_result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector<core::Molecule>{}},
+        .method_id = "formal"});
+    assert(empty_collection_result.calculated());
+    assert(empty_collection_result.charges->empty());
+
+    const auto empty_target_result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{core::Molecule{{}, {}, {}, "empty"}}},
+        .method_id = "formal"});
+    assert(empty_target_result.calculated());
+    assert(empty_target_result.charges->size() == 1);
+    assert(empty_target_result.charges->assignment(0).charges.empty());
+
+    // Both assessment overloads retain the same selection state. The lvalue path copies its inputs,
+    // so execution remains valid after the original request has been destroyed.
+    auto lvalue_assessment = []() -> calculation::AssessmentResult {
+        auto request = calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .method_id = "formal",
+            .execution_selection =
+                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}};
+        return calculation::assess(request);
+    }();
+    auto rvalue_request = calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .method_id = "formal",
+        .execution_selection =
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}};
+    auto rvalue_assessment = calculation::assess(std::move(rvalue_request));
+    assert(lvalue_assessment.applicability().selected_candidate_index ==
+           rvalue_assessment.applicability().selected_candidate_index);
+    assert(lvalue_assessment.execution_policy()->mode() ==
+           rvalue_assessment.execution_policy()->mode());
+    const auto lvalue_result = calculation::calculate(std::move(lvalue_assessment));
+    const auto rvalue_result = calculation::calculate(std::move(rvalue_assessment));
+    assert(lvalue_result.calculated());
+    assert(rvalue_result.calculated());
+    assert(std::ranges::equal(lvalue_result.charges->assignment(0).charges.values(),
+                              rvalue_result.charges->assignment(0).charges.values()));
+
+    // Parallel execution may emit progress out of order, but materialized assignments always retain
+    // the source molecule/conformer order.
+    const auto parallel_ordered_result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{
+            chargefw::test::make_two_conformer_water(), chargefw::test::make_water()}},
+        .method_id = "eqeq",
+        .execution_selection =
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
+        .resource_policy = {.max_threads = 2}});
+    assert(parallel_ordered_result.calculated());
+    assert(parallel_ordered_result.charges->size() == 3);
+    assert(parallel_ordered_result.charges->assignment(0).target.molecule_index == 0);
+    assert(parallel_ordered_result.charges->assignment(0).target.conformer_index ==
+           std::optional<std::size_t>{0});
+    assert(parallel_ordered_result.charges->assignment(1).target.molecule_index == 0);
+    assert(parallel_ordered_result.charges->assignment(1).target.conformer_index ==
+           std::optional<std::size_t>{1});
+    assert(parallel_ordered_result.charges->assignment(2).target.molecule_index == 1);
+    assert(parallel_ordered_result.charges->assignment(2).target.conformer_index ==
+           std::optional<std::size_t>{0});
+
     return 0;
 }

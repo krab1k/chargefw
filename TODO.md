@@ -9,11 +9,6 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
-- [ ] Complete observer and facade tests for report/error boundaries. Existing coverage should be
-  extended for rejected report identity, no-plan diagnostics, explicit unsupported policies, empty and
-  tiny collections, fragment solver failures, ownership/lifetimes, result cardinality, and all
-  successful/cancelled/exceptional terminal event paths. Include lvalue-versus-rvalue assessment
-  behavior and multi-molecule/multi-conformer source ordering.
 - [ ] Align calculation documentation and build metadata with the final executor architecture. The
   architecture diagram and layer description currently describe full/cutoff dispatch while cover is
   also an implemented executor. Update `PROJECT.md` to state full/cutoff/cover dispatch accurately,

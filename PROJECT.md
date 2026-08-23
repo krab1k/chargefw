@@ -189,6 +189,10 @@ must not throw; the observer is purely observational and must not mutate method 
 execution policy, geometry, or selection. This terminal-event guarantee lets terminal observers
 restore progress output on all started-computation paths.
 
+Facade and observer regression coverage includes rejected-report identity, explicit no-plan and
+unsupported-policy boundaries, empty/tiny input cardinality, full and reduced solver failures,
+ownership after lvalue/rvalue assessment, and source-ordered multi-molecule/multi-conformer results.
+
 ### Implemented reduced methods
 
 Cutoff and explicit serial cover are declared for:

@@ -135,6 +135,21 @@ class ThrowOnTerminalObserver final : public calculation::CalculationObserver {
     mutable std::atomic<std::size_t> terminal_callbacks_{0};
 };
 
+class ThrowOnEveryCallbackObserver final : public calculation::CalculationObserver {
+  public:
+    void on_progress(const calculation::CalculationProgress& /*progress*/) const override {
+        callbacks_.fetch_add(1, std::memory_order_relaxed);
+        throw std::runtime_error{"observer failure"};
+    }
+
+    [[nodiscard]] auto callbacks() const noexcept -> std::size_t {
+        return callbacks_.load(std::memory_order_relaxed);
+    }
+
+  private:
+    mutable std::atomic<std::size_t> callbacks_{0};
+};
+
 auto assert_single_terminal_fragment_progress(const std::vector<RecordedProgress>& events,
                                               const std::size_t fragment_count) -> void {
     assert(!events.empty());
@@ -560,6 +575,72 @@ auto main() -> int {
             assert(target_starts[index].molecule_index == expected_targets[index].molecule_index);
             assert(target_starts[index].conformer_index == expected_targets[index].conformer_index);
         }
+    }
+
+    // --- Test 14: an explicit no-plan failure occurs before calculation observation begins ---
+    {
+        const auto observer = RecordingObserver{};
+        auto assessment = calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .method_id = "formal",
+            .execution_selection = calculation::ExecutionSelection{
+                calculation::ExecutionSelectionKind::cover, calculation::minimum_reduced_radius}});
+        assert(!assessment.executable());
+        assert(assessment.requires_executable_plan());
+        assert(chargefw::test::throws_invalid_argument([&] -> void {
+            static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
+        }));
+        assert(observer.events().empty());
+    }
+
+    // --- Test 15: reduced fragment failures retain target context and finish observation ---
+    for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
+                            calculation::ExecutionSelectionKind::cover}) {
+        const auto observer = RecordingObserver{};
+        auto assessment = calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {make_invalid_qeq_parameters()},
+            .method_id = "qeq",
+            .parameter_set_id = "invalid-qeq",
+            .execution_selection =
+                calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
+            .resource_policy = {.max_threads = 1}});
+
+        try {
+            static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
+            assert(false);
+        } catch (const std::runtime_error& error) {
+            const auto message = std::string_view{error.what()};
+            assert(message.contains(mode == calculation::ExecutionSelectionKind::cutoff
+                                        ? "center atom"
+                                        : "pivot atom"));
+            assert(message.contains("method 'qeq'"));
+            assert(message.contains("molecule 'water'"));
+            assert(message.contains("conformer 0"));
+        }
+
+        const auto events = observer.events();
+        assert(events.front().phase == calculation::CalculationPhase::computation_started);
+        assert(events.back().phase == calculation::CalculationPhase::computation_finished);
+        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                   return event.phase == calculation::CalculationPhase::computation_finished;
+               }) == 1);
+    }
+
+    // --- Test 16: observer failures never alter calculation control flow at any event tier ---
+    {
+        const auto observer = ThrowOnEveryCallbackObserver{};
+        const auto result = calculate_application(
+            calculation::AssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+                .parameter_sets = {},
+                .method_id = "formal",
+                .execution_selection =
+                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
+            observer);
+        assert(result.calculated());
+        assert(!result.cancelled);
+        assert(observer.callbacks() >= 4);
     }
 
     return 0;
