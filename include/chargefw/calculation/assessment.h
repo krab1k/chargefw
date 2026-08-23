@@ -82,7 +82,9 @@ class AssessmentResult {
     AssessmentResult(const AssessmentResult&) = delete;
     auto operator=(const AssessmentResult&) -> AssessmentResult& = delete;
     AssessmentResult(AssessmentResult&&) noexcept = default;
-    auto operator=(AssessmentResult&&) noexcept -> AssessmentResult& = default;
+    // Prepared features non-owningly refer to molecules_, so replacing the two independent owners
+    // cannot preserve their lifetime invariant.
+    auto operator=(AssessmentResult&&) noexcept -> AssessmentResult& = delete;
     ~AssessmentResult();
 
     [[nodiscard]] auto prepared_molecules() const noexcept

@@ -9,13 +9,6 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
-- [ ] Define move semantics for `AssessmentResult` as a single ownership unit. Its prepared features
-  refer to a separately owned molecule collection held in another `unique_ptr`, while defaulted move
-  assignment replaces those members independently. Do not rely on destructor ordering of a
-  non-owning prepared view: either delete move assignment if it is not a supported operation, or hold
-  molecules and prepared features in one private state object with explicit invariant-preserving move
-  operations. Add tests covering move construction, permitted move assignment if retained, execution
-  after relocation, and destruction under ASan when practical.
 - [ ] Make calculation terminal-event RAII single-owner and exception-safe by construction.
   `ComputationFinishedEmitter` has a custom destructor but implicitly copyable special members, so an
   accidental copy would emit duplicate `computation_finished` events. It also invokes a potentially

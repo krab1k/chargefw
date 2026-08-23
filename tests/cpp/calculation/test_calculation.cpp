@@ -23,6 +23,7 @@
 #include <span>
 #include <stdexcept>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -206,6 +207,8 @@ auto calculate_automatically(
 auto main() -> int {
     static_assert(!HasPublicParameterSets<calculation::AssessmentResult>);
     static_assert(!HasPublicSelectedCandidate<calculation::AssessmentResult>);
+    static_assert(std::is_move_constructible_v<calculation::AssessmentResult>);
+    static_assert(!std::is_move_assignable_v<calculation::AssessmentResult>);
 
     const auto prepared = make_prepared_water();
     const FixedChargeMethod higher_priority{"higher", 10, 10.0};
