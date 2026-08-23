@@ -21,9 +21,9 @@ enum class CalculationPhase : std::uint8_t {
     // Target tier: one molecule+conformer pair.
     target_started,
     target_finished,
-    // Fragment tier: one center-atom (cutoff) or pivot (cover) fragment.
-    fragment_started,
-    fragment_finished,
+    // Fragment tier: throttled aggregate completion progress for center-atom (cutoff) or pivot
+    // (cover) fragments.
+    fragment_progress,
 };
 
 // Structured progress snapshot. Fields are only populated for the phase that produced the event.
@@ -42,7 +42,7 @@ struct CalculationProgress {
     std::size_t target_index{};
     std::size_t target_count{};
 
-    // Fragment tier: current and total fragment indices within the current target.
+    // Fragment tier: completed and total fragment counts within the current target.
     std::size_t fragment_index{};
     std::size_t fragment_count{};
 

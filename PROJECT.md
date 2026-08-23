@@ -165,9 +165,12 @@ Three event tiers exist:
   carry the effective mode and method ID. Assessment is not observed.
 - **Per-target events** — `target_started/finished` for each molecule+conformer pair. Emitted by the
   executors with correct per-target `molecule_index` and `conformer_index`.
-- **Fragment events** — `fragment_finished` for cutoff (one per center-atom fragment) and cover (one
-  per pivot fragment). Throttled to one event per 100 ms via an atomic CAS, with a final event
-  guaranteeing 100% completion.
+- **Fragment progress** — `fragment_progress` reports aggregate completed/total counts for cutoff
+  (center-atom fragments) and cover (pivot fragments). The first completed fragment is reported
+  immediately; later snapshots are throttled to one per 200 ms via an atomic CAS. Counts increase
+  among emitted snapshots but may skip completed fragments. A non-empty successful target has exactly
+  one terminal `count/count` snapshot; empty targets have none. Parallel callbacks may run
+  concurrently, so callback arrival order does not establish completion order.
 
 Selected-plan warnings, including explicit-full execution above the resource threshold, are available
 through `AssessmentResult::execution_issues()` before execution begins. Callers may report them

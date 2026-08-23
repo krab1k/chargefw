@@ -94,9 +94,10 @@ inline auto emit_target_event(const CalculationObserver& observer, const Calcula
 inline constexpr std::int64_t fragment_throttle_ns = 200'000'000; // 200 ms
 
 // Fragment-tier loop with throttled progress emission and cooperative cancellation. Checks
-// cancellation at the start of each iteration and emits a throttled fragment_finished event
-// carrying the completed count, then a final event after the loop so the observer sees 100%
-// completion.
+// cancellation at the start of each iteration. The first completed fragment is reported
+// immediately; subsequent snapshots are throttled and a terminal snapshot is emitted only when
+// the throttled snapshots have not already reported full completion. Parallel callbacks can run
+// concurrently, so observers must not use callback arrival order to infer completion order.
 //
 // Target-tier events are NOT emitted here — executors emit them via check_cancellation() and
 // emit_target_event() so per-target molecule/conformer identity is correctly populated.
@@ -116,8 +117,29 @@ auto progress_for_indexed(const std::size_t count, const std::size_t max_threads
             .count();
     };
 
-    std::atomic<std::int64_t> last_emit_ns{0};
+    constexpr auto no_fragment_event = std::numeric_limits<std::int64_t>::min();
+    std::atomic<std::int64_t> last_emit_ns{no_fragment_event};
     std::atomic<std::size_t> completed{0};
+    std::atomic<std::size_t> last_emitted_completed{0};
+
+    const auto emit_progress = [&](const std::size_t done) {
+        auto emitted = last_emitted_completed.load(std::memory_order_relaxed);
+        while (emitted < done && !last_emitted_completed.compare_exchange_weak(
+                                     emitted, done, std::memory_order_relaxed)) {
+        }
+        observer.on_progress(CalculationProgress{
+            .phase = CalculationPhase::fragment_progress,
+            .mode = ctx.mode,
+            .method_id = ctx.method_id,
+            .target_index = ctx.target_index,
+            .target_count = ctx.target_count,
+            .fragment_index = done,
+            .fragment_count = count,
+            .molecule_index = ctx.molecule_index,
+            .conformer_index = ctx.conformer_index,
+            .elapsed_seconds = elapsed(),
+        });
+    };
 
     auto wrapped = [&](const std::size_t index) {
         if (observer.cancelled()) {
@@ -130,38 +152,17 @@ auto progress_for_indexed(const std::size_t count, const std::size_t max_threads
                                 std::chrono::steady_clock::now().time_since_epoch())
                                 .count();
         auto last = last_emit_ns.load(std::memory_order_relaxed);
-        if (now_ns - last >= fragment_throttle_ns) {
+        if (last == no_fragment_event || now_ns - last >= fragment_throttle_ns) {
             if (last_emit_ns.compare_exchange_strong(last, now_ns, std::memory_order_relaxed)) {
-                observer.on_progress(CalculationProgress{
-                    .phase = CalculationPhase::fragment_finished,
-                    .mode = ctx.mode,
-                    .method_id = ctx.method_id,
-                    .target_index = ctx.target_index,
-                    .target_count = ctx.target_count,
-                    .fragment_index = done,
-                    .fragment_count = count,
-                    .molecule_index = ctx.molecule_index,
-                    .conformer_index = ctx.conformer_index,
-                    .elapsed_seconds = elapsed(),
-                });
+                emit_progress(done);
             }
         }
     };
     parallel_for_indexed(count, max_threads, wrapped);
 
-    // Final event so the observer sees 100% completion.
-    observer.on_progress(CalculationProgress{
-        .phase = CalculationPhase::fragment_finished,
-        .mode = ctx.mode,
-        .method_id = ctx.method_id,
-        .target_index = ctx.target_index,
-        .target_count = ctx.target_count,
-        .fragment_index = count,
-        .fragment_count = count,
-        .molecule_index = ctx.molecule_index,
-        .conformer_index = ctx.conformer_index,
-        .elapsed_seconds = elapsed(),
-    });
+    if (last_emitted_completed.load(std::memory_order_relaxed) != count) {
+        emit_progress(count);
+    }
 }
 
 } // namespace chargefw::calculation::detail

@@ -77,6 +77,32 @@ class CancelAfterFirstTarget : public calculation::CalculationObserver {
     mutable std::atomic<bool> cancel_{false};
 };
 
+[[nodiscard]] auto fragment_progress_events(const RecordingObserver& observer)
+    -> std::vector<calculation::CalculationProgress> {
+    auto result = std::vector<calculation::CalculationProgress>{};
+    for (const auto& event : observer.events()) {
+        if (event.phase == calculation::CalculationPhase::fragment_progress) {
+            result.push_back(event);
+        }
+    }
+    return result;
+}
+
+auto assert_single_terminal_fragment_progress(const RecordingObserver& observer,
+                                              const std::size_t fragment_count) -> void {
+    const auto events = fragment_progress_events(observer);
+    assert(!events.empty());
+    assert(std::count_if(events.begin(), events.end(), [fragment_count](const auto& event) {
+               return event.fragment_index == fragment_count &&
+                      event.fragment_count == fragment_count;
+           }) == 1);
+    for (const auto& event : events) {
+        assert(event.fragment_index > 0);
+        assert(event.fragment_index <= event.fragment_count);
+        assert(event.fragment_count == fragment_count);
+    }
+}
+
 auto make_invalid_qeq_parameters() -> chargefw::parameters::ParameterSet {
     return chargefw::parameters::ParameterSet{
         chargefw::parameters::ParameterSetMetadata{
@@ -89,6 +115,22 @@ auto make_invalid_qeq_parameters() -> chargefw::parameters::ParameterSet {
              {.key = chargefw::test::plain_atom_key(8),
               .parameters = {{.name = "electronegativity", .value = 8.741},
                              {.name = "hardness", .value = 13.364}}}}}};
+}
+
+auto make_separated_waters() -> core::Molecule {
+    return core::Molecule{std::vector{core::Atom{8}, core::Atom{1}, core::Atom{1}, core::Atom{8},
+                                      core::Atom{1}, core::Atom{1}},
+                          std::vector{core::Bond{0, 1, core::BondOrder::SINGLE},
+                                      core::Bond{0, 2, core::BondOrder::SINGLE},
+                                      core::Bond{3, 4, core::BondOrder::SINGLE},
+                                      core::Bond{3, 5, core::BondOrder::SINGLE}},
+                          {core::Conformer{{{0.0, 0.0, 0.0},
+                                            {0.96, 0.0, 0.0},
+                                            {-0.24, 0.93, 0.0},
+                                            {10.0, 0.0, 0.0},
+                                            {10.96, 0.0, 0.0},
+                                            {9.76, 0.93, 0.0}}}},
+                          "separated-waters"};
 }
 
 } // namespace
@@ -277,7 +319,7 @@ auto main() -> int {
                }) == 1);
     }
 
-    // --- Test 8: cutoff execution emits fragment progress ---
+    // --- Test 8: serial cutoff execution emits aggregate fragment progress ---
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -293,27 +335,17 @@ auto main() -> int {
         assert(result.calculated());
         assert(!result.cancelled);
 
-        const auto events = observer.events();
-
-        // Must see at least one fragment_finished event.
-        const auto fragment_it = std::find_if(events.begin(), events.end(), [](const auto& e) {
-            return e.phase == calculation::CalculationPhase::fragment_finished;
-        });
-        assert(fragment_it != events.end());
-        assert(fragment_it->fragment_count > 0);
-        // The final fragment event must report full completion.
-        const auto last_fragment = std::find_if(events.rbegin(), events.rend(), [](const auto& e) {
-            return e.phase == calculation::CalculationPhase::fragment_finished;
-        });
-        assert(last_fragment->fragment_index == last_fragment->fragment_count);
+        const auto fragment_events = fragment_progress_events(observer);
+        assert(!fragment_events.empty());
+        assert_single_terminal_fragment_progress(observer, fragment_events.front().fragment_count);
     }
 
-    // --- Test 9: cover execution emits pivot-selection and fragment progress ---
+    // --- Test 9: serial cover execution emits aggregate multi-pivot progress ---
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
             calculation::AssessmentRequest{
-                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+                .molecules = core::MoleculeCollection{std::vector{make_separated_waters()}},
                 .parameter_sets = {},
                 .execution_selection =
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cover,
@@ -324,13 +356,9 @@ auto main() -> int {
         assert(result.calculated());
         assert(!result.cancelled);
 
-        const auto events = observer.events();
-
-        // Must see at least one fragment_finished event.
-        const auto fragment_it = std::find_if(events.begin(), events.end(), [](const auto& e) {
-            return e.phase == calculation::CalculationPhase::fragment_finished;
-        });
-        assert(fragment_it != events.end());
+        const auto fragment_events = fragment_progress_events(observer);
+        assert(!fragment_events.empty());
+        assert_single_terminal_fragment_progress(observer, fragment_events.front().fragment_count);
     }
 
     // --- Test 10: multi-molecule target events carry correct molecule_index ---
@@ -370,6 +398,52 @@ auto main() -> int {
                 event.phase == calculation::CalculationPhase::target_finished) {
                 assert(event.target_count == 2);
             }
+        }
+    }
+
+    // --- Test 11: empty reduced targets do not emit fragment progress ---
+    for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
+                            calculation::ExecutionSelectionKind::cover}) {
+        const auto empty_observer = RecordingObserver{};
+        const auto empty_molecule = core::Molecule{{}, {}, {core::Conformer{{}}}, "empty"};
+        const auto result = calculate_application(
+            calculation::AssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{empty_molecule}},
+                .parameter_sets = {},
+                .execution_selection =
+                    calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
+                .resource_policy = {.max_threads = 1}},
+            empty_observer);
+        assert(result.calculated());
+        assert(fragment_progress_events(empty_observer).empty());
+    }
+
+    // --- Test 12: parallel targets each have one terminal progress snapshot ---
+    for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
+                            calculation::ExecutionSelectionKind::cover}) {
+        const auto observer = RecordingObserver{};
+        const auto result = calculate_application(
+            calculation::AssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water(),
+                                                                  chargefw::test::make_water()}},
+                .parameter_sets = {},
+                .execution_selection =
+                    calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
+                .resource_policy = {.max_threads = 2}},
+            observer);
+        assert(result.calculated());
+
+        for (const auto target_index : {std::size_t{0}, std::size_t{1}}) {
+            const auto target_observer = RecordingObserver{};
+            for (const auto& event : fragment_progress_events(observer)) {
+                if (event.target_index == target_index) {
+                    target_observer.on_progress(event);
+                }
+            }
+            const auto target_events = fragment_progress_events(target_observer);
+            assert(!target_events.empty());
+            assert_single_terminal_fragment_progress(target_observer,
+                                                     target_events.front().fragment_count);
         }
     }
 

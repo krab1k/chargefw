@@ -10,12 +10,6 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
 
-- [ ] Correct fragment-progress event semantics. The throttle timestamp starts at zero, so the first
-  completed fragment is emitted immediately and the unconditional final emission can duplicate the
-  same 100% snapshot for one-fragment or fast targets. Emit no duplicate terminal completion, define
-  the exact monotonic/count semantics under parallel completion, and test cutoff and cover for empty,
-  one-fragment, multi-fragment, serial, and parallel targets. Either implement `fragment_started` with
-  documented throttling/cancellation semantics or remove this currently un-emitted public enum value.
 - [ ] Reconcile observability and execution documentation with implementation. Select one fragment
   throttle interval and use it consistently: `PROJECT.md` says 100 ms while `parallel_for.h` uses
   200 ms. Update the stale claim that the application facade prepares features separately for
