@@ -9,13 +9,6 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
-
-- [ ] Reconcile observability and execution documentation with implementation. Select one fragment
-  throttle interval and use it consistently: `PROJECT.md` says 100 ms while `parallel_for.h` uses
-  200 ms. Update the stale claim that the application facade prepares features separately for
-  applicability and calculation and includes a second preparation pass in computation timing; the
-  assessment workflow now retains prepared features for execution. Keep `PROJECT.md` as the sole
-  architecture/status source and `README.md` as concise user-facing behavior/build guidance.
 - [ ] Record reduced-execution diagnostics in result provenance: per-target fragment or pivot counts,
   retained/owned atom counts, and cover overlap reconciliation, together with the fixed 3 Å retained
   interior and the resulting boundary buffer. Mode, radius, and correction are already recorded.
