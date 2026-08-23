@@ -159,7 +159,9 @@ in the snapshot are valid only during the callback.
 
 Three event tiers exist:
 
-- **Computation phases** — `computation_started/finished`. Emitted once each by `calculate()` and
+- **Computation phases** — `computation_started/finished`. Each start has exactly one terminal
+  `computation_finished` event, emitted on success, cancellation, and non-cancellation calculation
+  failure; the latter still propagates unchanged from the low-level and application boundaries. Both
   carry the effective mode and method ID. Assessment is not observed.
 - **Per-target events** — `target_started/finished` for each molecule+conformer pair. Emitted by the
   executors with correct per-target `molecule_index` and `conformer_index`.
@@ -178,7 +180,8 @@ and propagated through oneTBB to the application facade, which returns
 `ExecutionResult{.cancelled = true}` with no charges. Low-level `calculate()` propagates
 the exception. The observer contract requires its callbacks and `cancelled` to be thread-safe and
 must not throw; the observer is purely observational and must not mutate method options, parameters,
-execution policy, geometry, or selection.
+execution policy, geometry, or selection. This terminal-event guarantee lets terminal observers
+restore progress output on all started-computation paths.
 
 ### Implemented reduced methods
 

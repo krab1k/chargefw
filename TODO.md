@@ -10,13 +10,6 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
 
-- [ ] Complete and test the observer terminal-event contract. A computation start event is emitted,
-  but ordinary calculation exceptions bypass `computation_finished`; cancellation alone is handled.
-  Define whether failures end with `computation_finished` or a new explicit failure event, implement
-  the choice with exception-safe scope management, and ensure terminal progress output is restored on
-  success, cancellation, validation failure, and solver failure. The contract must remain safe for
-  callbacks from oneTBB worker threads and must not hide or translate non-cancellation calculation
-  exceptions at the low-level boundary.
 - [ ] Correct fragment-progress event semantics. The throttle timestamp starts at zero, so the first
   completed fragment is emitted immediately and the unconditional final emission can duplicate the
   same 100% snapshot for one-fragment or fast targets. Emit no duplicate terminal completion, define

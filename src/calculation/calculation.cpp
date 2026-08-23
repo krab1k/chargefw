@@ -12,6 +12,34 @@
 
 namespace chargefw::calculation {
 
+namespace {
+
+class ComputationFinishedEmitter {
+  public:
+    ComputationFinishedEmitter(const CalculationObserver& observer, const ExecutionMode mode,
+                               const std::string_view method_id,
+                               const std::chrono::steady_clock::time_point started) noexcept
+        : observer_{observer}, mode_{mode}, method_id_{method_id}, started_{started} {}
+
+    ~ComputationFinishedEmitter() noexcept {
+        observer_.on_progress(CalculationProgress{
+            .phase = CalculationPhase::computation_finished,
+            .mode = mode_,
+            .method_id = method_id_,
+            .elapsed_seconds =
+                std::chrono::duration<double>{std::chrono::steady_clock::now() - started_}.count(),
+        });
+    }
+
+  private:
+    const CalculationObserver& observer_;
+    ExecutionMode mode_;
+    std::string_view method_id_;
+    std::chrono::steady_clock::time_point started_;
+};
+
+} // namespace
+
 auto calculate(const CalculationRequest& request) -> CalculationResult {
     switch (request.execution_policy.mode()) {
     case ExecutionMode::full:
@@ -63,6 +91,8 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
         .mode = mode,
         .method_id = method_id,
     });
+    const auto computation_finished =
+        ComputationFinishedEmitter{observer, mode, method_id, computation_started};
 
     try {
         auto result =
@@ -74,12 +104,6 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
         const auto computation_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
                 .count();
-        observer.on_progress(CalculationProgress{
-            .phase = CalculationPhase::computation_finished,
-            .mode = mode,
-            .method_id = method_id,
-            .elapsed_seconds = computation_seconds,
-        });
         return ExecutionResult{
             .charges = std::move(result.charges),
             .applicability = std::move(assessment.applicability_report_),
@@ -92,12 +116,6 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
         const auto computation_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
                 .count();
-        observer.on_progress(CalculationProgress{
-            .phase = CalculationPhase::computation_finished,
-            .mode = mode,
-            .method_id = method_id,
-            .elapsed_seconds = computation_seconds,
-        });
         return ExecutionResult{
             .charges = std::nullopt,
             .applicability = std::move(assessment.applicability_report_),

@@ -1,5 +1,6 @@
 #include "support/test_assertions.h"
 #include "support/test_molecules.h"
+#include "support/test_parameters.h"
 
 #include <algorithm>
 #include <atomic>
@@ -9,6 +10,10 @@
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/methods/method_applicability.h>
+#include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/parameter_set.h>
+#include <chargefw/parameters/models/parameter_set_metadata.h>
+#include <limits>
 #include <mutex>
 #include <string_view>
 #include <vector>
@@ -50,6 +55,8 @@ class RecordingObserver : public calculation::CalculationObserver {
 class CancelAfterFirstTarget : public calculation::CalculationObserver {
   public:
     void on_progress(const calculation::CalculationProgress& progress) const override {
+        const std::scoped_lock lock{mutex_};
+        events_.push_back(progress);
         if (progress.phase == calculation::CalculationPhase::target_started) {
             cancel_ = true;
         }
@@ -59,9 +66,30 @@ class CancelAfterFirstTarget : public calculation::CalculationObserver {
         return cancel_;
     }
 
+    [[nodiscard]] auto events() const -> std::vector<calculation::CalculationProgress> {
+        const std::scoped_lock lock{mutex_};
+        return events_;
+    }
+
   private:
+    mutable std::mutex mutex_;
+    mutable std::vector<calculation::CalculationProgress> events_;
     mutable std::atomic<bool> cancel_{false};
 };
+
+auto make_invalid_qeq_parameters() -> chargefw::parameters::ParameterSet {
+    return chargefw::parameters::ParameterSet{
+        chargefw::parameters::ParameterSetMetadata{
+            .id = "invalid-qeq", .method_id = "qeq", .name = "Invalid QEq"},
+        {},
+        chargefw::parameters::AtomParameters{
+            {{.key = chargefw::test::plain_atom_key(1),
+              .parameters = {{.name = "electronegativity", .value = 4.5280},
+                             {.name = "hardness", .value = 0.0}}},
+             {.key = chargefw::test::plain_atom_key(8),
+              .parameters = {{.name = "electronegativity", .value = 8.741},
+                             {.name = "hardness", .value = 13.364}}}}}};
+}
 
 } // namespace
 
@@ -109,6 +137,12 @@ auto main() -> int {
         assert(events.back().phase == calculation::CalculationPhase::computation_finished);
         assert(events.back().mode == calculation::ExecutionMode::full);
         assert(events.back().method_id == std::string_view{"formal"});
+        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                   return event.phase == calculation::CalculationPhase::computation_started;
+               }) == 1);
+        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                   return event.phase == calculation::CalculationPhase::computation_finished;
+               }) == 1);
 
         // Between computation_started and computation_finished there must be at least
         // target_started and target_finished.
@@ -185,9 +219,65 @@ auto main() -> int {
 
         assert(result.cancelled);
         assert(!result.calculated());
+        const auto events = observer.events();
+        assert(events.front().phase == calculation::CalculationPhase::computation_started);
+        assert(events.back().phase == calculation::CalculationPhase::computation_finished);
+        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                   return event.phase == calculation::CalculationPhase::computation_finished;
+               }) == 1);
     }
 
-    // --- Test 6: cutoff execution emits fragment progress ---
+    // --- Test 6: validation failures still end observation and propagate unchanged ---
+    {
+        const auto observer = RecordingObserver{};
+        auto assessment = calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {},
+            .method_id = "formal",
+            .execution_selection =
+                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
+
+        assert(chargefw::test::throws_invalid_argument([&] -> void {
+            static_cast<void>(calculation::calculate(
+                std::move(assessment), std::numeric_limits<std::size_t>::max(), observer));
+        }));
+
+        const auto events = observer.events();
+        assert(events.front().phase == calculation::CalculationPhase::computation_started);
+        assert(events.back().phase == calculation::CalculationPhase::computation_finished);
+        assert(events.back().mode == calculation::ExecutionMode::full);
+        assert(events.back().method_id == std::string_view{"formal"});
+        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                   return event.phase == calculation::CalculationPhase::computation_finished;
+               }) == 1);
+    }
+
+    // --- Test 7: solver failures still end observation and propagate unchanged ---
+    {
+        const auto observer = RecordingObserver{};
+        auto assessment = calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {make_invalid_qeq_parameters()},
+            .method_id = "qeq",
+            .parameter_set_id = "invalid-qeq",
+            .execution_selection =
+                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
+
+        assert(chargefw::test::throws<std::logic_error>([&] -> void {
+            static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
+        }));
+
+        const auto events = observer.events();
+        assert(events.front().phase == calculation::CalculationPhase::computation_started);
+        assert(events.back().phase == calculation::CalculationPhase::computation_finished);
+        assert(events.back().mode == calculation::ExecutionMode::full);
+        assert(events.back().method_id == std::string_view{"qeq"});
+        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                   return event.phase == calculation::CalculationPhase::computation_finished;
+               }) == 1);
+    }
+
+    // --- Test 8: cutoff execution emits fragment progress ---
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -218,7 +308,7 @@ auto main() -> int {
         assert(last_fragment->fragment_index == last_fragment->fragment_count);
     }
 
-    // --- Test 7: cover execution emits pivot-selection and fragment progress ---
+    // --- Test 9: cover execution emits pivot-selection and fragment progress ---
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -243,7 +333,7 @@ auto main() -> int {
         assert(fragment_it != events.end());
     }
 
-    // --- Test 8: multi-molecule target events carry correct molecule_index ---
+    // --- Test 10: multi-molecule target events carry correct molecule_index ---
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
