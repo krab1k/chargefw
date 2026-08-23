@@ -9,6 +9,7 @@ target_sources(chargefw_core
         reduced_execution.cpp
         cover_execution.h
         full_execution.h
+        observer_notifications.h
         parallel_for.h
         reduced_execution.h
         target_execution.h

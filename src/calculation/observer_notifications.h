@@ -10,7 +10,7 @@ inline auto report_progress(const CalculationObserver& observer,
                             const CalculationProgress& progress) noexcept -> void {
     try {
         observer.on_progress(progress);
-    } catch (...) {
+    } catch (...) { // NOLINT(bugprone-empty-catch): observers cannot affect calculation flow.
     }
 }
 

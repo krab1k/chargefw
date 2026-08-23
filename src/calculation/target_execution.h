@@ -3,6 +3,7 @@
 #include "calculation/parallel_for.h"
 #include "methods/applicable_method_execution.h"
 
+#include <chargefw/charges/charge_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_applicability.h>

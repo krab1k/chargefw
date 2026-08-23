@@ -76,9 +76,6 @@ struct ApplicabilityReport {
 // result into calculate() to execute without repeating preparation or classification.
 class AssessmentResult {
   public:
-    AssessmentResult(core::MoleculeCollection molecules,
-                     std::vector<parameters::ParameterSet> parameter_sets,
-                     bool requires_executable_plan);
     AssessmentResult(const AssessmentResult&) = delete;
     auto operator=(const AssessmentResult&) -> AssessmentResult& = delete;
     AssessmentResult(AssessmentResult&&) noexcept = default;
@@ -86,9 +83,6 @@ class AssessmentResult {
     // cannot preserve their lifetime invariant.
     auto operator=(AssessmentResult&&) noexcept -> AssessmentResult& = delete;
     ~AssessmentResult();
-
-    [[nodiscard]] auto prepared_molecules() const noexcept
-        -> const features::PreparedMoleculeCollection&;
 
     [[nodiscard]] auto applicability() const noexcept -> const ApplicabilityReport&;
     [[nodiscard]] auto execution_policy() const noexcept -> const std::optional<ExecutionPolicy>&;
@@ -105,6 +99,15 @@ class AssessmentResult {
     }
 
   private:
+    AssessmentResult(core::MoleculeCollection molecules,
+                     std::vector<parameters::ParameterSet> parameter_sets,
+                     bool requires_executable_plan);
+
+    [[nodiscard]] static auto assess_owned(AssessmentRequest request) -> AssessmentResult;
+
+    [[nodiscard]] auto prepared_molecules() const noexcept
+        -> const features::PreparedMoleculeCollection&;
+
     auto
     assess_prepared(std::span<const methods::Method* const> selected_methods,
                     const parameters::ClassificationOptions& classification_options,

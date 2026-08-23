@@ -112,23 +112,6 @@ auto validate_application_method_options(const AssessmentRequest& request) -> vo
     }
 }
 
-[[nodiscard]] auto application_parameter_sets(const AssessmentRequest& request)
-    -> std::vector<parameters::ParameterSet> {
-    if (!request.parameter_set_id.has_value()) {
-        return request.parameter_sets;
-    }
-
-    const auto found = std::ranges::find_if(
-        request.parameter_sets, [&request](const parameters::ParameterSet& parameter_set) {
-            return parameter_set.id() == *request.parameter_set_id;
-        });
-    if (found == request.parameter_sets.end()) {
-        throw std::invalid_argument{"parameter set '" + *request.parameter_set_id +
-                                    "' was not provided"};
-    }
-    return {*found};
-}
-
 auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
     if (!request.parameter_set_id.has_value()) {
         return;
@@ -149,7 +132,7 @@ auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
                   });
 }
 
-[[nodiscard]] auto requires_executable_plan(const AssessmentRequest& request) -> bool {
+[[nodiscard]] auto request_requires_executable_plan(const AssessmentRequest& request) -> bool {
     return request.method_id.has_value() || request.parameter_set_id.has_value() ||
            request.execution_selection.kind() != ExecutionSelectionKind::automatic;
 }
@@ -305,28 +288,14 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
     throw std::invalid_argument{"unknown execution selection"};
 }
 
-auto assess(const AssessmentRequest& request) -> AssessmentResult {
-    const auto started = std::chrono::steady_clock::now();
-    validate_application_method_options(request);
-    const auto selected_methods = application_methods(request);
-    auto result = AssessmentResult{request.molecules, application_parameter_sets(request),
-                                   requires_executable_plan(request)};
-    result.assess_prepared(selected_methods, request.classification_options,
-                           request.resource_policy, request.method_options,
-                           request.execution_selection);
-    result.applicability_seconds_ =
-        std::chrono::duration<double>{std::chrono::steady_clock::now() - started}.count();
-    return result;
-}
-
-auto assess(AssessmentRequest&& request) -> AssessmentResult {
+auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResult {
     const auto started = std::chrono::steady_clock::now();
     validate_application_method_options(request);
     const auto selected_methods = application_methods(request);
     const auto classification_options = request.classification_options;
     const auto execution_selection = request.execution_selection;
     const auto resource_policy = request.resource_policy;
-    const auto executable_plan_required = requires_executable_plan(request);
+    const auto executable_plan_required = request_requires_executable_plan(request);
     retain_requested_parameter_set(request);
     auto method_options = std::move(request.method_options);
     auto result = AssessmentResult{std::move(request.molecules), std::move(request.parameter_sets),
@@ -336,6 +305,14 @@ auto assess(AssessmentRequest&& request) -> AssessmentResult {
     result.applicability_seconds_ =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - started}.count();
     return result;
+}
+
+auto assess(const AssessmentRequest& request) -> AssessmentResult {
+    return AssessmentResult::assess_owned(request);
+}
+
+auto assess(AssessmentRequest&& request) -> AssessmentResult {
+    return AssessmentResult::assess_owned(std::move(request));
 }
 
 } // namespace chargefw::calculation

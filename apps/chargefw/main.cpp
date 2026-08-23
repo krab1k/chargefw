@@ -100,9 +100,12 @@ auto run(std::span<char*> arguments) -> int {
         return 0;
     }
     if (*applicability) {
-        auto imported = chargefw::cli::import_input(applicability_input);
-        chargefw::cli::print_applicability(chargefw::calculation::assess(
-            chargefw::cli::make_request(std::move(imported.molecules), applicability_selection)));
+        auto request = [&] {
+            auto imported = chargefw::cli::import_input(applicability_input);
+            return chargefw::cli::make_request(std::move(imported.molecules),
+                                               applicability_selection);
+        }();
+        chargefw::cli::print_applicability(chargefw::calculation::assess(std::move(request)));
         return 0;
     }
     if (!*calculate) {
