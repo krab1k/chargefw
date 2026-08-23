@@ -1,13 +1,13 @@
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
+#include <chargefw/calculation/calculation.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_applicability.h>
-#include <chargefw/methods/method_calculation.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/classification/parameter_classification.h>
@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 
+namespace calculation = chargefw::calculation;
 namespace charges = chargefw::charges;
 namespace core = chargefw::core;
 namespace features = chargefw::features;
@@ -197,7 +198,8 @@ auto main() -> int {
         .method_options = methods::make_default_options(dummy->option_schema()),
         .classifications = {}};
 
-    const auto dummy_charges = methods::calculate_charges(dummy_candidate, prepared);
+    const auto dummy_charges =
+        calculation::calculate({.molecules = prepared, .selected = dummy_candidate}).charges;
 
     assert(dummy_charges.method_id() == std::string_view{"dummy"});
     assert(!dummy_charges.parameter_set_id().has_value());
@@ -218,7 +220,8 @@ auto main() -> int {
         make_parameterized_candidate(parameterized_method, parameter_set);
 
     const auto parameterized_charges =
-        methods::calculate_charges(parameterized_candidate, prepared);
+        calculation::calculate({.molecules = prepared, .selected = parameterized_candidate})
+            .charges;
 
     assert(parameterized_charges.method_id() == std::string_view{"atom-parameter-test"});
     assert(parameterized_charges.parameter_set_id().has_value());
@@ -247,7 +250,7 @@ auto main() -> int {
                                                           .classifications = {}};
 
         [[maybe_unused]] const auto invalid_charges =
-            methods::calculate_charges(invalid_candidate, prepared);
+            calculation::calculate({.molecules = prepared, .selected = invalid_candidate});
     } catch (const std::invalid_argument&) {
         rejected_null_method = true;
     }
@@ -263,7 +266,7 @@ auto main() -> int {
                                                           .classifications = {}};
 
         [[maybe_unused]] const auto invalid_charges =
-            methods::calculate_charges(invalid_candidate, prepared);
+            calculation::calculate({.molecules = prepared, .selected = invalid_candidate});
     } catch (const std::invalid_argument&) {
         rejected_missing_classification = true;
     }
@@ -281,7 +284,7 @@ auto main() -> int {
                                                           .classifications = {}};
 
         [[maybe_unused]] const auto invalid_charges =
-            methods::calculate_charges(invalid_candidate, prepared);
+            calculation::calculate({.molecules = prepared, .selected = invalid_candidate});
     } catch (const std::invalid_argument&) {
         rejected_wrong_charge_count = true;
     }
@@ -302,7 +305,7 @@ auto main() -> int {
                     parameters::AtomParameterClassification{std::vector<std::size_t>{2, 3}}}}};
 
         [[maybe_unused]] const auto invalid_charges =
-            methods::calculate_charges(invalid_candidate, prepared);
+            calculation::calculate({.molecules = prepared, .selected = invalid_candidate});
     } catch (const std::invalid_argument&) {
         rejected_invalid_classification = true;
     }
@@ -323,7 +326,9 @@ auto main() -> int {
                                                        .classifications = {}};
 
     const auto geometry_charges =
-        methods::calculate_charges(geometry_candidate, prepared_two_conformer_collection);
+        calculation::calculate(
+            {.molecules = prepared_two_conformer_collection, .selected = geometry_candidate})
+            .charges;
 
     assert(geometry_charges.method_id() == std::string_view{"geometry-test"});
     assert(!geometry_charges.parameter_set_id().has_value());

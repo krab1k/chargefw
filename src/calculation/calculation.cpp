@@ -2,9 +2,9 @@
 
 #include "calculation/cover_execution.h"
 #include "calculation/cutoff_execution.h"
+#include "calculation/full_execution.h"
 
 #include <chargefw/methods/method.h>
-#include <chargefw/methods/method_calculation.h>
 
 #include <chrono>
 #include <stdexcept>
@@ -15,9 +15,9 @@ namespace chargefw::calculation {
 auto calculate(const CalculationRequest& request) -> CalculationResult {
     switch (request.execution_policy.mode()) {
     case ExecutionMode::full:
-        return CalculationResult{
-            .charges = methods::calculate_charges(request.selected, request.molecules,
-                                                  request.max_threads, request.observer)};
+        return CalculationResult{.charges =
+                                     calculate_full_charges(request.selected, request.molecules,
+                                                            request.max_threads, request.observer)};
     case ExecutionMode::cutoff:
         return CalculationResult{.charges = calculate_cutoff_charges(
                                      request.selected, request.molecules, request.execution_policy,

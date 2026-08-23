@@ -3,11 +3,11 @@
 #include "support/test_assertions.h"
 #include "support/test_molecules.h"
 
+#include <chargefw/calculation/calculation.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method_applicability.h>
-#include <chargefw/methods/method_calculation.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/models/parameter_set.h>
@@ -43,7 +43,9 @@ calculate_method(core::Molecule molecule, std::string_view method_id,
         applicability.applicable.front().method_options = *method_options;
     }
 
-    return methods::calculate_charges(applicability.applicable.front(), prepared);
+    return calculation::calculate(
+               {.molecules = prepared, .selected = applicability.applicable.front()})
+        .charges;
 }
 
 [[nodiscard]] inline auto

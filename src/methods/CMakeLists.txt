@@ -8,7 +8,6 @@ target_sources(chargefw_core
         builtin_methods.h
         builtin_methods.cpp
         method.cpp
-        method_calculation.cpp
         applicable_method_execution.cpp
         calculation_input.cpp
         applicable_method_execution.h
@@ -26,7 +25,6 @@ target_sources(chargefw_core
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_prerequisites.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/parameter_prerequisites.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_applicability.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/methods/method_calculation.h
 )
 
 add_subdirectory(builtin)
