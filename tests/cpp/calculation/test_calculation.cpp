@@ -218,13 +218,13 @@ auto calculate_automatically(
 
 } // namespace
 
-TEST_CASE("calculation facade dispatches full and reduced execution",
-          "[calculation][calculation]") {
-    static_assert(!HasPublicParameterSets<calculation::AssessmentResult>);
-    static_assert(!HasPublicSelectedCandidate<calculation::AssessmentResult>);
-    static_assert(std::is_move_constructible_v<calculation::AssessmentResult>);
-    static_assert(!std::is_move_assignable_v<calculation::AssessmentResult>);
+static_assert(!HasPublicParameterSets<calculation::AssessmentResult>);
+static_assert(!HasPublicSelectedCandidate<calculation::AssessmentResult>);
+static_assert(std::is_move_constructible_v<calculation::AssessmentResult>);
+static_assert(!std::is_move_assignable_v<calculation::AssessmentResult>);
 
+TEST_CASE("calculation selects the highest-priority full execution plan",
+          "[calculation][calculation]") {
     const auto prepared = make_prepared_water();
     const FixedChargeMethod higher_priority{"higher", 10, 10.0};
     const FixedChargeMethod lower_priority{"lower", 1, 1.0};
@@ -269,6 +269,12 @@ TEST_CASE("calculation facade dispatches full and reduced execution",
                                     .max_threads = std::numeric_limits<std::size_t>::max()}));
     };
     CHECK_THROWS_AS(throw_fn_0(), std::invalid_argument);
+}
+
+TEST_CASE("automatic calculation ranks candidates and supports permissive classification",
+          "[calculation][calculation]") {
+    const auto prepared = make_prepared_water();
+    const std::vector<chargefw::parameters::ParameterSet> parameters;
 
     const FixedChargeMethod alpha{"alpha", 1, 2.0};
     const FixedChargeMethod beta{"beta", 1, 3.0};
@@ -334,6 +340,10 @@ TEST_CASE("calculation facade dispatches full and reduced execution",
         .classification_options = {.permissive_types = true}});
     CHECK(permissive_application_result.calculated());
     CHECK(permissive_application_result.charges->method_id() == std::string_view{"peoe"});
+}
+
+TEST_CASE("assessment preserves owned selection state and validates method options",
+          "[calculation][calculation]") {
 
     // The returned report owns its IDs and does not retain parameter-set pointers from the consumed
     // assessment. Moving the assessment before execution must preserve the indexed selected plan.
@@ -430,6 +440,10 @@ TEST_CASE("calculation facade dispatches full and reduced execution",
                              });
     CHECK(rejected_smpqeq != automatic_rejected_result.applicability.rejected.end());
     CHECK(!rejected_smpqeq->issues.empty());
+}
+
+TEST_CASE("calculation facade applies execution policy and rejects invalid plans",
+          "[calculation][calculation]") {
 
     const auto application_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -565,6 +579,10 @@ TEST_CASE("calculation facade dispatches full and reduced execution",
         static_cast<void>(calculation::calculate(std::move(unsupported_cover_assessment)));
     };
     CHECK_THROWS_AS(throw_fn_9(), std::invalid_argument);
+}
+
+TEST_CASE("calculation preserves empty-input cardinality and assessment ownership",
+          "[calculation][calculation]") {
 
     // Empty collections and empty targets retain their distinct cardinalities: no collection
     // entries produce no assignments, while an empty molecule still produces one source assignment.
@@ -628,6 +646,10 @@ TEST_CASE("calculation facade dispatches full and reduced execution",
     CHECK(rvalue_result.calculated());
     CHECK(std::ranges::equal(lvalue_result.charges->assignment(0).charges.values(),
                              rvalue_result.charges->assignment(0).charges.values()));
+}
+
+TEST_CASE("parallel calculation materializes assignments in source order",
+          "[calculation][calculation]") {
 
     // Parallel execution may emit progress out of order, but materialized assignments always retain
     // the source molecule/conformer order.
