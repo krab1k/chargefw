@@ -2,22 +2,22 @@ chargefw_add_snitch_test(test_atom
         test_atom.cpp
 )
 
-chargefw_add_test(test_bond
+chargefw_add_snitch_test(test_bond
         test_bond.cpp
 )
 
-chargefw_add_test(test_conformer
+chargefw_add_snitch_test(test_conformer
         test_conformer.cpp
 )
 
-chargefw_add_test(test_molecule
+chargefw_add_snitch_test(test_molecule
         test_molecule.cpp
 )
 
-chargefw_add_test(test_molecule_collection
+chargefw_add_snitch_test(test_molecule_collection
         test_molecule_collection.cpp
 )
 
-chargefw_add_test(test_periodic_table
+chargefw_add_snitch_test(test_periodic_table
         test_periodic_table.cpp
 )

@@ -6,86 +6,71 @@
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/position.h>
 
-#include <cassert>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include <snitch/snitch.hpp>
+
 namespace core = chargefw::core;
 
-auto main() -> int {
+TEST_CASE("molecule exposes source-ordered graph and conformer data", "[core][molecule]") {
     const auto water = chargefw::test::make_water();
 
-    assert(water.name() == std::string_view{"water"});
-    assert(water.atom_count() == 3);
-    assert(water.bond_count() == 2);
-    assert(water.conformer_count() == 1);
-    assert(water.has_coordinates());
-    assert(water.atoms().size() == 3);
-    assert(water.bonds().size() == 2);
-    assert(water.conformers().size() == 1);
-    assert(water.atom(0).atomic_number() == 8);
-    assert(water.bond(0).order() == core::BondOrder::SINGLE);
-    assert(water.conformer(0).size() == 3);
+    CHECK(water.name() == std::string_view{"water"});
+    CHECK(water.atom_count() == 3);
+    CHECK(water.bond_count() == 2);
+    CHECK(water.conformer_count() == 1);
+    CHECK(water.has_coordinates());
+    CHECK(water.atoms().size() == 3);
+    CHECK(water.bonds().size() == 2);
+    CHECK(water.conformers().size() == 1);
+    CHECK(water.atom(0).atomic_number() == 8);
+    CHECK(water.bond(0).order() == core::BondOrder::SINGLE);
+    CHECK(water.conformer(0).size() == 3);
+}
 
+TEST_CASE("molecule reports absent coordinates", "[core][molecule]") {
     const auto charged_pair = chargefw::test::make_formally_charged_pair();
-    assert(!charged_pair.has_coordinates());
 
-    bool rejected_bad_atom_access = false;
+    CHECK_FALSE(charged_pair.has_coordinates());
+}
 
-    try {
-        [[maybe_unused]] const auto& invalid = water.atom(3);
-    } catch (const std::out_of_range&) {
-        rejected_bad_atom_access = true;
-    }
+TEST_CASE("molecule bounds-checked atom access rejects an invalid index", "[core][molecule]") {
+    const auto water = chargefw::test::make_water();
 
-    assert(rejected_bad_atom_access);
+    CHECK_THROWS_AS(water.atom(3), std::out_of_range);
+}
 
-    bool rejected_invalid_bond_index = false;
-
-    try {
+TEST_CASE("molecule rejects bonds with invalid atom indices", "[core][molecule]") {
+    const auto make_invalid_molecule = [] {
         std::vector atoms{core::Atom{6, 0, "C"}};
-
         std::vector bonds{core::Bond{0, 1, core::BondOrder::SINGLE}};
+        return core::Molecule{std::move(atoms), std::move(bonds)};
+    };
 
-        [[maybe_unused]] const core::Molecule invalid{std::move(atoms), std::move(bonds)};
-    } catch (const std::invalid_argument&) {
-        rejected_invalid_bond_index = true;
-    }
+    CHECK_THROWS_AS(make_invalid_molecule(), std::invalid_argument);
+}
 
-    assert(rejected_invalid_bond_index);
-
-    bool rejected_duplicate_bond = false;
-
-    try {
+TEST_CASE("molecule rejects duplicate bonds", "[core][molecule]") {
+    const auto make_invalid_molecule = [] {
         std::vector atoms{core::Atom{6, 0, "C"}, core::Atom{1, 0, "H"}};
-
         std::vector bonds{core::Bond{0, 1, core::BondOrder::SINGLE},
                           core::Bond{1, 0, core::BondOrder::SINGLE}};
+        return core::Molecule{std::move(atoms), std::move(bonds)};
+    };
 
-        [[maybe_unused]] const core::Molecule invalid{std::move(atoms), std::move(bonds)};
-    } catch (const std::invalid_argument&) {
-        rejected_duplicate_bond = true;
-    }
+    CHECK_THROWS_AS(make_invalid_molecule(), std::invalid_argument);
+}
 
-    assert(rejected_duplicate_bond);
-
-    bool rejected_wrong_conformer_size = false;
-
-    try {
+TEST_CASE("molecule rejects conformers with a mismatched atom count", "[core][molecule]") {
+    const auto make_invalid_molecule = [] {
         std::vector atoms{core::Atom{8, 0, "O"}, core::Atom{1, 0, "H1"}};
-
         std::vector positions{core::Position{.x = 0.0, .y = 0.0, .z = 0.0}};
-
         std::vector conformers{core::Conformer{std::move(positions)}};
+        return core::Molecule{std::move(atoms), {}, std::move(conformers)};
+    };
 
-        [[maybe_unused]] const core::Molecule invalid{std::move(atoms), {}, std::move(conformers)};
-    } catch (const std::invalid_argument&) {
-        rejected_wrong_conformer_size = true;
-    }
-
-    assert(rejected_wrong_conformer_size);
-
-    return 0;
+    CHECK_THROWS_AS(make_invalid_molecule(), std::invalid_argument);
 }

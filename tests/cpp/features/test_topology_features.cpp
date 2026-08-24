@@ -3,10 +3,11 @@
 #include <chargefw/features/topology_features.h>
 
 #include <algorithm>
-#include <cassert>
 #include <span>
 #include <stdexcept>
 #include <vector>
+
+#include <snitch/snitch.hpp>
 
 namespace features = chargefw::features;
 
@@ -18,48 +19,51 @@ auto to_vector(std::span<const std::size_t> values) -> std::vector<std::size_t> 
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("topology features expose molecule reference and graph degree", "[features][topology]") {
     const auto water = chargefw::test::make_water();
     const features::TopologyFeatures topology{water};
 
-    assert(&topology.molecule() == &water);
+    CHECK(&topology.molecule() == &water);
+    CHECK(topology.degree(0) == 2);
+    CHECK(topology.degree(1) == 1);
+    CHECK(topology.degree(2) == 1);
+}
 
-    assert(topology.degree(0) == 2);
-    assert(topology.degree(1) == 1);
-    assert(topology.degree(2) == 1);
+TEST_CASE("topology features expose sorted neighbor indices", "[features][topology]") {
+    const auto water = chargefw::test::make_water();
+    const features::TopologyFeatures topology{water};
 
     auto oxygen_neighbors = to_vector(topology.neighbor_indices(0));
     std::ranges::sort(oxygen_neighbors);
-
-    assert((oxygen_neighbors == std::vector<std::size_t>{1, 2}));
+    CHECK(oxygen_neighbors == std::vector<std::size_t>{1, 2});
 
     const auto h1_neighbors = to_vector(topology.neighbor_indices(1));
-    assert(h1_neighbors == std::vector<std::size_t>{0});
+    CHECK(h1_neighbors == std::vector<std::size_t>{0});
+}
+
+TEST_CASE("topology features resolve bond indices and adjacency", "[features][topology]") {
+    const auto water = chargefw::test::make_water();
+    const features::TopologyFeatures topology{water};
 
     const auto oh1_bond_index = topology.bond_index_between(0, 1);
     const auto oh2_bond_index = topology.bond_index_between(0, 2);
     const auto no_self_bond = topology.bond_index_between(0, 0);
 
-    assert(oh1_bond_index.has_value());
-    assert(oh2_bond_index.has_value());
-    assert(!no_self_bond.has_value());
+    CHECK(oh1_bond_index.has_value());
+    CHECK(oh2_bond_index.has_value());
+    CHECK_FALSE(no_self_bond.has_value());
 
-    assert(topology.are_bonded(0, 1));
-    assert(topology.are_bonded(1, 0));
-    assert(!topology.are_bonded(1, 2));
+    CHECK(topology.are_bonded(0, 1));
+    CHECK(topology.are_bonded(1, 0));
+    CHECK_FALSE(topology.are_bonded(1, 2));
 
     const auto oxygen_bonds = to_vector(topology.incident_bond_indices(0));
-    assert(oxygen_bonds.size() == 2);
+    CHECK(oxygen_bonds.size() == 2);
+}
 
-    bool rejected_atom_index = false;
+TEST_CASE("topology features reject invalid atom indices", "[features][topology]") {
+    const auto water = chargefw::test::make_water();
+    const features::TopologyFeatures topology{water};
 
-    try {
-        [[maybe_unused]] const auto invalid_degree = topology.degree(3);
-    } catch (const std::out_of_range&) {
-        rejected_atom_index = true;
-    }
-
-    assert(rejected_atom_index);
-
-    return 0;
+    CHECK_THROWS_AS(topology.degree(3), std::out_of_range);
 }

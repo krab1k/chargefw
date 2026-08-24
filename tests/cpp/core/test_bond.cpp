@@ -1,47 +1,35 @@
 #include <chargefw/core/bond.h>
 
-#include <cassert>
 #include <stdexcept>
+
+#include <snitch/snitch.hpp>
 
 namespace core = chargefw::core;
 
-auto main() -> int {
+TEST_CASE("bond stores endpoints and order", "[core][bond]") {
     const core::Bond bond{0, 1, core::BondOrder::SINGLE};
 
-    assert(bond.first_atom_index() == 0);
-    assert(bond.second_atom_index() == 1);
-    assert(bond.order() == core::BondOrder::SINGLE);
-    assert(core::bond_order_value(core::BondOrder::SINGLE) == 1);
-    assert(core::bond_order_value(core::BondOrder::DOUBLE) == 2);
-    assert(core::bond_order_value(core::BondOrder::TRIPLE) == 3);
-    assert(core::bond_order_from_value(1) == core::BondOrder::SINGLE);
-    assert(core::bond_order_from_value(2) == core::BondOrder::DOUBLE);
-    assert(core::bond_order_from_value(3) == core::BondOrder::TRIPLE);
+    CHECK(bond.first_atom_index() == 0);
+    CHECK(bond.second_atom_index() == 1);
+    CHECK(bond.order() == core::BondOrder::SINGLE);
 
     const core::Bond double_bond{2, 3, core::BondOrder::DOUBLE};
 
-    assert(double_bond.first_atom_index() == 2);
-    assert(double_bond.second_atom_index() == 3);
-    assert(double_bond.order() == core::BondOrder::DOUBLE);
+    CHECK(double_bond.first_atom_index() == 2);
+    CHECK(double_bond.second_atom_index() == 3);
+    CHECK(double_bond.order() == core::BondOrder::DOUBLE);
+}
 
-    bool rejected_self_bond = false;
+TEST_CASE("bond order converts to and from its numeric value", "[core][bond]") {
+    CHECK(core::bond_order_value(core::BondOrder::SINGLE) == 1);
+    CHECK(core::bond_order_value(core::BondOrder::DOUBLE) == 2);
+    CHECK(core::bond_order_value(core::BondOrder::TRIPLE) == 3);
+    CHECK(core::bond_order_from_value(1) == core::BondOrder::SINGLE);
+    CHECK(core::bond_order_from_value(2) == core::BondOrder::DOUBLE);
+    CHECK(core::bond_order_from_value(3) == core::BondOrder::TRIPLE);
+}
 
-    try {
-        [[maybe_unused]] const core::Bond invalid{0, 0, core::BondOrder::SINGLE};
-    } catch (const std::invalid_argument&) {
-        rejected_self_bond = true;
-    }
-
-    assert(rejected_self_bond);
-
-    auto rejected_order = false;
-    try {
-        [[maybe_unused]] const auto invalid_order = core::bond_order_from_value(4);
-    } catch (const std::invalid_argument&) {
-        rejected_order = true;
-    }
-
-    assert(rejected_order);
-
-    return 0;
+TEST_CASE("bond rejects invalid endpoints and orders", "[core][bond]") {
+    CHECK_THROWS_AS((core::Bond{0, 0, core::BondOrder::SINGLE}), std::invalid_argument);
+    CHECK_THROWS_AS(core::bond_order_from_value(4), std::invalid_argument);
 }

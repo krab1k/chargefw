@@ -1,5 +1,3 @@
-#include "support/test_assertions.h"
-
 #include "support/test_molecules.h"
 
 #include <chargefw/core/atom.h>
@@ -8,54 +6,52 @@
 #include <chargefw/core/position.h>
 #include <chargefw/features/conformer_features.h>
 
-#include <cassert>
+#include <cmath>
 #include <limits>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
 
+#include <snitch/snitch.hpp>
+
 namespace core = chargefw::core;
 namespace features = chargefw::features;
 
-auto main() -> int {
-    static_assert(!std::is_constructible_v<features::ConformerFeatures, core::Molecule&&>);
-    static_assert(
-        !std::is_constructible_v<features::ConformerFeatures, core::Molecule&&, std::size_t>);
+static_assert(!std::is_constructible_v<features::ConformerFeatures, core::Molecule&&>);
+static_assert(!std::is_constructible_v<features::ConformerFeatures, core::Molecule&&, std::size_t>);
 
+TEST_CASE("conformer features expose molecule reference and index", "[features][conformer]") {
     const auto water = chargefw::test::make_water();
     const features::ConformerFeatures geometry{water, 0};
 
-    assert(&geometry.molecule() == &water);
-    assert(geometry.conformer_index() == 0);
+    CHECK(&geometry.molecule() == &water);
+    CHECK(geometry.conformer_index() == 0);
+}
+
+TEST_CASE("conformer features expose positions and distances", "[features][conformer]") {
+    const auto water = chargefw::test::make_water();
+    const features::ConformerFeatures geometry{water, 0};
 
     const auto& oxygen = geometry.position(0);
-    chargefw::test::assert_close(oxygen.x, 0.0, 1e-12);
-    chargefw::test::assert_close(oxygen.y, 0.0, 1e-12);
-    chargefw::test::assert_close(oxygen.z, 0.0, 1e-12);
+    CHECK(std::abs(oxygen.x - 0.0) < 1e-12);
+    CHECK(std::abs(oxygen.y - 0.0) < 1e-12);
+    CHECK(std::abs(oxygen.z - 0.0) < 1e-12);
 
-    chargefw::test::assert_close(geometry.squared_distance(0, 1), 0.9572 * 0.9572, 1e-12);
-    chargefw::test::assert_close(geometry.distance(0, 1), 0.9572, 1e-12);
+    CHECK(std::abs(geometry.squared_distance(0, 1) - (0.9572 * 0.9572)) < 1e-12);
+    CHECK(std::abs(geometry.distance(0, 1) - 0.9572) < 1e-12);
+}
 
-    bool rejected_bad_conformer = false;
+TEST_CASE("conformer features reject invalid conformer and atom indices", "[features][conformer]") {
+    const auto water = chargefw::test::make_water();
 
-    try {
-        [[maybe_unused]] const features::ConformerFeatures invalid{water, 1};
-    } catch (const std::out_of_range&) {
-        rejected_bad_conformer = true;
-    }
+    CHECK_THROWS_AS((features::ConformerFeatures{water, 1}), std::out_of_range);
 
-    assert(rejected_bad_conformer);
+    const features::ConformerFeatures geometry{water, 0};
+    CHECK_THROWS_AS(geometry.position(3), std::out_of_range);
+}
 
-    bool rejected_bad_atom = false;
-
-    try {
-        [[maybe_unused]] const auto& invalid_position = geometry.position(3);
-    } catch (const std::out_of_range&) {
-        rejected_bad_atom = true;
-    }
-
-    assert(rejected_bad_atom);
-
+TEST_CASE("conformer features detect coincident and non-finite coordinates",
+          "[features][conformer]") {
     const core::Molecule geometric_edge_cases{
         std::vector{core::Atom{1}, core::Atom{1}},
         {},
@@ -65,15 +61,13 @@ auto main() -> int {
                                     "nonfinite"}}};
 
     const features::ConformerFeatures duplicate{geometric_edge_cases, 0};
-    assert(!duplicate.first_nonfinite_atom_index().has_value());
+    CHECK_FALSE(duplicate.first_nonfinite_atom_index().has_value());
     const auto coincident = duplicate.coincident_atom_indices();
-    assert(coincident.has_value());
-    assert(coincident->first == 0);
-    assert(coincident->second == 1);
+    REQUIRE(coincident.has_value());
+    CHECK(coincident->first == 0);
+    CHECK(coincident->second == 1);
 
     const features::ConformerFeatures nonfinite{geometric_edge_cases, 1};
-    assert(nonfinite.first_nonfinite_atom_index() == 1);
-    assert(!nonfinite.coincident_atom_indices().has_value());
-
-    return 0;
+    CHECK(nonfinite.first_nonfinite_atom_index() == 1);
+    CHECK_FALSE(nonfinite.coincident_atom_indices().has_value());
 }

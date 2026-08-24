@@ -2,36 +2,36 @@
 
 #include <chargefw/core/molecule_collection.h>
 
-#include <cassert>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
 
+#include <snitch/snitch.hpp>
+
 namespace core = chargefw::core;
 
-auto main() -> int {
+TEST_CASE("molecule collection preserves ordered molecules", "[core][molecule-collection]") {
     const core::MoleculeCollection collection{
         {chargefw::test::make_water(), chargefw::test::make_formally_charged_pair()}, "examples"};
 
-    assert(collection.name() == std::string_view{"examples"});
-    assert(collection.size() == 2);
-    assert(!collection.empty());
-    assert(collection.molecules().size() == 2);
-    assert(collection[0].name() == std::string_view{"water"});
-    assert(collection.at(1).name() == std::string_view{"charged-pair"});
+    CHECK(collection.name() == std::string_view{"examples"});
+    CHECK(collection.size() == 2);
+    CHECK_FALSE(collection.empty());
+    CHECK(collection.molecules().size() == 2);
+    CHECK(collection[0].name() == std::string_view{"water"});
+    CHECK(collection.at(1).name() == std::string_view{"charged-pair"});
+}
 
-    const core::MoleculeCollection empty_collection{std::vector<core::Molecule>{}, "empty"};
-    assert(empty_collection.empty());
+TEST_CASE("molecule collection supports no molecules", "[core][molecule-collection]") {
+    const core::MoleculeCollection collection{std::vector<core::Molecule>{}, "empty"};
 
-    bool rejected_bad_index = false;
+    CHECK(collection.empty());
+}
 
-    try {
-        [[maybe_unused]] const auto& invalid = collection.at(2);
-    } catch (const std::out_of_range&) {
-        rejected_bad_index = true;
-    }
+TEST_CASE("molecule collection bounds-checked access rejects an invalid index",
+          "[core][molecule-collection]") {
+    const core::MoleculeCollection collection{
+        {chargefw::test::make_water(), chargefw::test::make_formally_charged_pair()}, "examples"};
 
-    assert(rejected_bad_index);
-
-    return 0;
+    CHECK_THROWS_AS(collection.at(2), std::out_of_range);
 }

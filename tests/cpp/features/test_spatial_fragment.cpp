@@ -1,5 +1,3 @@
-#include "support/test_assertions.h"
-
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
@@ -10,12 +8,13 @@
 #include <chargefw/features/spatial_fragment.h>
 #include <chargefw/parameters/classification/parameter_classification.h>
 
-#include <cassert>
 #include <limits>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
 #include <vector>
+
+#include <snitch/snitch.hpp>
 
 namespace core = chargefw::core;
 namespace features = chargefw::features;
@@ -41,79 +40,112 @@ auto make_molecule() -> core::Molecule {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("spatial fragment builds from center atom and radius", "[features][spatial-fragment]") {
     const auto molecule = make_molecule();
     const features::PreparedMolecule prepared{molecule};
     const features::ConformerFeatures first_geometry{molecule, 0};
     const features::SpatialFragmentBuilder first_builder{prepared, first_geometry};
     const auto fragment = first_builder.build(1, 1.0);
 
-    assert(fragment.molecule().name() == "fragment");
-    assert(fragment.molecule().atom_count() == 3);
-    assert(fragment.molecule().bond_count() == 2);
-    assert(fragment.molecule().conformer_count() == 1);
-    assert(fragment.molecule().conformer(0).name() == "model-1");
-    assert(fragment.source_conformer_index() == 0);
-    assert(fragment.center_local_atom_index() == 1);
+    CHECK(fragment.molecule().name() == "fragment");
+    CHECK(fragment.molecule().atom_count() == 3);
+    CHECK(fragment.molecule().bond_count() == 2);
+    CHECK(fragment.molecule().conformer_count() == 1);
+    CHECK(fragment.molecule().conformer(0).name() == "model-1");
+    CHECK(fragment.source_conformer_index() == 0);
+    CHECK(fragment.center_local_atom_index() == 1);
 
-    assert(std::ranges::equal(fragment.local_to_source_atom_indices(),
-                              std::vector<std::size_t>{0, 1, 2}));
-    assert(std::ranges::equal(fragment.local_to_source_bond_indices(),
-                              std::vector<std::size_t>{0, 1}));
+    CHECK(std::ranges::equal(fragment.local_to_source_atom_indices(),
+                             std::vector<std::size_t>{0, 1, 2}));
+    CHECK(std::ranges::equal(fragment.local_to_source_bond_indices(),
+                             std::vector<std::size_t>{0, 1}));
 
-    assert(fragment.molecule().atom(1).atomic_number() == 8);
-    assert(fragment.molecule().atom(1).formal_charge() == -1);
-    assert(fragment.molecule().atom(1).name() == "O1");
-    assert(fragment.molecule().bond(0).first_atom_index() == 0);
-    assert(fragment.molecule().bond(0).second_atom_index() == 1);
-    assert(fragment.molecule().bond(0).order() == core::BondOrder::DOUBLE);
-    assert(fragment.molecule().bond(1).first_atom_index() == 1);
-    assert(fragment.molecule().bond(1).second_atom_index() == 2);
-    assert(fragment.molecule().conformer(0)[0].x == 0.0);
-    assert(fragment.molecule().conformer(0)[1].x == 1.0);
-    assert(fragment.molecule().conformer(0)[2].x == 2.0);
+    CHECK(fragment.molecule().atom(1).atomic_number() == 8);
+    CHECK(fragment.molecule().atom(1).formal_charge() == -1);
+    CHECK(fragment.molecule().atom(1).name() == "O1");
+    CHECK(fragment.molecule().bond(0).first_atom_index() == 0);
+    CHECK(fragment.molecule().bond(0).second_atom_index() == 1);
+    CHECK(fragment.molecule().bond(0).order() == core::BondOrder::DOUBLE);
+    CHECK(fragment.molecule().bond(1).first_atom_index() == 1);
+    CHECK(fragment.molecule().bond(1).second_atom_index() == 2);
+    CHECK(fragment.molecule().conformer(0)[0].x == 0.0);
+    CHECK(fragment.molecule().conformer(0)[1].x == 1.0);
+    CHECK(fragment.molecule().conformer(0)[2].x == 2.0);
+}
+
+TEST_CASE("spatial fragment projects parameter classification to local indices",
+          "[features][spatial-fragment]") {
+    const auto molecule = make_molecule();
+    const features::PreparedMolecule prepared{molecule};
+    const features::ConformerFeatures first_geometry{molecule, 0};
+    const features::SpatialFragmentBuilder first_builder{prepared, first_geometry};
+    const auto fragment = first_builder.build(1, 1.0);
 
     const parameters::ParameterClassification classification{
         parameters::AtomParameterClassification{{10, 11, 12, 13}},
         parameters::BondParameterClassification{{20, 21, 22}}};
     const auto projected = features::project_classification(classification, fragment);
-    assert(std::ranges::equal(projected.atom().parameter_entry_indices(),
-                              std::vector<std::size_t>{10, 11, 12}));
-    assert(std::ranges::equal(projected.bond().parameter_entry_indices(),
-                              std::vector<std::size_t>{20, 21}));
+    CHECK(std::ranges::equal(projected.atom().parameter_entry_indices(),
+                             std::vector<std::size_t>{10, 11, 12}));
+    CHECK(std::ranges::equal(projected.bond().parameter_entry_indices(),
+                             std::vector<std::size_t>{20, 21}));
 
     const auto atom_only_projected = features::project_classification(
         parameters::ParameterClassification{
             parameters::AtomParameterClassification{{10, 11, 12, 13}}},
         fragment);
-    assert(std::ranges::equal(atom_only_projected.atom().parameter_entry_indices(),
-                              std::vector<std::size_t>{10, 11, 12}));
-    assert(atom_only_projected.bond().empty());
+    CHECK(std::ranges::equal(atom_only_projected.atom().parameter_entry_indices(),
+                             std::vector<std::size_t>{10, 11, 12}));
+    CHECK(atom_only_projected.bond().empty());
 
     const auto bond_only_projected = features::project_classification(
         parameters::ParameterClassification{parameters::AtomParameterClassification{},
                                             parameters::BondParameterClassification{{20, 21, 22}}},
         fragment);
-    assert(bond_only_projected.atom().empty());
-    assert(std::ranges::equal(bond_only_projected.bond().parameter_entry_indices(),
-                              std::vector<std::size_t>{20, 21}));
+    CHECK(bond_only_projected.atom().empty());
+    CHECK(std::ranges::equal(bond_only_projected.bond().parameter_entry_indices(),
+                             std::vector<std::size_t>{20, 21}));
+}
 
+TEST_CASE("spatial fragment includes all atoms within boundary radius",
+          "[features][spatial-fragment]") {
+    const auto molecule = make_molecule();
+    const features::PreparedMolecule prepared{molecule};
+    const features::ConformerFeatures first_geometry{molecule, 0};
+    const features::SpatialFragmentBuilder first_builder{prepared, first_geometry};
     const auto boundary_fragment = first_builder.build(2, 8.0);
-    assert(boundary_fragment.molecule().atom_count() == 4);
-    assert(boundary_fragment.center_local_atom_index() == 2);
-    assert(std::ranges::equal(boundary_fragment.local_to_source_atom_indices(),
-                              std::vector<std::size_t>{0, 1, 2, 3}));
 
+    CHECK(boundary_fragment.molecule().atom_count() == 4);
+    CHECK(boundary_fragment.center_local_atom_index() == 2);
+    CHECK(std::ranges::equal(boundary_fragment.local_to_source_atom_indices(),
+                             std::vector<std::size_t>{0, 1, 2, 3}));
+}
+
+TEST_CASE("spatial fragment uses second conformer geometry", "[features][spatial-fragment]") {
+    const auto molecule = make_molecule();
+    const features::PreparedMolecule prepared{molecule};
     const features::ConformerFeatures second_geometry{molecule, 1};
     const features::SpatialFragmentBuilder second_builder{prepared, second_geometry};
     const auto second_conformer_fragment = second_builder.build(1, 2.0);
-    assert(second_conformer_fragment.molecule().conformer(0).name() == "model-2");
-    assert(second_conformer_fragment.molecule().conformer(0)[2].x == 4.0);
 
+    CHECK(second_conformer_fragment.molecule().conformer(0).name() == "model-2");
+    CHECK(second_conformer_fragment.molecule().conformer(0)[2].x == 4.0);
+}
+
+TEST_CASE("spatial fragment builder is deterministic for identical parameters",
+          "[features][spatial-fragment]") {
+    const auto molecule = make_molecule();
+    const features::PreparedMolecule prepared{molecule};
+    const features::ConformerFeatures first_geometry{molecule, 0};
+    const features::SpatialFragmentBuilder first_builder{prepared, first_geometry};
+    const auto fragment = first_builder.build(1, 1.0);
     const auto repeated_fragment = first_builder.build(1, 1.0);
-    assert(std::ranges::equal(repeated_fragment.local_to_source_atom_indices(),
-                              fragment.local_to_source_atom_indices()));
 
+    CHECK(std::ranges::equal(repeated_fragment.local_to_source_atom_indices(),
+                             fragment.local_to_source_atom_indices()));
+}
+
+TEST_CASE("spatial fragment supports single-atom molecules", "[features][spatial-fragment]") {
     const core::Molecule single_atom_molecule{
         std::vector{core::Atom{1, 0, "H"}},
         {},
@@ -124,16 +156,30 @@ auto main() -> int {
     const features::SpatialFragmentBuilder single_atom_builder{single_atom_prepared,
                                                                single_atom_geometry};
     const auto single_atom_fragment = single_atom_builder.build(0, 1.0);
-    assert(single_atom_fragment.molecule().atom_count() == 1);
-    assert(single_atom_fragment.molecule().bond_count() == 0);
-    assert(single_atom_fragment.center_local_atom_index() == 0);
 
-    const features::ConformerFeatures unrelated_geometry{single_atom_molecule, 0};
-    assert(chargefw::test::throws<std::invalid_argument>([&prepared, &unrelated_geometry] {
-        [[maybe_unused]] const features::SpatialFragmentBuilder invalid{prepared,
-                                                                        unrelated_geometry};
-    }));
+    CHECK(single_atom_fragment.molecule().atom_count() == 1);
+    CHECK(single_atom_fragment.molecule().bond_count() == 0);
+    CHECK(single_atom_fragment.center_local_atom_index() == 0);
+}
 
+TEST_CASE("spatial fragment builder rejects mismatched geometry and prepared molecule",
+          "[features][spatial-fragment]") {
+    const auto molecule = make_molecule();
+    const features::PreparedMolecule prepared{molecule};
+
+    const core::Molecule other_molecule{
+        std::vector{core::Atom{1, 0, "H"}},
+        {},
+        std::vector{core::Conformer{{core::Position{.x = 3.0}}, "single"}},
+        "single"};
+    const features::ConformerFeatures unrelated_geometry{other_molecule, 0};
+
+    CHECK_THROWS_AS((features::SpatialFragmentBuilder{prepared, unrelated_geometry}),
+                    std::invalid_argument);
+}
+
+TEST_CASE("spatial fragment builder rejects non-finite conformer geometry",
+          "[features][spatial-fragment]") {
     const core::Molecule nonfinite_molecule{
         std::vector{core::Atom{1, 0, "H0"}, core::Atom{1, 0, "H1"}},
         {},
@@ -143,30 +189,29 @@ auto main() -> int {
         "nonfinite"};
     const features::PreparedMolecule nonfinite_prepared{nonfinite_molecule};
     const features::ConformerFeatures nonfinite_geometry{nonfinite_molecule, 0};
-    assert(
-        chargefw::test::throws<std::invalid_argument>([&nonfinite_prepared, &nonfinite_geometry] {
-            [[maybe_unused]] const features::SpatialFragmentBuilder invalid{nonfinite_prepared,
-                                                                            nonfinite_geometry};
-        }));
+
+    CHECK_THROWS_AS((features::SpatialFragmentBuilder{nonfinite_prepared, nonfinite_geometry}),
+                    std::invalid_argument);
+}
+
+TEST_CASE("spatial fragment builder rejects invalid center, radius, and empty molecule",
+          "[features][spatial-fragment]") {
+    const auto molecule = make_molecule();
+    const features::PreparedMolecule prepared{molecule};
+    const features::ConformerFeatures first_geometry{molecule, 0};
+    const features::SpatialFragmentBuilder first_builder{prepared, first_geometry};
 
     const core::Molecule empty_molecule{{}, {}, {core::Conformer{{}, "empty"}}, "empty"};
     const features::PreparedMolecule empty_prepared{empty_molecule};
     const features::ConformerFeatures empty_geometry{empty_molecule, 0};
     const features::SpatialFragmentBuilder empty_builder{empty_prepared, empty_geometry};
-    assert(chargefw::test::throws<std::out_of_range>(
-        [&empty_builder] { static_cast<void>(empty_builder.build(0, 1.0)); }));
-    assert(chargefw::test::throws<std::out_of_range>(
-        [&first_builder] { static_cast<void>(first_builder.build(4, 1.0)); }));
-    assert(chargefw::test::throws<std::invalid_argument>(
-        [&first_builder] { static_cast<void>(first_builder.build(1, 0.0)); }));
-    assert(chargefw::test::throws<std::invalid_argument>(
-        [&first_builder] { static_cast<void>(first_builder.build(1, -1.0)); }));
-    assert(chargefw::test::throws<std::invalid_argument>([&first_builder] {
-        static_cast<void>(first_builder.build(1, std::numeric_limits<double>::quiet_NaN()));
-    }));
-    assert(chargefw::test::throws<std::invalid_argument>([&first_builder] {
-        static_cast<void>(first_builder.build(1, std::numeric_limits<double>::infinity()));
-    }));
 
-    return 0;
+    CHECK_THROWS_AS(empty_builder.build(0, 1.0), std::out_of_range);
+    CHECK_THROWS_AS(first_builder.build(4, 1.0), std::out_of_range);
+    CHECK_THROWS_AS(first_builder.build(1, 0.0), std::invalid_argument);
+    CHECK_THROWS_AS(first_builder.build(1, -1.0), std::invalid_argument);
+    CHECK_THROWS_AS(first_builder.build(1, std::numeric_limits<double>::quiet_NaN()),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(first_builder.build(1, std::numeric_limits<double>::infinity()),
+                    std::invalid_argument);
 }
