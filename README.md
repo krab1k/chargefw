@@ -14,6 +14,7 @@ SMILES/chemistry-preparation tool.
 | --- | --- |
 | [PROJECT.md](PROJECT.md) | Implemented architecture, capabilities, limits, and product direction |
 | [TODO.md](TODO.md) | Unfinished deliverables and acceptance criteria |
+| [TESTING.md](TESTING.md) | Test-suite contracts, organization, and migration strategy |
 | [AGENTS.md](AGENTS.md) | Repository boundaries and implementation rules |
 
 ## Requirements
@@ -24,7 +25,8 @@ SMILES/chemistry-preparation tool.
 - Internet access on first configure unless dependencies are already available to CMake
 
 CMake searches for CLI11 2.7.2, nlohmann/json 3.12, Eigen 5.0, nanoflann 1.12, and Gemmi 0.7.4, then uses
-`FetchContent` when needed.
+`FetchContent` when needed. When `CHARGEFW_BUILD_TESTS` is enabled, it similarly searches for Snitch
+1.3.2 and fetches it only if unavailable; production-only builds do not require Snitch.
 
 ## Build and test
 

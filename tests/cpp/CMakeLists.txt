@@ -32,6 +32,26 @@ function(chargefw_add_test name)
     )
 endfunction()
 
+function(chargefw_add_snitch_test name)
+    add_executable(${name}
+            ${ARGN}
+    )
+
+    target_link_libraries(${name}
+            PRIVATE
+            chargefw::core
+            chargefw_test_support
+            snitch::snitch
+    )
+
+    target_link_options(${name} PRIVATE "LINKER:--disable-new-dtags")
+
+    add_test(
+            NAME ${name}
+            COMMAND ${name}
+    )
+endfunction()
+
 if(CHARGEFW_BUILD_CLI)
     add_test(
             NAME test_chargefw_cli_outputs

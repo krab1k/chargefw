@@ -1,4 +1,4 @@
-chargefw_add_test(test_atom
+chargefw_add_snitch_test(test_atom
         test_atom.cpp
 )
 

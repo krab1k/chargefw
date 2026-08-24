@@ -72,3 +72,15 @@ function(chargefw_setup_dependencies)
         FetchContent_MakeAvailable(gemmi)
     endif()
 endfunction()
+
+function(chargefw_setup_test_dependencies)
+    find_package(snitch 1.3.2 CONFIG QUIET)
+    if(NOT TARGET snitch::snitch)
+        FetchContent_Declare(
+                snitch
+                SYSTEM
+                URL https://github.com/cschreib/snitch/archive/refs/tags/v1.3.2.tar.gz
+        )
+        FetchContent_MakeAvailable(snitch)
+    endif()
+endfunction()

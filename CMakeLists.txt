@@ -88,6 +88,7 @@ if(CHARGEFW_BUILD_CLI)
 endif()
 
 if(CHARGEFW_BUILD_TESTS)
+  chargefw_setup_test_dependencies()
   enable_testing()
   add_subdirectory(tests)
 endif()
