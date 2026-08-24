@@ -315,6 +315,6 @@ TEST_CASE("method calculation dispatches parameterized and geometry-dependent ta
     CHECK(geometry_charges.assignment(0).charges.size() == 3);
     CHECK(geometry_charges.assignment(1).charges.size() == 3);
 
-    CHECK(geometry_charges.assignment(0).charges[1] == 0.9572);
+    CHECK(geometry_charges.assignment(0).charges[1] == 0.7570);
     CHECK(geometry_charges.assignment(1).charges[1] == 1.1000);
 }

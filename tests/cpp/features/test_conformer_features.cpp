@@ -37,8 +37,10 @@ TEST_CASE("conformer features expose positions and distances", "[features][confo
     CHECK(std::abs(oxygen.y - 0.0) < 1e-12);
     CHECK(std::abs(oxygen.z - 0.0) < 1e-12);
 
-    CHECK(std::abs(geometry.squared_distance(0, 1) - (0.9572 * 0.9572)) < 1e-12);
-    CHECK(std::abs(geometry.distance(0, 1) - 0.9572) < 1e-12);
+    constexpr auto squared_oh_distance = 0.7570 * 0.7570 + 0.5859 * 0.5859;
+    CHECK(std::abs(geometry.squared_distance(0, 1) - squared_oh_distance) < 1e-12);
+    CHECK(std::abs(geometry.distance(0, 1) - std::sqrt(squared_oh_distance)) < 1e-12);
+    CHECK(std::abs(geometry.distance(0, 1) - geometry.distance(0, 2)) < 1e-12);
 }
 
 TEST_CASE("conformer features reject invalid conformer and atom indices", "[features][conformer]") {

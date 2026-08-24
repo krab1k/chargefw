@@ -39,9 +39,9 @@ TEST_CASE("SFKEEM produces conformer-dependent water charges", "[methods][sfkeem
     chargefw::test::assert_conformer_dependent(charge_set, 2);
 
     CHECK(charges.size() == 3);
-    CHECK(std::abs(charges[0] - (-0.13458150)) < 1.0e-8);
-    CHECK(std::abs(charges[1] - (0.06729732)) < 1.0e-8);
-    CHECK(std::abs(charges[2] - (0.06728418)) < 1.0e-8);
+    CHECK(std::abs(charges[0] - (-0.13462895)) < 1.0e-8);
+    CHECK(std::abs(charges[1] - (0.06731448)) < 1.0e-8);
+    CHECK(std::abs(charges[2] - (0.06731448)) < 1.0e-8);
     CHECK(std::abs(charges.total() - (0.0)) < 1.0e-8);
     CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
 

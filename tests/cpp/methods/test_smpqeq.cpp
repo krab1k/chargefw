@@ -43,9 +43,9 @@ TEST_CASE("SMP/QEq produces conformer-dependent water charges", "[methods][smpqe
     chargefw::test::assert_conformer_dependent(charge_set, 2);
 
     CHECK(charges.size() == 3);
-    CHECK(std::abs(charges[0] - (-0.035475768417)) < 1.0e-8);
-    CHECK(std::abs(charges[1] - (0.017737997826)) < 1.0e-8);
-    CHECK(std::abs(charges[2] - (0.017737770591)) < 1.0e-8);
+    CHECK(std::abs(charges[0] - (-0.035475966523)) < 1.0e-8);
+    CHECK(std::abs(charges[1] - (0.017737983262)) < 1.0e-8);
+    CHECK(std::abs(charges[2] - (0.017737983262)) < 1.0e-8);
     CHECK(std::abs(charges.total() - (0.0)) < 1.0e-8);
     CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
 

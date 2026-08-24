@@ -2,6 +2,11 @@ chargefw_add_snitch_test(test_builtin_methods
         test_builtin_methods.cpp
 )
 
+target_compile_definitions(test_builtin_methods
+        PRIVATE
+        CHARGEFW_TEST_PARAMETER_DIR="${PROJECT_SOURCE_DIR}/data/parameters"
+)
+
 chargefw_add_snitch_test(test_method_options
         test_method_options.cpp
 )

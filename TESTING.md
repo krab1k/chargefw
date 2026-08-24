@@ -103,8 +103,6 @@ layout. The main problems are organization and uneven depth.
 
 ### Structural issues
 
-- `test_builtin_methods.cpp` still combines unrelated registry metadata and behavior contracts in one
-  large Snitch test case. Split it so a failure identifies one observable behavior.
 - Planning, facade behavior, target ordering, reduced execution, and observer lifecycle are partly
   duplicated across calculation tests.
 - Method tests are inconsistent. Some assert fixed values, while others only assert signs and total
@@ -247,9 +245,8 @@ contract.
 
 ### Step 1 — Establish a test inventory and naming convention
 
-**Status: in progress.** The A–F inventory is complete, and `test_calculation.cpp`,
-`test_observer.cpp`, and `test_method_applicability.cpp` have focused named cases. The built-in method
-suite still needs its manifest-driven conformance split.
+**Status: complete.** The A–F inventory is complete, and the oversized calculation, observer,
+applicability, and built-in method suites have focused named cases.
 
 1. Classify every existing test as A–F above.
 2. Express cases as named Snitch `TEST_CASE`s after observable behavior, not implementation history.
@@ -281,6 +278,11 @@ Reconcile the first TODO item with its substantial existing coverage.
 as unfinished.
 
 ### Step 3 — Introduce the built-in method conformance manifest
+
+**Status: in progress.** The 22-method manifest owns registry metadata, parameter requirements,
+option counts, resource complexity, and reduced-execution capabilities. Its generic workflow covers
+applicability, provenance, finite source-ordered charges, topology/geometry fan-out, and neutral-water
+sanity; relabeling and bond-endpoint invariants remain to be centralized.
 
 1. Convert `test_builtin_methods.cpp` metadata and requirement checks into a table-driven manifest.
 2. Add a generic workflow case for all 22 registered methods.
