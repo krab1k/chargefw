@@ -44,6 +44,14 @@ function(chargefw_add_snitch_test name)
             snitch::snitch
     )
 
+    if(CHARGEFW_ENABLE_CLANG_TIDY)
+        # Snitch's expression decomposition intentionally forms an intermediate chained comparison.
+        # Suppress the resulting false positive only for Snitch test targets; project targets retain
+        # this clang-tidy check.
+        set_property(TARGET ${name} APPEND PROPERTY CXX_CLANG_TIDY
+                "--checks=-bugprone-chained-comparison")
+    endif()
+
     target_link_options(${name} PRIVATE "LINKER:--disable-new-dtags")
 
     add_test(

@@ -85,5 +85,11 @@ function(chargefw_setup_test_dependencies)
                 URL https://github.com/cschreib/snitch/archive/refs/tags/v1.3.2.tar.gz
         )
         FetchContent_MakeAvailable(snitch)
+
+        if(CHARGEFW_ENABLE_CLANG_TIDY)
+            # CMAKE_CXX_CLANG_TIDY also reaches FetchContent targets. Snitch is external code and
+            # must not add third-party diagnostics to the project's clang-tidy output.
+            set_property(TARGET snitch PROPERTY CXX_CLANG_TIDY "")
+        endif()
     endif()
 endfunction()
