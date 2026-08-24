@@ -23,10 +23,6 @@ accuracy studies are deliberately separate from implementation-completion work.
   identity, source mapping, and preservation data without duplicating calculation molecules, while
   preserving source order and generated/preservation-oriented SDF, MOL2, PDB, and mmCIF output. Fold
   this into bounded-memory batch execution and add peak-memory and mapping regression coverage.
-- [ ] Make terminal progress rendering erase the complete previous line when switching between target
-  and fragment displays or when a shorter message follows a longer one. Keep output on standard error,
-  preserve thread-safe rendering, and add a CLI-level assertion that captured progress contains no
-  stale suffix characters before the terminal newline.
 - [ ] Define the stable result/error schema. Represent successful and failed source records in input
   order with owned import/calculation diagnostics, multi-conformer assignments,
   precision/total-charge rules, and schema compatibility/versioning rules.

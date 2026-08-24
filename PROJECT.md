@@ -199,6 +199,10 @@ must not throw; the observer is purely observational and must not mutate method 
 execution policy, geometry, or selection. This terminal-event guarantee lets terminal observers
 restore progress output on all started-computation paths.
 
+The CLI progress observer serializes standard-error updates and clears the full rendered line before
+every target/fragment update and terminal newline, preventing stale suffixes when messages shrink or
+their display tier changes.
+
 Facade and observer regression coverage includes rejected-report identity, explicit no-plan and
 unsupported-policy boundaries, empty/tiny input cardinality, full and reduced solver failures,
 fragment-progress cancellation in serial and parallel cutoff/cover execution, ownership after

@@ -33,6 +33,7 @@ class TerminalProgressObserver final : public chargefw::calculation::Calculation
                    progress.target_index + 1, progress.target_count);
             break;
         case chargefw::calculation::CalculationPhase::computation_finished:
+            erase_line();
             std::print(std::cerr, "\n");
             break;
         default:
@@ -44,18 +45,23 @@ class TerminalProgressObserver final : public chargefw::calculation::Calculation
   private:
     static constexpr std::size_t bar_width = 30;
 
+    static void erase_line() {
+        std::print(std::cerr, "\r\x1b[2K");
+    }
+
     void render(const std::string_view label, const std::size_t complete, const std::size_t total,
                 const std::optional<std::size_t> target_index = std::nullopt,
                 const std::optional<std::size_t> target_count = std::nullopt) const {
         const auto filled = total == 0 ? 0U : std::min(bar_width, complete * bar_width / total);
         auto bar = std::string(bar_width, ' ');
         std::fill_n(bar.begin(), filled, '=');
+        erase_line();
         if (target_index.has_value() && target_count.has_value()) {
-            std::print(std::cerr, "\r{} {}/{} [{}] {}/{}", label, *target_index, *target_count, bar,
+            std::print(std::cerr, "{} {}/{} [{}] {}/{}", label, *target_index, *target_count, bar,
                        complete, total);
             return;
         }
-        std::print(std::cerr, "\r{} [{}] {}/{}", label, bar, complete, total);
+        std::print(std::cerr, "{} [{}] {}/{}", label, bar, complete, total);
     }
 
     mutable std::mutex mutex_;
