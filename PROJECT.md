@@ -17,6 +17,8 @@ The repository currently provides:
 - 22 built-in methods and bundled JSON parameter sets;
 - scientific applicability and execution-availability assessment;
 - deterministic method/parameter selection and owned application facades;
+- focused planning and execution contracts for no-plan, explicit-policy, ownership, cardinality,
+  source-order, and reduced failure behavior;
 - exact full execution, oneTBB-parallelized KD-tree spatial cutoff and spatial cover for eight
   reduced-capable methods;
 - native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;

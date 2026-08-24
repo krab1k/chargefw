@@ -396,3 +396,32 @@ TEST_CASE("reduced solver failures retain method and target context",
         }
     }
 }
+
+TEST_CASE("reduced execution preserves mixed source target order",
+          "[calculation][cutoff-execution]") {
+    const auto collection = core::MoleculeCollection{
+        std::vector{chargefw::test::make_two_conformer_water(), chargefw::test::make_water()},
+        "mixed-water"};
+    const features::PreparedMoleculeCollection prepared{collection};
+    const ZeroFragmentMethod method;
+    const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
+
+    for (const auto mode :
+         {calculation::ExecutionMode::cutoff, calculation::ExecutionMode::cover}) {
+        const auto result = calculation::calculate(
+            {.molecules = prepared,
+             .selected = selected,
+             .execution_policy =
+                 calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius,
+                                              calculation::ChargeCorrectionPolicy::uniform},
+             .max_threads = 2});
+
+        REQUIRE(result.charges.size() == 3);
+        CHECK(result.charges.assignment(0).target.molecule_index == 0);
+        CHECK(result.charges.assignment(0).target.conformer_index == std::optional<std::size_t>{0});
+        CHECK(result.charges.assignment(1).target.molecule_index == 0);
+        CHECK(result.charges.assignment(1).target.conformer_index == std::optional<std::size_t>{1});
+        CHECK(result.charges.assignment(2).target.molecule_index == 1);
+        CHECK(result.charges.assignment(2).target.conformer_index == std::optional<std::size_t>{0});
+    }
+}

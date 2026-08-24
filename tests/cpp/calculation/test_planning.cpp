@@ -270,3 +270,25 @@ TEST_CASE("explicit unsupported execution has no selected plan or fallback",
     };
     CHECK_THROWS_AS(calculate_unsupported_cover(), std::invalid_argument);
 }
+
+TEST_CASE("explicit no-plan assessment reports rejected scientific prerequisites",
+          "[calculation][planning]") {
+    auto assessment = calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .method_id = "smpqeq"});
+
+    CHECK_FALSE(assessment.executable());
+    CHECK(assessment.requires_executable_plan());
+    CHECK_FALSE(assessment.applicability().selected_candidate_index.has_value());
+    CHECK_FALSE(assessment.execution_policy().has_value());
+    CHECK(assessment.execution_issues().empty());
+    CHECK(assessment.applicability().applicable.empty());
+    REQUIRE(assessment.applicability().rejected.size() == 1);
+    CHECK(assessment.applicability().rejected[0].method_id == "smpqeq");
+    CHECK_FALSE(assessment.applicability().rejected[0].issues.empty());
+
+    const auto calculate_without_plan = [&] {
+        static_cast<void>(calculation::calculate(std::move(assessment)));
+    };
+    CHECK_THROWS_AS(calculate_without_plan(), std::invalid_argument);
+}

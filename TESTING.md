@@ -130,10 +130,10 @@ type, but that is not its reason to exist.
 
 These should be consolidated without reducing the contracts checked:
 
-- Multi-molecule/multi-conformer source ordering is checked in both
-  `tests/cpp/calculation/test_calculation.cpp` and
-  `tests/cpp/calculation/test_observer.cpp`. Keep the result-order contract with facade/execution
-  tests; keep only event-identity assertions in observer tests.
+- Mixed multi-molecule/multi-conformer source ordering is asserted in full execution by
+  `tests/cpp/calculation/test_calculation.cpp` and in cutoff/cover execution by
+  `tests/cpp/calculation/test_cutoff_execution.cpp`. Observer tests keep only event-identity
+  assertions.
 - Full/cutoff/cover whole-radius equality is implemented in `test_cutoff_execution.cpp` even though it
   covers both cutoff and cover. Place it in a neutral reduced-execution contract test.
 
@@ -251,8 +251,9 @@ planning, observer, and numerical assertions.
 
 ### Step 2 — Complete and remove TODO section 1
 
-**Status: in progress.** Deterministic ranking and permissive-classification cases now live in
-`test_planning.cpp`; the remaining TODO section 1 contracts still need consolidation and expansion.
+**Status: complete.** `test_planning.cpp` owns deterministic ranking, permissive classification,
+no-plan diagnostics, and explicit unsupported-policy contracts. Facade/execution tests own the
+remaining cardinality, source-order, ownership, and reduced failure contracts; TODO section 1 is closed.
 
 Reconcile the first TODO item with its substantial existing coverage.
 

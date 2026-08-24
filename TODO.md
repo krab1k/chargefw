@@ -8,12 +8,7 @@ Priorities are ordered by product dependency: complete implementation contracts,
 boundary, establish scientific/compatibility evidence, then package bindings and distributions. Numerical
 accuracy studies are deliberately separate from implementation-completion work.
 
-## 1. Implementation completion: calculation and reduced execution
-- [ ] Expand facade and planning tests for multiple molecules/conformers, no-plan diagnostics, explicit
-  unsupported policies, empty/tiny inputs, fragment solver failures, ownership/lifetimes, and result
-  cardinality.
-
-## 2. Result contract, molecular I/O, and CLI
+## 1. Result contract, molecular I/O, and CLI
 
 - [ ] Record cancellation distinctly at the application result and serialized CLI boundary. A
   cancelled calculation currently has no charges and exit status 1, making its JSON/output behavior
@@ -54,7 +49,7 @@ accuracy studies are deliberately separate from implementation-completion work.
 - [ ] Fuzz native MOL/SDF/MOL2/JSON parsers and run sanitizer coverage before treating arbitrary
   untrusted input as supported.
 
-## 3. Scientific and compatibility validation
+## 2. Scientific and compatibility validation
 
 These are evidence and release-readiness work, not implementation-completion blockers. Cutoff and cover
 remain explicit approximations until their method-specific validation is complete.
@@ -85,7 +80,7 @@ remain explicit approximations until their method-specific validation is complet
 - [ ] Add molecular invariant, parameter-loader, immutable-classification, feature-cache lifetime, and
   concurrent read-only tests needed by adapters and parallel execution.
 
-## 4. Python and toolkit integration
+## 3. Python and toolkit integration
 
 - [ ] Define a synchronous toolkit-neutral Python API accepting atomic numbers, formal charges,
   indexed bonds, source names/identities, and zero or more coordinate arrays; return NumPy charge
@@ -100,7 +95,7 @@ remain explicit approximations until their method-specific validation is complet
 - [ ] Add Biopython or a native C++ RDKit adapter only after a concrete workflow demonstrates that the
   toolkit-neutral Python route is insufficient. Never make RDKit C++ a core/base-wheel dependency.
 
-## 5. Packaging, installation, and automation
+## 4. Packaging, installation, and automation
 
 - [ ] Export and install CMake package targets so downstream projects can use
   `find_package(chargefw CONFIG REQUIRED)`; test a clean relocatable consumer build.
@@ -114,7 +109,7 @@ remain explicit approximations until their method-specific validation is complet
 - [ ] Add CI for GCC tests, Clang sanitizers, formatting, native install/consumer tests, wheels, Conda,
   and container smoke tests.
 
-## 6. ACC III adoption gates
+## 5. ACC III adoption gates
 
 - [ ] Establish a reproducible ACC III shadow-comparison corpus with licensed/reference inputs,
   parameter versions, options, mappings, and method-specific tolerances.
