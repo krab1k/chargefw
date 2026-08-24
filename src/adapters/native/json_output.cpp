@@ -93,17 +93,18 @@ constexpr auto metric_scale = 1000.0;
         }
         return result;
     };
+    const auto threshold_value = [](const std::optional<std::size_t>& threshold) -> Json {
+        return threshold.has_value() ? Json(*threshold) : Json("unlimited");
+    };
 
     Json requested{
         {"method", optional_id(provenance.requested.method_id)},
         {"parameter_set", optional_id(provenance.requested.parameter_set_id)},
         {"classification", {{"permissive_types", provenance.requested.permissive_types}}},
         {"resource_policy",
-         provenance.requested.full_atom_threshold.has_value()
-             ? Json{{"full_atom_threshold", *provenance.requested.full_atom_threshold},
-                    {"max_threads", provenance.requested.max_threads}}
-             : Json{{"full_atom_threshold", "unlimited"},
-                    {"max_threads", provenance.requested.max_threads}}},
+         {{"cutoff_atom_threshold", threshold_value(provenance.requested.cutoff_atom_threshold)},
+          {"cover_atom_threshold", threshold_value(provenance.requested.cover_atom_threshold)},
+          {"max_threads", provenance.requested.max_threads}}},
         {"execution",
          {{"kind", provenance.requested.execution_kind},
           {"radius_angstrom", optional_value(provenance.requested.execution_radius)},

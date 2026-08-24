@@ -81,27 +81,46 @@ valid_classification_count(const MethodRequirements& requirements,
     const auto requirements = method.requirements();
     auto full_issues = std::vector<ExecutionIssue>{};
 
-    if (resource_policy.full_atom_threshold.has_value() &&
+    if (resource_policy.cutoff_atom_threshold.has_value() &&
         has_expensive_full_complexity(requirements.resources)) {
         for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
             const auto atom_count = molecules[molecule_index].molecule().atom_count();
-            if (atom_count > *resource_policy.full_atom_threshold) {
+            if (atom_count > *resource_policy.cutoff_atom_threshold) {
                 full_issues.push_back(ExecutionIssue{
                     .kind = ExecutionIssueKind::resource_threshold_exceeded,
                     .message = "method '" + std::string{method.id()} +
-                               "' full execution exceeds the shared threshold of " +
-                               std::to_string(*resource_policy.full_atom_threshold) + " atoms",
+                               "' full execution exceeds the cutoff threshold of " +
+                               std::to_string(*resource_policy.cutoff_atom_threshold) + " atoms",
                     .molecule_index = molecule_index});
             }
         }
     }
 
     const auto make_reduced_assessment =
-        [&method, &requirements](const ExecutionMode mode,
-                                 const bool supported) -> ExecutionAssessment {
+        [&method, &requirements, &molecules,
+         &resource_policy](const ExecutionMode mode, const bool supported) -> ExecutionAssessment {
         if (supported && requirements.coordinates) {
+            auto issues = std::vector<ExecutionIssue>{};
+            if (mode == ExecutionMode::cutoff && resource_policy.cover_atom_threshold.has_value()) {
+                for (std::size_t molecule_index = 0; molecule_index < molecules.size();
+                     ++molecule_index) {
+                    if (molecules[molecule_index].molecule().atom_count() >
+                        *resource_policy.cover_atom_threshold) {
+                        issues.push_back(ExecutionIssue{
+                            .kind = ExecutionIssueKind::resource_threshold_exceeded,
+                            .message = "method '" + std::string{method.id()} +
+                                       "' cutoff execution exceeds the cover threshold of " +
+                                       std::to_string(*resource_policy.cover_atom_threshold) +
+                                       " atoms",
+                            .molecule_index = molecule_index});
+                    }
+                }
+            }
             return ExecutionAssessment{
-                .mode = mode, .availability = ExecutionAvailability::available, .issues = {}};
+                .mode = mode,
+                .availability = issues.empty() ? ExecutionAvailability::available
+                                               : ExecutionAvailability::available_with_warning,
+                .issues = std::move(issues)};
         }
 
         const auto* const mode_name = mode == ExecutionMode::cutoff ? "cutoff" : "cover";

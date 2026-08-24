@@ -296,7 +296,7 @@ auto main() -> int {
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {make_eem_parameters()},
         .method_id = "eem",
-        .resource_policy = {.full_atom_threshold = 2}});
+        .resource_policy = {.cutoff_atom_threshold = 2}});
     assert(automatic_cutoff.calculated());
     assert(automatic_cutoff.execution_policy->mode() == calculation::ExecutionMode::cutoff);
     assert(automatic_cutoff.execution_policy->radius() ==
@@ -308,11 +308,33 @@ auto main() -> int {
         .method_id = "eem",
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic, 8.0},
-        .resource_policy = {.full_atom_threshold = 2}});
+        .resource_policy = {.cutoff_atom_threshold = 2}});
     assert(overridden_automatic_cutoff.calculated());
     assert(overridden_automatic_cutoff.execution_policy->mode() ==
            calculation::ExecutionMode::cutoff);
     assert(overridden_automatic_cutoff.execution_policy->radius() == std::optional<double>{8.0});
+
+    const auto automatic_cover = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {make_eem_parameters()},
+        .method_id = "eem",
+        .resource_policy = {.cutoff_atom_threshold = 2, .cover_atom_threshold = 2}});
+    assert(automatic_cover.calculated());
+    assert(automatic_cover.execution_policy->mode() == calculation::ExecutionMode::cover);
+
+    const auto explicit_cutoff_above_cover_threshold =
+        calculate_application(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {make_eem_parameters()},
+            .method_id = "eem",
+            .execution_selection =
+                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
+                                                calculation::minimum_reduced_radius},
+            .resource_policy = {.cutoff_atom_threshold = 2, .cover_atom_threshold = 2}});
+    assert(explicit_cutoff_above_cover_threshold.calculated());
+    assert(explicit_cutoff_above_cover_threshold.execution_policy->mode() ==
+           calculation::ExecutionMode::cutoff);
+    assert(explicit_cutoff_above_cover_threshold.execution_issues.size() == 1);
 
     assert_reduced_matches_full("qeq", {make_qeq_parameters()});
     assert_reduced_matches_full("eqeq");

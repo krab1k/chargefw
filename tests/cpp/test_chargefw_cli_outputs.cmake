@@ -44,7 +44,8 @@ file(REMOVE_RECURSE "${warning_output_directory}")
 execute_process(
         COMMAND "${CMAKE_COMMAND}" -E env
                 "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" calculate --method eem --execution full --full-atom-threshold 0
+                "${CHARGEFW_CLI}" calculate --method eem --execution full --cutoff-atom-threshold 0
+                --cover-atom-threshold 0
                 "${CHARGEFW_INPUT}" "${warning_output_directory}"
         RESULT_VARIABLE warning_result
         ERROR_VARIABLE warning_error
@@ -107,9 +108,13 @@ string(JSON permissive_types GET "${json_output}" calculation_provenance request
 if(permissive_types)
     message(FATAL_ERROR "Expected strict type classification by default")
 endif()
-string(JSON full_atom_threshold GET "${json_output}" calculation_provenance requested resource_policy full_atom_threshold)
-if(NOT full_atom_threshold STREQUAL "20000")
-    message(FATAL_ERROR "Unexpected default full atom threshold: ${full_atom_threshold}")
+string(JSON cutoff_atom_threshold GET "${json_output}" calculation_provenance requested resource_policy cutoff_atom_threshold)
+if(NOT cutoff_atom_threshold STREQUAL "20000")
+    message(FATAL_ERROR "Unexpected default cutoff atom threshold: ${cutoff_atom_threshold}")
+endif()
+string(JSON cover_atom_threshold GET "${json_output}" calculation_provenance requested resource_policy cover_atom_threshold)
+if(NOT cover_atom_threshold STREQUAL "80000")
+    message(FATAL_ERROR "Unexpected default cover atom threshold: ${cover_atom_threshold}")
 endif()
 
 file(READ "${output_prefix}.sdf" sdf_output)

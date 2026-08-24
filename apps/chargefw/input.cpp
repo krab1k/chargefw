@@ -79,7 +79,7 @@ auto read_collection(Reader& reader, const std::string& input_path,
     throw std::runtime_error{"Unsupported structural bond strategy: " + value};
 }
 
-[[nodiscard]] auto parse_full_atom_threshold(const std::string& value)
+[[nodiscard]] auto parse_atom_threshold(const std::string& value, const std::string_view name)
     -> std::optional<std::size_t> {
     if (value == "unlimited") {
         return std::nullopt;
@@ -88,8 +88,8 @@ auto read_collection(Reader& reader, const std::string& input_path,
     std::size_t threshold = 0;
     const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), threshold);
     if (error != std::errc{} || end != value.data() + value.size()) {
-        throw std::runtime_error{
-            "Full atom threshold must be a non-negative integer or 'unlimited'"};
+        throw std::runtime_error{std::string{name} +
+                                 " must be a non-negative integer or 'unlimited'"};
     }
     return threshold;
 }
@@ -251,9 +251,12 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
     arguments.charge_correction_option =
         command.add_option("--charge-correction", arguments.charge_correction,
                            "Reduced-execution charge correction: uniform or none");
-    arguments.full_atom_threshold_option =
-        command.add_option("--full-atom-threshold", arguments.full_atom_threshold,
-                           "Full-execution atom threshold, or unlimited");
+    arguments.cutoff_atom_threshold_option =
+        command.add_option("--cutoff-atom-threshold", arguments.cutoff_atom_threshold,
+                           "Automatic full-to-cutoff atom threshold, or unlimited");
+    arguments.cover_atom_threshold_option =
+        command.add_option("--cover-atom-threshold", arguments.cover_atom_threshold,
+                           "Automatic cutoff-to-cover atom threshold, or unlimited");
     command.add_option("--threads", arguments.max_threads,
                        "Maximum calculation threads; 0 uses the oneTBB default");
 }
@@ -283,29 +286,35 @@ auto make_request(core::MoleculeCollection molecules, const SelectionArguments& 
         const auto [method_id, option] = parse_method_option(text);
         method_options[method_id].set(option.first, option.second);
     }
-    return {.molecules = std::move(molecules),
-            .parameter_sets = parameters::load_default_parameter_sets(),
-            .method_id = arguments.method_option->count() == 0 ? std::nullopt
-                                                               : std::optional{arguments.method_id},
-            .parameter_set_id = arguments.parameter_set_option->count() == 0
-                                    ? std::nullopt
-                                    : std::optional{arguments.parameter_set_id},
-            .method_options = std::move(method_options),
-            .classification_options = {.permissive_types = arguments.permissive_types},
-            .execution_selection =
-                calculation::ExecutionSelection{
-                    calculation::execution_selection_kind_from_string(arguments.execution),
-                    arguments.radius,
-                    arguments.charge_correction_option->count() == 0
-                        ? std::nullopt
-                        : std::optional{calculation::charge_correction_policy_from_string(
-                              arguments.charge_correction)}},
-            .resource_policy = {
-                .full_atom_threshold =
-                    arguments.full_atom_threshold_option->count() == 0
-                        ? std::optional<std::size_t>{calculation::default_full_atom_threshold}
-                        : parse_full_atom_threshold(arguments.full_atom_threshold),
-                .max_threads = arguments.max_threads}};
+    return {
+        .molecules = std::move(molecules),
+        .parameter_sets = parameters::load_default_parameter_sets(),
+        .method_id = arguments.method_option->count() == 0 ? std::nullopt
+                                                           : std::optional{arguments.method_id},
+        .parameter_set_id = arguments.parameter_set_option->count() == 0
+                                ? std::nullopt
+                                : std::optional{arguments.parameter_set_id},
+        .method_options = std::move(method_options),
+        .classification_options = {.permissive_types = arguments.permissive_types},
+        .execution_selection =
+            calculation::ExecutionSelection{
+                calculation::execution_selection_kind_from_string(arguments.execution),
+                arguments.radius,
+                arguments.charge_correction_option->count() == 0
+                    ? std::nullopt
+                    : std::optional{calculation::charge_correction_policy_from_string(
+                          arguments.charge_correction)}},
+        .resource_policy = {
+            .cutoff_atom_threshold =
+                arguments.cutoff_atom_threshold_option->count() == 0
+                    ? std::optional<std::size_t>{calculation::default_cutoff_atom_threshold}
+                    : parse_atom_threshold(arguments.cutoff_atom_threshold,
+                                           "Cutoff atom threshold"),
+            .cover_atom_threshold =
+                arguments.cover_atom_threshold_option->count() == 0
+                    ? std::optional<std::size_t>{calculation::default_cover_atom_threshold}
+                    : parse_atom_threshold(arguments.cover_atom_threshold, "Cover atom threshold"),
+            .max_threads = arguments.max_threads}};
 }
 
 } // namespace chargefw::cli

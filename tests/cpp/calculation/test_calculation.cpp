@@ -469,7 +469,7 @@ auto main() -> int {
     const auto automatic_fallback_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {},
-        .resource_policy = {.full_atom_threshold = 2}});
+        .resource_policy = {.cutoff_atom_threshold = 2}});
     assert(automatic_fallback_result.calculated());
     assert(automatic_fallback_result.charges->method_id() == std::string_view{"eqeq"});
     assert(automatic_fallback_result.execution_policy.has_value());
@@ -484,7 +484,7 @@ auto main() -> int {
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "mgc",
-            .resource_policy = {.full_atom_threshold = 2}}));
+            .resource_policy = {.cutoff_atom_threshold = 2}}));
     }));
 
     const auto explicit_full_result = calculate_application(calculation::AssessmentRequest{
@@ -493,7 +493,7 @@ auto main() -> int {
         .method_id = "mgc",
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-        .resource_policy = {.full_atom_threshold = 2}});
+        .resource_policy = {.cutoff_atom_threshold = 2}});
     assert(explicit_full_result.calculated());
     assert(explicit_full_result.charges->method_id() == std::string_view{"mgc"});
     assert(explicit_full_result.execution_policy.has_value());
@@ -506,7 +506,8 @@ auto main() -> int {
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {},
         .method_id = "mgc",
-        .resource_policy = {.full_atom_threshold = std::nullopt}});
+        .resource_policy = {.cutoff_atom_threshold = std::nullopt,
+                            .cover_atom_threshold = std::nullopt}});
     assert(unlimited_result.calculated());
     assert(unlimited_result.charges->method_id() == std::string_view{"mgc"});
     assert(unlimited_result.execution_issues.empty());
@@ -534,6 +535,18 @@ auto main() -> int {
             .parameter_sets = {},
             .method_id = "formal",
             .parameter_set_id = "missing"}));
+    }));
+
+    assert(chargefw::test::throws_invalid_argument([] -> void {
+        static_cast<void>(calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .resource_policy = {.cutoff_atom_threshold = std::nullopt,
+                                .cover_atom_threshold = 10}}));
+    }));
+    assert(chargefw::test::throws_invalid_argument([] -> void {
+        static_cast<void>(calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .resource_policy = {.cutoff_atom_threshold = 20, .cover_atom_threshold = 10}}));
     }));
 
     // Explicit unsupported execution does not fall back to another mode and requires an executable

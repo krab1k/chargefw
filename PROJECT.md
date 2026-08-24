@@ -139,7 +139,11 @@ a concrete `ExecutionPolicy`; `auto` never survives as the effective mode.
 - Explicit cutoff/cover requires a radius.
 - Automatic reduced execution uses 12 Å unless the caller supplies a valid radius.
 - Reduced execution defaults to uniform final charge correction; explicit cutoff may select `none`.
-- The shared full atom threshold defaults to 20,000; `nullopt`/`unlimited` disables only this safeguard.
+- The automatic cutoff threshold defaults to 20,000 atoms. For expensive full methods, exceeding it
+  promotes automatic planning to cutoff; `nullopt`/`unlimited` disables this safeguard.
+- The automatic cover threshold defaults to 80,000 atoms. Exceeding it promotes automatic cutoff
+  planning to cover; `nullopt`/`unlimited` keeps cutoff eligible without a size limit. A finite cover
+  threshold requires a finite cutoff threshold and must not be smaller.
 - A method is considered expensive when declared cubic in time or quadratic in memory. Above a finite
   threshold, automatic planning avoids expensive full execution; explicit full remains allowed and
   returns a resource warning.
@@ -261,9 +265,9 @@ Hardware, build, parameter data, charge state, and structure affect these observ
 regression-investigation references only, not automatic-policy evidence or compatibility tolerances.
 
 Automatic planning examines candidates in deterministic method/parameter priority order and selects,
-per candidate, non-discouraged full execution, then cutoff, then cover; it never silently forces
-discouraged full execution. Unfinished reduced-execution work and its validation gates are tracked in
-[TODO.md](TODO.md).
+per candidate, non-discouraged full execution, cutoff below the cover threshold, then cover. It never
+silently forces discouraged full or cutoff execution. Unfinished reduced-execution work and its
+validation gates are tracked in [TODO.md](TODO.md).
 
 ## Methods and parameters
 
@@ -326,10 +330,10 @@ PDB through Gemmi, and generates local `UNL` blocks for nonstructural input.
 ### JSON result state
 
 Schema `1.0` records source identity, source-ordered assignments, totals, and diagnostics.
-Invocation-level `calculation_provenance` records requested conformer selection,
-method/parameter IDs, permissive typing, resource threshold, execution/radius/correction, structural
-input policy, and effective method/parameter/execution plus warnings. Charges are rounded to at most
-four decimal places in JSON only.
+Invocation-level `calculation_provenance` records requested conformer selection, method/parameter IDs,
+permissive typing, cutoff/cover resource thresholds, execution/radius/correction, structural input
+policy, and effective method/parameter/execution plus warnings. Charges are rounded to at most four
+decimal places in JSON only.
 
 Current limitations:
 

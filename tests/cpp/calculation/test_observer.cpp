@@ -416,7 +416,7 @@ auto main() -> int {
             .method_id = "mgc",
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-            .resource_policy = {.full_atom_threshold = 2}});
+            .resource_policy = {.cutoff_atom_threshold = 2}});
 
         assert(assessment.execution_issues().size() == 1);
         assert(assessment.execution_issues()[0].kind ==

@@ -92,8 +92,10 @@ Use `chargefw COMMAND --help` for the complete option list.
   reduced execution it overrides the 12 Å default.
 - `--charge-correction uniform|none` applies only to explicit reduced execution; uniform is the
   reduced-execution default.
-- `--full-atom-threshold COUNT|unlimited` changes the automatic full-execution safeguard (default
-  20,000 atoms).
+- `--cutoff-atom-threshold COUNT|unlimited` changes the automatic full-to-cutoff threshold (default
+  20,000 atoms for expensive full methods).
+- `--cover-atom-threshold COUNT|unlimited` changes the automatic cutoff-to-cover threshold (default
+  80,000 atoms).
 - `--threads COUNT` limits calculation concurrency; `0` uses the oneTBB default.
 - `--progress` displays a live calculation progress bar on standard error.
 - `--method-option METHOD.OPTION=VALUE` supplies a repeatable, method-scoped option override. For
@@ -101,8 +103,9 @@ Use `chargefw COMMAND --help` for the complete option list.
   defaults, and choices.
 
 Automatic selection uses full execution when it is not discouraged. For an expensive candidate above
-the threshold, it uses supported cutoff at 12 Å before considering cover. Explicit full overrides the
-threshold and records a warning.
+the cutoff threshold, it uses supported cutoff at 12 Å. Above the cover threshold, it uses supported
+cover. Explicit execution overrides these thresholds; explicit full or cutoff records any applicable
+threshold warning.
 
 Cutoff and explicit cover are available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp.
 Cover retains source-ordered charges within 3 Å of each solved pivot halo; it remains a new

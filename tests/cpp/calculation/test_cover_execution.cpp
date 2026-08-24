@@ -119,8 +119,10 @@ auto main() -> int {
     {
         const FragmentSizeMethod method;
         const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
-        const auto serial = calculation::calculate_cover_charges(selected, prepared, policy, 1);
-        const auto parallel = calculation::calculate_cover_charges(selected, prepared, policy, 0);
+        const auto serial = calculation::calculate_cover_charges(
+            selected, prepared, policy, 1, calculation::default_calculation_observer());
+        const auto parallel = calculation::calculate_cover_charges(
+            selected, prepared, policy, 0, calculation::default_calculation_observer());
 
         assert(method.calls.load() == 6);
         assert(serial.size() == 1);
@@ -146,7 +148,7 @@ auto main() -> int {
             selected, charged_prepared,
             calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0,
                                          calculation::ChargeCorrectionPolicy::uniform},
-            1);
+            1, calculation::default_calculation_observer());
 
         const auto& values = corrected.assignment(0).charges;
         for (std::size_t atom_index = 0; atom_index < values.size(); ++atom_index) {

@@ -101,12 +101,18 @@ auto main() -> int {
     }));
 
     const calculation::ResourcePolicy default_resources;
-    assert(default_resources.full_atom_threshold ==
-           std::optional<std::size_t>{calculation::default_full_atom_threshold});
-    const calculation::ResourcePolicy finite_resources{.full_atom_threshold = 42};
-    assert(finite_resources.full_atom_threshold == std::optional<std::size_t>{42});
-    const calculation::ResourcePolicy unlimited_resources{.full_atom_threshold = std::nullopt};
-    assert(!unlimited_resources.full_atom_threshold.has_value());
+    assert(default_resources.cutoff_atom_threshold ==
+           std::optional<std::size_t>{calculation::default_cutoff_atom_threshold});
+    assert(default_resources.cover_atom_threshold ==
+           std::optional<std::size_t>{calculation::default_cover_atom_threshold});
+    const calculation::ResourcePolicy finite_resources{.cutoff_atom_threshold = 42,
+                                                       .cover_atom_threshold = 84};
+    assert(finite_resources.cutoff_atom_threshold == std::optional<std::size_t>{42});
+    assert(finite_resources.cover_atom_threshold == std::optional<std::size_t>{84});
+    const calculation::ResourcePolicy unlimited_resources{.cutoff_atom_threshold = std::nullopt,
+                                                          .cover_atom_threshold = std::nullopt};
+    assert(!unlimited_resources.cutoff_atom_threshold.has_value());
+    assert(!unlimited_resources.cover_atom_threshold.has_value());
     assert(calculation::default_automatic_reduced_radius == 12.0);
 
     return 0;

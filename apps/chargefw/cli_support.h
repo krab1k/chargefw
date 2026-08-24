@@ -50,14 +50,16 @@ struct SelectionArguments {
     std::string execution = "auto";
     std::optional<double> radius;
     std::string charge_correction;
-    std::string full_atom_threshold;
+    std::string cutoff_atom_threshold;
+    std::string cover_atom_threshold;
     std::size_t max_threads = 0;
     bool permissive_types = false;
     std::vector<std::string> method_options;
     CLI::Option* method_option = nullptr;
     CLI::Option* parameter_set_option = nullptr;
     CLI::Option* charge_correction_option = nullptr;
-    CLI::Option* full_atom_threshold_option = nullptr;
+    CLI::Option* cutoff_atom_threshold_option = nullptr;
+    CLI::Option* cover_atom_threshold_option = nullptr;
 };
 
 struct CalculationRun {

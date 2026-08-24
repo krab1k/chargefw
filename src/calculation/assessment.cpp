@@ -125,6 +125,18 @@ auto validate_unique_parameter_set_ids(const AssessmentRequest& request) -> void
     }
 }
 
+auto validate_resource_policy(const ResourcePolicy& resource_policy) -> void {
+    if (resource_policy.cover_atom_threshold.has_value() &&
+        !resource_policy.cutoff_atom_threshold.has_value()) {
+        throw std::invalid_argument{"cover atom threshold requires a finite cutoff atom threshold"};
+    }
+    if (resource_policy.cover_atom_threshold.has_value() &&
+        *resource_policy.cover_atom_threshold < *resource_policy.cutoff_atom_threshold) {
+        throw std::invalid_argument{
+            "cover atom threshold must not be smaller than cutoff atom threshold"};
+    }
+}
+
 auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
     if (!request.parameter_set_id.has_value()) {
         return;
@@ -278,7 +290,7 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
             }
             const auto* cutoff = assessment_for(*candidate, ExecutionMode::cutoff);
             if (cutoff != nullptr &&
-                cutoff->availability != methods::ExecutionAvailability::unsupported) {
+                cutoff->availability == methods::ExecutionAvailability::available) {
                 return plan_for(*candidate, ExecutionMode::cutoff, radius,
                                 ChargeCorrectionPolicy::uniform, *cutoff);
             }
@@ -294,7 +306,7 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
     case ExecutionSelectionKind::full:
         return select_mode(ExecutionMode::full, true);
     case ExecutionSelectionKind::cutoff:
-        return select_mode(ExecutionMode::cutoff, false);
+        return select_mode(ExecutionMode::cutoff, true);
     case ExecutionSelectionKind::cover:
         return select_mode(ExecutionMode::cover, false);
     }
@@ -305,6 +317,7 @@ auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResu
     const auto started = std::chrono::steady_clock::now();
     validate_assessment_method_options(request);
     validate_unique_parameter_set_ids(request);
+    validate_resource_policy(request.resource_policy);
     const auto selected_methods = assessment_methods(request);
     const auto classification_options = request.classification_options;
     const auto execution_selection = request.execution_selection;

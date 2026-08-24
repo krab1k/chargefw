@@ -7,7 +7,8 @@
 
 namespace chargefw::calculation {
 
-inline constexpr std::size_t default_full_atom_threshold = 20'000;
+inline constexpr std::size_t default_cutoff_atom_threshold = 20'000;
+inline constexpr std::size_t default_cover_atom_threshold = 80'000;
 inline constexpr double minimum_reduced_radius = 8.0;
 inline constexpr double default_automatic_reduced_radius = 12.0;
 
@@ -70,8 +71,12 @@ class ExecutionSelection {
 };
 
 struct ResourcePolicy {
+    // Automatic execution promotes expensive full calculations to cutoff above this threshold.
     // nullopt means unlimited.
-    std::optional<std::size_t> full_atom_threshold = default_full_atom_threshold;
+    std::optional<std::size_t> cutoff_atom_threshold = default_cutoff_atom_threshold;
+    // Automatic execution promotes cutoff calculations to cover above this threshold. nullopt means
+    // unlimited cutoff execution.
+    std::optional<std::size_t> cover_atom_threshold = default_cover_atom_threshold;
     // Zero delegates the worker count to the oneTBB runtime.
     std::size_t max_threads = 0;
 };

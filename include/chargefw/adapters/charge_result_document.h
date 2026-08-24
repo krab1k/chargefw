@@ -24,7 +24,8 @@ struct RequestedCalculationProvenance {
     std::optional<std::string> method_id;
     std::optional<std::string> parameter_set_id;
     bool permissive_types = false;
-    std::optional<std::size_t> full_atom_threshold;
+    std::optional<std::size_t> cutoff_atom_threshold;
+    std::optional<std::size_t> cover_atom_threshold;
     std::size_t max_threads = 0;
     std::string execution_kind;
     std::optional<double> execution_radius;

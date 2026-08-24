@@ -326,7 +326,7 @@ auto main() -> int {
         methods::find_applicable_methods({.molecules = prepared_collection,
                                           .methods = inexpensive_methods,
                                           .parameter_sets = {},
-                                          .resource_policy = {.full_atom_threshold = 1}});
+                                          .resource_policy = {.cutoff_atom_threshold = 1}});
     assert(inexpensive_result.applicable.size() == 1);
     assert(assessment_for(inexpensive_result.applicable[0], calculation::ExecutionMode::full)
                .availability == methods::ExecutionAvailability::available);
@@ -339,7 +339,7 @@ auto main() -> int {
         methods::find_applicable_methods({.molecules = prepared_collection,
                                           .methods = expensive_methods,
                                           .parameter_sets = {},
-                                          .resource_policy = {.full_atom_threshold = 3}});
+                                          .resource_policy = {.cutoff_atom_threshold = 3}});
     const auto& below_threshold_full =
         assessment_for(below_threshold_result.applicable[0], calculation::ExecutionMode::full);
     assert(below_threshold_full.availability == methods::ExecutionAvailability::available);
@@ -349,7 +349,7 @@ auto main() -> int {
         methods::find_applicable_methods({.molecules = prepared_collection,
                                           .methods = expensive_methods,
                                           .parameter_sets = {},
-                                          .resource_policy = {.full_atom_threshold = 2}});
+                                          .resource_policy = {.cutoff_atom_threshold = 2}});
     assert(threshold_result.applicable.size() == 1);
     const auto& threshold_full =
         assessment_for(threshold_result.applicable[0], calculation::ExecutionMode::full);
@@ -368,7 +368,7 @@ auto main() -> int {
         methods::find_applicable_methods({.molecules = prepared_collection,
                                           .methods = topology_methods,
                                           .parameter_sets = {},
-                                          .resource_policy = {.full_atom_threshold = 2}});
+                                          .resource_policy = {.cutoff_atom_threshold = 2}});
     assert(topology_result.applicable.size() == 1);
     assert(assessment_for(topology_result.applicable[0], calculation::ExecutionMode::full)
                .availability == methods::ExecutionAvailability::available_with_warning);
@@ -381,7 +381,7 @@ auto main() -> int {
         methods::find_applicable_methods({.molecules = prepared_collection,
                                           .methods = expensive_methods,
                                           .parameter_sets = {},
-                                          .resource_policy = {.full_atom_threshold = 1}});
+                                          .resource_policy = {.cutoff_atom_threshold = 1}});
     const auto& collection_threshold_full =
         assessment_for(collection_threshold_result.applicable[0], calculation::ExecutionMode::full);
     assert(collection_threshold_full.issues.size() == prepared_collection.size());
@@ -390,7 +390,8 @@ auto main() -> int {
         {.molecules = prepared_collection,
          .methods = expensive_methods,
          .parameter_sets = {},
-         .resource_policy = {.full_atom_threshold = std::nullopt}});
+         .resource_policy = {.cutoff_atom_threshold = std::nullopt,
+                             .cover_atom_threshold = std::nullopt}});
     const auto& unlimited_full =
         assessment_for(unlimited_result.applicable[0], calculation::ExecutionMode::full);
     assert(unlimited_full.availability == methods::ExecutionAvailability::available);

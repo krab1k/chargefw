@@ -9,21 +9,29 @@ boundary, establish scientific/compatibility evidence, then package bindings and
 accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Implementation completion: calculation and reduced execution
-- [ ] Record reduced-execution diagnostics in result provenance: per-target fragment or pivot counts,
-  retained/owned atom counts, and cover overlap reconciliation, together with the fixed 3 Å retained
-  interior and the resulting boundary buffer. Mode, radius, and correction are already recorded.
-- [ ] Do not promote cover in automatic selection beyond its post-cutoff fallback position until
-  full-versus-cover validation (Section 3) proves deterministic pivot and contribution selection,
-  complete per-atom ownership, context-only boundary atoms, deterministic overlap reconciliation,
-  explicit target-charge/final-correction behavior, and convergence with charge conservation over the
-  maintained corpus. Automatic planning keeps preferring cutoff before cover; no hidden second atom
-  threshold such as ChargeFW2's 80,000-atom switch may be introduced.
 - [ ] Expand facade and planning tests for multiple molecules/conformers, no-plan diagnostics, explicit
   unsupported policies, empty/tiny inputs, fragment solver failures, ownership/lifetimes, and result
   cardinality.
 
 ## 2. Result contract, molecular I/O, and CLI
 
+- [ ] Record cancellation distinctly at the application result and serialized CLI boundary. A
+  cancelled calculation currently has no charges and exit status 1, making its JSON/output behavior
+  indistinguishable from a no-plan result. Add an owned cancellation status or diagnostic to the
+  stable result schema and provenance, define its exit-status behavior alongside invalid request,
+  no-plan, and numerical failure, and test cancellation before a target and during reduced fragment
+  work. Do not serialize partial charges.
+- [ ] Remove the CLI's full-molecule duplication between `ImportedCollection::molecules` and
+  `ImportedExportContext::records[*].molecule`. The current move into assessment depends on retaining
+  a second molecule copy for export and makes peak memory roughly twice the imported molecular data
+  before prepared features and solver allocations. Redesign imported records/export state to retain
+  identity, source mapping, and preservation data without duplicating calculation molecules, while
+  preserving source order and generated/preservation-oriented SDF, MOL2, PDB, and mmCIF output. Fold
+  this into bounded-memory batch execution and add peak-memory and mapping regression coverage.
+- [ ] Make terminal progress rendering erase the complete previous line when switching between target
+  and fragment displays or when a shorter message follows a longer one. Keep output on standard error,
+  preserve thread-safe rendering, and add a CLI-level assertion that captured progress contains no
+  stale suffix characters before the terminal newline.
 - [ ] Define the stable result/error schema. Represent successful and failed source records in input
   order with owned import/calculation diagnostics, multi-conformer assignments,
   precision/total-charge rules, and schema compatibility/versioning rules.
@@ -51,6 +59,10 @@ accuracy studies are deliberately separate from implementation-completion work.
 These are evidence and release-readiness work, not implementation-completion blockers. Cutoff and cover
 remain explicit approximations until their method-specific validation is complete.
 
+- [ ] Establish full-versus-cover validation that proves deterministic pivot and contribution selection,
+  complete per-atom ownership, context-only boundary atoms, deterministic overlap reconciliation,
+  explicit target-charge/final-correction behavior, and convergence with charge conservation over the
+  maintained corpus.
 - [ ] Complete SQE-family reduced validation. Add disconnected and charged SQE+qp fixtures,
   multi-radius full/cutoff/cover convergence and error envelopes, and cover semantics. Treat
   cutoff/cover as new approximations rather than ChargeFW2 parity.
