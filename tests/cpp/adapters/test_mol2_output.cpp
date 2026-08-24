@@ -37,7 +37,7 @@ namespace {
 
 } // namespace
 
-TEST_CASE("adapter contract", "[adapters]") {
+TEST_CASE("MOL2 output preserves source structure and replaces atom charges", "[adapters][mol2]") {
     {
         auto output = std::ostringstream{};
         auto input = std::ifstream{fixture("synthetic/mol2/aromatic.mol2"), std::ios::binary};

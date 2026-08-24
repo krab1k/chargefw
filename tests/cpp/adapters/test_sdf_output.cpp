@@ -33,7 +33,8 @@ constexpr std::string_view first_record =
 
 } // namespace
 
-TEST_CASE("adapter contract", "[adapters]") {
+TEST_CASE("SDF output preserves source records while replacing charge properties",
+          "[adapters][sdf]") {
     const auto second_record =
         std::string{"second\r\nchargefw\r\n\r\n  1  0  0  0  0  0  0  0  0  0999 V2000\r\n"
                     "    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\r\n"

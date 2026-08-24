@@ -212,6 +212,18 @@ Adapter tests must prove each format's supported mapping and preservation promis
 only application-level behavior: options, exit statuses, file placement, serialized schema, ordered
 records, progress rendering, and the declared failure boundary.
 
+#### Adapter format contract table
+
+| Format family | Import contract | Output contract | Primary tests |
+| --- | --- | --- | --- |
+| MOL/SDF | Preserve source record identity, atom order, formal charges, bond order, and conformer coordinates; reject the collection at the first malformed record. | SDF preservation replaces ChargeFW-owned charge properties while retaining unrelated record content. | `test_mol`, `test_sdf_output` |
+| MOL2 | Preserve source atom IDs/names, atom order, supported bond order, and source identity; reject malformed records. | Preserve source structure and replace atom charges with generated values. | `test_mol`, `test_mol2_output` |
+| ChargeFW JSON | Preserve declared record/conformer identity, atom order, formal charges, and indexed bonds; reject unsupported schema or malformed records. | Serialize ordered records, assignments, source identity, diagnostics, and calculation provenance. | `test_json`, `test_json_output` |
+| PDB/mmCIF | Preserve selected record identity, selected source atom order, formal charges, selected model/conformer mapping, alternate-location policy, record selection, and explicit/template/hybrid connectivity behavior. | Emit JSON plus semantic mmCIF charge mapping; PDB converts through Gemmi rather than preserving PDB presentation. | `test_pdb`, `test_mmcif`, `test_mmcif_output`, `test_chargefw_cli_structural_outputs` |
+
+The format tests use parser-based semantic checks where an in-process reader is available. Preservation
+tests use source-text checks only for opaque content that the writer deliberately retains.
+
 ## Action plan
 
 The steps below are intentionally incremental. Complete a step with focused tests and a full debug
@@ -341,6 +353,12 @@ equality. `test_cover_execution.cpp` retains cover-specific pivot ownership and 
 **Exit criterion:** reduced executor contracts and approximation-quality evidence are clearly distinct.
 
 ### Step 7 — Rationalize adapters and CLI integration
+
+**Status: in progress.** The format contract table and format-specific adapter target names now make
+identity, mapping, conformer, preservation, and structural-selection coverage explicit. CLI tests cover
+successful output, requested/effective provenance, structural-option rejection, and progress emission.
+Stable failure-result schema, exit-status distinctions, progress-line erasure, and the remaining parser
+hardening fixtures remain governed by `TODO.md`.
 
 1. Define per-format reader/writer contract tables: source identity, atom order/mapping, conformer
    mapping, malformed-record policy, and preservation behavior.

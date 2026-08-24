@@ -57,7 +57,7 @@ auto two_conformer_charges() -> charges::ChargeSet {
 
 } // namespace
 
-TEST_CASE("adapter contract", "[adapters]") {
+TEST_CASE("mmCIF output preserves structural records and charge mapping", "[adapters][mmcif]") {
     {
         auto records = std::vector<adapters::ImportedMoleculeRecord>{generated_record("first"),
                                                                      generated_record("second", 2)};

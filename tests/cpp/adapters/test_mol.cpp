@@ -22,7 +22,8 @@ namespace {
 
 } // namespace
 
-TEST_CASE("adapter contract", "[adapters]") {
+TEST_CASE("native readers preserve molecular mapping and reject malformed records",
+          "[adapters][native]") {
     {
         std::ifstream input{fixture("synthetic/mol/v2000/charged_atoms.mol")};
         auto reader = mol::MolReader{input, "charged_v2000.mol"};

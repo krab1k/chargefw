@@ -14,7 +14,7 @@ namespace adapters = chargefw::adapters;
 namespace charges = chargefw::charges;
 namespace json_output = chargefw::adapters::native::json_output;
 
-TEST_CASE("adapter contract", "[adapters]") {
+TEST_CASE("JSON output serializes ordered records and calculation provenance", "[adapters][json]") {
     const auto document = adapters::ChargeResultDocument{
         .generator_name = "ChargeFW",
         .generator_version = "test",

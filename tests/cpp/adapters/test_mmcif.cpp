@@ -8,7 +8,8 @@
 namespace mmcif = chargefw::adapters::gemmi::mmcif_input;
 namespace gemmi_adapter = chargefw::adapters::gemmi;
 
-TEST_CASE("adapter contract", "[adapters]") {
+TEST_CASE("mmCIF input preserves records, models, selection, and bond strategy",
+          "[adapters][mmcif]") {
     std::istringstream input{R"cif(data_first
 loop_
 _atom_site.group_PDB

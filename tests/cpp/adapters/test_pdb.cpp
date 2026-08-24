@@ -8,7 +8,7 @@
 namespace gemmi_adapter = chargefw::adapters::gemmi;
 namespace pdb = gemmi_adapter::pdb_input;
 
-TEST_CASE("adapter contract", "[adapters]") {
+TEST_CASE("PDB input preserves selected model identity and connectivity", "[adapters][pdb]") {
     std::istringstream input{R"pdb(HEADER    TEST PDB
 TITLE     TWO MODELS
 MODEL        1

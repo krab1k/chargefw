@@ -8,7 +8,7 @@
 
 namespace json = chargefw::adapters::native::json_input;
 
-TEST_CASE("adapter contract", "[adapters]") {
+TEST_CASE("JSON input preserves identity, graph, and conformer mapping", "[adapters][json]") {
     {
         std::istringstream input{R"json(
 {
