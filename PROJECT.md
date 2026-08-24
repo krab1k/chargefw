@@ -104,6 +104,8 @@ candidate selection. `select_execution_plan()` additionally resolves a concrete 
 
 `AssessmentRequest` owns molecules and parameter sets and accepts optional method and
 parameter-set IDs, classification options, an `ExecutionSelection`, and a `ResourcePolicy`.
+Parameter-set IDs must be unique across an assessment request, including sets for different methods;
+duplicate IDs are rejected before parameter filtering and applicability assessment.
 
 - `assess(request)` copies an lvalue request's molecule and parameter inputs; `assess(std::move(request))`
   snapshots its selection configuration, then transfers its execution inputs. Callers must not inspect a

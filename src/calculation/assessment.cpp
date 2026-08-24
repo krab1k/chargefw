@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <vector>
 
 namespace chargefw::calculation {
@@ -109,6 +110,18 @@ auto validate_application_method_options(const AssessmentRequest& request) -> vo
             options.set(id, value);
         }
         methods::validate_method_options(method->option_schema(), options);
+    }
+}
+
+auto validate_unique_parameter_set_ids(const AssessmentRequest& request) -> void {
+    auto ids = std::unordered_set<std::string_view>{};
+    ids.reserve(request.parameter_sets.size());
+    for (const auto& parameter_set : request.parameter_sets) {
+        const auto id = parameter_set.id();
+        if (!ids.insert(id).second) {
+            throw std::invalid_argument{"duplicate parameter set id '" + std::string{id} +
+                                        "' in assessment request"};
+        }
     }
 }
 
@@ -291,6 +304,7 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
 auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResult {
     const auto started = std::chrono::steady_clock::now();
     validate_application_method_options(request);
+    validate_unique_parameter_set_ids(request);
     const auto selected_methods = application_methods(request);
     const auto classification_options = request.classification_options;
     const auto execution_selection = request.execution_selection;

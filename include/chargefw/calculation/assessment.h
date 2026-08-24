@@ -39,6 +39,7 @@ struct ExecutionPlan {
 // pointers, parameter spans, or prepared-feature lifetimes.
 struct AssessmentRequest {
     core::MoleculeCollection molecules;
+    // IDs must be unique across this request, including parameter sets for different methods.
     std::vector<parameters::ParameterSet> parameter_sets;
     std::optional<std::string> method_id;
     std::optional<std::string> parameter_set_id;

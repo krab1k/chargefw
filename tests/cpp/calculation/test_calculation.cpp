@@ -137,6 +137,21 @@ auto make_parameter_set(std::string id, std::string method_id, const std::uint16
               .parameters = {{.name = "value", .value = 1.0}}}}}};
 }
 
+auto make_duplicate_parameter_request(const std::string_view first_method_id,
+                                      const std::string_view second_method_id,
+                                      const bool explicit_selection)
+    -> calculation::AssessmentRequest {
+    auto request = calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {make_parameter_set("duplicate", std::string{first_method_id}, 0),
+                           make_parameter_set("duplicate", std::string{second_method_id}, 0)}};
+    if (explicit_selection) {
+        request.method_id = "qeq";
+        request.parameter_set_id = "duplicate";
+    }
+    return request;
+}
+
 auto make_double_bonded_carbons() -> core::Molecule {
     return core::Molecule{std::vector{core::Atom{6}, core::Atom{6}},
                           std::vector{core::Bond{0, 1, core::BondOrder::DOUBLE}},
@@ -549,6 +564,25 @@ auto main() -> int {
     assert(empty_target_result.calculated());
     assert(empty_target_result.charges->size() == 1);
     assert(empty_target_result.charges->assignment(0).charges.empty());
+
+    // AssessmentRequest rejects duplicate parameter-set IDs before filtering or applicability. This
+    // remains true when the duplicates target the same or different methods and for both overloads.
+    for (const auto explicit_selection : {false, true}) {
+        for (const auto [first_method_id, second_method_id] :
+             {std::pair{"qeq", "qeq"}, std::pair{"qeq", "eem"}}) {
+            const auto lvalue_request = make_duplicate_parameter_request(
+                first_method_id, second_method_id, explicit_selection);
+            assert(chargefw::test::throws_invalid_argument([&lvalue_request] -> void {
+                static_cast<void>(calculation::assess(lvalue_request));
+            }));
+
+            auto rvalue_request = make_duplicate_parameter_request(
+                first_method_id, second_method_id, explicit_selection);
+            assert(chargefw::test::throws_invalid_argument([&rvalue_request] -> void {
+                static_cast<void>(calculation::assess(std::move(rvalue_request)));
+            }));
+        }
+    }
 
     // Both assessment overloads retain the same selection state. The lvalue path copies its inputs,
     // so execution remains valid after the original request has been destroyed.
