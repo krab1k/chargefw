@@ -51,6 +51,13 @@ auto make_c_cl_f_h_fragment() -> core::Molecule {
     return core::Molecule{std::move(atoms), std::move(bonds), {}, "c-cl-f-h"};
 }
 
+auto make_carbonyl() -> core::Molecule {
+    return core::Molecule{{core::Atom{6, 0, "C"}, core::Atom{8, 0, "O"}},
+                          {core::Bond{0, 1, core::BondOrder::DOUBLE}},
+                          {},
+                          "carbonyl"};
+}
+
 } // namespace
 
 TEST_CASE("parameter classifier maps water atoms and bonds to parameter entries",
@@ -115,4 +122,72 @@ TEST_CASE("parameter classifier maps mixed element fragment atoms", "[parameters
     CHECK(mixed_classification.atom()[1] == 1);
     CHECK(mixed_classification.atom()[2] == 2);
     CHECK(mixed_classification.atom()[3] == 3);
+}
+
+TEST_CASE("parameter classifier uses permissive bond-order fallback only when requested",
+          "[parameters][classifier]") {
+    const auto carbonyl = make_carbonyl();
+    const parameters::ParameterSet parameter_set{
+        test_metadata(),
+        {},
+        parameters::AtomParameters{{{.key = chargefw::test::hbo_atom_key(6, "1"),
+                                     .parameters = {{.name = "value", .value = 1.0}}},
+                                    {.key = chargefw::test::hbo_atom_key(8, "1"),
+                                     .parameters = {{.name = "value", .value = 2.0}}}}},
+        parameters::BondParameters{{{.key = chargefw::test::single_bond_key(6, 8),
+                                     .parameters = {{.name = "value", .value = 3.0}}}}}};
+
+    const auto exact = parameters::try_classify_parameters(
+        carbonyl, features::TopologyFeatures{carbonyl}, parameter_set);
+    CHECK_FALSE(exact);
+    REQUIRE(exact.issues().size() == 3);
+    CHECK(exact.issues()[0].kind == parameters::ClassificationIssueKind::MISSING_ATOM_PARAMETER);
+    CHECK(exact.issues()[2].kind == parameters::ClassificationIssueKind::MISSING_BOND_PARAMETER);
+
+    const auto permissive = parameters::try_classify_parameters(
+        carbonyl, features::TopologyFeatures{carbonyl}, parameter_set, {.permissive_types = true});
+    REQUIRE(permissive);
+    const auto atom_indices = permissive.classification().atom().parameter_entry_indices();
+    const auto bond_indices = permissive.classification().bond().parameter_entry_indices();
+    REQUIRE(atom_indices.size() == 2);
+    CHECK(atom_indices[0] == 0);
+    CHECK(atom_indices[1] == 1);
+    REQUIRE(bond_indices.size() == 1);
+    CHECK(bond_indices[0] == 0);
+}
+
+TEST_CASE("parameter classifier resolves wildcard entries in declaration order",
+          "[parameters][classifier]") {
+    const auto water = chargefw::test::make_water_graph();
+    const parameters::ParameterSet parameter_set{
+        test_metadata(),
+        {},
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(0),
+                                     .parameters = {{.name = "value", .value = 1.0}}},
+                                    {.key = chargefw::test::plain_atom_key(8),
+                                     .parameters = {{.name = "value", .value = 2.0}}}}}};
+
+    const auto classification = classify(water, parameter_set);
+    const auto atom_indices = classification.atom().parameter_entry_indices();
+    REQUIRE(atom_indices.size() == 3);
+    CHECK(atom_indices[0] == 0);
+    CHECK(atom_indices[1] == 0);
+    CHECK(atom_indices[2] == 0);
+}
+
+TEST_CASE("parameter classifier reports missing entries with source indices",
+          "[parameters][classifier]") {
+    const auto water = chargefw::test::make_water_graph();
+    const parameters::ParameterSet parameter_set{
+        test_metadata(),
+        {},
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
+                                     .parameters = {{.name = "value", .value = 1.0}}}}}};
+
+    const auto result = parameters::try_classify_parameters(
+        water, features::TopologyFeatures{water}, parameter_set);
+    CHECK_FALSE(result);
+    REQUIRE(result.issues().size() == 1);
+    CHECK(result.issues()[0].kind == parameters::ClassificationIssueKind::MISSING_ATOM_PARAMETER);
+    CHECK(result.issues()[0].object_index == 0);
 }

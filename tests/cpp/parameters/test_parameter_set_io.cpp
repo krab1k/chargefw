@@ -1,9 +1,12 @@
+#include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
 #include <filesystem>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <string_view>
+#include <unordered_set>
 
 #include <snitch/snitch.hpp>
 
@@ -120,6 +123,42 @@ TEST_CASE("parameter set directory loads all JSON files", "[parameters][io]") {
         parameters::load_parameter_sets_json_directory(CHARGEFW_TEST_PARAMETER_DIR);
 
     CHECK_FALSE(parameter_sets.empty());
+}
+
+TEST_CASE("bundled parameter sets identify registered methods and satisfy their requirements",
+          "[parameters][io]") {
+    const auto parameter_sets =
+        parameters::load_parameter_sets_json_directory(CHARGEFW_TEST_PARAMETER_DIR);
+    const auto& registry = chargefw::methods::method_registry();
+    auto ids = std::unordered_set<std::string>{};
+
+    for (const auto& parameter_set : parameter_sets) {
+        CAPTURE(parameter_set.id());
+        CHECK_FALSE(parameter_set.id().empty());
+        CHECK(ids.insert(std::string{parameter_set.id()}).second);
+
+        const auto* method = registry.find(parameter_set.method_id());
+        REQUIRE(method != nullptr);
+        const auto requirements = method->requirements();
+
+        for (const auto name : requirements.common_parameters) {
+            CHECK(parameter_set.common().contains(name));
+        }
+
+        for (std::size_t entry_index = 0; entry_index < parameter_set.atom().size();
+             ++entry_index) {
+            for (const auto name : requirements.atom_parameters) {
+                CHECK(parameter_set.atom().contains(entry_index, name));
+            }
+        }
+
+        for (std::size_t entry_index = 0; entry_index < parameter_set.bond().size();
+             ++entry_index) {
+            for (const auto name : requirements.bond_parameters) {
+                CHECK(parameter_set.bond().contains(entry_index, name));
+            }
+        }
+    }
 }
 
 TEST_CASE("parameter set rejects malformed JSON", "[parameters][io]") {

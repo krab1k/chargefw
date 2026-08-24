@@ -311,6 +311,11 @@ its distinguishing algorithmic behavior.
 
 ### Step 5 — Strengthen parameter and feature contracts
 
+**Status: complete.** Parameter tests now cover exact and permissive classification, wildcard and
+reversed-bond matching, declaration-order precedence, missing-entry diagnostics, immutable classified
+views, and bundled-data integrity against registered method requirements. Prepared-feature tests cover
+source lifetime, cached topology identity, and concurrent read-only access.
+
 1. Expand classifier cases for all supported classification kinds, wildcards, direction-independent
    bonds, precedence, permissive fallback, and failures.
 2. Add parameter-view/classification immutability and lifetime tests.
