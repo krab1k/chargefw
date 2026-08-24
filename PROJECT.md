@@ -205,8 +205,9 @@ The shared executor builds one source-ordered induced spatial fragment per sourc
 whole-molecule classification, invokes the selected method through ordinary `CalculationInput`, and
 keeps the explicitly mapped center charge. It then applies the selected final correction. Neighbor
 search uses one `SpatialFragmentBuilder` and nanoflann KD-tree per source conformer; execution is
-parallel over independent molecule/conformer targets, or over fragment centers when a single target is
-being calculated; nested scheduling is avoided and result materialization remains source-ordered.
+parallel over independent molecule/conformer targets for full execution. Cutoff and cover process
+targets serially and parallelize the active target's fragment centers or pivots with the caller's full
+worker budget. Nested scheduling is avoided and result materialization remains source-ordered.
 
 EEM/QEq-like methods and ABEEM allocate each fragment a formal-charge target proportional to its atom
 count and restore the source formal-charge total. SQE uses zero fragment and final targets. SQE+q0
@@ -217,8 +218,7 @@ Cover constructs source-order pivots and ownership serially, then builds and sol
 radius fragment in parallel. It retains charges for every previously unassigned atom within 3 Å of the
 pivot. Overlapping retained interiors use first-pivot ownership; halo-only atoms provide context.
 Cover shares classification projection, fragment target charges, validation, and final correction with
-cutoff. Execution is parallel over independent molecule/conformer targets, or over pivot fragments
-when calculating one target; nested scheduling is avoided and result materialization remains
+cutoff. Its pivot fragments use the reduced execution policy above; result materialization remains
 source-ordered.
 
 All execution modes validate selected-candidate parameter/classification invariants and reject

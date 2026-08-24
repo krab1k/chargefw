@@ -10,6 +10,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -21,6 +22,11 @@ namespace chargefw::calculation::detail {
 struct CalculationTarget {
     std::size_t molecule_index;
     std::optional<std::size_t> conformer_index;
+};
+
+enum class ParallelizationLevel : std::uint8_t {
+    targets,
+    fragments,
 };
 
 [[nodiscard]] inline auto
@@ -41,22 +47,25 @@ make_calculation_targets(const features::PreparedMoleculeCollection& molecules,
 }
 
 // Executes independent molecule/conformer targets and materializes their assignments in input
-// order. Multiple targets use outer parallelism. A reduced single target receives the requested
-// worker limit so its mode-specific fragment loop can parallelize without nested scheduling.
+// order. Full execution parallelizes targets. Reduced execution processes targets serially and
+// parallelizes its active target's independent fragments without nested scheduling.
 template <typename CalculateTarget>
 [[nodiscard]] auto
 execute_calculation_targets(const methods::ApplicableMethod& selected,
                             const features::PreparedMoleculeCollection& molecules,
                             const ExecutionMode mode, const bool requires_conformer,
-                            const bool has_inner_parallelism, const std::size_t max_threads,
-                            const CalculationObserver& observer, CalculateTarget&& calculate_target)
-    -> charges::ChargeSet {
+                            const ParallelizationLevel parallelization,
+                            const std::size_t max_threads, const CalculationObserver& observer,
+                            CalculateTarget&& calculate_target) -> charges::ChargeSet {
     const auto targets = make_calculation_targets(molecules, requires_conformer);
     const auto computation_start = std::chrono::steady_clock::now();
     auto calculated = std::vector<std::optional<charges::ChargeAssignment>>(targets.size());
-    const auto target_threads = has_inner_parallelism && targets.size() == 1 ? 1 : max_threads;
+    const auto target_max_threads =
+        parallelization == ParallelizationLevel::targets ? max_threads : 1;
+    const auto fragment_max_threads =
+        parallelization == ParallelizationLevel::fragments ? max_threads : 1;
 
-    parallel_for_indexed(targets.size(), target_threads, [&](const std::size_t target_index) {
+    parallel_for_indexed(targets.size(), target_max_threads, [&](const std::size_t target_index) {
         const auto& target = targets[target_index];
         const auto& molecule = molecules[target.molecule_index];
         const auto* classification =
@@ -82,7 +91,7 @@ execute_calculation_targets(const methods::ApplicableMethod& selected,
             .target = charges::ChargeTarget{.molecule_index = target.molecule_index,
                                             .conformer_index = target.conformer_index},
             .charges = calculate_target(molecule, classification, target.conformer_index,
-                                        target_threads == 1 ? max_threads : 1, target_ctx)};
+                                        fragment_max_threads, target_ctx)};
 
         emit_target_event(observer, CalculationPhase::target_finished, target_ctx);
     });

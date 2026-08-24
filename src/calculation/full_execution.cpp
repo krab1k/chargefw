@@ -84,7 +84,7 @@ auto calculate_full_charges(const methods::ApplicableMethod& selected,
 
     return detail::execute_calculation_targets(
         selected, molecules, ExecutionMode::full, selected.method->requirements().coordinates,
-        false, max_threads, observer,
+        detail::ParallelizationLevel::targets, max_threads, observer,
         [&](const features::PreparedMolecule& molecule,
             const parameters::ParameterClassification* classification,
             const std::optional<std::size_t> conformer_index, const std::size_t,

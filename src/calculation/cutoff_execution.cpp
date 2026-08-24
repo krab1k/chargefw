@@ -72,13 +72,14 @@ auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
     }
 
     return detail::execute_calculation_targets(
-        selected, molecules, ExecutionMode::cutoff, true, true, max_threads, observer,
+        selected, molecules, ExecutionMode::cutoff, true, detail::ParallelizationLevel::fragments,
+        max_threads, observer,
         [&](const features::PreparedMolecule& molecule,
             const parameters::ParameterClassification* classification,
-            const std::optional<std::size_t> conformer_index, const std::size_t target_max_threads,
-            const detail::ProgressContext& target_ctx) {
+            const std::optional<std::size_t> conformer_index,
+            const std::size_t fragment_max_threads, const detail::ProgressContext& target_ctx) {
             return calculate_target(selected, molecule, classification, *conformer_index, *radius,
-                                    policy.charge_correction(), target_max_threads, target_ctx);
+                                    policy.charge_correction(), fragment_max_threads, target_ctx);
         });
 }
 
