@@ -191,7 +191,8 @@ restore progress output on all started-computation paths.
 
 Facade and observer regression coverage includes rejected-report identity, explicit no-plan and
 unsupported-policy boundaries, empty/tiny input cardinality, full and reduced solver failures,
-ownership after lvalue/rvalue assessment, and source-ordered multi-molecule/multi-conformer results.
+fragment-progress cancellation in serial and parallel cutoff/cover execution, ownership after
+lvalue/rvalue assessment, and source-ordered multi-molecule/multi-conformer results.
 
 ### Implemented reduced methods
 

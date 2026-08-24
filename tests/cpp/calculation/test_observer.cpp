@@ -107,6 +107,43 @@ class CancelAfterFirstTarget : public calculation::CalculationObserver {
     mutable std::atomic<bool> cancel_{false};
 };
 
+// Observer that waits for completed reduced fragment work before requesting cancellation. The
+// post-request cancelled() counter proves cancellation was observed by a subsequent fragment-loop
+// iteration rather than by the target-boundary check.
+class CancelAfterFirstFragmentProgress final : public calculation::CalculationObserver {
+  public:
+    void on_progress(const calculation::CalculationProgress& progress) const override {
+        const std::scoped_lock lock{mutex_};
+        events_.push_back(snapshot(progress));
+        if (progress.phase == calculation::CalculationPhase::fragment_progress) {
+            cancel_.store(true, std::memory_order_relaxed);
+        }
+    }
+
+    [[nodiscard]] auto cancelled() const noexcept -> bool override {
+        if (cancel_.load(std::memory_order_relaxed)) {
+            cancellation_checks_after_request_.fetch_add(1, std::memory_order_relaxed);
+            return true;
+        }
+        return false;
+    }
+
+    [[nodiscard]] auto events() const -> std::vector<RecordedProgress> {
+        const std::scoped_lock lock{mutex_};
+        return events_;
+    }
+
+    [[nodiscard]] auto cancellation_checks_after_request() const noexcept -> std::size_t {
+        return cancellation_checks_after_request_.load(std::memory_order_relaxed);
+    }
+
+  private:
+    mutable std::mutex mutex_;
+    mutable std::vector<RecordedProgress> events_;
+    mutable std::atomic<bool> cancel_{false};
+    mutable std::atomic<std::size_t> cancellation_checks_after_request_{0};
+};
+
 [[nodiscard]] auto fragment_progress_events(const RecordingObserver& observer)
     -> std::vector<RecordedProgress> {
     auto result = std::vector<RecordedProgress>{};
@@ -195,6 +232,31 @@ auto make_separated_waters() -> core::Molecule {
                                             {10.96, 0.0, 0.0},
                                             {9.76, 0.93, 0.0}}}},
                           "separated-waters"};
+}
+
+auto make_many_separated_waters() -> core::Molecule {
+    auto atoms = std::vector<core::Atom>{};
+    auto bonds = std::vector<core::Bond>{};
+    auto positions = std::vector<core::Position>{};
+    constexpr std::size_t water_count = 12;
+    atoms.reserve(water_count * 3);
+    bonds.reserve(water_count * 2);
+    positions.reserve(water_count * 3);
+
+    for (std::size_t water_index = 0; water_index < water_count; ++water_index) {
+        const auto atom_index = water_index * 3;
+        const auto x = static_cast<double>(water_index) * 10.0;
+        atoms.insert(atoms.end(), {core::Atom{8}, core::Atom{1}, core::Atom{1}});
+        bonds.emplace_back(atom_index, atom_index + 1, core::BondOrder::SINGLE);
+        bonds.emplace_back(atom_index, atom_index + 2, core::BondOrder::SINGLE);
+        positions.insert(positions.end(),
+                         {{x, 0.0, 0.0}, {x + 0.96, 0.0, 0.0}, {x - 0.24, 0.93, 0.0}});
+    }
+
+    return core::Molecule{std::move(atoms),
+                          std::move(bonds),
+                          {core::Conformer{std::move(positions)}},
+                          "many-separated-waters"};
 }
 
 } // namespace
@@ -641,6 +703,39 @@ auto main() -> int {
         assert(result.calculated());
         assert(!result.cancelled);
         assert(observer.callbacks() >= 4);
+    }
+
+    // --- Test 17: cutoff and cover observe cancellation after fragment progress ---
+    for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
+                            calculation::ExecutionSelectionKind::cover}) {
+        for (const auto max_threads : {std::size_t{1}, std::size_t{2}}) {
+            const auto observer = CancelAfterFirstFragmentProgress{};
+            const auto result = calculate_application(
+                calculation::AssessmentRequest{
+                    .molecules =
+                        core::MoleculeCollection{std::vector{make_many_separated_waters()}},
+                    .parameter_sets = {},
+                    .execution_selection =
+                        calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
+                    .resource_policy = {.max_threads = max_threads}},
+                observer);
+
+            assert(result.cancelled);
+            assert(!result.calculated());
+            assert(observer.cancellation_checks_after_request() > 0);
+
+            const auto events = observer.events();
+            assert(std::any_of(events.begin(), events.end(), [](const auto& event) {
+                return event.phase == calculation::CalculationPhase::fragment_progress;
+            }));
+            assert(std::none_of(events.begin(), events.end(), [](const auto& event) {
+                return event.phase == calculation::CalculationPhase::target_finished;
+            }));
+            assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                       return event.phase == calculation::CalculationPhase::computation_finished;
+                   }) == 1);
+            assert(events.back().phase == calculation::CalculationPhase::computation_finished);
+        }
     }
 
     return 0;
