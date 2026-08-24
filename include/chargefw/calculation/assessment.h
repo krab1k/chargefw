@@ -67,10 +67,6 @@ struct ApplicabilityReport {
     std::vector<ApplicableCandidateReport> applicable;
     std::vector<RejectedCandidateReport> rejected;
     std::optional<std::size_t> selected_candidate_index;
-
-    [[nodiscard]] auto empty() const noexcept -> bool {
-        return applicable.empty();
-    }
 };
 
 // Owns prepared application inputs and their applicability/execution-plan assessment. Move this

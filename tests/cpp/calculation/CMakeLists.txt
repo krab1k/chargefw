@@ -10,13 +10,13 @@ chargefw_add_test(test_execution_policy
         test_execution_policy.cpp
 )
 
-chargefw_add_test(test_target_execution
-        test_target_execution.cpp
+chargefw_add_test(test_calculation_targets
+        test_calculation_targets.cpp
 )
-target_include_directories(test_target_execution PRIVATE
+target_include_directories(test_calculation_targets PRIVATE
         ${PROJECT_SOURCE_DIR}/src
 )
-target_link_libraries(test_target_execution PRIVATE
+target_link_libraries(test_calculation_targets PRIVATE
         TBB::tbb
 )
 

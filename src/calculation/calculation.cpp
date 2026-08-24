@@ -49,6 +49,10 @@ class ComputationFinishedEmitter {
 } // namespace
 
 auto calculate(const CalculationRequest& request) -> CalculationResult {
+    if (request.selected.method == nullptr) {
+        throw std::invalid_argument{"calculation request has no selected method"};
+    }
+
     const auto computation_started = std::chrono::steady_clock::now();
     const auto computation_finished =
         ComputationFinishedEmitter{request.observer, request.execution_policy.mode(),

@@ -1,4 +1,4 @@
-#include <chargefw/calculation/calculation.h>
+#include <chargefw/calculation/assessment.h>
 
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_registry.h>
@@ -74,7 +74,7 @@ namespace {
                          .issues = assessment.issues};
 }
 
-[[nodiscard]] auto application_methods(const AssessmentRequest& request)
+[[nodiscard]] auto assessment_methods(const AssessmentRequest& request)
     -> std::vector<const methods::Method*> {
     const auto& registry = methods::method_registry();
     if (request.method_id.has_value()) {
@@ -93,7 +93,7 @@ namespace {
     return result;
 }
 
-auto validate_application_method_options(const AssessmentRequest& request) -> void {
+auto validate_assessment_method_options(const AssessmentRequest& request) -> void {
     const auto& registry = methods::method_registry();
     for (const auto& [method_id, overrides] : request.method_options) {
         const auto* method = registry.find(method_id);
@@ -303,9 +303,9 @@ auto select_execution_plan(const methods::ApplicabilityResult& applicability,
 
 auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResult {
     const auto started = std::chrono::steady_clock::now();
-    validate_application_method_options(request);
+    validate_assessment_method_options(request);
     validate_unique_parameter_set_ids(request);
-    const auto selected_methods = application_methods(request);
+    const auto selected_methods = assessment_methods(request);
     const auto classification_options = request.classification_options;
     const auto execution_selection = request.execution_selection;
     const auto resource_policy = request.resource_policy;

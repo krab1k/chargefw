@@ -541,7 +541,7 @@ auto main() -> int {
                                                  fragment_events.front().fragment_count);
     }
 
-    // --- Test 9: serial cover execution emits aggregate multi-pivot progress ---
+    // --- Test 10: serial cover execution emits aggregate multi-pivot progress ---
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -563,7 +563,7 @@ auto main() -> int {
                                                  fragment_events.front().fragment_count);
     }
 
-    // --- Test 10: multi-molecule target events carry correct molecule_index ---
+    // --- Test 11: multi-molecule target events carry correct molecule_index ---
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -603,7 +603,7 @@ auto main() -> int {
         }
     }
 
-    // --- Test 11: empty reduced targets do not emit fragment progress ---
+    // --- Test 12: empty reduced targets do not emit fragment progress ---
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         const auto empty_observer = RecordingObserver{};
@@ -620,7 +620,7 @@ auto main() -> int {
         assert(fragment_progress_events(empty_observer).empty());
     }
 
-    // --- Test 12: parallel targets each have one terminal progress snapshot ---
+    // --- Test 13: parallel targets each have one terminal progress snapshot ---
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         const auto observer = RecordingObserver{};
@@ -648,7 +648,7 @@ auto main() -> int {
         }
     }
 
-    // --- Test 13: every execution mode preserves source target ordering and identity ---
+    // --- Test 14: every execution mode preserves source target ordering and identity ---
     for (const auto selection_kind :
          {calculation::ExecutionSelectionKind::full, calculation::ExecutionSelectionKind::cutoff,
           calculation::ExecutionSelectionKind::cover}) {
@@ -696,7 +696,7 @@ auto main() -> int {
         }
     }
 
-    // --- Test 14: an explicit no-plan failure occurs before calculation observation begins ---
+    // --- Test 15: an explicit no-plan failure occurs before calculation observation begins ---
     {
         const auto observer = RecordingObserver{};
         auto assessment = calculation::assess(calculation::AssessmentRequest{
@@ -712,7 +712,7 @@ auto main() -> int {
         assert(observer.events().empty());
     }
 
-    // --- Test 15: reduced fragment failures retain target context and finish observation ---
+    // --- Test 16: reduced fragment failures retain target context and finish observation ---
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         const auto observer = RecordingObserver{};
@@ -746,7 +746,7 @@ auto main() -> int {
                }) == 1);
     }
 
-    // --- Test 16: observer failures never alter calculation control flow at any event tier ---
+    // --- Test 17: observer failures never alter calculation control flow at any event tier ---
     {
         const auto observer = ThrowOnEveryCallbackObserver{};
         const auto result = calculate_application(
@@ -762,7 +762,7 @@ auto main() -> int {
         assert(observer.callbacks() >= 4);
     }
 
-    // --- Test 17: cutoff and cover observe cancellation after fragment progress ---
+    // --- Test 18: cutoff and cover observe cancellation after fragment progress ---
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         for (const auto max_threads : {std::size_t{1}, std::size_t{2}}) {
@@ -795,7 +795,7 @@ auto main() -> int {
         }
     }
 
-    // --- Test 18: direct calculation emits one computation boundary in every mode ---
+    // --- Test 19: direct calculation emits one computation boundary in every mode ---
     for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
                             calculation::ExecutionMode::cover}) {
         const auto observer = RecordingObserver{};
@@ -818,7 +818,7 @@ auto main() -> int {
         assert_computation_boundary(observer.events(), mode);
     }
 
-    // --- Test 19: direct failures and cancellation both finish observation in every mode ---
+    // --- Test 20: direct failures and cancellation both finish observation in every mode ---
     for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
                             calculation::ExecutionMode::cover}) {
         const auto policy =

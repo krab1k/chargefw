@@ -36,6 +36,7 @@ make_calculation_targets(const features::PreparedMoleculeCollection& molecules,
     for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
         const auto& molecule = molecules[molecule_index].molecule();
         const auto target_count = requires_conformer ? molecule.conformer_count() : 1;
+        targets.reserve(targets.size() + target_count);
         for (std::size_t target_index = 0; target_index < target_count; ++target_index) {
             targets.push_back(CalculationTarget{
                 .molecule_index = molecule_index,

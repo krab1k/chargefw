@@ -6,10 +6,12 @@
 #include <exception>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <print>
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace {

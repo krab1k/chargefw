@@ -8,6 +8,7 @@
 #include <charconv>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
