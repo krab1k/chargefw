@@ -18,6 +18,7 @@ struct MoleculeRecordIdentity {
 };
 
 struct MoleculeRecordDiagnostic {
+    std::string code;
     std::string message;
     std::optional<std::size_t> line;
 };

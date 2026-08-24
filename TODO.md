@@ -10,21 +10,17 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Result contract, molecular I/O, and CLI
 
-- [ ] Define the stable result/error schema. Represent successful and failed source records in input
-  order with owned import/calculation diagnostics, multi-conformer assignments,
-  precision/total-charge rules, and schema compatibility/versioning rules.
 - [ ] Add complete calculation provenance to SDF, MOL2, and mmCIF in format-appropriate fields. Include
   effective method options once application-facing options exist; do not duplicate JSON schema
   internals unnecessarily.
 - [ ] Complete structural mapping/provenance for omitted alternate locations and retain enough opaque
   mmCIF source state for preservation-oriented export.
-- [ ] Harden PDB/mmCIF readers with fixtures for empty/incompatible models, unknown elements, insertion
-  codes and chain breaks, alternate-location omissions, filtered records, explicit/template/hybrid
-  conflicts, and malformed or partially usable multi-block input.
-- [ ] Expand parser/CLI integration tests across V2000/V3000 boundaries, malformed/mixed records,
-  execution policies, deterministic output, and failure exit statuses.
-- [ ] Fuzz native MOL/SDF/MOL2/JSON parsers and run sanitizer coverage before treating arbitrary
-  untrusted input as supported.
+- [ ] Complete PDB/mmCIF reader regression fixtures for empty/incompatible models, unknown elements,
+  insertion codes and chain breaks, alternate-location omissions, filtered records,
+  explicit/template/hybrid conflicts, and malformed or partially usable multi-block input.
+- [ ] Expand native-parser and CLI integration tests for V2000/V3000 boundaries, malformed and mixed
+  records, execution-policy validation, deterministic output, and documented failure exit statuses. Run
+  affected parser tests under ASan and UBSan when parser code changes.
 
 ## 2. Scientific and compatibility validation
 

@@ -1,6 +1,8 @@
 #include <chargefw/core/periodic_table.h>
 #include <chargefw/parameters/classification/parameter_classifier.h>
 
+#include "core/diagnostic_description.h"
+
 #include <algorithm>
 #include <optional>
 #include <stdexcept>
@@ -209,11 +211,12 @@ auto try_classify_parameters(const core::Molecule& molecule,
                                                          parameters.atom(), options);
 
             if (!match) {
-                issues.push_back(
-                    ClassificationIssue{.kind = ClassificationIssueKind::MISSING_ATOM_PARAMETER,
-                                        .object_index = atom_index,
-                                        .message = "no atom parameter entry for atom index " +
-                                                   std::to_string(atom_index)});
+                issues.push_back(ClassificationIssue{
+                    .kind = ClassificationIssueKind::MISSING_ATOM_PARAMETER,
+                    .object_index = atom_index,
+                    .message = "parameter set '" + std::string{parameters.id()} +
+                               "' has no atom parameter matching " +
+                               core::detail::atom_description(molecule, atom_index)});
                 continue;
             }
 
@@ -229,11 +232,12 @@ auto try_classify_parameters(const core::Molecule& molecule,
                                                          parameters.bond(), options);
 
             if (!match) {
-                issues.push_back(
-                    ClassificationIssue{.kind = ClassificationIssueKind::MISSING_BOND_PARAMETER,
-                                        .object_index = bond_index,
-                                        .message = "no bond parameter entry for bond index " +
-                                                   std::to_string(bond_index)});
+                issues.push_back(ClassificationIssue{
+                    .kind = ClassificationIssueKind::MISSING_BOND_PARAMETER,
+                    .object_index = bond_index,
+                    .message = "parameter set '" + std::string{parameters.id()} +
+                               "' has no bond parameter matching " +
+                               core::detail::bond_description(molecule, bond_index)});
                 continue;
             }
 

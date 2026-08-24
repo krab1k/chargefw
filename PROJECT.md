@@ -342,18 +342,32 @@ PDB through Gemmi, and generates local `UNL` blocks for nonstructural input.
 
 ### JSON result state
 
-Schema `1.0` records source identity, source-ordered assignments, totals, and diagnostics.
+Schema `1.0` records source identity, source-ordered assignments, totals, and diagnostics. Input parsing
+remains fail-fast: malformed input rejects the document rather than manufacturing partial failed records.
+Once import and request construction succeed, invalid assessment, no-plan, numerical-failure, and
+cancellation outcomes use the same owned result document and status vocabulary. Successful adapter
+warnings, such as ignored MOL2 partial charges, remain attached to their source record.
+
+Diagnostics have a constrained severity, stable code, explanatory message, and optional zero-based
+molecule, atom, bond, and conformer indices or one-based source line. Human-readable messages use
+one-based molecule, atom, bond, and conformer numbering and include available chemical context such as
+element, source atom name, formal charge, bond participants, and bond order. No-plan results retain the
+actual rejected-candidate reasons instead of only reporting a generic selection failure.
+
+Geometry-dependent methods write one assignment per selected conformer; geometry-independent methods
+write one assignment per molecule. Charges are rounded to at most four decimal places in JSON only, and
+each `total_charge` is the sum of those serialized values. Internal calculations retain native precision.
+The result schema remains `1.0` while the project is pre-release and may be refined in place. After the
+first stable release, incompatible changes require a major schema-version change; additive optional
+fields require a minor change and must preserve the meaning of existing fields.
 Invocation-level `calculation_provenance` records requested conformer selection, method/parameter IDs,
 permissive typing, cutoff/cover resource thresholds, execution/radius/correction, structural input
-policy, and effective method/parameter/execution plus warnings. Charges are rounded to at most four
-decimal places in JSON only.
+policy, and effective method/parameter/execution plus warnings.
 
 Current limitations:
 
-- unsuccessful automatic selection emits a JSON error document to stdout rather than the requested
-  output directory;
-- import and calculation exceptions are not represented as owned record-scoped result entries;
-- exit statuses do not distinguish invalid requests from calculation failures;
+- failures before source import or request construction completes cannot produce a source-record result
+  document;
 - SDF, MOL2, and mmCIF do not yet carry the complete JSON provenance.
 
 ## Build, installation, and distribution

@@ -144,11 +144,14 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
     CHECK(coincident_atoms_result.issues()[0].kind ==
           methods::PrerequisiteIssueKind::invalid_geometry);
     CHECK(coincident_atoms_result.issues()[0].atom_index == 1);
-    CHECK(coincident_atoms_result.issues()[0].message.contains("conformer 0"));
+    CHECK(coincident_atoms_result.issues()[0].conformer_index == 0);
+    CHECK(coincident_atoms_result.issues()[0].message.contains("conformer 1"));
+    CHECK(coincident_atoms_result.issues()[0].message.contains("atom 1 (H, formal charge 0)"));
     CHECK(coincident_atoms_result.issues()[1].kind ==
           methods::PrerequisiteIssueKind::invalid_geometry);
     CHECK(coincident_atoms_result.issues()[1].atom_index == 1);
-    CHECK(coincident_atoms_result.issues()[1].message.contains("conformer 1"));
+    CHECK(coincident_atoms_result.issues()[1].conformer_index == 1);
+    CHECK(coincident_atoms_result.issues()[1].message.contains("conformer 2"));
 
     const DenseMethod dense_method;
 
@@ -173,6 +176,8 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
     REQUIRE(coordinates_collection_result.issues().size() == 1);
     CHECK(coordinates_collection_result.issues()[0].kind ==
           methods::PrerequisiteIssueKind::missing_feature);
+    CHECK(coordinates_collection_result.issues()[0].molecule_index == 1);
+    CHECK(coordinates_collection_result.issues()[0].message.contains("molecule 2"));
 
     const core::Molecule berkelium_molecule{
         std::vector{core::Atom{97}}, {}, std::vector{core::Conformer{{core::Position{}}}}};
@@ -184,4 +189,5 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
     REQUIRE(abeem_result.issues().size() == 1);
     CHECK(abeem_result.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
     CHECK(abeem_result.issues()[0].atom_index == 0);
+    CHECK(abeem_result.issues()[0].message.contains("atom 1 (Bk, formal charge 0)"));
 }

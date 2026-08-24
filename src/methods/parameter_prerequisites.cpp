@@ -2,6 +2,8 @@
 #include <chargefw/methods/parameter_prerequisites.h>
 #include <chargefw/parameters/classification/parameter_classifier.h>
 
+#include "core/diagnostic_description.h"
+
 #include <string>
 
 namespace chargefw::methods {
@@ -158,9 +160,13 @@ auto check_parameter_prerequisites(const Method& method,
             for (const auto& issue : molecule_result.issues) {
                 result.issues.push_back(PrerequisiteIssue{
                     .kind = issue.kind,
-                    .message = "molecule " + std::to_string(molecule_index) + ": " + issue.message,
+                    .message = core::detail::molecule_description(
+                                   molecules[molecule_index].molecule(), molecule_index) +
+                               ": " + issue.message,
+                    .molecule_index = molecule_index,
                     .atom_index = issue.atom_index,
-                    .bond_index = issue.bond_index});
+                    .bond_index = issue.bond_index,
+                    .conformer_index = issue.conformer_index});
             }
 
             continue;

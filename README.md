@@ -162,8 +162,10 @@ on success, source-ordered charge assignments and totals. `calculation_provenanc
 conformer selection, selection/classification/resource/structural policies, and the effective method,
 parameter set, method options, execution mode, radius, correction, and warnings. Requested method
 options contain explicit overrides; effective options contain the complete selected-method values.
-JSON charge values are rounded to at most four decimal places; internal calculations retain native
-precision.
+JSON charge values are rounded to at most four decimal places, and assignment totals sum the serialized
+values; internal calculations retain native precision. Diagnostic messages use one-based molecular
+numbering and include available atom, element, formal-charge, bond, and conformer context. Structured
+diagnostic indices remain zero-based. Input parsing remains fail-fast.
 
 Calculation provenance also includes `execution_metrics` with UTC start/end timestamps, phase durations for
 parsing, applicability, computation, and non-JSON output writing, plus peak resident memory in MB.

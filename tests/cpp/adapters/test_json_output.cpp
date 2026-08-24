@@ -27,9 +27,11 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
              {.identity = {.source = "water.sdf", .record_index = 3, .record_id = "unavailable"},
               .charges = std::nullopt,
               .status = adapters::ResultStatus::no_executable_plan,
-              .diagnostics = {{.severity = "error",
+              .diagnostics = {{.severity = adapters::DiagnosticSeverity::error,
                                .code = "no_executable_plan",
-                               .message = "No executable plan."}}}},
+                               .message = "No executable plan.",
+                               .molecule_index = 1,
+                               .atom_index = 4}}}},
         .calculation_provenance = adapters::CalculationProvenance{
             .requested = {.method_id = std::nullopt,
                           .parameter_set_id = std::nullopt,
@@ -112,17 +114,21 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     REQUIRE(calculated.at("assignments").at(0).at("charges").size() == 3);
     CHECK(calculated.at("assignments").at(0).at("charges").at(0) == -0.8765);
     CHECK(calculated.at("assignments").at(0).at("charges").at(1) == 0.4383);
+    CHECK(calculated.at("assignments").at(0).at("total_charge") == 0.0001);
 
     const auto& unavailable = result.at("results").at(1);
     CHECK(unavailable.at("status") == "no_executable_plan");
     CHECK_FALSE(unavailable.at("input").contains("atom_mapping"));
     CHECK(unavailable.at("diagnostics").at(0).at("code") == "no_executable_plan");
+    CHECK(unavailable.at("diagnostics").at(0).at("molecule_index") == 1);
+    CHECK(unavailable.at("diagnostics").at(0).at("atom_index") == 4);
 }
 
 TEST_CASE("JSON output serializes a cancelled result without assignments", "[adapters][json]") {
-    const auto diagnostic = adapters::ResultDiagnostic{.severity = "info",
-                                                       .code = "calculation_cancelled",
-                                                       .message = "Calculation was cancelled."};
+    const auto diagnostic =
+        adapters::ResultDiagnostic{.severity = adapters::DiagnosticSeverity::info,
+                                   .code = "calculation_cancelled",
+                                   .message = "Calculation was cancelled."};
     const auto document = adapters::ChargeResultDocument{
         .generator_name = "ChargeFW",
         .generator_version = "test",

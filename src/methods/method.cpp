@@ -1,5 +1,7 @@
 #include <chargefw/methods/method.h>
 
+#include "core/diagnostic_description.h"
+
 #include <chargefw/features/conformer_features.h>
 
 #include <exception>
@@ -20,23 +22,27 @@ auto add_coordinate_prerequisite_issues(const Method& method, const core::Molecu
         const features::ConformerFeatures geometry{molecule, conformer_index};
 
         if (const auto nonfinite_atom = geometry.first_nonfinite_atom_index()) {
-            result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::invalid_geometry,
-                                         .message = "method '" + std::string{method.id()} +
-                                                    "' requires finite coordinates; conformer " +
-                                                    std::to_string(conformer_index),
-                                         .atom_index = *nonfinite_atom});
+            result.add(PrerequisiteIssue{
+                .kind = PrerequisiteIssueKind::invalid_geometry,
+                .message = "method '" + std::string{method.id()} + ", conformer " +
+                           std::to_string(conformer_index + 1) + ": " +
+                           core::detail::atom_description(molecule, *nonfinite_atom) +
+                           " has non-finite coordinates",
+                .atom_index = *nonfinite_atom,
+                .conformer_index = conformer_index});
             continue;
         }
 
         if (const auto coincident = geometry.coincident_atom_indices()) {
             result.add(PrerequisiteIssue{
                 .kind = PrerequisiteIssueKind::invalid_geometry,
-                .message = "method '" + std::string{method.id()} +
-                           "' requires distinct atom coordinates; conformer " +
-                           std::to_string(conformer_index) + ", atoms " +
-                           std::to_string(coincident->first) + " and " +
-                           std::to_string(coincident->second) + " share coordinates",
-                .atom_index = coincident->second});
+                .message = "method '" + std::string{method.id()} + "', conformer " +
+                           std::to_string(conformer_index + 1) + ": " +
+                           core::detail::atom_description(molecule, coincident->first) + " and " +
+                           core::detail::atom_description(molecule, coincident->second) +
+                           " have identical coordinates",
+                .atom_index = coincident->second,
+                .conformer_index = conformer_index});
         }
     }
 }

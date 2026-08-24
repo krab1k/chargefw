@@ -1,19 +1,25 @@
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_prerequisites.h>
 
+#include "core/diagnostic_description.h"
+
 #include <string>
 #include <utility>
 
 namespace chargefw::methods {
 namespace {
 
-[[nodiscard]] auto with_molecule_prefix(std::size_t molecule_index, const PrerequisiteIssue& issue)
-    -> PrerequisiteIssue {
+[[nodiscard]] auto with_molecule_prefix(const core::Molecule& molecule,
+                                        const std::size_t molecule_index,
+                                        const PrerequisiteIssue& issue) -> PrerequisiteIssue {
     return PrerequisiteIssue{.kind = issue.kind,
-                             .message = "molecule " + std::to_string(molecule_index) + ": " +
-                                        issue.message,
+                             .message =
+                                 core::detail::molecule_description(molecule, molecule_index) +
+                                 ": " + issue.message,
+                             .molecule_index = molecule_index,
                              .atom_index = issue.atom_index,
-                             .bond_index = issue.bond_index};
+                             .bond_index = issue.bond_index,
+                             .conformer_index = issue.conformer_index};
 }
 
 } // namespace
@@ -44,7 +50,8 @@ auto check_method_prerequisites(const Method& method,
             {.prepared_molecule = molecules[molecule_index], .method_options = method_options});
 
         for (const auto& issue : molecule_result.issues()) {
-            result.add(with_molecule_prefix(molecule_index, issue));
+            result.add(
+                with_molecule_prefix(molecules[molecule_index].molecule(), molecule_index, issue));
         }
     }
 

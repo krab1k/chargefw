@@ -79,12 +79,38 @@ file(READ "${no_plan_output_prefix}.json" no_plan_json)
 string(JSON no_plan_status GET "${no_plan_json}" status)
 string(JSON no_plan_record_status GET "${no_plan_json}" results 0 status)
 string(JSON no_plan_diagnostic GET "${no_plan_json}" diagnostics 0 code)
+string(JSON no_plan_cause GET "${no_plan_json}" results 0 diagnostics 1 code)
 if(NOT no_plan_status STREQUAL "no_executable_plan" OR
    NOT no_plan_record_status STREQUAL "no_executable_plan" OR
-   NOT no_plan_diagnostic STREQUAL "no_executable_plan")
+   NOT no_plan_diagnostic STREQUAL "no_executable_plan" OR
+   no_plan_cause STREQUAL "no_executable_plan")
     message(FATAL_ERROR "no-plan CLI JSON does not report a structured no-plan result")
 endif()
+if(NOT no_plan_error MATCHES "Error: method 'smpqeq'")
+    message(FATAL_ERROR "no-plan CLI did not print its applicability cause: ${no_plan_error}")
+endif()
 file(REMOVE_RECURSE "${no_plan_output_directory}")
+
+set(warning_input_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_input_warning")
+set(warning_input_output_prefix "${warning_input_output_directory}/aromatic.chargefw")
+file(REMOVE_RECURSE "${warning_input_output_directory}")
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" calculate --method eem "${CHARGEFW_MOL2_INPUT}"
+                "${warning_input_output_directory}"
+        RESULT_VARIABLE warning_input_result
+        ERROR_VARIABLE warning_input_error
+)
+if(NOT warning_input_result EQUAL 0 OR NOT warning_input_error MATCHES "Warning: MOL2 partial charges were ignored")
+    message(FATAL_ERROR "successful import warning was not reported: ${warning_input_error}")
+endif()
+file(READ "${warning_input_output_prefix}.json" warning_input_json)
+string(JSON warning_input_code GET "${warning_input_json}" results 0 diagnostics 0 code)
+if(NOT warning_input_code STREQUAL "partial_charges_ignored")
+    message(FATAL_ERROR "successful import warning was not retained in JSON")
+endif()
+file(REMOVE_RECURSE "${warning_input_output_directory}")
 
 set(invalid_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_invalid")
 set(invalid_output_prefix "${invalid_output_directory}/water.chargefw")

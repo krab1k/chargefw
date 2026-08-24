@@ -134,16 +134,16 @@ auto run(std::span<char*> arguments) -> int {
     const auto requested_provenance =
         chargefw::cli::make_requested_provenance(export_context, request);
     const auto max_threads = request.resource_policy.max_threads;
-    auto assessment = chargefw::calculation::assess(std::move(request));
-    for (const auto& warning : assessment.execution_issues()) {
-        std::println(std::cerr, "Warning: {}", warning.message);
-    }
     const auto progress_observer = TerminalProgressObserver{};
     const auto& observer =
         progress ? static_cast<const chargefw::calculation::CalculationObserver&>(progress_observer)
                  : chargefw::calculation::default_calculation_observer();
     auto result = [&]() -> chargefw::calculation::ExecutionResult {
         try {
+            auto assessment = chargefw::calculation::assess(std::move(request));
+            for (const auto& warning : assessment.execution_issues()) {
+                std::println(std::cerr, "Warning: {}", warning.message);
+            }
             return chargefw::calculation::calculate(std::move(assessment), max_threads, observer);
         } catch (const std::invalid_argument& error) {
             return {.status = chargefw::calculation::ExecutionStatus::invalid_input_or_request,

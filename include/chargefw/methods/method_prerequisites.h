@@ -26,8 +26,11 @@ enum class PrerequisiteIssueKind : std::uint8_t {
 struct PrerequisiteIssue {
     PrerequisiteIssueKind kind;
     std::string message;
+    // Structured indices are zero-based. Human-readable messages use one-based numbering.
+    std::optional<std::size_t> molecule_index = std::nullopt;
     std::optional<std::size_t> atom_index = std::nullopt;
     std::optional<std::size_t> bond_index = std::nullopt;
+    std::optional<std::size_t> conformer_index = std::nullopt;
 };
 
 class PrerequisiteResult {

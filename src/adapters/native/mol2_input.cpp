@@ -162,6 +162,7 @@ auto read_to_atom_section(std::istream& input, std::size_t& line) -> void {
 
     if (has_partial_charges) {
         diagnostics.push_back(MoleculeRecordDiagnostic{
+            .code = "partial_charges_ignored",
             .message = "MOL2 partial charges were ignored; they are not formal charges and "
                        "were not used for calculation.",
             .line = std::nullopt});

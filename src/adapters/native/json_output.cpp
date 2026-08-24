@@ -35,11 +35,34 @@ constexpr auto metric_scale = 1000.0;
 }
 
 [[nodiscard]] auto diagnostics_json(const std::span<const ResultDiagnostic> diagnostics) -> Json {
+    const auto severity_name = [](const DiagnosticSeverity severity) -> const char* {
+        switch (severity) {
+        case DiagnosticSeverity::info:
+            return "info";
+        case DiagnosticSeverity::warning:
+            return "warning";
+        case DiagnosticSeverity::error:
+            return "error";
+        }
+        throw std::invalid_argument{"unknown diagnostic severity"};
+    };
     Json result = Json::array();
     for (const auto& diagnostic : diagnostics) {
-        result.push_back({{"severity", diagnostic.severity},
-                          {"code", diagnostic.code},
-                          {"message", diagnostic.message}});
+        auto encoded = Json{{"severity", severity_name(diagnostic.severity)},
+                            {"code", diagnostic.code},
+                            {"message", diagnostic.message}};
+        const auto add_index = [&encoded](const std::string_view name,
+                                          const std::optional<std::size_t> index) {
+            if (index.has_value()) {
+                encoded[name] = *index;
+            }
+        };
+        add_index("molecule_index", diagnostic.molecule_index);
+        add_index("atom_index", diagnostic.atom_index);
+        add_index("bond_index", diagnostic.bond_index);
+        add_index("conformer_index", diagnostic.conformer_index);
+        add_index("line", diagnostic.line);
+        result.push_back(std::move(encoded));
     }
     return result;
 }
@@ -75,9 +98,14 @@ constexpr auto metric_scale = 1000.0;
             continue;
         }
 
+        auto encoded_charges = charges_json(assignment.charges);
+        auto serialized_total = 0.0;
+        for (const auto& value : encoded_charges) {
+            serialized_total += value.get<double>();
+        }
         Json encoded_assignment{{"atom_order", "source"},
-                                {"charges", charges_json(assignment.charges)},
-                                {"total_charge", assignment.charges.total()}};
+                                {"charges", std::move(encoded_charges)},
+                                {"total_charge", rounded(serialized_total, charge_scale)}};
         if (assignment.target.conformer_index.has_value()) {
             encoded_assignment["conformer_index"] = *assignment.target.conformer_index;
         }

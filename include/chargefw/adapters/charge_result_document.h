@@ -21,10 +21,18 @@ enum class ResultStatus : std::uint8_t {
     cancelled,
 };
 
+enum class DiagnosticSeverity : std::uint8_t { info, warning, error };
+
 struct ResultDiagnostic {
-    std::string severity;
+    DiagnosticSeverity severity = DiagnosticSeverity::error;
     std::string code;
     std::string message;
+    // Structured indices are zero-based. Source line numbers are one-based.
+    std::optional<std::size_t> molecule_index;
+    std::optional<std::size_t> atom_index;
+    std::optional<std::size_t> bond_index;
+    std::optional<std::size_t> conformer_index;
+    std::optional<std::size_t> line;
 };
 
 struct StructuralInputPolicyProvenance {
