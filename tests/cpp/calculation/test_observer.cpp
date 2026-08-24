@@ -317,9 +317,7 @@ auto assert_computation_boundary(const std::vector<RecordedProgress>& events,
 
 } // namespace
 
-TEST_CASE("calculation observer reports phases, cancellation, and errors",
-          "[calculation][observer]") {
-    // --- Test 1: null observer produces the same result as before ---
+TEST_CASE("default observer preserves successful calculation results", "[calculation][observer]") {
     {
         const auto result = calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -332,8 +330,9 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
         CHECK(!result.cancelled);
         CHECK(result.charges->method_id() == std::string_view{"formal"});
     }
+}
 
-    // --- Test 2: computation and target phases are emitted in order ---
+TEST_CASE("observer emits ordered computation and target phases", "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -392,8 +391,9 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
             });
         CHECK(target_finished_it != computation_end_it);
     }
+}
 
-    // --- Test 3: assessment does not emit calculation observer events ---
+TEST_CASE("assessment remains outside calculation observation", "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         const auto assessment = calculation::assess(calculation::AssessmentRequest{
@@ -406,8 +406,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
         CHECK(assessment.executable());
         CHECK(observer.events().empty());
     }
+}
 
-    // --- Test 4: threshold warnings remain assessment data before computation ---
+TEST_CASE("resource threshold warnings remain assessment data before computation",
+          "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         auto assessment = calculation::assess(calculation::AssessmentRequest{
@@ -428,8 +430,9 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
         CHECK(!result.cancelled);
         CHECK(observer.events()[0].phase == calculation::CalculationPhase::computation_started);
     }
+}
 
-    // --- Test 5: cancellation produces cancelled result ---
+TEST_CASE("cancellation produces a terminal observer event", "[calculation][observer]") {
     {
         const auto observer = CancelAfterFirstTarget{};
         const auto result = calculate_application(
@@ -451,8 +454,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
                   return event.phase == calculation::CalculationPhase::computation_finished;
               }) == 1);
     }
+}
 
-    // --- Test 6: validation failures still end observation and propagate unchanged ---
+TEST_CASE("validation failures finish observation and propagate unchanged",
+          "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         auto assessment = calculation::assess(calculation::AssessmentRequest{
@@ -462,11 +467,11 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        const auto throw_fn_0 = [&] -> void {
+        const auto calculate_with_invalid_thread_count = [&] -> void {
             static_cast<void>(calculation::calculate(
                 std::move(assessment), std::numeric_limits<std::size_t>::max(), observer));
         };
-        CHECK_THROWS_AS(throw_fn_0(), std::invalid_argument);
+        CHECK_THROWS_AS(calculate_with_invalid_thread_count(), std::invalid_argument);
 
         const auto events = observer.events();
         CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
@@ -477,8 +482,9 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
                   return event.phase == calculation::CalculationPhase::computation_finished;
               }) == 1);
     }
+}
 
-    // --- Test 7: solver failures still end observation and propagate unchanged ---
+TEST_CASE("solver failures finish observation and propagate unchanged", "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         auto assessment = calculation::assess(calculation::AssessmentRequest{
@@ -489,10 +495,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        const auto throw_fn_1 = [&] -> void {
+        const auto calculate_with_invalid_qeq_parameters = [&] -> void {
             static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
         };
-        CHECK_THROWS_AS(throw_fn_1(), std::logic_error);
+        CHECK_THROWS_AS(calculate_with_invalid_qeq_parameters(), std::logic_error);
 
         const auto events = observer.events();
         CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
@@ -503,8 +509,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
                   return event.phase == calculation::CalculationPhase::computation_finished;
               }) == 1);
     }
+}
 
-    // --- Test 8: a terminal observer callback failure does not terminate calculation ---
+TEST_CASE("terminal observer callback failures do not terminate calculation",
+          "[calculation][observer]") {
     {
         const auto observer = ThrowOnTerminalObserver{};
         const auto result = calculate_application(
@@ -520,8 +528,9 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
         CHECK(!result.cancelled);
         CHECK(observer.terminal_callbacks() == 1);
     }
+}
 
-    // --- Test 9: serial cutoff execution emits aggregate fragment progress ---
+TEST_CASE("serial cutoff execution emits aggregate fragment progress", "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -542,8 +551,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
         assert_single_terminal_fragment_progress(fragment_events,
                                                  fragment_events.front().fragment_count);
     }
+}
 
-    // --- Test 10: serial cover execution emits aggregate multi-pivot progress ---
+TEST_CASE("serial cover execution emits aggregate multi-pivot progress",
+          "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -564,8 +575,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
         assert_single_terminal_fragment_progress(fragment_events,
                                                  fragment_events.front().fragment_count);
     }
+}
 
-    // --- Test 11: multi-molecule target events carry correct molecule_index ---
+TEST_CASE("multi-molecule target events carry source molecule identity",
+          "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         const auto result = calculate_application(
@@ -604,8 +617,9 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
             }
         }
     }
+}
 
-    // --- Test 12: empty reduced targets do not emit fragment progress ---
+TEST_CASE("empty reduced targets do not emit fragment progress", "[calculation][observer]") {
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         const auto empty_observer = RecordingObserver{};
@@ -621,8 +635,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
         CHECK(result.calculated());
         CHECK(fragment_progress_events(empty_observer).empty());
     }
+}
 
-    // --- Test 13: parallel targets each have one terminal progress snapshot ---
+TEST_CASE("parallel reduced targets each emit one terminal progress snapshot",
+          "[calculation][observer]") {
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         const auto observer = RecordingObserver{};
@@ -649,8 +665,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
                                                      target_events.front().fragment_count);
         }
     }
+}
 
-    // --- Test 14: every execution mode preserves source target ordering and identity ---
+TEST_CASE("observer target events preserve source target identity in every execution mode",
+          "[calculation][observer]") {
     for (const auto selection_kind :
          {calculation::ExecutionSelectionKind::full, calculation::ExecutionSelectionKind::cutoff,
           calculation::ExecutionSelectionKind::cover}) {
@@ -697,8 +715,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
             CHECK(target_starts[index].conformer_index == expected_targets[index].conformer_index);
         }
     }
+}
 
-    // --- Test 15: an explicit no-plan failure occurs before calculation observation begins ---
+TEST_CASE("no-plan failures occur before calculation observation begins",
+          "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         auto assessment = calculation::assess(calculation::AssessmentRequest{
@@ -708,14 +728,16 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
                 calculation::ExecutionSelectionKind::cover, calculation::minimum_reduced_radius}});
         CHECK(!assessment.executable());
         CHECK(assessment.requires_executable_plan());
-        const auto throw_fn_2 = [&] -> void {
+        const auto calculate_unsupported_cover = [&] -> void {
             static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
         };
-        CHECK_THROWS_AS(throw_fn_2(), std::invalid_argument);
+        CHECK_THROWS_AS(calculate_unsupported_cover(), std::invalid_argument);
         CHECK(observer.events().empty());
     }
+}
 
-    // --- Test 16: reduced fragment failures retain target context and finish observation ---
+TEST_CASE("reduced fragment failures retain target context and finish observation",
+          "[calculation][observer]") {
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         const auto observer = RecordingObserver{};
@@ -748,8 +770,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
                   return event.phase == calculation::CalculationPhase::computation_finished;
               }) == 1);
     }
+}
 
-    // --- Test 17: observer failures never alter calculation control flow at any event tier ---
+TEST_CASE("observer callback failures do not alter calculation control flow",
+          "[calculation][observer]") {
     {
         const auto observer = ThrowOnEveryCallbackObserver{};
         const auto result = calculate_application(
@@ -764,8 +788,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
         CHECK(!result.cancelled);
         CHECK(observer.callbacks() >= 4);
     }
+}
 
-    // --- Test 18: cutoff and cover observe cancellation after fragment progress ---
+TEST_CASE("reduced execution observes cancellation after fragment progress",
+          "[calculation][observer]") {
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         for (const auto max_threads : {std::size_t{1}, std::size_t{2}}) {
@@ -797,8 +823,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
             CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
         }
     }
+}
 
-    // --- Test 19: direct calculation emits one computation boundary in every mode ---
+TEST_CASE("direct calculation emits terminal observation boundaries in every mode",
+          "[calculation][observer]") {
     for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
                             calculation::ExecutionMode::cover}) {
         const auto observer = RecordingObserver{};
@@ -820,8 +848,10 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
         CHECK(result.charges.size() == 1);
         assert_computation_boundary(observer.events(), mode);
     }
+}
 
-    // --- Test 20: direct failures and cancellation both finish observation in every mode ---
+TEST_CASE("direct failures and cancellation finish observation in every mode",
+          "[calculation][observer]") {
     for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
                             calculation::ExecutionMode::cover}) {
         const auto policy =
@@ -837,14 +867,14 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
             const auto prepared = features::PreparedMoleculeCollection{molecules};
             const auto method = DirectTestMethod{true};
             const auto selected = methods::ApplicableMethod{.method = &method};
-            const auto throw_fn_3 = [&] -> void {
+            const auto calculate_direct_failure = [&] -> void {
                 static_cast<void>(calculation::calculate({.molecules = prepared,
                                                           .selected = selected,
                                                           .execution_policy = policy,
                                                           .max_threads = 1,
                                                           .observer = observer}));
             };
-            CHECK_THROWS_AS(throw_fn_3(), std::exception);
+            CHECK_THROWS_AS(calculate_direct_failure(), std::exception);
             assert_computation_boundary(observer.events(), mode);
         }
 
@@ -855,14 +885,14 @@ TEST_CASE("calculation observer reports phases, cancellation, and errors",
             const auto prepared = features::PreparedMoleculeCollection{molecules};
             const auto method = DirectTestMethod{};
             const auto selected = methods::ApplicableMethod{.method = &method};
-            const auto throw_fn_4 = [&] -> void {
+            const auto calculate_direct_cancellation = [&] -> void {
                 static_cast<void>(calculation::calculate({.molecules = prepared,
                                                           .selected = selected,
                                                           .execution_policy = policy,
                                                           .max_threads = 1,
                                                           .observer = observer}));
             };
-            CHECK_THROWS_AS(throw_fn_4(), calculation::CalculationCancelled);
+            CHECK_THROWS_AS(calculate_direct_cancellation(), calculation::CalculationCancelled);
             assert_computation_boundary(observer.events(), mode);
         }
     }

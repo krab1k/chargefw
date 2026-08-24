@@ -239,11 +239,11 @@ TEST_CASE("cutoff execution produces source-ordered charges and validates inputs
         const auto policy = mode == calculation::ExecutionMode::full
                                 ? calculation::ExecutionPolicy{}
                                 : calculation::ExecutionPolicy{mode, 8.0};
-        const auto throw_fn_0 = [&] -> void {
+        const auto calculate_with_invalid_classification = [&] -> void {
             static_cast<void>(calculation::calculate(
                 {.molecules = prepared, .selected = invalid_selected, .execution_policy = policy}));
         };
-        CHECK_THROWS_AS(throw_fn_0(), std::invalid_argument);
+        CHECK_THROWS_AS(calculate_with_invalid_classification(), std::invalid_argument);
     }
 
     const auto no_conformer_collection = core::MoleculeCollection{
@@ -256,10 +256,10 @@ TEST_CASE("cutoff execution produces source-ordered charges and validates inputs
                                 : calculation::ExecutionPolicy{mode, 8.0};
         const calculation::CalculationRequest request{
             .molecules = no_conformer_prepared, .selected = selected, .execution_policy = policy};
-        const auto calculate_request = [&request] -> void {
+        const auto calculate_without_conformer = [&request] -> void {
             static_cast<void>(calculation::calculate(request));
         };
-        CHECK_THROWS_AS(calculate_request(), std::invalid_argument);
+        CHECK_THROWS_AS(calculate_without_conformer(), std::invalid_argument);
     }
 
     const auto corrected = calculation::calculate(

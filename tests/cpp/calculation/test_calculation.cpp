@@ -261,14 +261,14 @@ TEST_CASE("calculation selects the highest-priority full execution plan",
     CHECK(parallel_result.charges.assignment(0).charges[0] == 10.0);
     CHECK(parallel_result.charges.assignment(1).charges[0] == 10.0);
 
-    const auto throw_fn_0 = [&] -> void {
+    const auto calculate_with_invalid_thread_count = [&] -> void {
         static_cast<void>(
             calculation::calculate({.molecules = prepared,
                                     .selected = *selected,
                                     .execution_policy = calculation::ExecutionPolicy{},
                                     .max_threads = std::numeric_limits<std::size_t>::max()}));
     };
-    CHECK_THROWS_AS(throw_fn_0(), std::invalid_argument);
+    CHECK_THROWS_AS(calculate_with_invalid_thread_count(), std::invalid_argument);
 }
 
 TEST_CASE("automatic calculation ranks candidates and supports permissive classification",
@@ -323,14 +323,14 @@ TEST_CASE("automatic calculation ranks candidates and supports permissive classi
     CHECK(permissive_calculation_result.charges->assignment(0).charges[0] == 3.0);
     CHECK(permissive_calculation_result.charges->assignment(0).charges[1] == 3.0);
 
-    const auto throw_fn_1 = [] -> void {
+    const auto calculate_strict_peoe = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
             .parameter_sets = {make_permissive_peoe_parameter_set()},
             .method_id = "peoe",
             .parameter_set_id = "permissive-peoe-parameters"}));
     };
-    CHECK_THROWS_AS(throw_fn_1(), std::invalid_argument);
+    CHECK_THROWS_AS(calculate_strict_peoe(), std::invalid_argument);
 
     const auto permissive_application_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
@@ -399,7 +399,7 @@ TEST_CASE("assessment preserves owned selection state and validates method optio
 
     auto invalid_peoe_options = methods::MethodOptions{};
     invalid_peoe_options.set("iters", std::string{"one"});
-    const auto throw_fn_2 = [&] -> void {
+    const auto calculate_with_invalid_peoe_options = [&] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
             .parameter_sets = {make_permissive_peoe_parameter_set()},
@@ -408,7 +408,7 @@ TEST_CASE("assessment preserves owned selection state and validates method optio
             .method_options = {{"peoe", invalid_peoe_options}},
             .classification_options = {.permissive_types = true}}));
     };
-    CHECK_THROWS_AS(throw_fn_2(), std::invalid_argument);
+    CHECK_THROWS_AS(calculate_with_invalid_peoe_options(), std::invalid_argument);
 
     const auto rejected_explicit_assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -489,14 +489,14 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
           std::optional<double>{calculation::default_automatic_reduced_radius});
     CHECK(automatic_fallback_result.execution_issues.empty());
 
-    const auto throw_fn_3 = [] -> void {
+    const auto calculate_automatic_mgc = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "mgc",
             .resource_policy = {.cutoff_atom_threshold = 2}}));
     };
-    CHECK_THROWS_AS(throw_fn_3(), std::invalid_argument);
+    CHECK_THROWS_AS(calculate_automatic_mgc(), std::invalid_argument);
 
     const auto explicit_full_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -523,7 +523,7 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
     CHECK(unlimited_result.charges->method_id() == std::string_view{"mgc"});
     CHECK(unlimited_result.execution_issues.empty());
 
-    const auto throw_fn_4 = [] -> void {
+    const auto calculate_unsupported_cutoff = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
@@ -531,39 +531,39 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
             .execution_selection = calculation::ExecutionSelection{
                 calculation::ExecutionSelectionKind::cutoff, 8.0}}));
     };
-    CHECK_THROWS_AS(throw_fn_4(), std::invalid_argument);
+    CHECK_THROWS_AS(calculate_unsupported_cutoff(), std::invalid_argument);
 
-    const auto throw_fn_5 = [] -> void {
+    const auto calculate_missing_method = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "missing",
             .parameter_set_id = std::nullopt}));
     };
-    CHECK_THROWS_AS(throw_fn_5(), std::invalid_argument);
+    CHECK_THROWS_AS(calculate_missing_method(), std::invalid_argument);
 
-    const auto throw_fn_6 = [] -> void {
+    const auto calculate_missing_parameter_set = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "formal",
             .parameter_set_id = "missing"}));
     };
-    CHECK_THROWS_AS(throw_fn_6(), std::invalid_argument);
+    CHECK_THROWS_AS(calculate_missing_parameter_set(), std::invalid_argument);
 
-    const auto throw_fn_7 = [] -> void {
+    const auto assess_missing_cutoff_threshold = [] -> void {
         static_cast<void>(calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .resource_policy = {.cutoff_atom_threshold = std::nullopt,
                                 .cover_atom_threshold = 10}}));
     };
-    CHECK_THROWS_AS(throw_fn_7(), std::invalid_argument);
-    const auto throw_fn_8 = [] -> void {
+    CHECK_THROWS_AS(assess_missing_cutoff_threshold(), std::invalid_argument);
+    const auto assess_inconsistent_thresholds = [] -> void {
         static_cast<void>(calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .resource_policy = {.cutoff_atom_threshold = 20, .cover_atom_threshold = 10}}));
     };
-    CHECK_THROWS_AS(throw_fn_8(), std::invalid_argument);
+    CHECK_THROWS_AS(assess_inconsistent_thresholds(), std::invalid_argument);
 
     // Explicit unsupported execution does not fall back to another mode and requires an executable
     // plan when passed to the facade.
@@ -575,10 +575,10 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
     CHECK(!unsupported_cover_assessment.executable());
     CHECK(unsupported_cover_assessment.requires_executable_plan());
     CHECK(unsupported_cover_assessment.applicability().applicable.size() == 1);
-    const auto throw_fn_9 = [&] -> void {
+    const auto calculate_unsupported_cover = [&] -> void {
         static_cast<void>(calculation::calculate(std::move(unsupported_cover_assessment)));
     };
-    CHECK_THROWS_AS(throw_fn_9(), std::invalid_argument);
+    CHECK_THROWS_AS(calculate_unsupported_cover(), std::invalid_argument);
 }
 
 TEST_CASE("calculation preserves empty-input cardinality and assessment ownership",
@@ -606,17 +606,17 @@ TEST_CASE("calculation preserves empty-input cardinality and assessment ownershi
              {std::pair{"qeq", "qeq"}, std::pair{"qeq", "eem"}}) {
             const auto lvalue_request = make_duplicate_parameter_request(
                 first_method_id, second_method_id, explicit_selection);
-            const auto throw_fn_10 = [&lvalue_request] -> void {
+            const auto assess_duplicate_lvalue_request = [&lvalue_request] -> void {
                 static_cast<void>(calculation::assess(lvalue_request));
             };
-            CHECK_THROWS_AS(throw_fn_10(), std::invalid_argument);
+            CHECK_THROWS_AS(assess_duplicate_lvalue_request(), std::invalid_argument);
 
             auto rvalue_request = make_duplicate_parameter_request(
                 first_method_id, second_method_id, explicit_selection);
-            const auto throw_fn_11 = [&rvalue_request] -> void {
+            const auto assess_duplicate_rvalue_request = [&rvalue_request] -> void {
                 static_cast<void>(calculation::assess(std::move(rvalue_request)));
             };
-            CHECK_THROWS_AS(throw_fn_11(), std::invalid_argument);
+            CHECK_THROWS_AS(assess_duplicate_rvalue_request(), std::invalid_argument);
         }
     }
 

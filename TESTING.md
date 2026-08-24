@@ -103,10 +103,9 @@ layout. The main problems are organization and uneven depth.
 
 ### Structural issues
 
-- Several executables are large sequential `main()` programs rather than independently named Snitch
-  test cases. Notable examples are `test_observer.cpp`, `test_calculation.cpp`,
-  `test_builtin_methods.cpp`, and `test_method_applicability.cpp`. One failure hides later contracts
-  and prevents Snitch from reporting the behavior independently.
+- Several method executables still combine unrelated contracts in one or a few large Snitch test
+  cases. Notable examples are `test_builtin_methods.cpp` and `test_method_applicability.cpp`. Split
+  them so a failure identifies one observable behavior.
 - Planning, facade behavior, target ordering, reduced execution, and observer lifecycle are partly
   duplicated across calculation tests.
 - Method tests are inconsistent. Some assert fixed values, while others only assert signs and total
@@ -219,6 +218,9 @@ CTest run before moving to the next. Avoid a broad rewrite of all test files at 
 
 ### Step 0 — Adopt Snitch and make assertions release-safe
 
+**Status: complete.** Snitch is test-only, all C++ tests use active Snitch assertions, and the
+release CTest suite executes those checks.
+
 1. Fetch Snitch only from the `CHARGEFW_BUILD_TESTS` branch, following the repository's existing
    find-package-then-`FetchContent` dependency pattern.
 2. Convert one focused low-risk target first to named `TEST_CASE`s, including failure output that
@@ -231,6 +233,10 @@ CTest run before moving to the next. Avoid a broad rewrite of all test files at 
 contract.
 
 ### Step 1 — Establish a test inventory and naming convention
+
+**Status: in progress.** `test_calculation.cpp` and `test_observer.cpp` have been split into focused
+named cases; the oversized method suites still need the same treatment and the A–F inventory remains
+to be written.
 
 1. Classify every existing test as A–F above.
 2. Express cases as named Snitch `TEST_CASE`s after observable behavior, not implementation history.
