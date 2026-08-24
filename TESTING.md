@@ -123,7 +123,7 @@ type, but that is not its reason to exist.
 | B — features and parameters | `test_topology_features`, `test_conformer_features`, `test_spatial_fragment`, `test_parameter_classifier`, `test_parameter_set_io` |
 | C — built-in and method conformance | `test_builtin_methods`, `test_method_options`, `test_method_registry`, `test_method_prerequisites`, `test_method_applicability`, `test_method_calculation`, `test_calculation_input` |
 | D — method-specific algorithms | `test_peoe`, `test_mpeoe`, `test_veem`, `test_gdac`, `test_tsef`, `test_delre`, `test_denr`, `test_kcm`, `test_qeq`, `test_sqe`, `test_sqeq0`, `test_sqeqp`, `test_eem`, `test_smpqeq`, `test_sfkeem`, `test_eqeq`, `test_eqeqc`, `test_abeem`, `test_mgc`, `test_charge2` |
-| E — calculation planning and execution | `test_planning`, `test_calculation`, `test_observer`, `test_calculation_targets`, `test_cutoff_execution`, `test_cover_execution` |
+| E — calculation planning and execution | `test_planning`, `test_calculation`, `test_observer`, `test_calculation_targets`, `test_reduced_execution`, `test_cover_execution` |
 | F — adapters and CLI | `test_mol`, `test_json`, `test_json_output`, `test_mol2_output`, `test_sdf_output`, `test_pdb`, `test_mmcif`, `test_mmcif_output`, `test_chargefw_cli_outputs`, `test_chargefw_cli_structural_outputs` |
 
 ### Known duplicate or misplaced coverage
@@ -131,11 +131,9 @@ type, but that is not its reason to exist.
 These should be consolidated without reducing the contracts checked:
 
 - Mixed multi-molecule/multi-conformer source ordering is asserted in full execution by
-  `tests/cpp/calculation/test_calculation.cpp` and in cutoff/cover execution by
-  `tests/cpp/calculation/test_cutoff_execution.cpp`. Observer tests keep only event-identity
-  assertions.
-- Full/cutoff/cover whole-radius equality is implemented in `test_cutoff_execution.cpp` even though it
-  covers both cutoff and cover. Place it in a neutral reduced-execution contract test.
+   `tests/cpp/calculation/test_calculation.cpp` and in cutoff/cover execution by
+   `tests/cpp/calculation/test_reduced_execution.cpp`. Observer tests keep only event-identity
+   assertions.
 
 ## Desired test taxonomy
 
@@ -328,6 +326,10 @@ source lifetime, cached topology identity, and concurrent read-only access.
 it reaches a method calculation.
 
 ### Step 6 — Separate reduced-execution mechanics from approximation evidence
+
+**Status: complete.** `test_reduced_execution.cpp` owns shared cutoff/cover validation, correction,
+source ordering, reduced solver context, automatic/explicit mode selection, and whole-molecule-radius
+equality. `test_cover_execution.cpp` retains cover-specific pivot ownership and serial/parallel behavior.
 
 1. Create a neutral reduced-execution contract target containing shared cutoff/cover mapping,
    correction, target-charge, ownership, error-context, and serial/parallel tests.

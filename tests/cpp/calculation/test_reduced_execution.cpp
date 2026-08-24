@@ -233,8 +233,8 @@ auto assert_reduced_matches_full(
 
 } // namespace
 
-TEST_CASE("cutoff execution produces source-ordered charges and validates inputs",
-          "[calculation][cutoff-execution]") {
+TEST_CASE("reduced execution validates inputs, correction, and mode selection",
+          "[calculation][reduced-execution]") {
     const ZeroFragmentMethod zero_method;
     const auto charged_molecule = core::Molecule{
         std::vector{core::Atom{1, 1}, core::Atom{1, 0}},
@@ -368,7 +368,7 @@ TEST_CASE("cutoff execution produces source-ordered charges and validates inputs
 }
 
 TEST_CASE("reduced solver failures retain method and target context",
-          "[calculation][cutoff-execution]") {
+          "[calculation][reduced-execution]") {
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         const auto calculate_invalid_qeq = [mode] {
@@ -398,7 +398,7 @@ TEST_CASE("reduced solver failures retain method and target context",
 }
 
 TEST_CASE("reduced execution preserves mixed source target order",
-          "[calculation][cutoff-execution]") {
+          "[calculation][reduced-execution]") {
     const auto collection = core::MoleculeCollection{
         std::vector{chargefw::test::make_two_conformer_water(), chargefw::test::make_water()},
         "mixed-water"};

@@ -24,8 +24,8 @@ target_link_libraries(test_calculation_targets PRIVATE
         TBB::tbb
 )
 
-chargefw_add_snitch_test(test_cutoff_execution
-        test_cutoff_execution.cpp
+chargefw_add_snitch_test(test_reduced_execution
+        test_reduced_execution.cpp
 )
 
 chargefw_add_snitch_test(test_cover_execution

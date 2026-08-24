@@ -41,7 +41,7 @@ ctest --preset gcc-debug
 Run one focused test after building:
 
 ```bash
-ctest --test-dir build/gcc-debug -R test_cutoff_execution --output-on-failure
+ctest --test-dir build/gcc-debug -R test_reduced_execution --output-on-failure
 ```
 
 AddressSanitizer configuration:
