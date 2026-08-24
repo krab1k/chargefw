@@ -736,8 +736,7 @@ TEST_CASE("no-plan failures occur before calculation observation begins",
     }
 }
 
-TEST_CASE("reduced fragment failures retain target context and finish observation",
-          "[calculation][observer]") {
+TEST_CASE("reduced fragment failures finish observation and propagate", "[calculation][observer]") {
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         const auto observer = RecordingObserver{};
@@ -753,14 +752,7 @@ TEST_CASE("reduced fragment failures retain target context and finish observatio
         try {
             static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
             CHECK(false);
-        } catch (const std::runtime_error& error) {
-            const auto message = std::string_view{error.what()};
-            CHECK(message.contains(mode == calculation::ExecutionSelectionKind::cutoff
-                                       ? "center atom"
-                                       : "pivot atom"));
-            CHECK(message.contains("method 'qeq'"));
-            CHECK(message.contains("molecule 'water'"));
-            CHECK(message.contains("conformer 0"));
+        } catch (const std::runtime_error&) {
         }
 
         const auto events = observer.events();

@@ -123,7 +123,7 @@ type, but that is not its reason to exist.
 | B — features and parameters | `test_topology_features`, `test_conformer_features`, `test_spatial_fragment`, `test_parameter_classifier`, `test_parameter_set_io` |
 | C — built-in and method conformance | `test_builtin_methods`, `test_method_options`, `test_method_registry`, `test_method_prerequisites`, `test_method_applicability`, `test_method_calculation`, `test_calculation_input` |
 | D — method-specific algorithms | `test_peoe`, `test_mpeoe`, `test_veem`, `test_gdac`, `test_tsef`, `test_delre`, `test_denr`, `test_kcm`, `test_qeq`, `test_sqe`, `test_sqeq0`, `test_sqeqp`, `test_eem`, `test_smpqeq`, `test_sfkeem`, `test_eqeq`, `test_eqeqc`, `test_abeem` |
-| E — calculation planning and execution | `test_calculation`, `test_observer`, `test_calculation_targets`, `test_cutoff_execution`, `test_cover_execution` |
+| E — calculation planning and execution | `test_planning`, `test_calculation`, `test_observer`, `test_calculation_targets`, `test_cutoff_execution`, `test_cover_execution` |
 | F — adapters and CLI | `test_mol`, `test_json`, `test_json_output`, `test_mol2_output`, `test_sdf_output`, `test_pdb`, `test_mmcif`, `test_mmcif_output`, `test_chargefw_cli_outputs`, `test_chargefw_cli_structural_outputs` |
 
 ### Known duplicate or misplaced coverage
@@ -134,8 +134,6 @@ These should be consolidated without reducing the contracts checked:
   `tests/cpp/calculation/test_calculation.cpp` and
   `tests/cpp/calculation/test_observer.cpp`. Keep the result-order contract with facade/execution
   tests; keep only event-identity assertions in observer tests.
-- Detailed reduced fragment solver errors currently live in the observer test. Keep the terminal-event
-  assertion there, but put error context and reduced executor behavior in reduced-execution tests.
 - Full/cutoff/cover whole-radius equality is implemented in `test_cutoff_execution.cpp` even though it
   covers both cutoff and cover. Place it in a neutral reduced-execution contract test.
 
@@ -252,6 +250,9 @@ applicability, and built-in method suites have focused named cases.
 planning, observer, and numerical assertions.
 
 ### Step 2 — Complete and remove TODO section 1
+
+**Status: in progress.** Deterministic ranking and permissive-classification cases now live in
+`test_planning.cpp`; the remaining TODO section 1 contracts still need consolidation and expansion.
 
 Reconcile the first TODO item with its substantial existing coverage.
 

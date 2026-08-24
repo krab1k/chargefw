@@ -2,6 +2,10 @@ chargefw_add_snitch_test(test_calculation
         test_calculation.cpp
 )
 
+chargefw_add_snitch_test(test_planning
+        test_planning.cpp
+)
+
 chargefw_add_snitch_test(test_observer
         test_observer.cpp
 )

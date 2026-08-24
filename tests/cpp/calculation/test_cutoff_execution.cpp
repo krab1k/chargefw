@@ -100,6 +100,19 @@ auto make_qeq_parameters() -> parameters::ParameterSet {
                                                     {.name = "hardness", .value = 13.364}}}}}};
 }
 
+auto make_invalid_qeq_parameters() -> parameters::ParameterSet {
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{
+            .id = "invalid-qeq", .method_id = "qeq", .name = "Invalid QEq"},
+        {},
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
+                                     .parameters = {{.name = "electronegativity", .value = 4.5280},
+                                                    {.name = "hardness", .value = 0.0}}},
+                                    {.key = chargefw::test::plain_atom_key(8),
+                                     .parameters = {{.name = "electronegativity", .value = 8.741},
+                                                    {.name = "hardness", .value = 13.364}}}}}};
+}
+
 auto make_eqeqc_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
@@ -352,4 +365,34 @@ TEST_CASE("cutoff execution produces source-ordered charges and validates inputs
                                 make_charged_water());
     assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)},
                                 make_charged_water());
+}
+
+TEST_CASE("reduced solver failures retain method and target context",
+          "[calculation][cutoff-execution]") {
+    for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
+                            calculation::ExecutionSelectionKind::cover}) {
+        const auto calculate_invalid_qeq = [mode] {
+            static_cast<void>(calculate_application(calculation::AssessmentRequest{
+                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+                .parameter_sets = {make_invalid_qeq_parameters()},
+                .method_id = "qeq",
+                .parameter_set_id = "invalid-qeq",
+                .execution_selection =
+                    calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
+                .resource_policy = {.max_threads = 1}}));
+        };
+
+        try {
+            calculate_invalid_qeq();
+            CHECK(false);
+        } catch (const std::runtime_error& error) {
+            const auto message = std::string_view{error.what()};
+            CHECK(message.contains(mode == calculation::ExecutionSelectionKind::cutoff
+                                       ? "center atom"
+                                       : "pivot atom"));
+            CHECK(message.contains("method 'qeq'"));
+            CHECK(message.contains("molecule 'water'"));
+            CHECK(message.contains("conformer 0"));
+        }
+    }
 }
