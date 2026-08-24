@@ -146,14 +146,19 @@ PDB/mmCIF input writes JSON and mmCIF only. Same-format SDF/MOL2 output preserve
 possible; other molecular output is generated. JSON input with multiple conformers cannot currently be
 written to SDF/MOL2 and is rejected; use `--conformers first` for those output formats.
 
+Completed calculations exit `0`; unexpected internal failures exit `1`. Invalid input or requests exit
+`2`, no executable plan exits `3`, numerical calculation failure exits `4`, and cancellation exits `5`.
+After input import, every outcome writes `<input-stem>.chargefw.json` to the requested directory; only
+successful calculations write molecular charge files.
+
 `inspect` reports imported composition without loading parameters. `applicability` reports scientific
 candidates and their full/cutoff/cover availability without calculation. `methods` and `parameters`
 list installed capabilities.
 
 ### JSON result
 
-Schema `1.0` contains one ordered result per imported molecule, source identity,
-source-ordered charge assignments, totals, and diagnostics. `calculation_provenance` records requested
+Schema `1.0` contains invocation and source-record statuses, diagnostics, source identity, and, only
+on success, source-ordered charge assignments and totals. `calculation_provenance` records requested
 conformer selection, selection/classification/resource/structural policies, and the effective method,
 parameter set, method options, execution mode, radius, correction, and warnings. Requested method
 options contain explicit overrides; effective options contain the complete selected-method values.

@@ -157,18 +157,11 @@ auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
                   });
 }
 
-[[nodiscard]] auto request_requires_executable_plan(const AssessmentRequest& request) -> bool {
-    return request.method_id.has_value() || request.parameter_set_id.has_value() ||
-           request.execution_selection.kind() != ExecutionSelectionKind::automatic;
-}
-
 } // namespace
 
 AssessmentResult::AssessmentResult(core::MoleculeCollection molecules,
-                                   std::vector<parameters::ParameterSet> supplied_parameter_sets,
-                                   const bool requires_executable_plan)
+                                   std::vector<parameters::ParameterSet> supplied_parameter_sets)
     : parameter_sets_{std::move(supplied_parameter_sets)},
-      requires_executable_plan_{requires_executable_plan},
       molecules_{std::make_unique<core::MoleculeCollection>(std::move(molecules))},
       prepared_molecules_{std::make_unique<features::PreparedMoleculeCollection>(*molecules_)} {}
 
@@ -322,11 +315,9 @@ auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResu
     const auto classification_options = request.classification_options;
     const auto execution_selection = request.execution_selection;
     const auto resource_policy = request.resource_policy;
-    const auto executable_plan_required = request_requires_executable_plan(request);
     retain_requested_parameter_set(request);
     auto method_options = std::move(request.method_options);
-    auto result = AssessmentResult{std::move(request.molecules), std::move(request.parameter_sets),
-                                   executable_plan_required};
+    auto result = AssessmentResult{std::move(request.molecules), std::move(request.parameter_sets)};
     result.assess_prepared(selected_methods, classification_options, resource_policy,
                            method_options, execution_selection);
     result.applicability_seconds_ =

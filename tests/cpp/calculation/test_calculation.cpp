@@ -269,14 +269,13 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
           std::optional<double>{calculation::default_automatic_reduced_radius});
     CHECK(automatic_fallback_result.execution_issues.empty());
 
-    const auto calculate_automatic_mgc = [] -> void {
-        static_cast<void>(calculate_application(calculation::AssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .method_id = "mgc",
-            .resource_policy = {.cutoff_atom_threshold = 2}}));
-    };
-    CHECK_THROWS_AS(calculate_automatic_mgc(), std::invalid_argument);
+    const auto automatic_mgc_result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {},
+        .method_id = "mgc",
+        .resource_policy = {.cutoff_atom_threshold = 2}});
+    CHECK(automatic_mgc_result.status == calculation::ExecutionStatus::no_executable_plan);
+    CHECK_FALSE(automatic_mgc_result.calculated());
 
     const auto explicit_full_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -303,15 +302,14 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
     CHECK(unlimited_result.charges->method_id() == std::string_view{"mgc"});
     CHECK(unlimited_result.execution_issues.empty());
 
-    const auto calculate_unsupported_cutoff = [] -> void {
-        static_cast<void>(calculate_application(calculation::AssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .method_id = "mgc",
-            .execution_selection = calculation::ExecutionSelection{
-                calculation::ExecutionSelectionKind::cutoff, 8.0}}));
-    };
-    CHECK_THROWS_AS(calculate_unsupported_cutoff(), std::invalid_argument);
+    const auto unsupported_cutoff_result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .parameter_sets = {},
+        .method_id = "mgc",
+        .execution_selection =
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff, 8.0}});
+    CHECK(unsupported_cutoff_result.status == calculation::ExecutionStatus::no_executable_plan);
+    CHECK_FALSE(unsupported_cutoff_result.calculated());
 
     const auto calculate_missing_method = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{

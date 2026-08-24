@@ -91,14 +91,9 @@ class AssessmentResult {
         return execution_policy_.has_value();
     }
 
-    [[nodiscard]] auto requires_executable_plan() const noexcept -> bool {
-        return requires_executable_plan_;
-    }
-
   private:
     AssessmentResult(core::MoleculeCollection molecules,
-                     std::vector<parameters::ParameterSet> parameter_sets,
-                     bool requires_executable_plan);
+                     std::vector<parameters::ParameterSet> parameter_sets);
 
     [[nodiscard]] static auto assess_owned(AssessmentRequest request) -> AssessmentResult;
 
@@ -124,7 +119,6 @@ class AssessmentResult {
     std::optional<ExecutionPolicy> execution_policy_;
     std::vector<methods::ExecutionIssue> execution_issues_;
     double applicability_seconds_ = 0.0;
-    bool requires_executable_plan_ = false;
     std::unique_ptr<core::MoleculeCollection> molecules_;
     std::unique_ptr<features::PreparedMoleculeCollection> prepared_molecules_;
 };

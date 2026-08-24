@@ -5,7 +5,9 @@
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 
+#include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace chargefw::calculation {
@@ -33,18 +35,33 @@ struct CalculationMetrics {
     double computation_seconds = 0.0;
 };
 
+enum class ExecutionStatus : std::uint8_t {
+    success,
+    invalid_input_or_request,
+    no_executable_plan,
+    numerical_failure,
+    cancelled,
+};
+
 // Result of the application-facing facade, which performs applicability and automatic selection.
 struct ExecutionResult {
+    ExecutionStatus status = ExecutionStatus::success;
     std::optional<charges::ChargeSet> charges;
     ApplicabilityReport applicability;
     std::optional<ExecutionPolicy> execution_policy;
     std::vector<methods::ExecutionIssue> execution_issues;
     std::optional<methods::MethodOptions> effective_method_options;
+    std::optional<std::string> selected_method_id;
+    std::optional<std::string> selected_parameter_set_id;
+    std::optional<std::string> failure_message;
     CalculationMetrics metrics;
-    bool cancelled = false;
 
     [[nodiscard]] auto calculated() const noexcept -> bool {
-        return charges.has_value();
+        return status == ExecutionStatus::success && charges.has_value();
+    }
+
+    [[nodiscard]] auto cancelled() const noexcept -> bool {
+        return status == ExecutionStatus::cancelled;
     }
 };
 
@@ -56,8 +73,8 @@ struct ExecutionResult {
 
 // Executes a plan returned by assess() without repeating preparation or applicability assessment.
 // The assessment is consumed because the result owns its classifications and parameter data. It
-// delegates computation observation to the low-level overload and converts cancellation to a
-// result.
+// delegates computation observation to the low-level overload and converts no-plan and cancellation
+// outcomes to values. Calculation failures propagate to the caller.
 [[nodiscard]] auto calculate(AssessmentResult assessment, std::size_t max_threads = 0,
                              const CalculationObserver& observer = default_calculation_observer())
     -> ExecutionResult;

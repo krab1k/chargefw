@@ -10,28 +10,9 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Result contract, molecular I/O, and CLI
 
-- [ ] Record cancellation distinctly at the application result and serialized CLI boundary. A
-  cancelled calculation currently has no charges and exit status 1, making its JSON/output behavior
-  indistinguishable from a no-plan result. Add an owned cancellation status or diagnostic to the
-  stable result schema and provenance, define its exit-status behavior alongside invalid request,
-  no-plan, and numerical failure, and test cancellation before a target and during reduced fragment
-  work. Do not serialize partial charges.
-- [ ] Remove the CLI's full-molecule duplication between `ImportedCollection::molecules` and
-  `ImportedExportContext::records[*].molecule`. The current move into assessment depends on retaining
-  a second molecule copy for export and makes peak memory roughly twice the imported molecular data
-  before prepared features and solver allocations. Redesign imported records/export state to retain
-  identity, source mapping, and preservation data without duplicating calculation molecules, while
-  preserving source order and generated/preservation-oriented SDF, MOL2, PDB, and mmCIF output. Fold
-  this into bounded-memory batch execution and add peak-memory and mapping regression coverage.
 - [ ] Define the stable result/error schema. Represent successful and failed source records in input
   order with owned import/calculation diagnostics, multi-conformer assignments,
   precision/total-charge rules, and schema compatibility/versioning rules.
-- [ ] Make CLI failures structured and distinguish exit statuses for invalid input/request, no
-  executable plan, and numerical calculation failure. Do not print a no-plan result only to stdout
-  when an output directory was requested.
-- [ ] Add bounded-memory batch execution with deterministic record order and memory independent of
-  total record count. Preserve the policy that malformed input terminates import unless a separately
-  specified recovery mode is introduced.
 - [ ] Add complete calculation provenance to SDF, MOL2, and mmCIF in format-appropriate fields. Include
   effective method options once application-facing options exist; do not duplicate JSON schema
   internals unnecessarily.

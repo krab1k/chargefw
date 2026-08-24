@@ -252,7 +252,6 @@ TEST_CASE("explicit unsupported execution has no selected plan or fallback",
             calculation::ExecutionSelectionKind::cover, calculation::minimum_reduced_radius}});
 
     CHECK_FALSE(assessment.executable());
-    CHECK(assessment.requires_executable_plan());
     CHECK_FALSE(assessment.applicability().selected_candidate_index.has_value());
     CHECK_FALSE(assessment.execution_policy().has_value());
     CHECK(assessment.execution_issues().empty());
@@ -267,10 +266,9 @@ TEST_CASE("explicit unsupported execution has no selected plan or fallback",
     REQUIRE(cover->issues.size() == 1);
     CHECK(cover->issues[0].kind == methods::ExecutionIssueKind::unsupported_execution_mode);
 
-    const auto calculate_unsupported_cover = [&] {
-        static_cast<void>(calculation::calculate(std::move(assessment)));
-    };
-    CHECK_THROWS_AS(calculate_unsupported_cover(), std::invalid_argument);
+    const auto result = calculation::calculate(std::move(assessment));
+    CHECK(result.status == calculation::ExecutionStatus::no_executable_plan);
+    CHECK_FALSE(result.calculated());
 }
 
 TEST_CASE("explicit no-plan assessment reports rejected scientific prerequisites",
@@ -280,7 +278,6 @@ TEST_CASE("explicit no-plan assessment reports rejected scientific prerequisites
         .method_id = "smpqeq"});
 
     CHECK_FALSE(assessment.executable());
-    CHECK(assessment.requires_executable_plan());
     CHECK_FALSE(assessment.applicability().selected_candidate_index.has_value());
     CHECK_FALSE(assessment.execution_policy().has_value());
     CHECK(assessment.execution_issues().empty());
@@ -289,8 +286,7 @@ TEST_CASE("explicit no-plan assessment reports rejected scientific prerequisites
     CHECK(assessment.applicability().rejected[0].method_id == "smpqeq");
     CHECK_FALSE(assessment.applicability().rejected[0].issues.empty());
 
-    const auto calculate_without_plan = [&] {
-        static_cast<void>(calculation::calculate(std::move(assessment)));
-    };
-    CHECK_THROWS_AS(calculate_without_plan(), std::invalid_argument);
+    const auto result = calculation::calculate(std::move(assessment));
+    CHECK(result.status == calculation::ExecutionStatus::no_executable_plan);
+    CHECK_FALSE(result.calculated());
 }

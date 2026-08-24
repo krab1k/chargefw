@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <ostream>
 #include <print>
+#include <span>
 #include <stdexcept>
 #include <string>
 
@@ -16,6 +17,32 @@ using Json = nlohmann::json;
 
 constexpr auto charge_scale = 10000.0;
 constexpr auto metric_scale = 1000.0;
+
+[[nodiscard]] auto status_name(const ResultStatus status) -> const char* {
+    switch (status) {
+    case ResultStatus::success:
+        return "success";
+    case ResultStatus::invalid_input_or_request:
+        return "invalid_input_or_request";
+    case ResultStatus::no_executable_plan:
+        return "no_executable_plan";
+    case ResultStatus::numerical_failure:
+        return "numerical_failure";
+    case ResultStatus::cancelled:
+        return "cancelled";
+    }
+    throw std::invalid_argument{"unknown result status"};
+}
+
+[[nodiscard]] auto diagnostics_json(const std::span<const ResultDiagnostic> diagnostics) -> Json {
+    Json result = Json::array();
+    for (const auto& diagnostic : diagnostics) {
+        result.push_back({{"severity", diagnostic.severity},
+                          {"code", diagnostic.code},
+                          {"message", diagnostic.message}});
+    }
+    return result;
+}
 
 [[nodiscard]] auto rounded(const double value, const double scale) -> double {
     return std::round(value * scale) / scale;
@@ -36,13 +63,9 @@ constexpr auto metric_scale = 1000.0;
         input["record_id"] = record.identity.record_id;
     }
 
-    Json result{{"input", std::move(input)}};
+    Json result{{"input", std::move(input)}, {"status", status_name(record.status)}};
     if (!record.charges.has_value()) {
-        result["status"] = "error";
-        result["diagnostics"] =
-            Json::array({{{"severity", "error"},
-                          {"code", "no_applicable_method"},
-                          {"message", "No applicable method and parameter set were found."}}});
+        result["diagnostics"] = diagnostics_json(record.diagnostics);
         return result;
     }
 
@@ -65,9 +88,8 @@ constexpr auto metric_scale = 1000.0;
                                     std::to_string(molecule_index)};
     }
 
-    result["status"] = "success";
     result["assignments"] = std::move(assignments);
-    result["diagnostics"] = Json::array();
+    result["diagnostics"] = diagnostics_json(record.diagnostics);
     return result;
 }
 
@@ -159,6 +181,8 @@ auto JsonWriter::write(const ChargeResultDocument& document) const -> void {
     Json result{
         {"schema_version", "1.0"},
         {"generator", {{"name", document.generator_name}, {"version", document.generator_version}}},
+        {"status", status_name(document.status)},
+        {"diagnostics", diagnostics_json(document.diagnostics)},
         {"results", std::move(records)}};
     if (document.calculation_provenance.has_value()) {
         result["calculation_provenance"] = provenance_json(*document.calculation_provenance);

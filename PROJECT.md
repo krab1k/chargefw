@@ -193,11 +193,18 @@ before calling `calculate(std::move(assessment), ...)`; they are also retained i
 Cooperative cancellation: `cancelled()` is polled at each target and fragment iteration boundary,
 including immediately after `target_started`. When it returns true, `CalculationCancelled` is thrown
 and propagated through oneTBB to the application facade, which returns
-`ExecutionResult{.cancelled = true}` with no charges. Low-level `calculate()` propagates
-the exception. The observer contract requires its callbacks and `cancelled` to be thread-safe and
-must not throw; the observer is purely observational and must not mutate method options, parameters,
-execution policy, geometry, or selection. This terminal-event guarantee lets terminal observers
-restore progress output on all started-computation paths.
+`ExecutionResult{.status = ExecutionStatus::cancelled}` with no charges. Low-level `calculate()`
+propagates the exception. The observer contract requires its callbacks and `cancelled` to be
+thread-safe and must not throw; the observer is purely observational and must not mutate method
+options, parameters, execution policy, geometry, or selection. This terminal-event guarantee lets
+terminal observers restore progress output on all started-computation paths.
+
+The owned facade represents `success`, `invalid_input_or_request`, `no_executable_plan`,
+`numerical_failure`, and `cancelled` outcomes. The CLI writes a JSON result for all outcomes reached
+after import, with document and source-record status/diagnostics; non-successful outcomes never write
+charge assignments or molecular output. CLI exits are `0` for success, `1` for an unexpected internal
+failure, `2` for invalid input/request, `3` for no executable plan, `4` for numerical failure, and `5`
+for cancellation.
 
 The CLI progress observer serializes standard-error updates and clears the full rendered line before
 every target/fragment update and terminal newline, preventing stale suffixes when messages shrink or

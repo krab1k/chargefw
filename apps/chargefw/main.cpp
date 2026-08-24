@@ -142,8 +142,19 @@ auto run(std::span<char*> arguments) -> int {
     const auto& observer =
         progress ? static_cast<const chargefw::calculation::CalculationObserver&>(progress_observer)
                  : chargefw::calculation::default_calculation_observer();
-    const auto result =
-        chargefw::calculation::calculate(std::move(assessment), max_threads, observer);
+    auto result = [&]() -> chargefw::calculation::ExecutionResult {
+        try {
+            return chargefw::calculation::calculate(std::move(assessment), max_threads, observer);
+        } catch (const std::invalid_argument& error) {
+            return {.status = chargefw::calculation::ExecutionStatus::invalid_input_or_request,
+                    .charges = std::nullopt,
+                    .failure_message = error.what()};
+        } catch (const std::exception& error) {
+            return {.status = chargefw::calculation::ExecutionStatus::numerical_failure,
+                    .charges = std::nullopt,
+                    .failure_message = error.what()};
+        }
+    }();
     run.metrics.applicability_seconds = result.metrics.applicability_seconds;
     run.metrics.computation_seconds = result.metrics.computation_seconds;
     return chargefw::cli::write_calculation_outputs(
@@ -155,8 +166,14 @@ auto run(std::span<char*> arguments) -> int {
 auto main(int argc, char* argv[]) noexcept -> int {
     try {
         return run({argv, static_cast<std::size_t>(argc)});
+    } catch (const std::invalid_argument& error) {
+        std::print(std::cerr, "Invalid input or request: {}\n", error.what());
+        return 2;
+    } catch (const std::runtime_error& error) {
+        std::print(std::cerr, "Invalid input or request: {}\n", error.what());
+        return 2;
     } catch (const std::exception& error) {
-        std::print(std::cerr, "Fatal error: {}\n", error.what());
+        std::print(std::cerr, "Internal error: {}\n", error.what());
         return 1;
     }
 }

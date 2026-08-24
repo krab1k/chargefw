@@ -327,7 +327,7 @@ TEST_CASE("default observer preserves successful calculation results", "[calcula
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
         REQUIRE(result.calculated());
-        CHECK(!result.cancelled);
+        CHECK(!result.cancelled());
         CHECK(result.charges->method_id() == std::string_view{"formal"});
     }
 }
@@ -345,7 +345,7 @@ TEST_CASE("observer emits ordered computation and target phases", "[calculation]
             observer);
 
         REQUIRE(result.calculated());
-        CHECK(!result.cancelled);
+        CHECK(!result.cancelled());
 
         const auto events = observer.events();
         REQUIRE(!events.empty());
@@ -427,7 +427,7 @@ TEST_CASE("resource threshold warnings remain assessment data before computation
 
         const auto result = calculation::calculate(std::move(assessment), 1, observer);
         REQUIRE(result.calculated());
-        CHECK(!result.cancelled);
+        CHECK(!result.cancelled());
         const auto events = observer.events();
         REQUIRE(!events.empty());
         CHECK(events[0].phase == calculation::CalculationPhase::computation_started);
@@ -447,8 +447,10 @@ TEST_CASE("cancellation produces a terminal observer event", "[calculation][obse
                 .resource_policy = {.max_threads = 1}},
             observer);
 
-        CHECK(result.cancelled);
+        CHECK(result.cancelled());
         CHECK(!result.calculated());
+        CHECK(result.status == calculation::ExecutionStatus::cancelled);
+        CHECK(result.selected_method_id == "formal");
         const auto events = observer.events();
         REQUIRE(!events.empty());
         CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
@@ -530,7 +532,7 @@ TEST_CASE("terminal observer callback failures do not terminate calculation",
             observer);
 
         REQUIRE(result.calculated());
-        CHECK(!result.cancelled);
+        CHECK(!result.cancelled());
         CHECK(observer.terminal_callbacks() == 1);
     }
 }
@@ -549,7 +551,7 @@ TEST_CASE("serial cutoff execution emits aggregate fragment progress", "[calcula
             observer);
 
         REQUIRE(result.calculated());
-        CHECK(!result.cancelled);
+        CHECK(!result.cancelled());
 
         const auto fragment_events = fragment_progress_events(observer);
         REQUIRE(!fragment_events.empty());
@@ -573,7 +575,7 @@ TEST_CASE("serial cover execution emits aggregate multi-pivot progress",
             observer);
 
         REQUIRE(result.calculated());
-        CHECK(!result.cancelled);
+        CHECK(!result.cancelled());
 
         const auto fragment_events = fragment_progress_events(observer);
         REQUIRE(!fragment_events.empty());
@@ -598,7 +600,7 @@ TEST_CASE("multi-molecule target events carry source molecule identity",
             observer);
 
         REQUIRE(result.calculated());
-        CHECK(!result.cancelled);
+        CHECK(!result.cancelled());
 
         const auto events = observer.events();
 
@@ -732,11 +734,9 @@ TEST_CASE("no-plan failures occur before calculation observation begins",
             .execution_selection = calculation::ExecutionSelection{
                 calculation::ExecutionSelectionKind::cover, calculation::minimum_reduced_radius}});
         CHECK(!assessment.executable());
-        CHECK(assessment.requires_executable_plan());
-        const auto calculate_unsupported_cover = [&] -> void {
-            static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
-        };
-        CHECK_THROWS_AS(calculate_unsupported_cover(), std::invalid_argument);
+        const auto result = calculation::calculate(std::move(assessment), 1, observer);
+        CHECK(result.status == calculation::ExecutionStatus::no_executable_plan);
+        CHECK_FALSE(result.calculated());
         CHECK(observer.events().empty());
     }
 }
@@ -783,7 +783,7 @@ TEST_CASE("observer callback failures do not alter calculation control flow",
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
             observer);
         REQUIRE(result.calculated());
-        CHECK(!result.cancelled);
+        CHECK(!result.cancelled());
         CHECK(observer.callbacks() >= 4);
     }
 }
@@ -804,8 +804,9 @@ TEST_CASE("reduced execution observes cancellation after fragment progress",
                     .resource_policy = {.max_threads = max_threads}},
                 observer);
 
-            CHECK(result.cancelled);
+            CHECK(result.cancelled());
             CHECK(!result.calculated());
+            CHECK(result.status == calculation::ExecutionStatus::cancelled);
             CHECK(observer.cancellation_checks_after_request() > 0);
 
             const auto events = observer.events();

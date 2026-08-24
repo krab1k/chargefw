@@ -5,12 +5,27 @@
 #include <chargefw/methods/method_options.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace chargefw::adapters {
+
+enum class ResultStatus : std::uint8_t {
+    success,
+    invalid_input_or_request,
+    no_executable_plan,
+    numerical_failure,
+    cancelled,
+};
+
+struct ResultDiagnostic {
+    std::string severity;
+    std::string code;
+    std::string message;
+};
 
 struct StructuralInputPolicyProvenance {
     std::string selection;
@@ -65,11 +80,15 @@ struct CalculationProvenance {
 struct ChargeResultRecord {
     MoleculeRecordIdentity identity;
     std::optional<charges::ChargeSet> charges;
+    ResultStatus status = ResultStatus::success;
+    std::vector<ResultDiagnostic> diagnostics;
 };
 
 struct ChargeResultDocument {
     std::string generator_name;
     std::string generator_version;
+    ResultStatus status = ResultStatus::success;
+    std::vector<ResultDiagnostic> diagnostics;
     std::vector<ChargeResultRecord> records;
     std::optional<CalculationProvenance> calculation_provenance;
 };

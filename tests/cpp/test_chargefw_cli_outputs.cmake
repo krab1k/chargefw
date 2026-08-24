@@ -52,6 +52,66 @@ foreach(mode IN ITEMS full cutoff cover)
     file(REMOVE_RECURSE "${mode_output_directory}")
 endforeach()
 
+set(no_plan_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_no_plan")
+set(no_plan_output_prefix "${no_plan_output_directory}/water.chargefw")
+file(REMOVE_RECURSE "${no_plan_output_directory}")
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" calculate --method smpqeq "${CHARGEFW_INPUT}"
+                "${no_plan_output_directory}"
+        RESULT_VARIABLE no_plan_result
+        OUTPUT_VARIABLE no_plan_output
+        ERROR_VARIABLE no_plan_error
+)
+if(NOT no_plan_result EQUAL 3)
+    message(FATAL_ERROR "no-plan CLI exit status was ${no_plan_result}: ${no_plan_error}")
+endif()
+if(NOT EXISTS "${no_plan_output_prefix}.json")
+    message(FATAL_ERROR "no-plan CLI JSON output was not written to the output directory")
+endif()
+foreach(extension IN ITEMS sdf mol2 cif)
+    if(EXISTS "${no_plan_output_prefix}.${extension}")
+        message(FATAL_ERROR "no-plan CLI wrote unexpected molecular output: ${extension}")
+    endif()
+endforeach()
+file(READ "${no_plan_output_prefix}.json" no_plan_json)
+string(JSON no_plan_status GET "${no_plan_json}" status)
+string(JSON no_plan_record_status GET "${no_plan_json}" results 0 status)
+string(JSON no_plan_diagnostic GET "${no_plan_json}" diagnostics 0 code)
+if(NOT no_plan_status STREQUAL "no_executable_plan" OR
+   NOT no_plan_record_status STREQUAL "no_executable_plan" OR
+   NOT no_plan_diagnostic STREQUAL "no_executable_plan")
+    message(FATAL_ERROR "no-plan CLI JSON does not report a structured no-plan result")
+endif()
+file(REMOVE_RECURSE "${no_plan_output_directory}")
+
+set(invalid_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_invalid")
+set(invalid_output_prefix "${invalid_output_directory}/water.chargefw")
+file(REMOVE_RECURSE "${invalid_output_directory}")
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" calculate --threads 18446744073709551615 "${CHARGEFW_INPUT}"
+                "${invalid_output_directory}"
+        RESULT_VARIABLE invalid_result
+        ERROR_VARIABLE invalid_error
+)
+if(NOT invalid_result EQUAL 2)
+    message(FATAL_ERROR "invalid-request CLI exit status was ${invalid_result}: ${invalid_error}")
+endif()
+if(NOT EXISTS "${invalid_output_prefix}.json")
+    message(FATAL_ERROR "invalid-request CLI JSON output was not written to the output directory")
+endif()
+file(READ "${invalid_output_prefix}.json" invalid_json)
+string(JSON invalid_status GET "${invalid_json}" status)
+string(JSON invalid_diagnostic GET "${invalid_json}" diagnostics 0 code)
+if(NOT invalid_status STREQUAL "invalid_input_or_request" OR
+   NOT invalid_diagnostic STREQUAL "invalid_input_or_request")
+    message(FATAL_ERROR "invalid-request CLI JSON does not report a structured invalid result")
+endif()
+file(REMOVE_RECURSE "${invalid_output_directory}")
+
 set(warning_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_warning")
 file(REMOVE_RECURSE "${warning_output_directory}")
 execute_process(

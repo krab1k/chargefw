@@ -84,15 +84,16 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
 auto calculate(AssessmentResult assessment, const std::size_t max_threads,
                const CalculationObserver& observer) -> ExecutionResult {
     if (!assessment.executable()) {
-        if (assessment.requires_executable_plan()) {
-            throw std::invalid_argument{"requested calculation selection has no executable plan"};
-        }
         return ExecutionResult{
+            .status = ExecutionStatus::no_executable_plan,
             .charges = std::nullopt,
             .applicability = std::move(assessment.applicability_report_),
             .execution_policy = std::nullopt,
             .execution_issues = {},
             .effective_method_options = std::nullopt,
+            .selected_method_id = std::nullopt,
+            .selected_parameter_set_id = std::nullopt,
+            .failure_message = std::nullopt,
             .metrics = {.applicability_seconds = assessment.applicability_seconds_}};
     }
 
@@ -104,6 +105,11 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
     const auto& selected =
         assessment.applicability_.applicable.at(*assessment.selected_candidate_index_);
     const auto effective_method_options = selected.method_options;
+    const auto selected_method_id = std::string{selected.method->id()};
+    const auto selected_parameter_set_id =
+        selected.parameter_set == nullptr
+            ? std::nullopt
+            : std::optional{std::string{selected.parameter_set->id()}};
 
     const auto computation_started = std::chrono::steady_clock::now();
 
@@ -118,11 +124,15 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
             std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
                 .count();
         return ExecutionResult{
+            .status = ExecutionStatus::success,
             .charges = std::move(result.charges),
             .applicability = std::move(assessment.applicability_report_),
             .execution_policy = assessment.execution_policy_,
             .execution_issues = std::move(assessment.execution_issues_),
             .effective_method_options = effective_method_options,
+            .selected_method_id = selected_method_id,
+            .selected_parameter_set_id = selected_parameter_set_id,
+            .failure_message = std::nullopt,
             .metrics = {.applicability_seconds = assessment.applicability_seconds_,
                         .computation_seconds = computation_seconds}};
     } catch (const CalculationCancelled&) {
@@ -130,14 +140,17 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
             std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
                 .count();
         return ExecutionResult{
+            .status = ExecutionStatus::cancelled,
             .charges = std::nullopt,
             .applicability = std::move(assessment.applicability_report_),
             .execution_policy = assessment.execution_policy_,
             .execution_issues = std::move(assessment.execution_issues_),
-            .effective_method_options = std::nullopt,
+            .effective_method_options = effective_method_options,
+            .selected_method_id = selected_method_id,
+            .selected_parameter_set_id = selected_parameter_set_id,
+            .failure_message = std::nullopt,
             .metrics = {.applicability_seconds = assessment.applicability_seconds_,
-                        .computation_seconds = computation_seconds},
-            .cancelled = true};
+                        .computation_seconds = computation_seconds}};
     }
 }
 

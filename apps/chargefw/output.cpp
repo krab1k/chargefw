@@ -127,6 +127,48 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                                    const calculation::ExecutionResult& result,
                                    const adapters::ExecutionMetrics& metrics)
     -> adapters::ChargeResultDocument {
+    const auto status = [&result] {
+        switch (result.status) {
+        case calculation::ExecutionStatus::success:
+            return adapters::ResultStatus::success;
+        case calculation::ExecutionStatus::invalid_input_or_request:
+            return adapters::ResultStatus::invalid_input_or_request;
+        case calculation::ExecutionStatus::no_executable_plan:
+            return adapters::ResultStatus::no_executable_plan;
+        case calculation::ExecutionStatus::numerical_failure:
+            return adapters::ResultStatus::numerical_failure;
+        case calculation::ExecutionStatus::cancelled:
+            return adapters::ResultStatus::cancelled;
+        }
+        throw std::logic_error{"unknown execution result status"};
+    }();
+    const auto diagnostic = [&result] -> std::optional<adapters::ResultDiagnostic> {
+        switch (result.status) {
+        case calculation::ExecutionStatus::success:
+            return std::nullopt;
+        case calculation::ExecutionStatus::invalid_input_or_request:
+            return adapters::ResultDiagnostic{.severity = "error",
+                                              .code = "invalid_input_or_request",
+                                              .message = result.failure_message.value_or(
+                                                  "Invalid input or calculation request.")};
+        case calculation::ExecutionStatus::no_executable_plan:
+            return adapters::ResultDiagnostic{
+                .severity = "error",
+                .code = "no_executable_plan",
+                .message = "No executable method and parameter-set plan was found."};
+        case calculation::ExecutionStatus::numerical_failure:
+            return adapters::ResultDiagnostic{
+                .severity = "error",
+                .code = "numerical_failure",
+                .message = result.failure_message.value_or("Calculation failed numerically.")};
+        case calculation::ExecutionStatus::cancelled:
+            return adapters::ResultDiagnostic{.severity = "info",
+                                              .code = "calculation_cancelled",
+                                              .message =
+                                                  "Calculation was cancelled before completion."};
+        }
+        throw std::logic_error{"unknown execution result status"};
+    }();
     auto warnings = std::vector<std::string>{};
     warnings.reserve(result.execution_issues.size());
     for (const auto& issue : result.execution_issues) {
@@ -134,14 +176,8 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
     }
     auto provenance = adapters::CalculationProvenance{
         .requested = requested,
-        .effective = {.method_id = result.charges.has_value()
-                                       ? std::optional{std::string{result.charges->method_id()}}
-                                       : std::nullopt,
-                      .parameter_set_id =
-                          result.charges.has_value()
-                              ? result.charges->parameter_set_id().transform(
-                                    [](const std::string_view id) { return std::string{id}; })
-                              : std::nullopt,
+        .effective = {.method_id = result.selected_method_id,
+                      .parameter_set_id = result.selected_parameter_set_id,
                       .execution_mode = result.execution_policy.has_value()
                                             ? std::optional{std::string{calculation::to_string(
                                                   result.execution_policy->mode())}}
@@ -156,18 +192,26 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                               : std::nullopt,
                       .warnings = std::move(warnings)},
         .execution_metrics = metrics};
-    if (result.effective_method_options.has_value() && result.charges.has_value()) {
-        provenance.effective.method_options.emplace(std::string{result.charges->method_id()},
+    if (result.effective_method_options.has_value() && result.selected_method_id.has_value()) {
+        provenance.effective.method_options.emplace(*result.selected_method_id,
                                                     *result.effective_method_options);
     }
-    auto document = adapters::ChargeResultDocument{.generator_name = "ChargeFW",
-                                                   .generator_version = "0.0.1",
-                                                   .records = {},
-                                                   .calculation_provenance = provenance};
+    auto document = adapters::ChargeResultDocument{
+        .generator_name = "ChargeFW",
+        .generator_version = "0.0.1",
+        .status = status,
+        .diagnostics = diagnostic.has_value() ? std::vector{*diagnostic}
+                                              : std::vector<adapters::ResultDiagnostic>{},
+        .records = {},
+        .calculation_provenance = provenance};
     document.records.reserve(export_context.records.size());
     for (const auto& record : export_context.records) {
-        document.records.push_back(
-            adapters::ChargeResultRecord{.identity = record.identity, .charges = result.charges});
+        document.records.push_back(adapters::ChargeResultRecord{
+            .identity = record.identity,
+            .charges = result.charges,
+            .status = status,
+            .diagnostics = diagnostic.has_value() ? std::vector{*diagnostic}
+                                                  : std::vector<adapters::ResultDiagnostic>{}});
     }
     return document;
 }
@@ -230,13 +274,36 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
                                const calculation::ExecutionResult& result, CalculationRun& run)
     -> int {
     run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
+    const auto directory = std::filesystem::path{output_directory};
+    std::error_code directory_error;
+    std::filesystem::create_directories(directory, directory_error);
+    if (directory_error) {
+        throw std::runtime_error{"Unable to create output directory: " + directory.string() + ": " +
+                                 directory_error.message()};
+    }
+    if (!std::filesystem::is_directory(directory)) {
+        throw std::runtime_error{"Output path is not a directory: " + directory.string()};
+    }
+    const auto prefix =
+        directory / (std::filesystem::path{input_path}.stem().string() + ".chargefw");
     if (!result.calculated()) {
         run.metrics.ended_at = utc_timestamp();
         run.metrics.runtime_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
-        adapters::native::json_output::JsonWriter{std::cout}.write(
-            result_document(export_context, requested, result, run.metrics));
-        return 1;
+        write_json(prefix.string() + ".json",
+                   result_document(export_context, requested, result, run.metrics));
+        switch (result.status) {
+        case calculation::ExecutionStatus::invalid_input_or_request:
+            return 2;
+        case calculation::ExecutionStatus::no_executable_plan:
+            return 3;
+        case calculation::ExecutionStatus::numerical_failure:
+            return 4;
+        case calculation::ExecutionStatus::cancelled:
+            return 5;
+        case calculation::ExecutionStatus::success:
+            throw std::logic_error{"successful result has no charges"};
+        }
     }
 
     const auto structural_output = export_context.format == ImportedExportContext::Format::pdb ||
@@ -251,18 +318,6 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
             "JSON input with multiple conformers cannot be written to SDF or MOL2"};
     }
 
-    const auto directory = std::filesystem::path{output_directory};
-    std::error_code directory_error;
-    std::filesystem::create_directories(directory, directory_error);
-    if (directory_error) {
-        throw std::runtime_error{"Unable to create output directory: " + directory.string() + ": " +
-                                 directory_error.message()};
-    }
-    if (!std::filesystem::is_directory(directory)) {
-        throw std::runtime_error{"Output path is not a directory: " + directory.string()};
-    }
-    const auto prefix =
-        directory / (std::filesystem::path{input_path}.stem().string() + ".chargefw");
     const auto* charges = result.charges ? std::addressof(*result.charges) : nullptr;
     if (charges == nullptr) {
         throw std::runtime_error{"calculation result is missing charges"};

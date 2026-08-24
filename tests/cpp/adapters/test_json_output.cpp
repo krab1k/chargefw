@@ -25,7 +25,11 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
                                               .charges = charges::AtomicCharges{{-0.87654, 0.43827,
                                                                                  0.43827}}}}}},
              {.identity = {.source = "water.sdf", .record_index = 3, .record_id = "unavailable"},
-              .charges = std::nullopt}},
+              .charges = std::nullopt,
+              .status = adapters::ResultStatus::no_executable_plan,
+              .diagnostics = {{.severity = "error",
+                               .code = "no_executable_plan",
+                               .message = "No executable plan."}}}},
         .calculation_provenance = adapters::CalculationProvenance{
             .requested = {.method_id = std::nullopt,
                           .parameter_set_id = std::nullopt,
@@ -65,6 +69,8 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     const auto result = nlohmann::json::parse(output.str());
 
     CHECK(result.at("schema_version") == "1.0");
+    CHECK(result.at("status") == "success");
+    CHECK(result.at("diagnostics").empty());
     CHECK(result.at("generator").at("name") == "ChargeFW");
     REQUIRE(result.at("results").size() == 2);
     const auto& provenance = result.at("calculation_provenance");
@@ -108,7 +114,32 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     CHECK(calculated.at("assignments").at(0).at("charges").at(1) == 0.4383);
 
     const auto& unavailable = result.at("results").at(1);
-    CHECK(unavailable.at("status") == "error");
+    CHECK(unavailable.at("status") == "no_executable_plan");
     CHECK_FALSE(unavailable.at("input").contains("atom_mapping"));
-    CHECK(unavailable.at("diagnostics").at(0).at("code") == "no_applicable_method");
+    CHECK(unavailable.at("diagnostics").at(0).at("code") == "no_executable_plan");
+}
+
+TEST_CASE("JSON output serializes a cancelled result without assignments", "[adapters][json]") {
+    const auto diagnostic = adapters::ResultDiagnostic{.severity = "info",
+                                                       .code = "calculation_cancelled",
+                                                       .message = "Calculation was cancelled."};
+    const auto document = adapters::ChargeResultDocument{
+        .generator_name = "ChargeFW",
+        .generator_version = "test",
+        .status = adapters::ResultStatus::cancelled,
+        .diagnostics = {diagnostic},
+        .records = {{.identity = {.source = "water.sdf", .record_index = 0},
+                     .charges = std::nullopt,
+                     .status = adapters::ResultStatus::cancelled,
+                     .diagnostics = {diagnostic}}}};
+
+    auto output = std::ostringstream{};
+    json_output::JsonWriter{output}.write(document);
+    const auto result = nlohmann::json::parse(output.str());
+
+    CHECK(result.at("status") == "cancelled");
+    CHECK(result.at("diagnostics").at(0).at("code") == "calculation_cancelled");
+    const auto& record = result.at("results").at(0);
+    CHECK(record.at("status") == "cancelled");
+    CHECK_FALSE(record.contains("assignments"));
 }
