@@ -67,7 +67,7 @@ ATOM 1 O O . HOH B 1 ? 3.0 0.0 0.0 1.0 20.0 0 1 HOH B O 1
 
     auto reader = mmcif::MmcifReader{input, "structure.cif"};
     const auto first = reader.next();
-    CHECK(first.has_value());
+    REQUIRE(first.has_value());
     CHECK(first->identity.source == "structure.cif");
     CHECK(first->identity.record_index == 0);
     CHECK(first->identity.record_id == "first");
@@ -77,7 +77,7 @@ ATOM 1 O O . HOH B 1 ? 3.0 0.0 0.0 1.0 20.0 0 1 HOH B O 1
     CHECK(first->molecule.conformer(1)[0].x == 0.1);
 
     const auto second = reader.next();
-    CHECK(second.has_value());
+    REQUIRE(second.has_value());
     CHECK(second->identity.record_index == 1);
     CHECK(second->identity.record_id == "second");
     CHECK(second->molecule.atom_count() == 1);
@@ -133,7 +133,7 @@ ATOM 1 Xx CA . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
 #
 )cif"};
     auto deferred_error_reader = mmcif::MmcifReader{deferred_error_input};
-    CHECK(deferred_error_reader.next().has_value());
+    REQUIRE(deferred_error_reader.next().has_value());
     bool deferred_error = false;
     try {
         static_cast<void>(deferred_error_reader.next());
@@ -171,7 +171,9 @@ HETATM 3 O O . HOH A 3 ? 2.0 0.0 0.0 1.0 20.0 0 3 HOH A O 1
 )cif"};
     auto filtered = mmcif::MmcifReader{
         filtered_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers}};
-    CHECK(filtered.next()->molecule.atom_count() == 1);
+    const auto filtered_record = filtered.next();
+    REQUIRE(filtered_record.has_value());
+    CHECK(filtered_record->molecule.atom_count() == 1);
 
     const auto strategy_input = R"cif(data_connectivity
 loop_
@@ -225,7 +227,9 @@ link1 covale A LIG 1 O1 B LIG 1 C2
     const auto read_strategy = [&](const gemmi_adapter::BondStrategy strategy) {
         std::istringstream strategy_stream{strategy_input};
         auto strategy_reader = mmcif::MmcifReader{strategy_stream, {}, {.bond_strategy = strategy}};
-        return strategy_reader.next()->molecule;
+        const auto record = strategy_reader.next();
+        REQUIRE(record.has_value());
+        return record->molecule;
     };
 
     CHECK(read_strategy(gemmi_adapter::BondStrategy::none).bond_count() == 0);
@@ -271,8 +275,10 @@ ALA N CA DOUB
     const auto read_duplicate_bond = [&](const gemmi_adapter::BondStrategy strategy) {
         std::istringstream duplicate_stream{duplicate_input};
         auto reader = mmcif::MmcifReader{duplicate_stream, {}, {.bond_strategy = strategy}};
-        const auto molecule = reader.next()->molecule;
-        CHECK(molecule.bond_count() == 1);
+        const auto record = reader.next();
+        REQUIRE(record.has_value());
+        const auto molecule = record->molecule;
+        REQUIRE(molecule.bond_count() == 1);
         return molecule.bond(0);
     };
 

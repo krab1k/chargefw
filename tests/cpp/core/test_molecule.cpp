@@ -19,9 +19,9 @@ TEST_CASE("molecule exposes source-ordered graph and conformer data", "[core][mo
     const auto water = chargefw::test::make_water();
 
     CHECK(water.name() == std::string_view{"water"});
-    CHECK(water.atom_count() == 3);
-    CHECK(water.bond_count() == 2);
-    CHECK(water.conformer_count() == 1);
+    REQUIRE(water.atom_count() == 3);
+    REQUIRE(water.bond_count() == 2);
+    REQUIRE(water.conformer_count() == 1);
     CHECK(water.has_coordinates());
     CHECK(water.atoms().size() == 3);
     CHECK(water.bonds().size() == 2);

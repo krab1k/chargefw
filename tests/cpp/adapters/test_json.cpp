@@ -42,7 +42,7 @@ TEST_CASE("JSON input preserves identity, graph, and conformer mapping", "[adapt
 )json"};
         auto reader = json::JsonReader{input, "water.json"};
         const auto result = reader.next();
-        CHECK(result.has_value());
+        REQUIRE(result.has_value());
         const auto& record = *result;
         CHECK(record.identity.source == "water.json");
         CHECK(record.identity.record_index == 0);

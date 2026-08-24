@@ -12,7 +12,7 @@ namespace charges = chargefw::charges;
 TEST_CASE("atomic charges expose values and totals", "[charges][atomic-charges]") {
     const charges::AtomicCharges values{{0.2, -0.1, -0.1}};
 
-    CHECK(values.size() == 3);
+    REQUIRE(values.size() == 3);
     CHECK_FALSE(values.empty());
     CHECK(values.values().size() == 3);
     CHECK(std::abs(values.total() - 0.0) < 1e-12);

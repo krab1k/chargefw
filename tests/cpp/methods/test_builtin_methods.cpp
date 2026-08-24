@@ -315,7 +315,7 @@ TEST_CASE("formal copies atomic formal charges", "[methods][builtin-methods]") {
 
     const auto charged_pair = chargefw::test::make_formally_charged_pair();
     const auto formal_charges = calculate(*formal, charged_pair);
-    CHECK(formal_charges.size() == charged_pair.atom_count());
+    REQUIRE(formal_charges.size() == charged_pair.atom_count());
     CHECK(formal_charges[0] == 1.0);
     CHECK(formal_charges[1] == -1.0);
     CHECK(formal_charges.total() == 0.0);

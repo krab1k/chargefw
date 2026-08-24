@@ -191,7 +191,7 @@ TEST_CASE("method calculation dispatches parameterized and geometry-dependent ta
     const auto& registry = methods::method_registry();
     const auto* dummy = registry.find("dummy");
 
-    CHECK(dummy != nullptr);
+    REQUIRE(dummy != nullptr);
 
     const methods::ApplicableMethod dummy_candidate{
         .method = dummy,
@@ -204,7 +204,7 @@ TEST_CASE("method calculation dispatches parameterized and geometry-dependent ta
 
     CHECK(dummy_charges.method_id() == std::string_view{"dummy"});
     CHECK(!dummy_charges.parameter_set_id().has_value());
-    CHECK(dummy_charges.size() == prepared.size());
+    REQUIRE(dummy_charges.size() == prepared.size());
 
     CHECK(dummy_charges.assignment(0).target.molecule_index == 0);
     CHECK(!dummy_charges.assignment(0).target.conformer_index.has_value());
@@ -225,20 +225,20 @@ TEST_CASE("method calculation dispatches parameterized and geometry-dependent ta
             .charges;
 
     CHECK(parameterized_charges.method_id() == std::string_view{"atom-parameter-test"});
-    CHECK(parameterized_charges.parameter_set_id().has_value());
+    REQUIRE(parameterized_charges.parameter_set_id().has_value());
     CHECK(*parameterized_charges.parameter_set_id() == std::string_view{"test-parameters"});
-    CHECK(parameterized_charges.size() == prepared.size());
+    REQUIRE(parameterized_charges.size() == prepared.size());
 
     const auto& water_charges = parameterized_charges.assignment(0).charges;
 
-    CHECK(water_charges.size() == 3);
+    REQUIRE(water_charges.size() == 3);
     CHECK(water_charges[0] == 2.0);
     CHECK(water_charges[1] == 1.0);
     CHECK(water_charges[2] == 1.0);
 
     const auto& charged_pair_charges = parameterized_charges.assignment(1).charges;
 
-    CHECK(charged_pair_charges.size() == 2);
+    REQUIRE(charged_pair_charges.size() == 2);
     CHECK(charged_pair_charges[0] == 3.0);
     CHECK(charged_pair_charges[1] == 4.0);
 
@@ -304,7 +304,7 @@ TEST_CASE("method calculation dispatches parameterized and geometry-dependent ta
 
     CHECK(geometry_charges.method_id() == std::string_view{"geometry-test"});
     CHECK(!geometry_charges.parameter_set_id().has_value());
-    CHECK(geometry_charges.size() == 2);
+    REQUIRE(geometry_charges.size() == 2);
 
     CHECK(geometry_charges.assignment(0).target.molecule_index == 0);
     CHECK(geometry_charges.assignment(0).target.conformer_index == std::optional<std::size_t>{0});
@@ -312,8 +312,8 @@ TEST_CASE("method calculation dispatches parameterized and geometry-dependent ta
     CHECK(geometry_charges.assignment(1).target.molecule_index == 0);
     CHECK(geometry_charges.assignment(1).target.conformer_index == std::optional<std::size_t>{1});
 
-    CHECK(geometry_charges.assignment(0).charges.size() == 3);
-    CHECK(geometry_charges.assignment(1).charges.size() == 3);
+    REQUIRE(geometry_charges.assignment(0).charges.size() == 3);
+    REQUIRE(geometry_charges.assignment(1).charges.size() == 3);
 
     CHECK(geometry_charges.assignment(0).charges[1] == 0.7570);
     CHECK(geometry_charges.assignment(1).charges[1] == 1.1000);

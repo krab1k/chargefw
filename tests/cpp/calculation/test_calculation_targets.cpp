@@ -85,7 +85,7 @@ auto assert_worker_budget(const calculation::detail::ParallelizationLevel parall
                 std::vector<double>(molecule.molecule().atom_count(), 0.0)};
         });
 
-    CHECK(result.size() == target_count);
+    REQUIRE(result.size() == target_count);
     for (std::size_t target_index = 0; target_index < target_count; ++target_index) {
         CHECK(result.assignment(target_index).target.molecule_index == target_index);
         CHECK(received_fragment_threads[target_index] == expected_fragment_threads);

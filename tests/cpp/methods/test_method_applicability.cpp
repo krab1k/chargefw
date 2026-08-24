@@ -203,7 +203,7 @@ TEST_CASE("applicability rejects invalid method options", "[methods][method-appl
     const auto& registry = methods::method_registry();
     const auto* gdac = registry.find("gdac");
 
-    CHECK(gdac != nullptr);
+    REQUIRE(gdac != nullptr);
 
     auto invalid_gdac_options = methods::MethodOptions{};
     invalid_gdac_options.set("iters", 0);
@@ -214,7 +214,8 @@ TEST_CASE("applicability rejects invalid method options", "[methods][method-appl
          .parameter_sets = {},
          .method_options = {{"gdac", std::move(invalid_gdac_options)}}});
     CHECK(invalid_gdac_result.empty());
-    CHECK(invalid_gdac_result.rejected.size() == 1);
+    REQUIRE(invalid_gdac_result.rejected.size() == 1);
+    REQUIRE(!invalid_gdac_result.rejected[0].issues.empty());
     CHECK(invalid_gdac_result.rejected[0].issues[0].kind ==
           methods::PrerequisiteIssueKind::invalid_options);
 }
@@ -238,7 +239,7 @@ TEST_CASE("applicability pairs methods with compatible parameter sets",
                                                           .parameter_sets = parameter_sets});
 
     CHECK(!result.empty());
-    CHECK(result.applicable.size() == 2);
+    REQUIRE(result.applicable.size() == 2);
 
     const auto& dummy_applicable = result.applicable[0];
 
@@ -246,7 +247,7 @@ TEST_CASE("applicability pairs methods with compatible parameter sets",
     CHECK(dummy_applicable.parameter_set == nullptr);
     CHECK(!dummy_applicable.uses_parameters());
     CHECK(dummy_applicable.classifications.empty());
-    CHECK(dummy_applicable.execution_assessments.size() == 3);
+    REQUIRE(dummy_applicable.execution_assessments.size() == 3);
     CHECK(assessment_for(dummy_applicable, calculation::ExecutionMode::full).availability ==
           methods::ExecutionAvailability::available);
     CHECK(assessment_for(dummy_applicable, calculation::ExecutionMode::cutoff).availability ==
@@ -257,30 +258,30 @@ TEST_CASE("applicability pairs methods with compatible parameter sets",
     const auto& parameterized_applicable = result.applicable[1];
 
     CHECK(parameterized_applicable.method == &atom_parameter_method);
-    CHECK(parameterized_applicable.parameter_set != nullptr);
+    REQUIRE(parameterized_applicable.parameter_set != nullptr);
     CHECK(parameterized_applicable.uses_parameters());
     CHECK(parameterized_applicable.parameter_set->id() ==
           std::string_view{"collection-parameters"});
-    CHECK(parameterized_applicable.classifications.size() == prepared_collection.size());
+    REQUIRE(parameterized_applicable.classifications.size() == prepared_collection.size());
 
     const auto& water_classification = parameterized_applicable.classifications[0];
 
-    CHECK(water_classification.atom().size() == 3);
+    REQUIRE(water_classification.atom().size() == 3);
     CHECK(water_classification.atom()[0] == 1);
     CHECK(water_classification.atom()[1] == 0);
     CHECK(water_classification.atom()[2] == 0);
 
     const auto& charged_pair_classification = parameterized_applicable.classifications[1];
 
-    CHECK(charged_pair_classification.atom().size() == 2);
+    REQUIRE(charged_pair_classification.atom().size() == 2);
     CHECK(charged_pair_classification.atom()[0] == 2);
     CHECK(charged_pair_classification.atom()[1] == 3);
 
-    CHECK(result.rejected.size() == 1);
+    REQUIRE(result.rejected.size() == 1);
 
     CHECK(result.rejected[0].method_index == 1);
     CHECK(result.rejected[0].parameter_set_index == std::optional<std::size_t>{1});
-    CHECK(!result.rejected[0].issues.empty());
+    REQUIRE(!result.rejected[0].issues.empty());
     CHECK(result.rejected[0].issues[0].kind ==
           methods::PrerequisiteIssueKind::parameter_classification_failed);
 }
@@ -300,7 +301,8 @@ TEST_CASE("applicability honors permissive parameter classification",
                                           .methods = permissive_methods,
                                           .parameter_sets = permissive_only_parameters});
     CHECK(strict_result.empty());
-    CHECK(strict_result.rejected.size() == 1);
+    REQUIRE(strict_result.rejected.size() == 1);
+    REQUIRE(!strict_result.rejected[0].issues.empty());
     CHECK(strict_result.rejected[0].issues[0].kind ==
           methods::PrerequisiteIssueKind::parameter_classification_failed);
 
@@ -309,7 +311,9 @@ TEST_CASE("applicability honors permissive parameter classification",
                                           .methods = permissive_methods,
                                           .parameter_sets = permissive_only_parameters,
                                           .classification_options = {.permissive_types = true}});
-    CHECK(permissive_result.applicable.size() == 1);
+    REQUIRE(permissive_result.applicable.size() == 1);
+    REQUIRE(permissive_result.applicable[0].classifications.size() == 1);
+    REQUIRE(permissive_result.applicable[0].classifications[0].atom().size() == 2);
     CHECK(permissive_result.applicable[0].classifications[0].atom()[0] == 0);
     CHECK(permissive_result.applicable[0].classifications[0].atom()[1] == 0);
     CHECK(assessment_for(permissive_result.applicable[0], calculation::ExecutionMode::full)
@@ -321,7 +325,9 @@ TEST_CASE("applicability honors permissive parameter classification",
                                           .methods = permissive_methods,
                                           .parameter_sets = exact_and_permissive_parameters,
                                           .classification_options = {.permissive_types = true}});
-    CHECK(exact_result.applicable.size() == 1);
+    REQUIRE(exact_result.applicable.size() == 1);
+    REQUIRE(exact_result.applicable[0].classifications.size() == 1);
+    REQUIRE(exact_result.applicable[0].classifications[0].atom().size() == 2);
     CHECK(exact_result.applicable[0].classifications[0].atom()[0] == 0);
     CHECK(exact_result.applicable[0].classifications[0].atom()[1] == 0);
     CHECK(
@@ -344,7 +350,7 @@ TEST_CASE("applicability reports full-execution resource threshold warnings",
                                           .methods = inexpensive_methods,
                                           .parameter_sets = {},
                                           .resource_policy = {.cutoff_atom_threshold = 1}});
-    CHECK(inexpensive_result.applicable.size() == 1);
+    REQUIRE(inexpensive_result.applicable.size() == 1);
     CHECK(assessment_for(inexpensive_result.applicable[0], calculation::ExecutionMode::full)
               .availability == methods::ExecutionAvailability::available);
 
@@ -357,6 +363,7 @@ TEST_CASE("applicability reports full-execution resource threshold warnings",
                                           .methods = expensive_methods,
                                           .parameter_sets = {},
                                           .resource_policy = {.cutoff_atom_threshold = 3}});
+    REQUIRE(below_threshold_result.applicable.size() == 1);
     const auto& below_threshold_full =
         assessment_for(below_threshold_result.applicable[0], calculation::ExecutionMode::full);
     CHECK(below_threshold_full.availability == methods::ExecutionAvailability::available);
@@ -367,11 +374,11 @@ TEST_CASE("applicability reports full-execution resource threshold warnings",
                                           .methods = expensive_methods,
                                           .parameter_sets = {},
                                           .resource_policy = {.cutoff_atom_threshold = 2}});
-    CHECK(threshold_result.applicable.size() == 1);
+    REQUIRE(threshold_result.applicable.size() == 1);
     const auto& threshold_full =
         assessment_for(threshold_result.applicable[0], calculation::ExecutionMode::full);
     CHECK(threshold_full.availability == methods::ExecutionAvailability::available_with_warning);
-    CHECK(threshold_full.issues.size() == 1);
+    REQUIRE(threshold_full.issues.size() == 1);
     CHECK(threshold_full.issues[0].kind ==
           methods::ExecutionIssueKind::resource_threshold_exceeded);
     CHECK(threshold_full.issues[0].molecule_index == std::optional<std::size_t>{0});
@@ -386,7 +393,7 @@ TEST_CASE("applicability reports full-execution resource threshold warnings",
                                           .methods = topology_methods,
                                           .parameter_sets = {},
                                           .resource_policy = {.cutoff_atom_threshold = 2}});
-    CHECK(topology_result.applicable.size() == 1);
+    REQUIRE(topology_result.applicable.size() == 1);
     CHECK(assessment_for(topology_result.applicable[0], calculation::ExecutionMode::full)
               .availability == methods::ExecutionAvailability::available_with_warning);
     CHECK(assessment_for(topology_result.applicable[0], calculation::ExecutionMode::cutoff)
@@ -399,6 +406,7 @@ TEST_CASE("applicability reports full-execution resource threshold warnings",
                                           .methods = expensive_methods,
                                           .parameter_sets = {},
                                           .resource_policy = {.cutoff_atom_threshold = 1}});
+    REQUIRE(collection_threshold_result.applicable.size() == 1);
     const auto& collection_threshold_full =
         assessment_for(collection_threshold_result.applicable[0], calculation::ExecutionMode::full);
     CHECK(collection_threshold_full.issues.size() == prepared_collection.size());
@@ -409,6 +417,7 @@ TEST_CASE("applicability reports full-execution resource threshold warnings",
          .parameter_sets = {},
          .resource_policy = {.cutoff_atom_threshold = std::nullopt,
                              .cover_atom_threshold = std::nullopt}});
+    REQUIRE(unlimited_result.applicable.size() == 1);
     const auto& unlimited_full =
         assessment_for(unlimited_result.applicable[0], calculation::ExecutionMode::full);
     CHECK(unlimited_full.availability == methods::ExecutionAvailability::available);
@@ -427,6 +436,7 @@ TEST_CASE("reduced execution applicability requires geometry and declared suppor
         methods::find_applicable_methods({.molecules = prepared_collection,
                                           .methods = topology_reduced_methods,
                                           .parameter_sets = {}});
+    REQUIRE(topology_reduced_result.applicable.size() == 1);
     CHECK(assessment_for(topology_reduced_result.applicable[0], calculation::ExecutionMode::cutoff)
               .availability == methods::ExecutionAvailability::unsupported);
     CHECK(assessment_for(topology_reduced_result.applicable[0], calculation::ExecutionMode::cover)
@@ -445,6 +455,7 @@ TEST_CASE("reduced execution applicability requires geometry and declared suppor
         methods::find_applicable_methods({.molecules = spatial_prepared_collection,
                                           .methods = spatial_reduced_methods,
                                           .parameter_sets = {}});
+    REQUIRE(spatial_reduced_result.applicable.size() == 1);
     CHECK(assessment_for(spatial_reduced_result.applicable[0], calculation::ExecutionMode::cutoff)
               .availability == methods::ExecutionAvailability::available);
     CHECK(assessment_for(spatial_reduced_result.applicable[0], calculation::ExecutionMode::cover)

@@ -85,12 +85,12 @@ TEST_CASE("parameter classifier maps water atoms and bonds to parameter entries"
 
     const auto water_classification = classify(water, water_parameters);
 
-    CHECK(water_classification.atom().size() == 3);
+    REQUIRE(water_classification.atom().size() == 3);
     CHECK(water_classification.atom()[0] == 1);
     CHECK(water_classification.atom()[1] == 0);
     CHECK(water_classification.atom()[2] == 0);
 
-    CHECK(water_classification.bond().size() == 2);
+    REQUIRE(water_classification.bond().size() == 2);
     CHECK(water_classification.bond()[0] == 0);
     CHECK(water_classification.bond()[1] == 0);
 }
@@ -117,7 +117,7 @@ TEST_CASE("parameter classifier maps mixed element fragment atoms", "[parameters
 
     const auto mixed_classification = classify(mixed, mixed_parameters);
 
-    CHECK(mixed_classification.atom().size() == 4);
+    REQUIRE(mixed_classification.atom().size() == 4);
     CHECK(mixed_classification.atom()[0] == 0);
     CHECK(mixed_classification.atom()[1] == 1);
     CHECK(mixed_classification.atom()[2] == 2);

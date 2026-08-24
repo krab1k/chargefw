@@ -126,12 +126,12 @@ TEST_CASE("cover execution produces fragment-size-dependent charges",
             selected, prepared, policy, 0, calculation::default_calculation_observer());
 
         CHECK(method.calls.load() == 6);
-        CHECK(serial.size() == 1);
-        CHECK(parallel.size() == 1);
+        REQUIRE(serial.size() == 1);
+        REQUIRE(parallel.size() == 1);
         const auto& serial_values = serial.assignment(0).charges;
         const auto& parallel_values = parallel.assignment(0).charges;
-        CHECK(serial_values.size() == 10);
-        CHECK(parallel_values.size() == serial_values.size());
+        REQUIRE(serial_values.size() == 10);
+        REQUIRE(parallel_values.size() == serial_values.size());
         for (std::size_t atom_index = 0; atom_index < serial_values.size(); ++atom_index) {
             CHECK(parallel_values[atom_index] == serial_values[atom_index]);
             const auto expected = atom_index < 4 ? 9.0 : 10.0;

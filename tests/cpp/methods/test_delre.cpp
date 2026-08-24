@@ -60,7 +60,7 @@ TEST_CASE("DelRe produces conformer-independent water charges with explicit clas
     const auto& registry = methods::method_registry();
     const auto* delre = registry.find("delre");
 
-    CHECK(delre != nullptr);
+    REQUIRE(delre != nullptr);
 
     const auto parameter_set = make_parameter_set();
 
@@ -75,7 +75,7 @@ TEST_CASE("DelRe produces conformer-independent water charges with explicit clas
 
         const auto charges = calculate_delre(*delre, molecule, parameter_set, classification);
 
-        CHECK(charges.size() == 3);
+        REQUIRE(charges.size() == 3);
         CHECK(std::abs(charges[0] - (-1.25)) < 1.0e-12);
         CHECK(std::abs(charges[1] - (0.625)) < 1.0e-12);
         CHECK(std::abs(charges[2] - (0.625)) < 1.0e-12);

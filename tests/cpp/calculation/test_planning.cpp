@@ -236,7 +236,9 @@ TEST_CASE("planning ranks automatic candidates and supports permissive classific
         calculate_automatically(double_bonded_prepared, permissive_methods,
                                 permissive_parameter_sets, {.permissive_types = true});
     REQUIRE(permissive_result.charges.has_value());
-    CHECK(permissive_result.applicability.applicable.size() == 1);
+    REQUIRE(permissive_result.applicability.applicable.size() == 1);
+    REQUIRE(permissive_result.charges->size() == 1);
+    REQUIRE(permissive_result.charges->assignment(0).charges.size() == 2);
     CHECK(permissive_result.charges->assignment(0).charges[0] == 3.0);
     CHECK(permissive_result.charges->assignment(0).charges[1] == 3.0);
 }

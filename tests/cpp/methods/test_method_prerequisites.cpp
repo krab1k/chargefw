@@ -107,9 +107,9 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
     const auto* dummy = registry.find("dummy");
     const auto* formal = registry.find("formal");
 
-    CHECK(abeem != nullptr);
-    CHECK(dummy != nullptr);
-    CHECK(formal != nullptr);
+    REQUIRE(abeem != nullptr);
+    REQUIRE(dummy != nullptr);
+    REQUIRE(formal != nullptr);
 
     CHECK(dummy->check_method_prerequisites(
         {.prepared_molecule = prepared_water, .method_options = empty_options}));
@@ -126,7 +126,7 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
         {.prepared_molecule = prepared_charged_pair, .method_options = empty_options});
 
     CHECK(!missing_coordinates);
-    CHECK(missing_coordinates.issues().size() == 1);
+    REQUIRE(missing_coordinates.issues().size() == 1);
     CHECK(missing_coordinates.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
 
     const core::Molecule coincident_atoms{
@@ -140,7 +140,7 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
     const auto coincident_atoms_result = coordinates_method.check_method_prerequisites(
         {.prepared_molecule = prepared_coincident_atoms, .method_options = empty_options});
     CHECK(!coincident_atoms_result);
-    CHECK(coincident_atoms_result.issues().size() == 2);
+    REQUIRE(coincident_atoms_result.issues().size() == 2);
     CHECK(coincident_atoms_result.issues()[0].kind ==
           methods::PrerequisiteIssueKind::invalid_geometry);
     CHECK(coincident_atoms_result.issues()[0].atom_index == 1);
@@ -170,7 +170,7 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
         methods::check_method_prerequisites(coordinates_method, prepared_collection, empty_options);
 
     CHECK(!coordinates_collection_result);
-    CHECK(coordinates_collection_result.issues().size() == 1);
+    REQUIRE(coordinates_collection_result.issues().size() == 1);
     CHECK(coordinates_collection_result.issues()[0].kind ==
           methods::PrerequisiteIssueKind::missing_feature);
 
@@ -181,7 +181,7 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
     const auto abeem_result = abeem->check_method_prerequisites(
         {.prepared_molecule = prepared_berkelium, .method_options = empty_options});
     CHECK(!abeem_result);
-    CHECK(abeem_result.issues().size() == 1);
+    REQUIRE(abeem_result.issues().size() == 1);
     CHECK(abeem_result.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
     CHECK(abeem_result.issues()[0].atom_index == 0);
 }

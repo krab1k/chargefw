@@ -198,7 +198,7 @@ auto assert_reduced_matches_full(
                                        .parameter_sets = parameter_sets,
                                        .method_id = std::string{method_id},
                                        .resource_policy = {.max_threads = 2}});
-    CHECK(full.calculated());
+    REQUIRE(full.calculated());
 
     for (const auto selection_kind : {calculation::ExecutionSelectionKind::cutoff,
                                       calculation::ExecutionSelectionKind::cover}) {
@@ -209,21 +209,21 @@ auto assert_reduced_matches_full(
             .execution_selection = calculation::ExecutionSelection{selection_kind, 8.0},
             .resource_policy = {.max_threads = 2}});
 
-        CHECK(reduced.calculated());
-        CHECK(reduced.execution_policy.has_value());
+        REQUIRE(reduced.calculated());
+        REQUIRE(reduced.execution_policy.has_value());
         CHECK(reduced.execution_policy->mode() ==
               (selection_kind == calculation::ExecutionSelectionKind::cutoff
                    ? calculation::ExecutionMode::cutoff
                    : calculation::ExecutionMode::cover));
         CHECK(reduced.execution_policy->charge_correction() ==
               calculation::ChargeCorrectionPolicy::uniform);
-        CHECK(full.charges->size() == reduced.charges->size());
+        REQUIRE(full.charges->size() == reduced.charges->size());
 
         for (std::size_t assignment_index = 0; assignment_index < full.charges->size();
              ++assignment_index) {
             const auto& full_charges = full.charges->assignment(assignment_index).charges;
             const auto& reduced_charges = reduced.charges->assignment(assignment_index).charges;
-            CHECK(full_charges.size() == reduced_charges.size());
+            REQUIRE(full_charges.size() == reduced_charges.size());
             for (std::size_t atom_index = 0; atom_index < full_charges.size(); ++atom_index) {
                 CHECK(std::abs(full_charges[atom_index] - reduced_charges[atom_index]) < 1.0e-10);
             }
@@ -311,7 +311,8 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
         .parameter_sets = {make_eem_parameters()},
         .method_id = "eem",
         .resource_policy = {.cutoff_atom_threshold = 2}});
-    CHECK(automatic_cutoff.calculated());
+    REQUIRE(automatic_cutoff.calculated());
+    REQUIRE(automatic_cutoff.execution_policy.has_value());
     CHECK(automatic_cutoff.execution_policy->mode() == calculation::ExecutionMode::cutoff);
     CHECK(automatic_cutoff.execution_policy->radius() ==
           std::optional<double>{calculation::default_automatic_reduced_radius});
@@ -323,7 +324,8 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic, 8.0},
         .resource_policy = {.cutoff_atom_threshold = 2}});
-    CHECK(overridden_automatic_cutoff.calculated());
+    REQUIRE(overridden_automatic_cutoff.calculated());
+    REQUIRE(overridden_automatic_cutoff.execution_policy.has_value());
     CHECK(overridden_automatic_cutoff.execution_policy->mode() ==
           calculation::ExecutionMode::cutoff);
     CHECK(overridden_automatic_cutoff.execution_policy->radius() == std::optional<double>{8.0});
@@ -333,7 +335,8 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
         .parameter_sets = {make_eem_parameters()},
         .method_id = "eem",
         .resource_policy = {.cutoff_atom_threshold = 2, .cover_atom_threshold = 2}});
-    CHECK(automatic_cover.calculated());
+    REQUIRE(automatic_cover.calculated());
+    REQUIRE(automatic_cover.execution_policy.has_value());
     CHECK(automatic_cover.execution_policy->mode() == calculation::ExecutionMode::cover);
 
     const auto explicit_cutoff_above_cover_threshold =
@@ -345,7 +348,8 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
                                                 calculation::minimum_reduced_radius},
             .resource_policy = {.cutoff_atom_threshold = 2, .cover_atom_threshold = 2}});
-    CHECK(explicit_cutoff_above_cover_threshold.calculated());
+    REQUIRE(explicit_cutoff_above_cover_threshold.calculated());
+    REQUIRE(explicit_cutoff_above_cover_threshold.execution_policy.has_value());
     CHECK(explicit_cutoff_above_cover_threshold.execution_policy->mode() ==
           calculation::ExecutionMode::cutoff);
     CHECK(explicit_cutoff_above_cover_threshold.execution_issues.size() == 1);

@@ -230,7 +230,7 @@ class DirectTestMethod final : public methods::Method {
 
 auto assert_single_terminal_fragment_progress(const std::vector<RecordedProgress>& events,
                                               const std::size_t fragment_count) -> void {
-    CHECK(!events.empty());
+    REQUIRE(!events.empty());
     CHECK(std::count_if(events.begin(), events.end(), [fragment_count](const auto& event) {
               return event.completed_fragment_count == fragment_count &&
                      event.fragment_count == fragment_count;
@@ -302,7 +302,7 @@ auto make_many_separated_waters() -> core::Molecule {
 
 auto assert_computation_boundary(const std::vector<RecordedProgress>& events,
                                  const calculation::ExecutionMode mode) -> void {
-    CHECK(!events.empty());
+    REQUIRE(!events.empty());
     CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
     CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
     CHECK(events.front().mode == mode);
@@ -326,7 +326,7 @@ TEST_CASE("default observer preserves successful calculation results", "[calcula
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        CHECK(result.calculated());
+        REQUIRE(result.calculated());
         CHECK(!result.cancelled);
         CHECK(result.charges->method_id() == std::string_view{"formal"});
     }
@@ -344,11 +344,11 @@ TEST_CASE("observer emits ordered computation and target phases", "[calculation]
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
             observer);
 
-        CHECK(result.calculated());
+        REQUIRE(result.calculated());
         CHECK(!result.cancelled);
 
         const auto events = observer.events();
-        CHECK(!events.empty());
+        REQUIRE(!events.empty());
 
         // The computation phase starts observation.
         CHECK(events[0].phase == calculation::CalculationPhase::computation_started);
@@ -420,15 +420,17 @@ TEST_CASE("resource threshold warnings remain assessment data before computation
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
             .resource_policy = {.cutoff_atom_threshold = 2}});
 
-        CHECK(assessment.execution_issues().size() == 1);
+        REQUIRE(assessment.execution_issues().size() == 1);
         CHECK(assessment.execution_issues()[0].kind ==
               methods::ExecutionIssueKind::resource_threshold_exceeded);
         CHECK(observer.events().empty());
 
         const auto result = calculation::calculate(std::move(assessment), 1, observer);
-        CHECK(result.calculated());
+        REQUIRE(result.calculated());
         CHECK(!result.cancelled);
-        CHECK(observer.events()[0].phase == calculation::CalculationPhase::computation_started);
+        const auto events = observer.events();
+        REQUIRE(!events.empty());
+        CHECK(events[0].phase == calculation::CalculationPhase::computation_started);
     }
 }
 
@@ -448,6 +450,7 @@ TEST_CASE("cancellation produces a terminal observer event", "[calculation][obse
         CHECK(result.cancelled);
         CHECK(!result.calculated());
         const auto events = observer.events();
+        REQUIRE(!events.empty());
         CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
         CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
         CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
@@ -474,6 +477,7 @@ TEST_CASE("validation failures finish observation and propagate unchanged",
         CHECK_THROWS_AS(calculate_with_invalid_thread_count(), std::invalid_argument);
 
         const auto events = observer.events();
+        REQUIRE(!events.empty());
         CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
         CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
         CHECK(events.back().mode == calculation::ExecutionMode::full);
@@ -501,6 +505,7 @@ TEST_CASE("solver failures finish observation and propagate unchanged", "[calcul
         CHECK_THROWS_AS(calculate_with_invalid_qeq_parameters(), std::logic_error);
 
         const auto events = observer.events();
+        REQUIRE(!events.empty());
         CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
         CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
         CHECK(events.back().mode == calculation::ExecutionMode::full);
@@ -524,7 +529,7 @@ TEST_CASE("terminal observer callback failures do not terminate calculation",
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
             observer);
 
-        CHECK(result.calculated());
+        REQUIRE(result.calculated());
         CHECK(!result.cancelled);
         CHECK(observer.terminal_callbacks() == 1);
     }
@@ -543,11 +548,11 @@ TEST_CASE("serial cutoff execution emits aggregate fragment progress", "[calcula
                 .resource_policy = {.max_threads = 1}},
             observer);
 
-        CHECK(result.calculated());
+        REQUIRE(result.calculated());
         CHECK(!result.cancelled);
 
         const auto fragment_events = fragment_progress_events(observer);
-        CHECK(!fragment_events.empty());
+        REQUIRE(!fragment_events.empty());
         assert_single_terminal_fragment_progress(fragment_events,
                                                  fragment_events.front().fragment_count);
     }
@@ -567,11 +572,11 @@ TEST_CASE("serial cover execution emits aggregate multi-pivot progress",
                 .resource_policy = {.max_threads = 1}},
             observer);
 
-        CHECK(result.calculated());
+        REQUIRE(result.calculated());
         CHECK(!result.cancelled);
 
         const auto fragment_events = fragment_progress_events(observer);
-        CHECK(!fragment_events.empty());
+        REQUIRE(!fragment_events.empty());
         assert_single_terminal_fragment_progress(fragment_events,
                                                  fragment_events.front().fragment_count);
     }
@@ -592,7 +597,7 @@ TEST_CASE("multi-molecule target events carry source molecule identity",
                 .resource_policy = {.max_threads = 1}},
             observer);
 
-        CHECK(result.calculated());
+        REQUIRE(result.calculated());
         CHECK(!result.cancelled);
 
         const auto events = observer.events();
@@ -605,7 +610,7 @@ TEST_CASE("multi-molecule target events carry source molecule identity",
             }
         }
 
-        CHECK(molecule_indices.size() == 2);
+        REQUIRE(molecule_indices.size() == 2);
         CHECK(molecule_indices[0] == 0);
         CHECK(molecule_indices[1] == 1);
 
@@ -632,7 +637,7 @@ TEST_CASE("empty reduced targets do not emit fragment progress", "[calculation][
                     calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
                 .resource_policy = {.max_threads = 1}},
             empty_observer);
-        CHECK(result.calculated());
+        REQUIRE(result.calculated());
         CHECK(fragment_progress_events(empty_observer).empty());
     }
 }
@@ -660,7 +665,7 @@ TEST_CASE("parallel reduced targets each emit one terminal progress snapshot",
                     target_events.push_back(event);
                 }
             }
-            CHECK(!target_events.empty());
+            REQUIRE(!target_events.empty());
             assert_single_terminal_fragment_progress(target_events,
                                                      target_events.front().fragment_count);
         }
@@ -686,8 +691,8 @@ TEST_CASE("observer target events preserve source target identity in every execu
                                                           calculation::minimum_reduced_radius},
                 .resource_policy = {.max_threads = 1}},
             observer);
-        CHECK(result.calculated());
-        CHECK(result.charges->size() == 3);
+        REQUIRE(result.calculated());
+        REQUIRE(result.charges->size() == 3);
 
         const auto expected_targets = std::vector<charges::ChargeTarget>{
             {.molecule_index = 0, .conformer_index = 0},
@@ -707,7 +712,7 @@ TEST_CASE("observer target events preserve source target identity in every execu
                 target_starts.push_back(event);
             }
         }
-        CHECK(target_starts.size() == expected_targets.size());
+        REQUIRE(target_starts.size() == expected_targets.size());
         for (std::size_t index = 0; index < target_starts.size(); ++index) {
             CHECK(target_starts[index].target_index == index);
             CHECK(target_starts[index].target_count == expected_targets.size());
@@ -756,6 +761,7 @@ TEST_CASE("reduced fragment failures finish observation and propagate", "[calcul
         }
 
         const auto events = observer.events();
+        REQUIRE(!events.empty());
         CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
         CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
         CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
@@ -776,7 +782,7 @@ TEST_CASE("observer callback failures do not alter calculation control flow",
                 .execution_selection =
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
             observer);
-        CHECK(result.calculated());
+        REQUIRE(result.calculated());
         CHECK(!result.cancelled);
         CHECK(observer.callbacks() >= 4);
     }
@@ -803,6 +809,7 @@ TEST_CASE("reduced execution observes cancellation after fragment progress",
             CHECK(observer.cancellation_checks_after_request() > 0);
 
             const auto events = observer.events();
+            REQUIRE(!events.empty());
             CHECK(std::any_of(events.begin(), events.end(), [](const auto& event) {
                 return event.phase == calculation::CalculationPhase::fragment_progress;
             }));

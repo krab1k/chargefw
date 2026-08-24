@@ -15,7 +15,7 @@ TEST_CASE("conformer exposes named positions", "[core][conformer]") {
                                     "model-1"};
 
     CHECK(conformer.name() == std::string_view{"model-1"});
-    CHECK(conformer.size() == 2);
+    REQUIRE(conformer.size() == 2);
     CHECK_FALSE(conformer.empty());
     CHECK(conformer.positions().size() == 2);
     CHECK(conformer[1].x == 1.0);

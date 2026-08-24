@@ -66,7 +66,7 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
 
     CHECK(result.at("schema_version") == "1.0");
     CHECK(result.at("generator").at("name") == "ChargeFW");
-    CHECK(result.at("results").size() == 2);
+    REQUIRE(result.at("results").size() == 2);
     const auto& provenance = result.at("calculation_provenance");
     const auto& requested = provenance.at("requested");
     CHECK(requested.at("method").is_null());
@@ -103,7 +103,7 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     CHECK(calculated.at("status") == "success");
     CHECK_FALSE(calculated.at("input").contains("atom_mapping"));
     CHECK(calculated.at("assignments").at(0).at("conformer_index") == 0);
-    CHECK(calculated.at("assignments").at(0).at("charges").size() == 3);
+    REQUIRE(calculated.at("assignments").at(0).at("charges").size() == 3);
     CHECK(calculated.at("assignments").at(0).at("charges").at(0) == -0.8765);
     CHECK(calculated.at("assignments").at(0).at("charges").at(1) == 0.4383);
 

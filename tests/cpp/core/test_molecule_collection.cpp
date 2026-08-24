@@ -15,7 +15,7 @@ TEST_CASE("molecule collection preserves ordered molecules", "[core][molecule-co
         {chargefw::test::make_water(), chargefw::test::make_formally_charged_pair()}, "examples"};
 
     CHECK(collection.name() == std::string_view{"examples"});
-    CHECK(collection.size() == 2);
+    REQUIRE(collection.size() == 2);
     CHECK_FALSE(collection.empty());
     CHECK(collection.molecules().size() == 2);
     CHECK(collection[0].name() == std::string_view{"water"});

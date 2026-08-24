@@ -43,7 +43,7 @@ TEST_CASE("GDAC rejects missing features and responds to geometry", "[methods][g
     const auto& registry = methods::method_registry();
     const auto* gdac = registry.find("gdac");
 
-    CHECK(gdac != nullptr);
+    REQUIRE(gdac != nullptr);
     const auto options = methods::make_default_options(gdac->option_schema());
 
     const auto parameter_set = make_test_gdac_parameters();
@@ -55,7 +55,7 @@ TEST_CASE("GDAC rejects missing features and responds to geometry", "[methods][g
         {.prepared_molecule = prepared_charged_pair, .method_options = options});
 
     CHECK(!prerequisite_result);
-    CHECK(!prerequisite_result.issues().empty());
+    REQUIRE(!prerequisite_result.issues().empty());
     CHECK(prerequisite_result.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
 
     const chargefw::core::Molecule rubidium_molecule{
@@ -65,7 +65,7 @@ TEST_CASE("GDAC rejects missing features and responds to geometry", "[methods][g
         {.prepared_molecule = prepared_rubidium, .method_options = options});
 
     CHECK(!rubidium_prerequisite_result);
-    CHECK(rubidium_prerequisite_result.issues().size() == 1);
+    REQUIRE(rubidium_prerequisite_result.issues().size() == 1);
     CHECK(rubidium_prerequisite_result.issues()[0].kind ==
           methods::PrerequisiteIssueKind::unsupported_molecule);
     CHECK(rubidium_prerequisite_result.issues()[0].atom_index == 0);

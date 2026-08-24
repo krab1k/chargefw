@@ -100,7 +100,7 @@ TEST_CASE("parameter set loads from a PEOE JSON file", "[parameters][io]") {
     CHECK(parameter_set.common().contains("dampH"));
     CHECK(parameter_set.common().parameter("dampH") == 20.02);
 
-    CHECK(parameter_set.atom().size() == 14);
+    REQUIRE(parameter_set.atom().size() == 14);
 
     const auto& hydrogen = parameter_set.atom()[0];
 
@@ -129,6 +129,7 @@ TEST_CASE("bundled parameter sets identify registered methods and satisfy their 
           "[parameters][io]") {
     const auto parameter_sets =
         parameters::load_parameter_sets_json_directory(CHARGEFW_TEST_PARAMETER_DIR);
+    REQUIRE_FALSE(parameter_sets.empty());
     const auto& registry = chargefw::methods::method_registry();
     auto ids = std::unordered_set<std::string>{};
 
@@ -145,6 +146,9 @@ TEST_CASE("bundled parameter sets identify registered methods and satisfy their 
             CHECK(parameter_set.common().contains(name));
         }
 
+        if (!requirements.atom_parameters.empty()) {
+            REQUIRE_FALSE(parameter_set.atom().empty());
+        }
         for (std::size_t entry_index = 0; entry_index < parameter_set.atom().size();
              ++entry_index) {
             for (const auto name : requirements.atom_parameters) {
@@ -152,6 +156,9 @@ TEST_CASE("bundled parameter sets identify registered methods and satisfy their 
             }
         }
 
+        if (!requirements.bond_parameters.empty()) {
+            REQUIRE_FALSE(parameter_set.bond().empty());
+        }
         for (std::size_t entry_index = 0; entry_index < parameter_set.bond().size();
              ++entry_index) {
             for (const auto name : requirements.bond_parameters) {

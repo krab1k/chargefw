@@ -36,7 +36,7 @@ auto tsef_parameters() -> parameters::ParameterSet {
 
 TEST_CASE("TSEF rejects unsupported unbonded molecules", "[methods][tsef]") {
     const auto* tsef = methods::method_registry().find("tsef");
-    CHECK(tsef != nullptr);
+    REQUIRE(tsef != nullptr);
 
     const chargefw::core::Molecule unbonded_pair{
         {chargefw::core::Atom{1}, chargefw::core::Atom{8}}};
@@ -46,7 +46,7 @@ TEST_CASE("TSEF rejects unsupported unbonded molecules", "[methods][tsef]") {
         {.prepared_molecule = prepared_pair, .method_options = options});
 
     CHECK(!prerequisite_result);
-    CHECK(prerequisite_result.issues().size() == 1);
+    REQUIRE(prerequisite_result.issues().size() == 1);
     CHECK(prerequisite_result.issues()[0].kind ==
           methods::PrerequisiteIssueKind::unsupported_molecule);
 }

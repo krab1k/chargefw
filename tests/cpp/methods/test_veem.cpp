@@ -14,14 +14,14 @@ TEST_CASE("VEEM rejects unsupported elements", "[methods][veem]") {
     const auto& registry = methods::method_registry();
     const auto* veem = registry.find("veem");
 
-    CHECK(veem != nullptr);
+    REQUIRE(veem != nullptr);
     const chargefw::core::Molecule neon_molecule{{chargefw::core::Atom{10}}};
     const chargefw::features::PreparedMolecule prepared_neon{neon_molecule};
     const auto prerequisite_result = veem->check_method_prerequisites(
         {.prepared_molecule = prepared_neon, .method_options = {}});
 
     CHECK(!prerequisite_result);
-    CHECK(prerequisite_result.issues().size() == 1);
+    REQUIRE(prerequisite_result.issues().size() == 1);
     CHECK(prerequisite_result.issues()[0].kind ==
           methods::PrerequisiteIssueKind::unsupported_molecule);
     CHECK(prerequisite_result.issues()[0].atom_index == 0);

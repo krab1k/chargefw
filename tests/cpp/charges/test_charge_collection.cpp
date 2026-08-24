@@ -38,11 +38,11 @@ TEST_CASE("charge set stores method, parameter, and assignments", "[charges][cha
         "formal", {water_assignment, pair_assignment}, std::string{"default"}};
 
     CHECK(charge_set.method_id() == std::string_view{"formal"});
-    CHECK(charge_set.parameter_set_id().has_value());
+    REQUIRE(charge_set.parameter_set_id().has_value());
     CHECK(*charge_set.parameter_set_id() == std::string_view{"default"});
-    CHECK(charge_set.size() == 2);
+    REQUIRE(charge_set.size() == 2);
     CHECK_FALSE(charge_set.empty());
-    CHECK(charge_set.assignments().size() == 2);
+    REQUIRE(charge_set.assignments().size() == 2);
     CHECK(charge_set.assignment(0).target.molecule_index == 0);
     CHECK(charge_set.assignment(1).target.molecule_index == 1);
 }
@@ -65,9 +65,9 @@ TEST_CASE("charge collection preserves ordered charge sets", "[charges][charge-c
         "formal", {water_assignment, pair_assignment}, std::string{"default"}};
     const charges::ChargeCollection collection{{charge_set}};
 
-    CHECK(collection.size() == 1);
+    REQUIRE(collection.size() == 1);
     CHECK_FALSE(collection.empty());
-    CHECK(collection.charge_sets().size() == 1);
+    REQUIRE(collection.charge_sets().size() == 1);
     CHECK(collection[0].method_id() == std::string_view{"formal"});
 
     const charges::ChargeCollection empty_collection{std::vector<charges::ChargeSet>{}};
