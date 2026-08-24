@@ -29,7 +29,6 @@ Checks: >
   -bugprone-unchecked-optional-access,
   -readability-qualified-auto,
   -readability-avoid-nested-conditional-operator,
-  -modernize-use-ranges,
   -readability-convert-member-functions-to-static,
   -readability-named-parameter,
   -cppcoreguidelines-missing-std-forward

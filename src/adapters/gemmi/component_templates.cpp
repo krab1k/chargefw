@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <iterator>
 
 namespace chargefw::adapters::gemmi::component_templates {
 namespace {
@@ -50,11 +49,8 @@ constexpr std::array<ComponentTemplateEntry, 29> templates{{
 
 auto find(const std::string_view component) -> const ComponentTemplate* {
     const auto entry =
-        std::lower_bound(std::begin(templates), std::end(templates), component,
-                         [](const ComponentTemplateEntry& candidate, const std::string_view id) {
-                             return candidate.component < id;
-                         });
-    if (entry != std::end(templates) && entry->component == component) {
+        std::ranges::lower_bound(templates, component, {}, &ComponentTemplateEntry::component);
+    if (entry != templates.end() && entry->component == component) {
         return std::addressof(entry->component_template);
     }
     return nullptr;

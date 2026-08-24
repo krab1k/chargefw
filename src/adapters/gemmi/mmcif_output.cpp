@@ -166,8 +166,7 @@ struct BlockMapping {
     atom_type_symbols.reserve(molecule.atom_count());
     for (std::size_t index = 0; index < molecule.atom_count(); ++index) {
         auto symbol = std::string{core::element_symbol(molecule.atom(index).atomic_number())};
-        if (std::find(atom_type_symbols.begin(), atom_type_symbols.end(), symbol) ==
-            atom_type_symbols.end()) {
+        if (std::ranges::find(atom_type_symbols, symbol) == atom_type_symbols.end()) {
             atom_type_symbols.push_back(std::move(symbol));
         }
     }

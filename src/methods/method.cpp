@@ -28,7 +28,7 @@ auto add_coordinate_prerequisite_issues(const Method& method, const core::Molecu
                            std::to_string(conformer_index + 1) + ": " +
                            core::detail::atom_description(molecule, *nonfinite_atom) +
                            " has non-finite coordinates",
-                .atom_index = *nonfinite_atom,
+                .atom_index = nonfinite_atom,
                 .conformer_index = conformer_index});
             continue;
         }
