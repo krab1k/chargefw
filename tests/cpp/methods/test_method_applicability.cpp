@@ -196,19 +196,14 @@ auto make_permissive_parameters(const bool include_exact_match) -> parameters::P
 
 } // namespace
 
-TEST_CASE("method applicability ranks candidates and assesses execution",
-          "[methods][method-applicability]") {
+TEST_CASE("applicability rejects invalid method options", "[methods][method-applicability]") {
     const auto collection = make_collection();
     const features::PreparedMoleculeCollection prepared_collection{collection};
 
     const auto& registry = methods::method_registry();
-    const auto* dummy = registry.find("dummy");
     const auto* gdac = registry.find("gdac");
-    const auto* mgc = registry.find("mgc");
 
-    CHECK(dummy != nullptr);
     CHECK(gdac != nullptr);
-    CHECK(mgc != nullptr);
 
     auto invalid_gdac_options = methods::MethodOptions{};
     invalid_gdac_options.set("iters", 0);
@@ -222,6 +217,14 @@ TEST_CASE("method applicability ranks candidates and assesses execution",
     CHECK(invalid_gdac_result.rejected.size() == 1);
     CHECK(invalid_gdac_result.rejected[0].issues[0].kind ==
           methods::PrerequisiteIssueKind::invalid_options);
+}
+
+TEST_CASE("applicability pairs methods with compatible parameter sets",
+          "[methods][method-applicability]") {
+    const auto collection = make_collection();
+    const features::PreparedMoleculeCollection prepared_collection{collection};
+    const auto* dummy = methods::method_registry().find("dummy");
+    REQUIRE(dummy != nullptr);
 
     const AtomParameterMethod atom_parameter_method;
 
@@ -280,6 +283,11 @@ TEST_CASE("method applicability ranks candidates and assesses execution",
     CHECK(!result.rejected[0].issues.empty());
     CHECK(result.rejected[0].issues[0].kind ==
           methods::PrerequisiteIssueKind::parameter_classification_failed);
+}
+
+TEST_CASE("applicability honors permissive parameter classification",
+          "[methods][method-applicability]") {
+    const AtomParameterMethod atom_parameter_method;
 
     const core::MoleculeCollection double_bonded_collection{
         std::vector{make_double_bonded_carbons()}};
@@ -320,6 +328,14 @@ TEST_CASE("method applicability ranks candidates and assesses execution",
         assessment_for(exact_result.applicable[0], calculation::ExecutionMode::full).availability ==
         assessment_for(permissive_result.applicable[0], calculation::ExecutionMode::full)
             .availability);
+}
+
+TEST_CASE("applicability reports full-execution resource threshold warnings",
+          "[methods][method-applicability]") {
+    const auto collection = make_collection();
+    const features::PreparedMoleculeCollection prepared_collection{collection};
+    const auto* mgc = methods::method_registry().find("mgc");
+    REQUIRE(mgc != nullptr);
 
     const ResourceMethod inexpensive_method{};
     const std::vector<const methods::Method*> inexpensive_methods{&inexpensive_method};
@@ -397,6 +413,12 @@ TEST_CASE("method applicability ranks candidates and assesses execution",
         assessment_for(unlimited_result.applicable[0], calculation::ExecutionMode::full);
     CHECK(unlimited_full.availability == methods::ExecutionAvailability::available);
     CHECK(unlimited_full.issues.empty());
+}
+
+TEST_CASE("reduced execution applicability requires geometry and declared support",
+          "[methods][method-applicability]") {
+    const auto collection = make_collection();
+    const features::PreparedMoleculeCollection prepared_collection{collection};
 
     const ResourceMethod topology_reduced_method{
         methods::ResourceRequirements{.supports_cutoff = true, .supports_cover = true}};

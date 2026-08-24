@@ -103,9 +103,8 @@ layout. The main problems are organization and uneven depth.
 
 ### Structural issues
 
-- Several method executables still combine unrelated contracts in one or a few large Snitch test
-  cases. Notable examples are `test_builtin_methods.cpp` and `test_method_applicability.cpp`. Split
-  them so a failure identifies one observable behavior.
+- `test_builtin_methods.cpp` still combines unrelated registry metadata and behavior contracts in one
+  large Snitch test case. Split it so a failure identifies one observable behavior.
 - Planning, facade behavior, target ordering, reduced execution, and observer lifecycle are partly
   duplicated across calculation tests.
 - Method tests are inconsistent. Some assert fixed values, while others only assert signs and total
@@ -115,6 +114,20 @@ layout. The main problems are organization and uneven depth.
   method execution.
 - CLI tests primarily exercise successful output. Failure states, result-schema behavior, progress
   erasure, record ordering, and non-success exit distinctions remain incomplete.
+
+### Current test inventory
+
+Every CTest entry has one primary taxonomy layer. A target may incidentally exercise a lower-level
+type, but that is not its reason to exist.
+
+| Taxonomy | Current CTest entries |
+| --- | --- |
+| A — value and model | `test_atom`, `test_bond`, `test_conformer`, `test_molecule`, `test_molecule_collection`, `test_periodic_table`, `test_atomic_charges`, `test_charge_collection`, `test_execution_policy` |
+| B — features and parameters | `test_topology_features`, `test_conformer_features`, `test_spatial_fragment`, `test_parameter_classifier`, `test_parameter_set_io` |
+| C — built-in and method conformance | `test_builtin_methods`, `test_method_options`, `test_method_registry`, `test_method_prerequisites`, `test_method_applicability`, `test_method_calculation`, `test_calculation_input` |
+| D — method-specific algorithms | `test_peoe`, `test_mpeoe`, `test_veem`, `test_gdac`, `test_tsef`, `test_delre`, `test_denr`, `test_kcm`, `test_qeq`, `test_sqe`, `test_sqeq0`, `test_sqeqp`, `test_eem`, `test_smpqeq`, `test_sfkeem`, `test_eqeq`, `test_eqeqc`, `test_abeem` |
+| E — calculation planning and execution | `test_calculation`, `test_observer`, `test_calculation_targets`, `test_cutoff_execution`, `test_cover_execution` |
+| F — adapters and CLI | `test_mol`, `test_json`, `test_json_output`, `test_mol2_output`, `test_sdf_output`, `test_pdb`, `test_mmcif`, `test_mmcif_output`, `test_chargefw_cli_outputs`, `test_chargefw_cli_structural_outputs` |
 
 ### Known duplicate or misplaced coverage
 
@@ -234,9 +247,9 @@ contract.
 
 ### Step 1 — Establish a test inventory and naming convention
 
-**Status: in progress.** `test_calculation.cpp` and `test_observer.cpp` have been split into focused
-named cases; the oversized method suites still need the same treatment and the A–F inventory remains
-to be written.
+**Status: in progress.** The A–F inventory is complete, and `test_calculation.cpp`,
+`test_observer.cpp`, and `test_method_applicability.cpp` have focused named cases. The built-in method
+suite still needs its manifest-driven conformance split.
 
 1. Classify every existing test as A–F above.
 2. Express cases as named Snitch `TEST_CASE`s after observable behavior, not implementation history.
