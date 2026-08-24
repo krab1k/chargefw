@@ -43,6 +43,4 @@ TEST_CASE("EQeq+C produces conformer-dependent water charges", "[methods][eqeqc]
     CHECK(std::abs(charges[2] - (0.08252263)) < 1.0e-8);
     CHECK(std::abs(charges.total() - (0.0)) < 1.0e-8);
     CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
-
-    chargefw::test::assert_water_charges_labeling_invariant("eqeqc", {make_parameter_set()});
 }

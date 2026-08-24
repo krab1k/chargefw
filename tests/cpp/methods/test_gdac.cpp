@@ -100,6 +100,4 @@ TEST_CASE("GDAC produces conformer-dependent charges and rejects missing feature
     CHECK(std::abs(second_charges.total()) < 1.0e-4);
 
     CHECK(std::abs(first_charges[0] - second_charges[0]) > 1.0e-4);
-
-    chargefw::test::assert_water_charges_labeling_invariant("gdac", {parameter_set}, &options);
 }

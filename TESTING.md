@@ -105,9 +105,8 @@ layout. The main problems are organization and uneven depth.
 
 - Planning, facade behavior, target ordering, reduced execution, and observer lifecycle are partly
   duplicated across calculation tests.
-- Method tests are inconsistent. Some assert fixed values, while others only assert signs and total
-  charge; several methods lack a dedicated full-workflow sanity test.
-- Water invariants are repeated ad hoc rather than declared once as a suite-wide method contract.
+- Method-specific tests still need rationalization: retain only distinguishing algorithms and stable
+  numerical regressions now that generic workflow and water-sanity coverage are manifest-driven.
 - Parameter classification and bundled parameter-data integrity are tested much less thoroughly than
   method execution.
 - CLI tests primarily exercise successful output. Failure states, result-schema behavior, progress
@@ -139,11 +138,6 @@ These should be consolidated without reducing the contracts checked:
   assertion there, but put error context and reduced executor behavior in reduced-execution tests.
 - Full/cutoff/cover whole-radius equality is implemented in `test_cutoff_execution.cpp` even though it
   covers both cutoff and cover. Place it in a neutral reduced-execution contract test.
-- Built-in registry contents and each method's metadata/requirements are useful, but the long manual
-  assertions in `test_builtin_methods.cpp` should become one manifest-driven check.
-- Water provenance, conformer fan-out, relabeling, and total-charge checks recur per method. They
-  should be provided through generic conformance cases, leaving individual files for behavior unique
-  to that method.
 
 ## Desired test taxonomy
 
@@ -279,10 +273,11 @@ as unfinished.
 
 ### Step 3 — Introduce the built-in method conformance manifest
 
-**Status: in progress.** The 22-method manifest owns registry metadata, parameter requirements,
-option counts, resource complexity, and reduced-execution capabilities. Its generic workflow covers
-applicability, provenance, finite source-ordered charges, topology/geometry fan-out, and neutral-water
-sanity; relabeling and bond-endpoint invariants remain to be centralized.
+**Status: complete.** The 22-method manifest owns registry metadata, parameter requirements, option
+counts, resource complexity, and reduced-execution capabilities. Its generic workflow covers
+applicability, provenance, finite source-ordered charges, topology/geometry fan-out, neutral-water
+sanity, atom relabeling, and bond-endpoint invariance. `formal` and `dummy` retain their exact
+dedicated contracts; SMP/QEq explicitly uses its minimal water parameter fixture.
 
 1. Convert `test_builtin_methods.cpp` metadata and requirement checks into a table-driven manifest.
 2. Add a generic workflow case for all 22 registered methods.

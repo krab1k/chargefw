@@ -42,9 +42,4 @@ TEST_CASE("DENR produces conformer-independent water charges", "[methods][denr]"
     chargefw::test::assert_calculation_provenance(charge_set, "denr", "test-denr");
     chargefw::test::assert_conformer_independent(charge_set);
     chargefw::test::assert_neutral_water_charges(charges, 1.0e-12);
-
-    chargefw::test::assert_water_charges_labeling_invariant("denr", {make_parameter_set()},
-                                                            &options);
-    chargefw::test::assert_water_charges_geometry_independent("denr", {make_parameter_set()},
-                                                              &options);
 }

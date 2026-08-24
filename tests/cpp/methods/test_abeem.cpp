@@ -49,6 +49,4 @@ TEST_CASE("ABEEM produces conformer-dependent water charges", "[methods][abeem]"
 
     chargefw::test::assert_neutral_water_charges(charges, 1.0e-4);
     CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
-
-    chargefw::test::assert_water_charges_labeling_invariant("abeem", {make_parameter_set()});
 }

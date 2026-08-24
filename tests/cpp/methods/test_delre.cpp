@@ -87,7 +87,4 @@ TEST_CASE("DelRe produces conformer-independent water charges with explicit clas
         CHECK(std::abs(charges[2] - (0.625)) < 1.0e-12);
         CHECK(std::abs(charges.total() - (0.0)) < 1.0e-12);
     }
-
-    chargefw::test::assert_water_charges_labeling_invariant("delre", {parameter_set});
-    chargefw::test::assert_water_charges_geometry_independent("delre", {parameter_set});
 }

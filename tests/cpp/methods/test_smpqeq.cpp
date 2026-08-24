@@ -48,6 +48,4 @@ TEST_CASE("SMP/QEq produces conformer-dependent water charges", "[methods][smpqe
     CHECK(std::abs(charges[2] - (0.017737983262)) < 1.0e-8);
     CHECK(std::abs(charges.total() - (0.0)) < 1.0e-8);
     CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
-
-    chargefw::test::assert_water_charges_labeling_invariant("smpqeq", {make_parameter_set()});
 }

@@ -46,6 +46,4 @@ TEST_CASE("SQE produces conformer-dependent water charges", "[methods][sqe]") {
     chargefw::test::assert_neutral_water_charges(charges, 1.0e-4);
     CHECK(std::abs(charges.total() - (0.0)) < 1.0e-12);
     CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
-
-    chargefw::test::assert_water_charges_labeling_invariant("sqe", {make_parameter_set()});
 }

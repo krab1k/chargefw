@@ -42,7 +42,4 @@ TEST_CASE("KCM produces conformer-independent water charges", "[methods][kcm]") 
     CHECK(std::abs(charges[1] - (0.2)) < 1.0e-12);
     CHECK(std::abs(charges[2] - (0.2)) < 1.0e-12);
     CHECK(std::abs(charges.total() - (0.0)) < 1.0e-12);
-
-    chargefw::test::assert_water_charges_labeling_invariant("kcm", {make_parameter_set()});
-    chargefw::test::assert_water_charges_geometry_independent("kcm", {make_parameter_set()});
 }

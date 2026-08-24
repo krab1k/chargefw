@@ -247,6 +247,26 @@ TEST_CASE("every built-in completes its declared full workflow", "[methods][buil
             CHECK(std::abs(assignment.charges.total()) < 1.0e-8);
         }
 
+        if (!expected.coordinates) {
+            const auto graph_water = chargefw::test::make_water_graph();
+            const auto graph_collection =
+                chargefw::core::MoleculeCollection{std::vector{graph_water}, "water"};
+            const auto graph_prepared = features::PreparedMoleculeCollection{graph_collection};
+            const auto graph_applicability =
+                methods::find_applicable_methods({.molecules = graph_prepared,
+                                                  .methods = candidates,
+                                                  .parameter_sets = candidate_parameter_sets});
+            const auto* graph_selected =
+                chargefw::calculation::select_applicable_method(graph_applicability);
+            REQUIRE(graph_selected != nullptr);
+
+            const auto graph_result = chargefw::calculation::calculate(
+                {.molecules = graph_prepared, .selected = *graph_selected});
+            REQUIRE(graph_result.charges.size() == 1);
+            chargefw::test::assert_same_charges(graph_result.charges.assignment(0).charges,
+                                                result.charges.assignment(0).charges, 1.0e-10);
+        }
+
         if (expected.id != "formal" && expected.id != "dummy") {
             const auto water = chargefw::test::make_water();
             const auto water_collection =
@@ -266,6 +286,13 @@ TEST_CASE("every built-in completes its declared full workflow", "[methods][buil
             chargefw::test::assert_neutral_water_charges(water_result.charges.assignment(0).charges,
                                                          1.0e-10);
         }
+
+        const std::vector<parameters::ParameterSet> selected_parameter_sets =
+            selected->parameter_set == nullptr
+                ? std::vector<parameters::ParameterSet>{}
+                : std::vector<parameters::ParameterSet>{*selected->parameter_set};
+        chargefw::test::assert_water_charges_labeling_invariant(expected.id,
+                                                                selected_parameter_sets);
     }
 }
 
@@ -280,32 +307,6 @@ TEST_CASE("dummy assigns exact zero charges", "[methods][builtin-methods]") {
     for (const auto charge : dummy_charges.values()) {
         CHECK(charge == 0.0);
     }
-}
-
-TEST_CASE("topology-only built-ins produce neutral water charge shapes",
-          "[methods][builtin-methods]") {
-    const auto* veem = methods::method_registry().find("veem");
-    const auto* mgc = methods::method_registry().find("mgc");
-    REQUIRE(veem != nullptr);
-    REQUIRE(mgc != nullptr);
-
-    const auto water = chargefw::test::make_water_graph();
-
-    const auto veem_charges = calculate(*veem, water);
-    CHECK(veem_charges.size() == water.atom_count());
-    CHECK(veem_charges[0] < 0.0);
-    CHECK(veem_charges[1] > 0.0);
-    CHECK(veem_charges[2] > 0.0);
-    CHECK(std::abs(veem_charges[1] - veem_charges[2]) < 1.0e-12);
-    CHECK(std::abs(veem_charges.total()) < 1.0e-12);
-
-    const auto mgc_charges = calculate(*mgc, water);
-    CHECK(mgc_charges.size() == water.atom_count());
-    CHECK(mgc_charges[0] < 0.0);
-    CHECK(mgc_charges[1] > 0.0);
-    CHECK(mgc_charges[2] > 0.0);
-    CHECK(std::abs(mgc_charges[1] - mgc_charges[2]) < 1.0e-12);
-    CHECK(std::abs(mgc_charges.total()) < 1.0e-12);
 }
 
 TEST_CASE("formal copies atomic formal charges", "[methods][builtin-methods]") {

@@ -143,6 +143,14 @@ auto ABEEMMethod::calculate(const CalculationInput& input) const -> charges::Ato
     for (std::size_t bond_index = 0; bond_index < bond_count; ++bond_index) {
         const auto& bond = molecule.bond(bond_index);
         const auto row = n + static_cast<Eigen::Index>(bond_index);
+        const auto& first_atom = molecule.atom(bond.first_atom_index());
+        const auto& second_atom = molecule.atom(bond.second_atom_index());
+        const auto first_is_canonical =
+            first_atom.atomic_number() > second_atom.atomic_number() ||
+            (first_atom.atomic_number() == second_atom.atomic_number() &&
+             bond.first_atom_index() < bond.second_atom_index());
+        const auto canonical_atom_index =
+            first_is_canonical ? bond.first_atom_index() : bond.second_atom_index();
 
         rhs(row) = -bond_a[bond_index];
 
@@ -150,7 +158,7 @@ auto ABEEMMethod::calculate(const CalculationInput& input) const -> charges::Ato
             const auto column = static_cast<Eigen::Index>(atom_index);
 
             if (contains_atom(bond, atom_index)) {
-                if (bond.first_atom_index() == atom_index) {
+                if (canonical_atom_index == atom_index) {
                     matrix(row, column) = bond_d[bond_index];
                 } else {
                     matrix(row, column) = bond_c[bond_index];

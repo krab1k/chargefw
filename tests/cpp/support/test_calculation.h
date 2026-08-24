@@ -137,23 +137,4 @@ assert_water_charges_labeling_invariant(std::string_view method_id,
     assert_same_charges(flipped.assignment(0).charges, reference_charges, tolerance);
 }
 
-/// Method-agnostic invariant for topology-only methods: geometry must not influence charges.
-/// Verifies that a molecule with two distinct conformers yields a single conformer-independent
-/// assignment identical to the conformer-free result.
-inline auto
-assert_water_charges_geometry_independent(std::string_view method_id,
-                                          std::vector<parameters::ParameterSet> parameter_sets = {},
-                                          const methods::MethodOptions* method_options = nullptr,
-                                          const double tolerance = 1.0e-9) -> void {
-    const auto reference =
-        calculate_single_method(make_water_graph(), method_id, parameter_sets, method_options);
-
-    const auto two_conformer = calculate_method(make_two_conformer_water(), method_id,
-                                                std::move(parameter_sets), method_options);
-    assert_conformer_independent(two_conformer);
-
-    assert_same_charges(two_conformer.assignment(0).charges, reference.assignment(0).charges,
-                        tolerance);
-}
-
 } // namespace chargefw::test

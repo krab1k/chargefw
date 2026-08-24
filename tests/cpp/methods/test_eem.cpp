@@ -44,6 +44,4 @@ TEST_CASE("EEM produces conformer-dependent water charges", "[methods][eem]") {
     CHECK(std::abs(charges[2] - (0.03776169)) < 1.0e-8);
     CHECK(std::abs(charges.total() - (0.0)) < 1.0e-8);
     CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
-
-    chargefw::test::assert_water_charges_labeling_invariant("eem", {make_parameter_set()});
 }
