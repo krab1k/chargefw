@@ -1,6 +1,6 @@
-#include <cassert>
 #include <chargefw/adapters/gemmi/pdb_input.h>
 #include <chargefw/core/bond.h>
+#include <snitch/snitch.hpp>
 
 #include <sstream>
 #include <string>
@@ -8,7 +8,7 @@
 namespace gemmi_adapter = chargefw::adapters::gemmi;
 namespace pdb = gemmi_adapter::pdb_input;
 
-auto main() -> int {
+TEST_CASE("adapter contract", "[adapters]") {
     std::istringstream input{R"pdb(HEADER    TEST PDB
 TITLE     TWO MODELS
 MODEL        1
@@ -26,22 +26,22 @@ END
 
     auto reader = pdb::PdbReader{input, "water.pdb"};
     const auto first = reader.next();
-    assert(first.has_value());
-    assert(first->identity.source == "water.pdb");
-    assert(first->identity.record_index == 0);
-    assert(!first->identity.record_id.empty());
-    assert(first->molecule.atom_count() == 2);
-    assert(first->molecule.bond_count() == 0);
-    assert(first->molecule.atom(0).atomic_number() == 8);
-    assert(first->molecule.atom(1).atomic_number() == 1);
-    assert(first->molecule.atom(1).name() == "H1");
-    assert(first->molecule.conformer_count() == 2);
-    assert(first->molecule.conformer(0)[1].x == 0.957);
+    CHECK(first.has_value());
+    CHECK(first->identity.source == "water.pdb");
+    CHECK(first->identity.record_index == 0);
+    CHECK_FALSE(first->identity.record_id.empty());
+    CHECK(first->molecule.atom_count() == 2);
+    CHECK(first->molecule.bond_count() == 0);
+    CHECK(first->molecule.atom(0).atomic_number() == 8);
+    CHECK(first->molecule.atom(1).atomic_number() == 1);
+    CHECK(first->molecule.atom(1).name() == "H1");
+    CHECK(first->molecule.conformer_count() == 2);
+    CHECK(first->molecule.conformer(0)[1].x == 0.957);
 
-    assert(first->molecule.conformer(1).name() == "2");
-    assert(first->molecule.conformer(1)[0].x == 0.1);
-    assert(first->molecule.conformer(1)[1].x == 1.057);
-    assert(!reader.next().has_value());
+    CHECK(first->molecule.conformer(1).name() == "2");
+    CHECK(first->molecule.conformer(1)[0].x == 0.1);
+    CHECK(first->molecule.conformer(1)[1].x == 1.057);
+    CHECK_FALSE(reader.next().has_value());
 
     {
         std::istringstream selection_input{
@@ -51,7 +51,7 @@ HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O
 END
 )pdb"};
         auto all_reader = pdb::PdbReader{selection_input};
-        assert(all_reader.next()->molecule.atom_count() == 3);
+        CHECK(all_reader.next()->molecule.atom_count() == 3);
 
         std::istringstream ligands_input{
             R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  
@@ -61,7 +61,7 @@ END
 )pdb"};
         auto ligands_reader = pdb::PdbReader{
             ligands_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers_and_ligands}};
-        assert(ligands_reader.next()->molecule.atom_count() == 2);
+        CHECK(ligands_reader.next()->molecule.atom_count() == 2);
 
         std::istringstream polymers_input{
             R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  
@@ -71,7 +71,7 @@ END
 )pdb"};
         auto polymers_reader = pdb::PdbReader{
             polymers_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers}};
-        assert(polymers_reader.next()->molecule.atom_count() == 1);
+        CHECK(polymers_reader.next()->molecule.atom_count() == 1);
     }
 
     {
@@ -99,10 +99,10 @@ END
             return reader.next()->molecule.bond_count();
         };
 
-        assert(read_bond_count(gemmi_adapter::BondStrategy::none) == 0);
-        assert(read_bond_count(gemmi_adapter::BondStrategy::templates) == 8);
-        assert(read_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 2);
-        assert(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 10);
+        CHECK(read_bond_count(gemmi_adapter::BondStrategy::none) == 0);
+        CHECK(read_bond_count(gemmi_adapter::BondStrategy::templates) == 8);
+        CHECK(read_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 2);
+        CHECK(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 10);
     }
 
     {
@@ -118,10 +118,8 @@ END
             return reader.next()->molecule.bond_count();
         };
 
-        assert(read_bond_count(gemmi_adapter::BondStrategy::templates) == 1);
-        assert(read_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 1);
-        assert(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 1);
+        CHECK(read_bond_count(gemmi_adapter::BondStrategy::templates) == 1);
+        CHECK(read_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 1);
+        CHECK(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 1);
     }
-
-    return 0;
 }

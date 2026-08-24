@@ -1,4 +1,3 @@
-#include "support/test_assertions.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
@@ -21,9 +20,9 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
-#include <cassert>
 #include <cmath>
 #include <optional>
+#include <snitch/snitch.hpp>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -186,7 +185,7 @@ auto assert_reduced_matches_full(
                                        .parameter_sets = parameter_sets,
                                        .method_id = std::string{method_id},
                                        .resource_policy = {.max_threads = 2}});
-    assert(full.calculated());
+    CHECK(full.calculated());
 
     for (const auto selection_kind : {calculation::ExecutionSelectionKind::cutoff,
                                       calculation::ExecutionSelectionKind::cover}) {
@@ -197,23 +196,23 @@ auto assert_reduced_matches_full(
             .execution_selection = calculation::ExecutionSelection{selection_kind, 8.0},
             .resource_policy = {.max_threads = 2}});
 
-        assert(reduced.calculated());
-        assert(reduced.execution_policy.has_value());
-        assert(reduced.execution_policy->mode() ==
-               (selection_kind == calculation::ExecutionSelectionKind::cutoff
-                    ? calculation::ExecutionMode::cutoff
-                    : calculation::ExecutionMode::cover));
-        assert(reduced.execution_policy->charge_correction() ==
-               calculation::ChargeCorrectionPolicy::uniform);
-        assert(full.charges->size() == reduced.charges->size());
+        CHECK(reduced.calculated());
+        CHECK(reduced.execution_policy.has_value());
+        CHECK(reduced.execution_policy->mode() ==
+              (selection_kind == calculation::ExecutionSelectionKind::cutoff
+                   ? calculation::ExecutionMode::cutoff
+                   : calculation::ExecutionMode::cover));
+        CHECK(reduced.execution_policy->charge_correction() ==
+              calculation::ChargeCorrectionPolicy::uniform);
+        CHECK(full.charges->size() == reduced.charges->size());
 
         for (std::size_t assignment_index = 0; assignment_index < full.charges->size();
              ++assignment_index) {
             const auto& full_charges = full.charges->assignment(assignment_index).charges;
             const auto& reduced_charges = reduced.charges->assignment(assignment_index).charges;
-            assert(full_charges.size() == reduced_charges.size());
+            CHECK(full_charges.size() == reduced_charges.size());
             for (std::size_t atom_index = 0; atom_index < full_charges.size(); ++atom_index) {
-                assert(std::abs(full_charges[atom_index] - reduced_charges[atom_index]) < 1.0e-10);
+                CHECK(std::abs(full_charges[atom_index] - reduced_charges[atom_index]) < 1.0e-10);
             }
         }
     }
@@ -221,7 +220,8 @@ auto assert_reduced_matches_full(
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("cutoff execution produces source-ordered charges and validates inputs",
+          "[calculation][cutoff-execution]") {
     const ZeroFragmentMethod zero_method;
     const auto charged_molecule = core::Molecule{
         std::vector{core::Atom{1, 1}, core::Atom{1, 0}},
@@ -239,10 +239,11 @@ auto main() -> int {
         const auto policy = mode == calculation::ExecutionMode::full
                                 ? calculation::ExecutionPolicy{}
                                 : calculation::ExecutionPolicy{mode, 8.0};
-        assert(chargefw::test::throws_invalid_argument([&] -> void {
+        const auto throw_fn_0 = [&] -> void {
             static_cast<void>(calculation::calculate(
                 {.molecules = prepared, .selected = invalid_selected, .execution_policy = policy}));
-        }));
+        };
+        CHECK_THROWS_AS(throw_fn_0(), std::invalid_argument);
     }
 
     const auto no_conformer_collection = core::MoleculeCollection{
@@ -258,7 +259,7 @@ auto main() -> int {
         const auto calculate_request = [&request] -> void {
             static_cast<void>(calculation::calculate(request));
         };
-        assert(chargefw::test::throws_invalid_argument(calculate_request));
+        CHECK_THROWS_AS(calculate_request(), std::invalid_argument);
     }
 
     const auto corrected = calculation::calculate(
@@ -268,8 +269,8 @@ auto main() -> int {
              calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff, 8.0,
                                           calculation::ChargeCorrectionPolicy::uniform},
          .max_threads = 2});
-    assert(corrected.charges.assignment(0).charges[0] == 0.5);
-    assert(corrected.charges.assignment(0).charges[1] == 0.5);
+    CHECK(corrected.charges.assignment(0).charges[0] == 0.5);
+    CHECK(corrected.charges.assignment(0).charges[1] == 0.5);
 
     const auto uncorrected = calculation::calculate(
         {.molecules = prepared,
@@ -278,8 +279,8 @@ auto main() -> int {
              calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff, 8.0,
                                           calculation::ChargeCorrectionPolicy::none},
          .max_threads = 2});
-    assert(uncorrected.charges.assignment(0).charges[0] == 0.0);
-    assert(uncorrected.charges.assignment(0).charges[1] == 0.0);
+    CHECK(uncorrected.charges.assignment(0).charges[0] == 0.0);
+    CHECK(uncorrected.charges.assignment(0).charges[1] == 0.0);
 
     const auto cover_corrected =
         calculation::calculate({.molecules = prepared,
@@ -287,8 +288,8 @@ auto main() -> int {
                                 .execution_policy = calculation::ExecutionPolicy{
                                     calculation::ExecutionMode::cover, 8.0,
                                     calculation::ChargeCorrectionPolicy::uniform}});
-    assert(cover_corrected.charges.assignment(0).charges[0] == 0.5);
-    assert(cover_corrected.charges.assignment(0).charges[1] == 0.5);
+    CHECK(cover_corrected.charges.assignment(0).charges[0] == 0.5);
+    CHECK(cover_corrected.charges.assignment(0).charges[1] == 0.5);
 
     assert_reduced_matches_full("eem", {make_eem_parameters()});
 
@@ -297,10 +298,10 @@ auto main() -> int {
         .parameter_sets = {make_eem_parameters()},
         .method_id = "eem",
         .resource_policy = {.cutoff_atom_threshold = 2}});
-    assert(automatic_cutoff.calculated());
-    assert(automatic_cutoff.execution_policy->mode() == calculation::ExecutionMode::cutoff);
-    assert(automatic_cutoff.execution_policy->radius() ==
-           std::optional<double>{calculation::default_automatic_reduced_radius});
+    CHECK(automatic_cutoff.calculated());
+    CHECK(automatic_cutoff.execution_policy->mode() == calculation::ExecutionMode::cutoff);
+    CHECK(automatic_cutoff.execution_policy->radius() ==
+          std::optional<double>{calculation::default_automatic_reduced_radius});
 
     const auto overridden_automatic_cutoff = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -309,18 +310,18 @@ auto main() -> int {
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic, 8.0},
         .resource_policy = {.cutoff_atom_threshold = 2}});
-    assert(overridden_automatic_cutoff.calculated());
-    assert(overridden_automatic_cutoff.execution_policy->mode() ==
-           calculation::ExecutionMode::cutoff);
-    assert(overridden_automatic_cutoff.execution_policy->radius() == std::optional<double>{8.0});
+    CHECK(overridden_automatic_cutoff.calculated());
+    CHECK(overridden_automatic_cutoff.execution_policy->mode() ==
+          calculation::ExecutionMode::cutoff);
+    CHECK(overridden_automatic_cutoff.execution_policy->radius() == std::optional<double>{8.0});
 
     const auto automatic_cover = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {make_eem_parameters()},
         .method_id = "eem",
         .resource_policy = {.cutoff_atom_threshold = 2, .cover_atom_threshold = 2}});
-    assert(automatic_cover.calculated());
-    assert(automatic_cover.execution_policy->mode() == calculation::ExecutionMode::cover);
+    CHECK(automatic_cover.calculated());
+    CHECK(automatic_cover.execution_policy->mode() == calculation::ExecutionMode::cover);
 
     const auto explicit_cutoff_above_cover_threshold =
         calculate_application(calculation::AssessmentRequest{
@@ -331,10 +332,10 @@ auto main() -> int {
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
                                                 calculation::minimum_reduced_radius},
             .resource_policy = {.cutoff_atom_threshold = 2, .cover_atom_threshold = 2}});
-    assert(explicit_cutoff_above_cover_threshold.calculated());
-    assert(explicit_cutoff_above_cover_threshold.execution_policy->mode() ==
-           calculation::ExecutionMode::cutoff);
-    assert(explicit_cutoff_above_cover_threshold.execution_issues.size() == 1);
+    CHECK(explicit_cutoff_above_cover_threshold.calculated());
+    CHECK(explicit_cutoff_above_cover_threshold.execution_policy->mode() ==
+          calculation::ExecutionMode::cutoff);
+    CHECK(explicit_cutoff_above_cover_threshold.execution_issues.size() == 1);
 
     assert_reduced_matches_full("qeq", {make_qeq_parameters()});
     assert_reduced_matches_full("eqeq");
@@ -351,5 +352,4 @@ auto main() -> int {
                                 make_charged_water());
     assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)},
                                 make_charged_water());
-    return 0;
 }

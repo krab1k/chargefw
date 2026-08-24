@@ -1,4 +1,3 @@
-#include "support/test_assertions.h"
 #include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
@@ -16,8 +15,8 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
-#include <cassert>
 #include <cstddef>
+#include <snitch/snitch.hpp>
 #include <vector>
 
 namespace core = chargefw::core;
@@ -57,11 +56,12 @@ auto calculate_delre(const methods::Method& method, const core::Molecule& molecu
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("DelRe produces conformer-independent water charges with explicit classification",
+          "[methods][delre]") {
     const auto& registry = methods::method_registry();
     const auto* delre = registry.find("delre");
 
-    assert(delre != nullptr);
+    CHECK(delre != nullptr);
 
     const auto parameter_set = make_parameter_set();
 
@@ -81,15 +81,13 @@ auto main() -> int {
 
         const auto charges = calculate_delre(*delre, molecule, parameter_set, classification);
 
-        assert(charges.size() == 3);
-        chargefw::test::assert_close(charges[0], -1.25, 1.0e-12);
-        chargefw::test::assert_close(charges[1], 0.625, 1.0e-12);
-        chargefw::test::assert_close(charges[2], 0.625, 1.0e-12);
-        chargefw::test::assert_close(charges.total(), 0.0, 1.0e-12);
+        CHECK(charges.size() == 3);
+        CHECK(std::abs(charges[0] - (-1.25)) < 1.0e-12);
+        CHECK(std::abs(charges[1] - (0.625)) < 1.0e-12);
+        CHECK(std::abs(charges[2] - (0.625)) < 1.0e-12);
+        CHECK(std::abs(charges.total() - (0.0)) < 1.0e-12);
     }
 
     chargefw::test::assert_water_charges_labeling_invariant("delre", {parameter_set});
     chargefw::test::assert_water_charges_geometry_independent("delre", {parameter_set});
-
-    return 0;
 }

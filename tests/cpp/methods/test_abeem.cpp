@@ -1,4 +1,3 @@
-#include "support/test_assertions.h"
 #include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
@@ -10,8 +9,8 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
-#include <cassert>
 #include <cmath>
+#include <snitch/snitch.hpp>
 #include <vector>
 
 namespace parameters = chargefw::parameters;
@@ -40,7 +39,7 @@ auto make_parameter_set() -> parameters::ParameterSet {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("ABEEM produces conformer-dependent water charges", "[methods][abeem]") {
     const auto charge_set = chargefw::test::calculate_method(
         chargefw::test::make_two_conformer_water(), "abeem", {make_parameter_set()});
     const auto& charges = charge_set.assignment(0).charges;
@@ -49,9 +48,7 @@ auto main() -> int {
     chargefw::test::assert_conformer_dependent(charge_set, 2);
 
     chargefw::test::assert_neutral_water_charges(charges, 1.0e-4);
-    assert(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
+    CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
 
     chargefw::test::assert_water_charges_labeling_invariant("abeem", {make_parameter_set()});
-
-    return 0;
 }

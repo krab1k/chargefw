@@ -1,4 +1,3 @@
-#include <cassert>
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 #include <chargefw/adapters/gemmi/mmcif_output.h>
 #include <chargefw/adapters/gemmi/pdb_input.h>
@@ -8,6 +7,7 @@
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
+#include <snitch/snitch.hpp>
 
 #include <gemmi/cif.hpp>
 #include <gemmi/read_cif.hpp>
@@ -57,34 +57,34 @@ auto two_conformer_charges() -> charges::ChargeSet {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("adapter contract", "[adapters]") {
     {
         auto records = std::vector<adapters::ImportedMoleculeRecord>{generated_record("first"),
                                                                      generated_record("second", 2)};
         std::ostringstream output;
         mmcif_output::MmcifWriter{output}.write_generated(records, charge_set(records.size()));
         auto document = ::gemmi::cif::read_string(output.str());
-        assert(document.blocks.size() == 2);
-        assert(document.blocks[0].has_mmcif_category("_chem_comp."));
-        assert(document.blocks[1].has_mmcif_category("_chem_comp_bond."));
+        CHECK(document.blocks.size() == 2);
+        CHECK(document.blocks[0].has_mmcif_category("_chem_comp."));
+        CHECK(document.blocks[1].has_mmcif_category("_chem_comp_bond."));
         auto atom_types = document.blocks[0].find("_atom_type.", {"symbol"});
-        assert(atom_types.length() == 2);
-        assert(::gemmi::cif::as_string(atom_types[0][0]) == "C");
-        assert(::gemmi::cif::as_string(atom_types[1][0]) == "O");
-        assert(document.blocks[0].has_mmcif_category("_sb_ncbr_partial_atomic_charges_meta."));
-        assert(::gemmi::cif::as_string(
-                   *document.blocks[0].find_value("_chem_comp_bond.value_order")) == "doub");
+        CHECK(atom_types.length() == 2);
+        CHECK(::gemmi::cif::as_string(atom_types[0][0]) == "C");
+        CHECK(::gemmi::cif::as_string(atom_types[1][0]) == "O");
+        CHECK(document.blocks[0].has_mmcif_category("_sb_ncbr_partial_atomic_charges_meta."));
+        CHECK(::gemmi::cif::as_string(
+                  *document.blocks[0].find_value("_chem_comp_bond.value_order")) == "doub");
 
         std::istringstream round_trip{output.str()};
         auto reader = mmcif_input::MmcifReader{
             round_trip, {}, {.bond_strategy = adapters::gemmi::BondStrategy::explicit_bonds}};
         const auto first = reader.next();
         const auto second = reader.next();
-        assert(first->molecule.atom_count() == 2);
-        assert(first->molecule.bond_count() == 1);
-        assert(first->molecule.bond(0).order() == core::BondOrder::DOUBLE);
-        assert(first->molecule.atom(1).formal_charge() == -1);
-        assert(second->molecule.conformer(0)[0].x == 2.0);
+        CHECK(first->molecule.atom_count() == 2);
+        CHECK(first->molecule.bond_count() == 1);
+        CHECK(first->molecule.bond(0).order() == core::BondOrder::DOUBLE);
+        CHECK(first->molecule.atom(1).formal_charge() == -1);
+        CHECK(second->molecule.conformer(0)[0].x == 2.0);
     }
 
     {
@@ -127,9 +127,9 @@ HETATM 2 O O1 . UNL A 1 1 0 0 1 0 -1 1 UNL A O1 1
         std::ostringstream output;
         mmcif_output::MmcifWriter{output}.write_mmcif(records, charge_set(1), source);
         const auto document = ::gemmi::cif::read_string(output.str());
-        assert(::gemmi::cif::as_string(*document.blocks[0].find_value("_custom_extension.note")) ==
-               "keep me");
-        assert(document.blocks[0].has_mmcif_category("_sb_ncbr_partial_atomic_charges."));
+        CHECK(::gemmi::cif::as_string(*document.blocks[0].find_value("_custom_extension.note")) ==
+              "keep me");
+        CHECK(document.blocks[0].has_mmcif_category("_sb_ncbr_partial_atomic_charges."));
 
         std::istringstream appended_input{output.str()};
         auto appended_reader = mmcif_input::MmcifReader{appended_input};
@@ -144,9 +144,9 @@ HETATM 2 O O1 . UNL A 1 1 0 0 1 0 -1 1 UNL A O1 1
                                                                appended_source, "ChargeFW", "0.0.1",
                                                                mmcif_output::WriteMode::append);
         auto appended = ::gemmi::cif::read_string(appended_output.str());
-        assert(appended.blocks[0]
-                   .find_mmcif_category("_sb_ncbr_partial_atomic_charges_meta.")
-                   .length() == 2);
+        CHECK(appended.blocks[0]
+                  .find_mmcif_category("_sb_ncbr_partial_atomic_charges_meta.")
+                  .length() == 2);
 
         std::istringstream replaced_input{appended_output.str()};
         auto replaced_reader = mmcif_input::MmcifReader{replaced_input};
@@ -160,9 +160,9 @@ HETATM 2 O O1 . UNL A 1 1 0 0 1 0 -1 1 UNL A O1 1
         mmcif_output::MmcifWriter{replaced_output}.write_mmcif(replaced_records, charge_set(1),
                                                                replaced_source);
         auto replaced = ::gemmi::cif::read_string(replaced_output.str());
-        assert(replaced.blocks[0]
-                   .find_mmcif_category("_sb_ncbr_partial_atomic_charges_meta.")
-                   .length() == 1);
+        CHECK(replaced.blocks[0]
+                  .find_mmcif_category("_sb_ncbr_partial_atomic_charges_meta.")
+                  .length() == 1);
     }
 
     {
@@ -207,8 +207,8 @@ HETATM 3 O O . HOH A 3 2 0 0 1 0 0 3 HOH A O 1
         auto document = ::gemmi::cif::read_string(output.str());
         auto charge_rows =
             document.blocks[0].find("_sb_ncbr_partial_atomic_charges.", {"atom_id", "charge"});
-        assert(charge_rows.length() == 1);
-        assert(::gemmi::cif::as_string(charge_rows[0][0]) == "1");
+        CHECK(charge_rows.length() == 1);
+        CHECK(::gemmi::cif::as_string(charge_rows[0][0]) == "1");
     }
 
     {
@@ -232,15 +232,15 @@ END
         auto document = ::gemmi::cif::read_string(output.str());
         auto metadata = document.blocks[0].find("_sb_ncbr_partial_atomic_charges_meta.",
                                                 {"id", "type", "method"});
-        assert(metadata.length() == 2);
-        assert(::gemmi::cif::as_string(metadata[0][1]) == "empirical");
-        assert(::gemmi::cif::as_string(metadata[1][2]) == "qeq/qeq-default");
+        CHECK(metadata.length() == 2);
+        CHECK(::gemmi::cif::as_string(metadata[0][1]) == "empirical");
+        CHECK(::gemmi::cif::as_string(metadata[1][2]) == "qeq/qeq-default");
 
         auto charges = document.blocks[0].find("_sb_ncbr_partial_atomic_charges.",
                                                {"type_id", "atom_id", "charge"});
-        assert(charges.length() == 4);
-        assert(::gemmi::cif::as_string(charges[0][0]) != ::gemmi::cif::as_string(charges[2][0]));
-        assert(::gemmi::cif::as_string(charges[0][1]) != ::gemmi::cif::as_string(charges[2][1]));
+        CHECK(charges.length() == 4);
+        CHECK(::gemmi::cif::as_string(charges[0][0]) != ::gemmi::cif::as_string(charges[2][0]));
+        CHECK(::gemmi::cif::as_string(charges[0][1]) != ::gemmi::cif::as_string(charges[2][1]));
 
         const auto no_parameter_charges =
             charges::ChargeSet{"formal",
@@ -252,12 +252,10 @@ END
         auto no_parameter_document = ::gemmi::cif::read_string(no_parameter_output.str());
         auto no_parameter_metadata = no_parameter_document.blocks[0].find(
             "_sb_ncbr_partial_atomic_charges_meta.", {"method"});
-        assert(::gemmi::cif::as_string(no_parameter_metadata[0][0]) == "formal");
+        CHECK(::gemmi::cif::as_string(no_parameter_metadata[0][0]) == "formal");
 
         std::istringstream round_trip{output.str()};
         auto round_trip_reader = mmcif_input::MmcifReader{round_trip};
-        assert(round_trip_reader.next()->molecule.conformer_count() == 2);
+        CHECK(round_trip_reader.next()->molecule.conformer_count() == 2);
     }
-
-    return 0;
 }

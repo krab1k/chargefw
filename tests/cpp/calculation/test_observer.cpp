@@ -1,10 +1,8 @@
-#include "support/test_assertions.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
 #include <algorithm>
 #include <atomic>
-#include <cassert>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/calculation/observer.h>
 #include <chargefw/core/molecule.h>
@@ -19,6 +17,7 @@
 #include <limits>
 #include <mutex>
 #include <optional>
+#include <snitch/snitch.hpp>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -231,18 +230,18 @@ class DirectTestMethod final : public methods::Method {
 
 auto assert_single_terminal_fragment_progress(const std::vector<RecordedProgress>& events,
                                               const std::size_t fragment_count) -> void {
-    assert(!events.empty());
-    assert(std::count_if(events.begin(), events.end(), [fragment_count](const auto& event) {
-               return event.completed_fragment_count == fragment_count &&
-                      event.fragment_count == fragment_count;
-           }) == 1);
+    CHECK(!events.empty());
+    CHECK(std::count_if(events.begin(), events.end(), [fragment_count](const auto& event) {
+              return event.completed_fragment_count == fragment_count &&
+                     event.fragment_count == fragment_count;
+          }) == 1);
     for (const auto& event : events) {
-        assert(event.completed_fragment_count > 0);
-        assert(event.completed_fragment_count <= event.fragment_count);
-        assert(event.fragment_count == fragment_count);
+        CHECK(event.completed_fragment_count > 0);
+        CHECK(event.completed_fragment_count <= event.fragment_count);
+        CHECK(event.fragment_count == fragment_count);
     }
     for (std::size_t index = 1; index < events.size(); ++index) {
-        assert(events[index - 1].completed_fragment_count < events[index].completed_fragment_count);
+        CHECK(events[index - 1].completed_fragment_count < events[index].completed_fragment_count);
     }
 }
 
@@ -303,22 +302,23 @@ auto make_many_separated_waters() -> core::Molecule {
 
 auto assert_computation_boundary(const std::vector<RecordedProgress>& events,
                                  const calculation::ExecutionMode mode) -> void {
-    assert(!events.empty());
-    assert(events.front().phase == calculation::CalculationPhase::computation_started);
-    assert(events.back().phase == calculation::CalculationPhase::computation_finished);
-    assert(events.front().mode == mode);
-    assert(events.back().mode == mode);
-    assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
-               return event.phase == calculation::CalculationPhase::computation_started;
-           }) == 1);
-    assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
-               return event.phase == calculation::CalculationPhase::computation_finished;
-           }) == 1);
+    CHECK(!events.empty());
+    CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
+    CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
+    CHECK(events.front().mode == mode);
+    CHECK(events.back().mode == mode);
+    CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+              return event.phase == calculation::CalculationPhase::computation_started;
+          }) == 1);
+    CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+              return event.phase == calculation::CalculationPhase::computation_finished;
+          }) == 1);
 }
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("calculation observer reports phases, cancellation, and errors",
+          "[calculation][observer]") {
     // --- Test 1: null observer produces the same result as before ---
     {
         const auto result = calculate_application(calculation::AssessmentRequest{
@@ -328,9 +328,9 @@ auto main() -> int {
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        assert(result.calculated());
-        assert(!result.cancelled);
-        assert(result.charges->method_id() == std::string_view{"formal"});
+        CHECK(result.calculated());
+        CHECK(!result.cancelled);
+        CHECK(result.charges->method_id() == std::string_view{"formal"});
     }
 
     // --- Test 2: computation and target phases are emitted in order ---
@@ -345,29 +345,29 @@ auto main() -> int {
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
             observer);
 
-        assert(result.calculated());
-        assert(!result.cancelled);
+        CHECK(result.calculated());
+        CHECK(!result.cancelled);
 
         const auto events = observer.events();
-        assert(!events.empty());
+        CHECK(!events.empty());
 
         // The computation phase starts observation.
-        assert(events[0].phase == calculation::CalculationPhase::computation_started);
+        CHECK(events[0].phase == calculation::CalculationPhase::computation_started);
 
         // computation_started must carry mode and method_id.
-        assert(events[0].mode == calculation::ExecutionMode::full);
-        assert(events[0].method_id == std::string_view{"formal"});
+        CHECK(events[0].mode == calculation::ExecutionMode::full);
+        CHECK(events[0].method_id == std::string_view{"formal"});
 
         // computation_finished must be the last event and carry mode/method_id.
-        assert(events.back().phase == calculation::CalculationPhase::computation_finished);
-        assert(events.back().mode == calculation::ExecutionMode::full);
-        assert(events.back().method_id == std::string_view{"formal"});
-        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
-                   return event.phase == calculation::CalculationPhase::computation_started;
-               }) == 1);
-        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
-                   return event.phase == calculation::CalculationPhase::computation_finished;
-               }) == 1);
+        CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
+        CHECK(events.back().mode == calculation::ExecutionMode::full);
+        CHECK(events.back().method_id == std::string_view{"formal"});
+        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                  return event.phase == calculation::CalculationPhase::computation_started;
+              }) == 1);
+        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                  return event.phase == calculation::CalculationPhase::computation_finished;
+              }) == 1);
 
         // Between computation_started and computation_finished there must be at least
         // target_started and target_finished.
@@ -384,13 +384,13 @@ auto main() -> int {
             std::find_if(computation_start_it, computation_end_it, [](const auto& e) {
                 return e.phase == calculation::CalculationPhase::target_started;
             });
-        assert(target_started_it != computation_end_it);
+        CHECK(target_started_it != computation_end_it);
 
         const auto target_finished_it =
             std::find_if(target_started_it, computation_end_it, [](const auto& e) {
                 return e.phase == calculation::CalculationPhase::target_finished;
             });
-        assert(target_finished_it != computation_end_it);
+        CHECK(target_finished_it != computation_end_it);
     }
 
     // --- Test 3: assessment does not emit calculation observer events ---
@@ -403,8 +403,8 @@ auto main() -> int {
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        assert(assessment.executable());
-        assert(observer.events().empty());
+        CHECK(assessment.executable());
+        CHECK(observer.events().empty());
     }
 
     // --- Test 4: threshold warnings remain assessment data before computation ---
@@ -418,15 +418,15 @@ auto main() -> int {
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
             .resource_policy = {.cutoff_atom_threshold = 2}});
 
-        assert(assessment.execution_issues().size() == 1);
-        assert(assessment.execution_issues()[0].kind ==
-               methods::ExecutionIssueKind::resource_threshold_exceeded);
-        assert(observer.events().empty());
+        CHECK(assessment.execution_issues().size() == 1);
+        CHECK(assessment.execution_issues()[0].kind ==
+              methods::ExecutionIssueKind::resource_threshold_exceeded);
+        CHECK(observer.events().empty());
 
         const auto result = calculation::calculate(std::move(assessment), 1, observer);
-        assert(result.calculated());
-        assert(!result.cancelled);
-        assert(observer.events()[0].phase == calculation::CalculationPhase::computation_started);
+        CHECK(result.calculated());
+        CHECK(!result.cancelled);
+        CHECK(observer.events()[0].phase == calculation::CalculationPhase::computation_started);
     }
 
     // --- Test 5: cancellation produces cancelled result ---
@@ -442,14 +442,14 @@ auto main() -> int {
                 .resource_policy = {.max_threads = 1}},
             observer);
 
-        assert(result.cancelled);
-        assert(!result.calculated());
+        CHECK(result.cancelled);
+        CHECK(!result.calculated());
         const auto events = observer.events();
-        assert(events.front().phase == calculation::CalculationPhase::computation_started);
-        assert(events.back().phase == calculation::CalculationPhase::computation_finished);
-        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
-                   return event.phase == calculation::CalculationPhase::computation_finished;
-               }) == 1);
+        CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
+        CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
+        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                  return event.phase == calculation::CalculationPhase::computation_finished;
+              }) == 1);
     }
 
     // --- Test 6: validation failures still end observation and propagate unchanged ---
@@ -462,19 +462,20 @@ auto main() -> int {
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        assert(chargefw::test::throws_invalid_argument([&] -> void {
+        const auto throw_fn_0 = [&] -> void {
             static_cast<void>(calculation::calculate(
                 std::move(assessment), std::numeric_limits<std::size_t>::max(), observer));
-        }));
+        };
+        CHECK_THROWS_AS(throw_fn_0(), std::invalid_argument);
 
         const auto events = observer.events();
-        assert(events.front().phase == calculation::CalculationPhase::computation_started);
-        assert(events.back().phase == calculation::CalculationPhase::computation_finished);
-        assert(events.back().mode == calculation::ExecutionMode::full);
-        assert(events.back().method_id == std::string_view{"formal"});
-        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
-                   return event.phase == calculation::CalculationPhase::computation_finished;
-               }) == 1);
+        CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
+        CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
+        CHECK(events.back().mode == calculation::ExecutionMode::full);
+        CHECK(events.back().method_id == std::string_view{"formal"});
+        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                  return event.phase == calculation::CalculationPhase::computation_finished;
+              }) == 1);
     }
 
     // --- Test 7: solver failures still end observation and propagate unchanged ---
@@ -488,18 +489,19 @@ auto main() -> int {
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        assert(chargefw::test::throws<std::logic_error>([&] -> void {
+        const auto throw_fn_1 = [&] -> void {
             static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
-        }));
+        };
+        CHECK_THROWS_AS(throw_fn_1(), std::logic_error);
 
         const auto events = observer.events();
-        assert(events.front().phase == calculation::CalculationPhase::computation_started);
-        assert(events.back().phase == calculation::CalculationPhase::computation_finished);
-        assert(events.back().mode == calculation::ExecutionMode::full);
-        assert(events.back().method_id == std::string_view{"qeq"});
-        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
-                   return event.phase == calculation::CalculationPhase::computation_finished;
-               }) == 1);
+        CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
+        CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
+        CHECK(events.back().mode == calculation::ExecutionMode::full);
+        CHECK(events.back().method_id == std::string_view{"qeq"});
+        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                  return event.phase == calculation::CalculationPhase::computation_finished;
+              }) == 1);
     }
 
     // --- Test 8: a terminal observer callback failure does not terminate calculation ---
@@ -514,9 +516,9 @@ auto main() -> int {
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
             observer);
 
-        assert(result.calculated());
-        assert(!result.cancelled);
-        assert(observer.terminal_callbacks() == 1);
+        CHECK(result.calculated());
+        CHECK(!result.cancelled);
+        CHECK(observer.terminal_callbacks() == 1);
     }
 
     // --- Test 9: serial cutoff execution emits aggregate fragment progress ---
@@ -532,11 +534,11 @@ auto main() -> int {
                 .resource_policy = {.max_threads = 1}},
             observer);
 
-        assert(result.calculated());
-        assert(!result.cancelled);
+        CHECK(result.calculated());
+        CHECK(!result.cancelled);
 
         const auto fragment_events = fragment_progress_events(observer);
-        assert(!fragment_events.empty());
+        CHECK(!fragment_events.empty());
         assert_single_terminal_fragment_progress(fragment_events,
                                                  fragment_events.front().fragment_count);
     }
@@ -554,11 +556,11 @@ auto main() -> int {
                 .resource_policy = {.max_threads = 1}},
             observer);
 
-        assert(result.calculated());
-        assert(!result.cancelled);
+        CHECK(result.calculated());
+        CHECK(!result.cancelled);
 
         const auto fragment_events = fragment_progress_events(observer);
-        assert(!fragment_events.empty());
+        CHECK(!fragment_events.empty());
         assert_single_terminal_fragment_progress(fragment_events,
                                                  fragment_events.front().fragment_count);
     }
@@ -577,8 +579,8 @@ auto main() -> int {
                 .resource_policy = {.max_threads = 1}},
             observer);
 
-        assert(result.calculated());
-        assert(!result.cancelled);
+        CHECK(result.calculated());
+        CHECK(!result.cancelled);
 
         const auto events = observer.events();
 
@@ -590,15 +592,15 @@ auto main() -> int {
             }
         }
 
-        assert(molecule_indices.size() == 2);
-        assert(molecule_indices[0] == 0);
-        assert(molecule_indices[1] == 1);
+        CHECK(molecule_indices.size() == 2);
+        CHECK(molecule_indices[0] == 0);
+        CHECK(molecule_indices[1] == 1);
 
         // target_count must be consistent across events.
         for (const auto& event : events) {
             if (event.phase == calculation::CalculationPhase::target_started ||
                 event.phase == calculation::CalculationPhase::target_finished) {
-                assert(event.target_count == 2);
+                CHECK(event.target_count == 2);
             }
         }
     }
@@ -616,8 +618,8 @@ auto main() -> int {
                     calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
                 .resource_policy = {.max_threads = 1}},
             empty_observer);
-        assert(result.calculated());
-        assert(fragment_progress_events(empty_observer).empty());
+        CHECK(result.calculated());
+        CHECK(fragment_progress_events(empty_observer).empty());
     }
 
     // --- Test 13: parallel targets each have one terminal progress snapshot ---
@@ -633,7 +635,7 @@ auto main() -> int {
                     calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
                 .resource_policy = {.max_threads = 2}},
             observer);
-        assert(result.calculated());
+        CHECK(result.calculated());
 
         for (const auto target_index : {std::size_t{0}, std::size_t{1}}) {
             auto target_events = std::vector<RecordedProgress>{};
@@ -642,7 +644,7 @@ auto main() -> int {
                     target_events.push_back(event);
                 }
             }
-            assert(!target_events.empty());
+            CHECK(!target_events.empty());
             assert_single_terminal_fragment_progress(target_events,
                                                      target_events.front().fragment_count);
         }
@@ -666,8 +668,8 @@ auto main() -> int {
                                                           calculation::minimum_reduced_radius},
                 .resource_policy = {.max_threads = 1}},
             observer);
-        assert(result.calculated());
-        assert(result.charges->size() == 3);
+        CHECK(result.calculated());
+        CHECK(result.charges->size() == 3);
 
         const auto expected_targets = std::vector<charges::ChargeTarget>{
             {.molecule_index = 0, .conformer_index = 0},
@@ -675,10 +677,10 @@ auto main() -> int {
             {.molecule_index = 1, .conformer_index = 0},
         };
         for (std::size_t index = 0; index < expected_targets.size(); ++index) {
-            assert(result.charges->assignment(index).target.molecule_index ==
-                   expected_targets[index].molecule_index);
-            assert(result.charges->assignment(index).target.conformer_index ==
-                   expected_targets[index].conformer_index);
+            CHECK(result.charges->assignment(index).target.molecule_index ==
+                  expected_targets[index].molecule_index);
+            CHECK(result.charges->assignment(index).target.conformer_index ==
+                  expected_targets[index].conformer_index);
         }
 
         auto target_starts = std::vector<RecordedProgress>{};
@@ -687,12 +689,12 @@ auto main() -> int {
                 target_starts.push_back(event);
             }
         }
-        assert(target_starts.size() == expected_targets.size());
+        CHECK(target_starts.size() == expected_targets.size());
         for (std::size_t index = 0; index < target_starts.size(); ++index) {
-            assert(target_starts[index].target_index == index);
-            assert(target_starts[index].target_count == expected_targets.size());
-            assert(target_starts[index].molecule_index == expected_targets[index].molecule_index);
-            assert(target_starts[index].conformer_index == expected_targets[index].conformer_index);
+            CHECK(target_starts[index].target_index == index);
+            CHECK(target_starts[index].target_count == expected_targets.size());
+            CHECK(target_starts[index].molecule_index == expected_targets[index].molecule_index);
+            CHECK(target_starts[index].conformer_index == expected_targets[index].conformer_index);
         }
     }
 
@@ -704,12 +706,13 @@ auto main() -> int {
             .method_id = "formal",
             .execution_selection = calculation::ExecutionSelection{
                 calculation::ExecutionSelectionKind::cover, calculation::minimum_reduced_radius}});
-        assert(!assessment.executable());
-        assert(assessment.requires_executable_plan());
-        assert(chargefw::test::throws_invalid_argument([&] -> void {
+        CHECK(!assessment.executable());
+        CHECK(assessment.requires_executable_plan());
+        const auto throw_fn_2 = [&] -> void {
             static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
-        }));
-        assert(observer.events().empty());
+        };
+        CHECK_THROWS_AS(throw_fn_2(), std::invalid_argument);
+        CHECK(observer.events().empty());
     }
 
     // --- Test 16: reduced fragment failures retain target context and finish observation ---
@@ -727,23 +730,23 @@ auto main() -> int {
 
         try {
             static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
-            assert(false);
+            CHECK(false);
         } catch (const std::runtime_error& error) {
             const auto message = std::string_view{error.what()};
-            assert(message.contains(mode == calculation::ExecutionSelectionKind::cutoff
-                                        ? "center atom"
-                                        : "pivot atom"));
-            assert(message.contains("method 'qeq'"));
-            assert(message.contains("molecule 'water'"));
-            assert(message.contains("conformer 0"));
+            CHECK(message.contains(mode == calculation::ExecutionSelectionKind::cutoff
+                                       ? "center atom"
+                                       : "pivot atom"));
+            CHECK(message.contains("method 'qeq'"));
+            CHECK(message.contains("molecule 'water'"));
+            CHECK(message.contains("conformer 0"));
         }
 
         const auto events = observer.events();
-        assert(events.front().phase == calculation::CalculationPhase::computation_started);
-        assert(events.back().phase == calculation::CalculationPhase::computation_finished);
-        assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
-                   return event.phase == calculation::CalculationPhase::computation_finished;
-               }) == 1);
+        CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
+        CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
+        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                  return event.phase == calculation::CalculationPhase::computation_finished;
+              }) == 1);
     }
 
     // --- Test 17: observer failures never alter calculation control flow at any event tier ---
@@ -757,9 +760,9 @@ auto main() -> int {
                 .execution_selection =
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
             observer);
-        assert(result.calculated());
-        assert(!result.cancelled);
-        assert(observer.callbacks() >= 4);
+        CHECK(result.calculated());
+        CHECK(!result.cancelled);
+        CHECK(observer.callbacks() >= 4);
     }
 
     // --- Test 18: cutoff and cover observe cancellation after fragment progress ---
@@ -777,21 +780,21 @@ auto main() -> int {
                     .resource_policy = {.max_threads = max_threads}},
                 observer);
 
-            assert(result.cancelled);
-            assert(!result.calculated());
-            assert(observer.cancellation_checks_after_request() > 0);
+            CHECK(result.cancelled);
+            CHECK(!result.calculated());
+            CHECK(observer.cancellation_checks_after_request() > 0);
 
             const auto events = observer.events();
-            assert(std::any_of(events.begin(), events.end(), [](const auto& event) {
+            CHECK(std::any_of(events.begin(), events.end(), [](const auto& event) {
                 return event.phase == calculation::CalculationPhase::fragment_progress;
             }));
-            assert(std::none_of(events.begin(), events.end(), [](const auto& event) {
+            CHECK(std::none_of(events.begin(), events.end(), [](const auto& event) {
                 return event.phase == calculation::CalculationPhase::target_finished;
             }));
-            assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
-                       return event.phase == calculation::CalculationPhase::computation_finished;
-                   }) == 1);
-            assert(events.back().phase == calculation::CalculationPhase::computation_finished);
+            CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                      return event.phase == calculation::CalculationPhase::computation_finished;
+                  }) == 1);
+            CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
         }
     }
 
@@ -814,7 +817,7 @@ auto main() -> int {
                                                     .execution_policy = policy,
                                                     .max_threads = 1,
                                                     .observer = observer});
-        assert(result.charges.size() == 1);
+        CHECK(result.charges.size() == 1);
         assert_computation_boundary(observer.events(), mode);
     }
 
@@ -834,13 +837,14 @@ auto main() -> int {
             const auto prepared = features::PreparedMoleculeCollection{molecules};
             const auto method = DirectTestMethod{true};
             const auto selected = methods::ApplicableMethod{.method = &method};
-            assert(chargefw::test::throws<std::exception>([&] -> void {
+            const auto throw_fn_3 = [&] -> void {
                 static_cast<void>(calculation::calculate({.molecules = prepared,
                                                           .selected = selected,
                                                           .execution_policy = policy,
                                                           .max_threads = 1,
                                                           .observer = observer}));
-            }));
+            };
+            CHECK_THROWS_AS(throw_fn_3(), std::exception);
             assert_computation_boundary(observer.events(), mode);
         }
 
@@ -851,16 +855,15 @@ auto main() -> int {
             const auto prepared = features::PreparedMoleculeCollection{molecules};
             const auto method = DirectTestMethod{};
             const auto selected = methods::ApplicableMethod{.method = &method};
-            assert(chargefw::test::throws<calculation::CalculationCancelled>([&] -> void {
+            const auto throw_fn_4 = [&] -> void {
                 static_cast<void>(calculation::calculate({.molecules = prepared,
                                                           .selected = selected,
                                                           .execution_policy = policy,
                                                           .max_threads = 1,
                                                           .observer = observer}));
-            }));
+            };
+            CHECK_THROWS_AS(throw_fn_4(), calculation::CalculationCancelled);
             assert_computation_boundary(observer.events(), mode);
         }
     }
-
-    return 0;
 }

@@ -10,9 +10,9 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
-#include <cassert>
 #include <cmath>
 #include <optional>
+#include <snitch/snitch.hpp>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,14 +39,15 @@ auto make_test_gdac_parameters() -> parameters::ParameterSet {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("GDAC produces conformer-dependent charges and rejects missing features",
+          "[methods][gdac]") {
     const auto& registry = methods::method_registry();
     const auto* gdac = registry.find("gdac");
 
-    assert(gdac != nullptr);
-    assert(gdac->requires_parameters());
-    assert(gdac->requirements().coordinates);
-    assert(gdac->requirements().atom_parameters.size() == 2);
+    CHECK(gdac != nullptr);
+    CHECK(gdac->requires_parameters());
+    CHECK(gdac->requirements().coordinates);
+    CHECK(gdac->requirements().atom_parameters.size() == 2);
 
     const auto options = methods::make_default_options(gdac->option_schema());
 
@@ -64,9 +65,9 @@ auto main() -> int {
     const auto prerequisite_result = gdac->check_method_prerequisites(
         {.prepared_molecule = prepared_charged_pair, .method_options = options});
 
-    assert(!prerequisite_result);
-    assert(!prerequisite_result.issues().empty());
-    assert(prerequisite_result.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
+    CHECK(!prerequisite_result);
+    CHECK(!prerequisite_result.issues().empty());
+    CHECK(prerequisite_result.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
 
     const chargefw::core::Molecule rubidium_molecule{
         {chargefw::core::Atom{37}}, {}, {chargefw::core::Conformer{{chargefw::core::Position{}}}}};
@@ -74,11 +75,11 @@ auto main() -> int {
     const auto rubidium_prerequisite_result = gdac->check_method_prerequisites(
         {.prepared_molecule = prepared_rubidium, .method_options = options});
 
-    assert(!rubidium_prerequisite_result);
-    assert(rubidium_prerequisite_result.issues().size() == 1);
-    assert(rubidium_prerequisite_result.issues()[0].kind ==
-           methods::PrerequisiteIssueKind::unsupported_molecule);
-    assert(rubidium_prerequisite_result.issues()[0].atom_index == 0);
+    CHECK(!rubidium_prerequisite_result);
+    CHECK(rubidium_prerequisite_result.issues().size() == 1);
+    CHECK(rubidium_prerequisite_result.issues()[0].kind ==
+          methods::PrerequisiteIssueKind::unsupported_molecule);
+    CHECK(rubidium_prerequisite_result.issues()[0].atom_index == 0);
 
     const auto two_conformer_water = chargefw::test::make_two_conformer_water();
     const auto two_conformer_charge_set =
@@ -92,15 +93,13 @@ auto main() -> int {
     const auto& first_charges = first_assignment.charges;
     const auto& second_charges = second_assignment.charges;
 
-    assert(first_charges.size() == two_conformer_water.atom_count());
-    assert(second_charges.size() == two_conformer_water.atom_count());
+    CHECK(first_charges.size() == two_conformer_water.atom_count());
+    CHECK(second_charges.size() == two_conformer_water.atom_count());
 
-    assert(std::abs(first_charges.total()) < 1.0e-4);
-    assert(std::abs(second_charges.total()) < 1.0e-4);
+    CHECK(std::abs(first_charges.total()) < 1.0e-4);
+    CHECK(std::abs(second_charges.total()) < 1.0e-4);
 
-    assert(std::abs(first_charges[0] - second_charges[0]) > 1.0e-4);
+    CHECK(std::abs(first_charges[0] - second_charges[0]) > 1.0e-4);
 
     chargefw::test::assert_water_charges_labeling_invariant("gdac", {parameter_set}, &options);
-
-    return 0;
 }

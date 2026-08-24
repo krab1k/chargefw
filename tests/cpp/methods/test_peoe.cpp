@@ -8,8 +8,8 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
-#include <cassert>
 #include <cmath>
+#include <snitch/snitch.hpp>
 
 namespace parameters = chargefw::parameters;
 
@@ -32,7 +32,7 @@ auto make_peoe_parameters() -> parameters::ParameterSet {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("PEOE produces conformer-independent HF charges", "[methods][peoe]") {
     const auto charge_set = chargefw::test::calculate_single_method(
         chargefw::test::make_hf_graph(), "peoe", {make_peoe_parameters()});
 
@@ -41,10 +41,8 @@ auto main() -> int {
 
     const auto& charges = charge_set.assignment(0).charges;
 
-    assert(charges.size() == 2);
-    assert(charges[0] > 0.0);
-    assert(charges[1] < 0.0);
-    assert(std::abs(charges.total()) < 1.0e-12);
-
-    return 0;
+    CHECK(charges.size() == 2);
+    CHECK(charges[0] > 0.0);
+    CHECK(charges[1] < 0.0);
+    CHECK(std::abs(charges.total()) < 1.0e-12);
 }

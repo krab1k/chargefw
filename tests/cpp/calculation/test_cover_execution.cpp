@@ -14,9 +14,9 @@
 #include <chargefw/methods/method_requirements.h>
 
 #include <atomic>
-#include <cassert>
 #include <cmath>
 #include <optional>
+#include <snitch/snitch.hpp>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -110,7 +110,8 @@ auto make_linear_molecule(const std::size_t atom_count = 8, const int formal_cha
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("cover execution produces fragment-size-dependent charges",
+          "[calculation][cover-execution]") {
     const auto collection = core::MoleculeCollection{std::vector{make_linear_molecule(10)}};
     const features::PreparedMoleculeCollection prepared{collection};
     const auto policy = calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0,
@@ -124,17 +125,17 @@ auto main() -> int {
         const auto parallel = calculation::calculate_cover_charges(
             selected, prepared, policy, 0, calculation::default_calculation_observer());
 
-        assert(method.calls.load() == 6);
-        assert(serial.size() == 1);
-        assert(parallel.size() == 1);
+        CHECK(method.calls.load() == 6);
+        CHECK(serial.size() == 1);
+        CHECK(parallel.size() == 1);
         const auto& serial_values = serial.assignment(0).charges;
         const auto& parallel_values = parallel.assignment(0).charges;
-        assert(serial_values.size() == 10);
-        assert(parallel_values.size() == serial_values.size());
+        CHECK(serial_values.size() == 10);
+        CHECK(parallel_values.size() == serial_values.size());
         for (std::size_t atom_index = 0; atom_index < serial_values.size(); ++atom_index) {
-            assert(parallel_values[atom_index] == serial_values[atom_index]);
+            CHECK(parallel_values[atom_index] == serial_values[atom_index]);
             const auto expected = atom_index < 4 ? 9.0 : 10.0;
-            assert(serial_values[atom_index] == expected);
+            CHECK(serial_values[atom_index] == expected);
         }
     }
 
@@ -153,9 +154,7 @@ auto main() -> int {
         const auto& values = corrected.assignment(0).charges;
         for (std::size_t atom_index = 0; atom_index < values.size(); ++atom_index) {
             const auto expected = atom_index < 4 ? 0.4 : 1.4;
-            assert(std::abs(values[atom_index] - expected) < 1.0e-12);
+            CHECK(std::abs(values[atom_index] - expected) < 1.0e-12);
         }
     }
-
-    return 0;
 }

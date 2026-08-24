@@ -1,4 +1,3 @@
-#include "support/test_assertions.h"
 #include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
@@ -9,7 +8,7 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
-#include <cassert>
+#include <snitch/snitch.hpp>
 #include <vector>
 
 namespace parameters = chargefw::parameters;
@@ -31,7 +30,7 @@ auto make_parameter_set() -> parameters::ParameterSet {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("DENR produces conformer-independent water charges", "[methods][denr]") {
     auto options = chargefw::methods::MethodOptions{};
     options.set("step", 0.1);
     options.set("iterations", 100);
@@ -48,6 +47,4 @@ auto main() -> int {
                                                             &options);
     chargefw::test::assert_water_charges_geometry_independent("denr", {make_parameter_set()},
                                                               &options);
-
-    return 0;
 }

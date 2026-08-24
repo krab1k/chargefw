@@ -11,9 +11,9 @@
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_requirements.h>
 
-#include <cassert>
 #include <cstddef>
 #include <optional>
+#include <snitch/snitch.hpp>
 #include <span>
 #include <vector>
 
@@ -85,16 +85,17 @@ auto assert_worker_budget(const calculation::detail::ParallelizationLevel parall
                 std::vector<double>(molecule.molecule().atom_count(), 0.0)};
         });
 
-    assert(result.size() == target_count);
+    CHECK(result.size() == target_count);
     for (std::size_t target_index = 0; target_index < target_count; ++target_index) {
-        assert(result.assignment(target_index).target.molecule_index == target_index);
-        assert(received_fragment_threads[target_index] == expected_fragment_threads);
+        CHECK(result.assignment(target_index).target.molecule_index == target_index);
+        CHECK(received_fragment_threads[target_index] == expected_fragment_threads);
     }
 }
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("calculation targets distribute worker budget across parallelization levels",
+          "[calculation][calculation-targets]") {
     for (const auto requested_threads : {std::size_t{0}, std::size_t{1}, std::size_t{2}}) {
         for (const auto target_count : {std::size_t{0}, std::size_t{1}, std::size_t{2}}) {
             assert_worker_budget(calculation::detail::ParallelizationLevel::targets,
@@ -103,5 +104,4 @@ auto main() -> int {
                                  requested_threads, target_count, requested_threads);
         }
     }
-    return 0;
 }

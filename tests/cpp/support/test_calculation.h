@@ -1,6 +1,5 @@
 #pragma once
 
-#include "support/test_assertions.h"
 #include "support/test_molecules.h"
 
 #include <chargefw/calculation/calculation.h>
@@ -13,12 +12,14 @@
 #include <chargefw/parameters/models/parameter_set.h>
 
 #include <array>
-#include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <optional>
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#include <snitch/snitch.hpp>
 
 namespace chargefw::test {
 
@@ -30,14 +31,14 @@ calculate_method(core::Molecule molecule, std::string_view method_id,
     const features::PreparedMoleculeCollection prepared{collection};
     const auto* method = methods::method_registry().find(method_id);
 
-    assert(method != nullptr);
+    REQUIRE(method != nullptr);
 
     const std::vector<const methods::Method*> candidates{method};
     auto applicability = methods::find_applicable_methods(
         {.molecules = prepared, .methods = candidates, .parameter_sets = parameter_sets});
 
-    assert(applicability.applicable.size() == 1);
-    assert(applicability.rejected.empty());
+    REQUIRE(applicability.applicable.size() == 1);
+    REQUIRE(applicability.rejected.empty());
 
     if (method_options != nullptr) {
         applicability.applicable.front().method_options = *method_options;
@@ -55,7 +56,7 @@ calculate_single_method(core::Molecule molecule, std::string_view method_id,
     -> charges::ChargeSet {
     const auto charge_set =
         calculate_method(std::move(molecule), method_id, std::move(parameter_sets), method_options);
-    assert(charge_set.size() == 1);
+    REQUIRE(charge_set.size() == 1);
     return charge_set;
 }
 
@@ -63,25 +64,25 @@ inline auto assert_calculation_provenance(const charges::ChargeSet& charge_set,
                                           const std::string_view method_id,
                                           const std::optional<std::string_view> parameter_set_id)
     -> void {
-    assert(charge_set.method_id() == method_id);
-    assert(charge_set.parameter_set_id() == parameter_set_id);
+    CHECK(charge_set.method_id() == method_id);
+    CHECK(charge_set.parameter_set_id() == parameter_set_id);
 }
 
 inline auto assert_conformer_independent(const charges::ChargeSet& charge_set) -> void {
-    assert(charge_set.size() == 1);
+    CHECK(charge_set.size() == 1);
     const auto& assignment = charge_set.assignment(0);
-    assert(assignment.target.molecule_index == 0);
-    assert(!assignment.target.conformer_index.has_value());
+    CHECK(assignment.target.molecule_index == 0);
+    CHECK_FALSE(assignment.target.conformer_index.has_value());
 }
 
 inline auto assert_conformer_dependent(const charges::ChargeSet& charge_set,
                                        const std::size_t conformer_count) -> void {
-    assert(charge_set.size() == conformer_count);
+    REQUIRE(charge_set.size() == conformer_count);
 
     for (std::size_t conformer_index = 0; conformer_index < conformer_count; ++conformer_index) {
         const auto& assignment = charge_set.assignment(conformer_index);
-        assert(assignment.target.molecule_index == 0);
-        assert(assignment.target.conformer_index == conformer_index);
+        CHECK(assignment.target.molecule_index == 0);
+        CHECK(assignment.target.conformer_index == conformer_index);
     }
 }
 
@@ -89,21 +90,21 @@ inline auto assert_conformer_dependent(const charges::ChargeSet& charge_set,
 /// negative charge, both hydrogens carry equal positive charge, and the molecule is neutral.
 inline auto assert_neutral_water_charges(const charges::AtomicCharges& charges,
                                          const double tolerance) -> void {
-    assert(charges.size() == 3);
-    assert(charges[0] < 0.0);
-    assert(charges[1] > 0.0);
-    assert(charges[2] > 0.0);
-    assert_close(charges[1], charges[2], tolerance);
-    assert_close(charges.total(), 0.0, tolerance);
+    REQUIRE(charges.size() == 3);
+    CHECK(charges[0] < 0.0);
+    CHECK(charges[1] > 0.0);
+    CHECK(charges[2] > 0.0);
+    CHECK(std::abs(charges[1] - charges[2]) < tolerance);
+    CHECK(std::abs(charges.total() - 0.0) < tolerance);
 }
 
 inline auto assert_same_charges(const charges::AtomicCharges& actual,
                                 const charges::AtomicCharges& expected, const double tolerance)
     -> void {
-    assert(actual.size() == expected.size());
+    REQUIRE(actual.size() == expected.size());
 
     for (std::size_t atom_index = 0; atom_index < actual.size(); ++atom_index) {
-        assert_close(actual[atom_index], expected[atom_index], tolerance);
+        CHECK(std::abs(actual[atom_index] - expected[atom_index]) < tolerance);
     }
 }
 
@@ -125,10 +126,10 @@ assert_water_charges_labeling_invariant(std::string_view method_id,
                                                    method_id, parameter_sets, method_options);
     const auto& relabeled_charges = relabeled.assignment(0).charges;
 
-    assert(relabeled_charges.size() == reference_charges.size());
+    REQUIRE(relabeled_charges.size() == reference_charges.size());
     for (std::size_t atom_index = 0; atom_index < new_to_old.size(); ++atom_index) {
-        assert_close(relabeled_charges[atom_index], reference_charges[new_to_old.at(atom_index)],
-                     tolerance);
+        CHECK(std::abs(relabeled_charges[atom_index] -
+                       reference_charges[new_to_old.at(atom_index)]) < tolerance);
     }
 
     const auto flipped = calculate_single_method(flip_bond_directions(make_water()), method_id,

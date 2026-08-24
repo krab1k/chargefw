@@ -12,8 +12,8 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
-#include <cassert>
 #include <cstddef>
+#include <snitch/snitch.hpp>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -42,52 +42,37 @@ auto make_water_parameters() -> parameters::ParameterSet {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("calculation input exposes molecule, topology, geometry, and parameters",
+          "[methods][calculation-input]") {
     const auto water = chargefw::test::make_water();
     const features::PreparedMolecule prepared_water{water};
     const methods::MethodOptions options;
 
     const methods::CalculationInput basic_input{prepared_water, options, -1.5};
 
-    assert(&basic_input.prepared_molecule() == &prepared_water);
-    assert(&basic_input.molecule() == &water);
-    assert(&basic_input.topology() == &prepared_water.topology());
-    assert(&basic_input.method_options() == &options);
-    assert(basic_input.target_charge() == -1.5);
+    CHECK(&basic_input.prepared_molecule() == &prepared_water);
+    CHECK(&basic_input.molecule() == &water);
+    CHECK(&basic_input.topology() == &prepared_water.topology());
+    CHECK(&basic_input.method_options() == &options);
+    CHECK(basic_input.target_charge() == -1.5);
 
-    assert(!basic_input.has_geometry());
-    assert(basic_input.geometry_if_available() == nullptr);
+    CHECK_FALSE(basic_input.has_geometry());
+    CHECK(basic_input.geometry_if_available() == nullptr);
 
-    bool rejected_missing_geometry = false;
+    CHECK_THROWS_AS(basic_input.geometry(), std::logic_error);
 
-    try {
-        [[maybe_unused]] const auto& geometry = basic_input.geometry();
-    } catch (const std::logic_error&) {
-        rejected_missing_geometry = true;
-    }
+    CHECK_FALSE(basic_input.has_parameters());
+    CHECK(basic_input.parameters_if_available() == nullptr);
 
-    assert(rejected_missing_geometry);
-
-    assert(!basic_input.has_parameters());
-    assert(basic_input.parameters_if_available() == nullptr);
-
-    bool rejected_missing_parameters = false;
-
-    try {
-        [[maybe_unused]] const auto& parameters = basic_input.parameters();
-    } catch (const std::logic_error&) {
-        rejected_missing_parameters = true;
-    }
-
-    assert(rejected_missing_parameters);
+    CHECK_THROWS_AS(basic_input.parameters(), std::logic_error);
 
     const features::ConformerFeatures geometry{water};
 
     const methods::CalculationInput geometry_input{prepared_water, options, 0.0, &geometry};
 
-    assert(geometry_input.has_geometry());
-    assert(geometry_input.geometry_if_available() == &geometry);
-    assert(&geometry_input.geometry() == &geometry);
+    CHECK(geometry_input.has_geometry());
+    CHECK(geometry_input.geometry_if_available() == &geometry);
+    CHECK(&geometry_input.geometry() == &geometry);
 
     const auto parameter_set = make_water_parameters();
 
@@ -99,15 +84,13 @@ auto main() -> int {
     const methods::CalculationInput parameter_input{prepared_water, options, 0.0, nullptr,
                                                     &parameter_view};
 
-    assert(parameter_input.has_parameters());
-    assert(parameter_input.parameters_if_available() == &parameter_view);
-    assert(&parameter_input.parameters() == &parameter_view);
+    CHECK(parameter_input.has_parameters());
+    CHECK(parameter_input.parameters_if_available() == &parameter_view);
+    CHECK(&parameter_input.parameters() == &parameter_view);
 
     const auto value = parameter_input.parameters().atom("value");
 
-    assert(value[0] == 2.0);
-    assert(value[1] == 1.0);
-    assert(value[2] == 1.0);
-
-    return 0;
+    CHECK(value[0] == 2.0);
+    CHECK(value[1] == 1.0);
+    CHECK(value[2] == 1.0);
 }

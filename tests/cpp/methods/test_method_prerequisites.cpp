@@ -12,8 +12,8 @@
 #include <chargefw/methods/method_prerequisites.h>
 #include <chargefw/methods/method_registry.h>
 
-#include <cassert>
 #include <optional>
+#include <snitch/snitch.hpp>
 #include <span>
 #include <utility>
 #include <vector>
@@ -92,7 +92,8 @@ auto make_collection() -> core::MoleculeCollection {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("method prerequisites detect missing features and unsupported molecules",
+          "[methods][method-prerequisites]") {
     const auto water = chargefw::test::make_water();
     const auto charged_pair = chargefw::test::make_formally_charged_pair();
 
@@ -106,27 +107,27 @@ auto main() -> int {
     const auto* dummy = registry.find("dummy");
     const auto* formal = registry.find("formal");
 
-    assert(abeem != nullptr);
-    assert(dummy != nullptr);
-    assert(formal != nullptr);
+    CHECK(abeem != nullptr);
+    CHECK(dummy != nullptr);
+    CHECK(formal != nullptr);
 
-    assert(dummy->check_method_prerequisites(
+    CHECK(dummy->check_method_prerequisites(
         {.prepared_molecule = prepared_water, .method_options = empty_options}));
 
-    assert(formal->check_method_prerequisites(
+    CHECK(formal->check_method_prerequisites(
         {.prepared_molecule = prepared_water, .method_options = empty_options}));
 
     const CoordinatesMethod coordinates_method;
 
-    assert(coordinates_method.check_method_prerequisites(
+    CHECK(coordinates_method.check_method_prerequisites(
         {.prepared_molecule = prepared_water, .method_options = empty_options}));
 
     const auto missing_coordinates = coordinates_method.check_method_prerequisites(
         {.prepared_molecule = prepared_charged_pair, .method_options = empty_options});
 
-    assert(!missing_coordinates);
-    assert(missing_coordinates.issues().size() == 1);
-    assert(missing_coordinates.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
+    CHECK(!missing_coordinates);
+    CHECK(missing_coordinates.issues().size() == 1);
+    CHECK(missing_coordinates.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
 
     const core::Molecule coincident_atoms{
         std::vector{core::Atom{1}, core::Atom{1}},
@@ -138,24 +139,24 @@ auto main() -> int {
     const features::PreparedMolecule prepared_coincident_atoms{coincident_atoms};
     const auto coincident_atoms_result = coordinates_method.check_method_prerequisites(
         {.prepared_molecule = prepared_coincident_atoms, .method_options = empty_options});
-    assert(!coincident_atoms_result);
-    assert(coincident_atoms_result.issues().size() == 2);
-    assert(coincident_atoms_result.issues()[0].kind ==
-           methods::PrerequisiteIssueKind::invalid_geometry);
-    assert(coincident_atoms_result.issues()[0].atom_index == 1);
-    assert(coincident_atoms_result.issues()[0].message.contains("conformer 0"));
-    assert(coincident_atoms_result.issues()[1].kind ==
-           methods::PrerequisiteIssueKind::invalid_geometry);
-    assert(coincident_atoms_result.issues()[1].atom_index == 1);
-    assert(coincident_atoms_result.issues()[1].message.contains("conformer 1"));
+    CHECK(!coincident_atoms_result);
+    CHECK(coincident_atoms_result.issues().size() == 2);
+    CHECK(coincident_atoms_result.issues()[0].kind ==
+          methods::PrerequisiteIssueKind::invalid_geometry);
+    CHECK(coincident_atoms_result.issues()[0].atom_index == 1);
+    CHECK(coincident_atoms_result.issues()[0].message.contains("conformer 0"));
+    CHECK(coincident_atoms_result.issues()[1].kind ==
+          methods::PrerequisiteIssueKind::invalid_geometry);
+    CHECK(coincident_atoms_result.issues()[1].atom_index == 1);
+    CHECK(coincident_atoms_result.issues()[1].message.contains("conformer 1"));
 
     const DenseMethod dense_method;
 
     const auto dense_result = dense_method.check_method_prerequisites(
         {.prepared_molecule = prepared_water, .method_options = empty_options});
 
-    assert(dense_result);
-    assert(dense_result.issues().empty());
+    CHECK(dense_result);
+    CHECK(dense_result.issues().empty());
 
     const auto collection = make_collection();
     const features::PreparedMoleculeCollection prepared_collection{collection};
@@ -163,15 +164,15 @@ auto main() -> int {
     const auto dummy_collection_result =
         methods::check_method_prerequisites(*dummy, prepared_collection, empty_options);
 
-    assert(dummy_collection_result);
+    CHECK(dummy_collection_result);
 
     const auto coordinates_collection_result =
         methods::check_method_prerequisites(coordinates_method, prepared_collection, empty_options);
 
-    assert(!coordinates_collection_result);
-    assert(coordinates_collection_result.issues().size() == 1);
-    assert(coordinates_collection_result.issues()[0].kind ==
-           methods::PrerequisiteIssueKind::missing_feature);
+    CHECK(!coordinates_collection_result);
+    CHECK(coordinates_collection_result.issues().size() == 1);
+    CHECK(coordinates_collection_result.issues()[0].kind ==
+          methods::PrerequisiteIssueKind::missing_feature);
 
     const core::Molecule berkelium_molecule{
         std::vector{core::Atom{97}}, {}, std::vector{core::Conformer{{core::Position{}}}}};
@@ -179,10 +180,8 @@ auto main() -> int {
 
     const auto abeem_result = abeem->check_method_prerequisites(
         {.prepared_molecule = prepared_berkelium, .method_options = empty_options});
-    assert(!abeem_result);
-    assert(abeem_result.issues().size() == 1);
-    assert(abeem_result.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
-    assert(abeem_result.issues()[0].atom_index == 0);
-
-    return 0;
+    CHECK(!abeem_result);
+    CHECK(abeem_result.issues().size() == 1);
+    CHECK(abeem_result.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
+    CHECK(abeem_result.issues()[0].atom_index == 0);
 }

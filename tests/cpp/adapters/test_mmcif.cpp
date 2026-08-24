@@ -1,6 +1,6 @@
-#include <cassert>
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 #include <chargefw/core/bond.h>
+#include <snitch/snitch.hpp>
 
 #include <sstream>
 #include <stdexcept>
@@ -8,7 +8,7 @@
 namespace mmcif = chargefw::adapters::gemmi::mmcif_input;
 namespace gemmi_adapter = chargefw::adapters::gemmi;
 
-auto main() -> int {
+TEST_CASE("adapter contract", "[adapters]") {
     std::istringstream input{R"cif(data_first
 loop_
 _atom_site.group_PDB
@@ -66,21 +66,21 @@ ATOM 1 O O . HOH B 1 ? 3.0 0.0 0.0 1.0 20.0 0 1 HOH B O 1
 
     auto reader = mmcif::MmcifReader{input, "structure.cif"};
     const auto first = reader.next();
-    assert(first.has_value());
-    assert(first->identity.source == "structure.cif");
-    assert(first->identity.record_index == 0);
-    assert(first->identity.record_id == "first");
-    assert(first->molecule.atom_count() == 3);
-    assert(first->molecule.bond_count() == 0);
-    assert(first->molecule.conformer_count() == 2);
-    assert(first->molecule.conformer(1)[0].x == 0.1);
+    CHECK(first.has_value());
+    CHECK(first->identity.source == "structure.cif");
+    CHECK(first->identity.record_index == 0);
+    CHECK(first->identity.record_id == "first");
+    CHECK(first->molecule.atom_count() == 3);
+    CHECK(first->molecule.bond_count() == 0);
+    CHECK(first->molecule.conformer_count() == 2);
+    CHECK(first->molecule.conformer(1)[0].x == 0.1);
 
     const auto second = reader.next();
-    assert(second.has_value());
-    assert(second->identity.record_index == 1);
-    assert(second->identity.record_id == "second");
-    assert(second->molecule.atom_count() == 1);
-    assert(!reader.next().has_value());
+    CHECK(second.has_value());
+    CHECK(second->identity.record_index == 1);
+    CHECK(second->identity.record_id == "second");
+    CHECK(second->molecule.atom_count() == 1);
+    CHECK_FALSE(reader.next().has_value());
 
     std::istringstream deferred_error_input{R"cif(data_valid
 loop_
@@ -132,14 +132,14 @@ ATOM 1 Xx CA . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
 #
 )cif"};
     auto deferred_error_reader = mmcif::MmcifReader{deferred_error_input};
-    assert(deferred_error_reader.next().has_value());
+    CHECK(deferred_error_reader.next().has_value());
     bool deferred_error = false;
     try {
         static_cast<void>(deferred_error_reader.next());
     } catch (const std::runtime_error&) {
         deferred_error = true;
     }
-    assert(deferred_error);
+    CHECK(deferred_error);
 
     std::istringstream filtered_input{R"cif(data_filtered
 loop_
@@ -170,7 +170,7 @@ HETATM 3 O O . HOH A 3 ? 2.0 0.0 0.0 1.0 20.0 0 3 HOH A O 1
 )cif"};
     auto filtered = mmcif::MmcifReader{
         filtered_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers}};
-    assert(filtered.next()->molecule.atom_count() == 1);
+    CHECK(filtered.next()->molecule.atom_count() == 1);
 
     const auto strategy_input = R"cif(data_connectivity
 loop_
@@ -227,12 +227,12 @@ link1 covale A LIG 1 O1 B LIG 1 C2
         return strategy_reader.next()->molecule;
     };
 
-    assert(read_strategy(gemmi_adapter::BondStrategy::none).bond_count() == 0);
+    CHECK(read_strategy(gemmi_adapter::BondStrategy::none).bond_count() == 0);
     const auto explicit_molecule = read_strategy(gemmi_adapter::BondStrategy::explicit_bonds);
-    assert(explicit_molecule.bond_count() == 3);
-    assert(explicit_molecule.bond(0).order() == chargefw::core::BondOrder::DOUBLE);
-    assert(explicit_molecule.bond(1).order() == chargefw::core::BondOrder::SINGLE);
-    assert(read_strategy(gemmi_adapter::BondStrategy::hybrid).bond_count() == 3);
+    CHECK(explicit_molecule.bond_count() == 3);
+    CHECK(explicit_molecule.bond(0).order() == chargefw::core::BondOrder::DOUBLE);
+    CHECK(explicit_molecule.bond(1).order() == chargefw::core::BondOrder::SINGLE);
+    CHECK(read_strategy(gemmi_adapter::BondStrategy::hybrid).bond_count() == 3);
 
     const auto duplicate_input = R"cif(data_duplicate
 loop_
@@ -271,16 +271,14 @@ ALA N CA DOUB
         std::istringstream duplicate_stream{duplicate_input};
         auto reader = mmcif::MmcifReader{duplicate_stream, {}, {.bond_strategy = strategy}};
         const auto molecule = reader.next()->molecule;
-        assert(molecule.bond_count() == 1);
+        CHECK(molecule.bond_count() == 1);
         return molecule.bond(0);
     };
 
-    assert(read_duplicate_bond(gemmi_adapter::BondStrategy::templates).order() ==
-           chargefw::core::BondOrder::SINGLE);
-    assert(read_duplicate_bond(gemmi_adapter::BondStrategy::explicit_bonds).order() ==
-           chargefw::core::BondOrder::DOUBLE);
-    assert(read_duplicate_bond(gemmi_adapter::BondStrategy::hybrid).order() ==
-           chargefw::core::BondOrder::DOUBLE);
-
-    return 0;
+    CHECK(read_duplicate_bond(gemmi_adapter::BondStrategy::templates).order() ==
+          chargefw::core::BondOrder::SINGLE);
+    CHECK(read_duplicate_bond(gemmi_adapter::BondStrategy::explicit_bonds).order() ==
+          chargefw::core::BondOrder::DOUBLE);
+    CHECK(read_duplicate_bond(gemmi_adapter::BondStrategy::hybrid).order() ==
+          chargefw::core::BondOrder::DOUBLE);
 }

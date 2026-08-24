@@ -9,8 +9,8 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
-#include <cassert>
 #include <cmath>
+#include <snitch/snitch.hpp>
 #include <vector>
 
 namespace parameters = chargefw::parameters;
@@ -33,7 +33,7 @@ auto make_mpeoe_parameters() -> parameters::ParameterSet {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("MPEOE produces conformer-independent methane charges", "[methods][mpeoe]") {
     const auto charge_set = chargefw::test::calculate_single_method(
         chargefw::test::make_methane_graph(), "mpeoe", {make_mpeoe_parameters()});
 
@@ -42,19 +42,17 @@ auto main() -> int {
 
     const auto& charges = charge_set.assignment(0).charges;
 
-    assert(charges.size() == 5);
+    CHECK(charges.size() == 5);
 
     const auto carbon_charge = charges[0];
     const auto hydrogen_charge = charges[1];
 
-    assert(carbon_charge < 0.0);
-    assert(hydrogen_charge > 0.0);
+    CHECK(carbon_charge < 0.0);
+    CHECK(hydrogen_charge > 0.0);
 
-    assert(std::abs(charges[1] - charges[2]) < 1.0e-12);
-    assert(std::abs(charges[1] - charges[3]) < 1.0e-12);
-    assert(std::abs(charges[1] - charges[4]) < 1.0e-12);
+    CHECK(std::abs(charges[1] - charges[2]) < 1.0e-12);
+    CHECK(std::abs(charges[1] - charges[3]) < 1.0e-12);
+    CHECK(std::abs(charges[1] - charges[4]) < 1.0e-12);
 
-    assert(std::abs(charges.total()) < 1.0e-12);
-
-    return 0;
+    CHECK(std::abs(charges.total()) < 1.0e-12);
 }

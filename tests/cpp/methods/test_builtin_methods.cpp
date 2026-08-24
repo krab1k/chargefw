@@ -5,8 +5,8 @@
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
 
-#include <cassert>
 #include <cmath>
+#include <snitch/snitch.hpp>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -30,19 +30,20 @@ auto calculate(const methods::Method& method, const chargefw::core::Molecule& mo
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("built-in method registry exposes all methods with correct metadata",
+          "[methods][builtin-methods]") {
     const auto& registry = methods::method_registry();
 
     const auto method_names = registry.names();
 
-    assert((method_names ==
-            std::vector<std::string>{"abeem", "charge2", "delre",  "denr",   "dummy",  "eem",
-                                     "eqeq",  "eqeqc",   "formal", "gdac",   "kcm",    "mgc",
-                                     "mpeoe", "peoe",    "qeq",    "sfkeem", "smpqeq", "sqe",
-                                     "sqeq0", "sqeqp",   "tsef",   "veem"}));
+    CHECK((method_names == std::vector<std::string>{"abeem",  "charge2", "delre", "denr",   "dummy",
+                                                    "eem",    "eqeq",    "eqeqc", "formal", "gdac",
+                                                    "kcm",    "mgc",     "mpeoe", "peoe",   "qeq",
+                                                    "sfkeem", "smpqeq",  "sqe",   "sqeq0",  "sqeqp",
+                                                    "tsef",   "veem"}));
 
     for (const auto& name : method_names) {
-        assert(registry.find(name) != nullptr);
+        CHECK(registry.find(name) != nullptr);
     }
 
     const auto* dummy = registry.find("dummy");
@@ -68,423 +69,420 @@ auto main() -> int {
     const auto* eqeqc = registry.find("eqeqc");
     const auto* abeem = registry.find("abeem");
 
-    assert(dummy->id() == std::string_view{"dummy"});
-    assert(dummy->metadata().name == std::string_view{"Dummy method"});
-    assert(dummy->metadata().full_name == std::string_view{"Dummy zero charges"});
-    assert(!dummy->metadata().publication.has_value());
-    assert(dummy->metadata().priority == 0);
-    assert(!dummy->requires_parameters());
-    assert(dummy->option_schema().empty());
+    CHECK(dummy->id() == std::string_view{"dummy"});
+    CHECK(dummy->metadata().name == std::string_view{"Dummy method"});
+    CHECK(dummy->metadata().full_name == std::string_view{"Dummy zero charges"});
+    CHECK(!dummy->metadata().publication.has_value());
+    CHECK(dummy->metadata().priority == 0);
+    CHECK(!dummy->requires_parameters());
+    CHECK(dummy->option_schema().empty());
 
-    assert(formal->id() == std::string_view{"formal"});
-    assert(formal->metadata().name == std::string_view{"Formal"});
-    assert(formal->metadata().full_name == std::string_view{"Formal atomic charges"});
-    assert(!formal->metadata().publication.has_value());
-    assert(formal->metadata().priority == 10);
-    assert(!formal->requires_parameters());
-    assert(formal->option_schema().empty());
+    CHECK(formal->id() == std::string_view{"formal"});
+    CHECK(formal->metadata().name == std::string_view{"Formal"});
+    CHECK(formal->metadata().full_name == std::string_view{"Formal atomic charges"});
+    CHECK(!formal->metadata().publication.has_value());
+    CHECK(formal->metadata().priority == 10);
+    CHECK(!formal->requires_parameters());
+    CHECK(formal->option_schema().empty());
 
-    assert(veem->id() == std::string_view{"veem"});
-    assert(veem->metadata().name == std::string_view{"VEEM"});
-    assert(veem->metadata().full_name == std::string_view{"Valence Electrons Equalization Method"});
-    assert(veem->metadata().publication.has_value());
-    assert(veem->metadata().priority == 20);
-    assert(veem->requirements().resources.time == methods::ComplexityTerm::atoms);
-    assert(veem->requirements().resources.memory == methods::ComplexityTerm::constant);
-    assert(!veem->requires_parameters());
-    assert(veem->option_schema().empty());
+    CHECK(veem->id() == std::string_view{"veem"});
+    CHECK(veem->metadata().name == std::string_view{"VEEM"});
+    CHECK(veem->metadata().full_name == std::string_view{"Valence Electrons Equalization Method"});
+    CHECK(veem->metadata().publication.has_value());
+    CHECK(veem->metadata().priority == 20);
+    CHECK(veem->requirements().resources.time == methods::ComplexityTerm::atoms);
+    CHECK(veem->requirements().resources.memory == methods::ComplexityTerm::constant);
+    CHECK(!veem->requires_parameters());
+    CHECK(veem->option_schema().empty());
 
-    assert(peoe->id() == std::string_view{"peoe"});
-    assert(peoe->metadata().name == std::string_view{"PEOE"});
-    assert(peoe->metadata().full_name ==
-           std::string_view{"Partial Equalization of Atomic Electronegativity"});
-    assert(peoe->metadata().publication.has_value());
-    assert(peoe->metadata().priority == 120);
+    CHECK(peoe->id() == std::string_view{"peoe"});
+    CHECK(peoe->metadata().name == std::string_view{"PEOE"});
+    CHECK(peoe->metadata().full_name ==
+          std::string_view{"Partial Equalization of Atomic Electronegativity"});
+    CHECK(peoe->metadata().publication.has_value());
+    CHECK(peoe->metadata().priority == 120);
 
-    assert(mpeoe->id() == std::string_view{"mpeoe"});
-    assert(mpeoe->metadata().name == std::string_view{"MPEOE"});
-    assert(mpeoe->metadata().full_name ==
-           std::string_view{"Modified Partial Equalization of Atomic Electronegativity"});
-    assert(mpeoe->metadata().publication.has_value());
-    assert(mpeoe->metadata().priority == 110);
+    CHECK(mpeoe->id() == std::string_view{"mpeoe"});
+    CHECK(mpeoe->metadata().name == std::string_view{"MPEOE"});
+    CHECK(mpeoe->metadata().full_name ==
+          std::string_view{"Modified Partial Equalization of Atomic Electronegativity"});
+    CHECK(mpeoe->metadata().publication.has_value());
+    CHECK(mpeoe->metadata().priority == 110);
 
-    assert(gdac->id() == std::string_view{"gdac"});
-    assert(gdac->metadata().name == std::string_view{"GDAC"});
-    assert(gdac->metadata().full_name == std::string_view{"Geometry-Dependent Net Atomic Charges"});
-    assert(gdac->metadata().publication.has_value());
-    assert(gdac->metadata().priority == 100);
+    CHECK(gdac->id() == std::string_view{"gdac"});
+    CHECK(gdac->metadata().name == std::string_view{"GDAC"});
+    CHECK(gdac->metadata().full_name == std::string_view{"Geometry-Dependent Net Atomic Charges"});
+    CHECK(gdac->metadata().publication.has_value());
+    CHECK(gdac->metadata().priority == 100);
 
-    assert(gdac->requirements().coordinates);
-    assert(gdac->requirements().requires_atom_parameters());
-    assert(!gdac->requirements().requires_common_parameters());
-    assert(!gdac->requirements().requires_bond_parameters());
-    assert(gdac->requirements().atom_parameters.size() == 2);
-    assert(gdac->requires_parameters());
-    assert(gdac->option_schema().size() == 1);
+    CHECK(gdac->requirements().coordinates);
+    CHECK(gdac->requirements().requires_atom_parameters());
+    CHECK(!gdac->requirements().requires_common_parameters());
+    CHECK(!gdac->requirements().requires_bond_parameters());
+    CHECK(gdac->requirements().atom_parameters.size() == 2);
+    CHECK(gdac->requires_parameters());
+    CHECK(gdac->option_schema().size() == 1);
 
-    assert(mpeoe->requirements().requires_common_parameters());
-    assert(mpeoe->requirements().requires_atom_parameters());
-    assert(mpeoe->requirements().requires_bond_parameters());
-    assert(mpeoe->requirements().common_parameters.size() == 1);
-    assert(mpeoe->requirements().atom_parameters.size() == 2);
-    assert(mpeoe->requirements().bond_parameters.size() == 1);
-    assert(mpeoe->requires_parameters());
-    assert(mpeoe->option_schema().size() == 1);
+    CHECK(mpeoe->requirements().requires_common_parameters());
+    CHECK(mpeoe->requirements().requires_atom_parameters());
+    CHECK(mpeoe->requirements().requires_bond_parameters());
+    CHECK(mpeoe->requirements().common_parameters.size() == 1);
+    CHECK(mpeoe->requirements().atom_parameters.size() == 2);
+    CHECK(mpeoe->requirements().bond_parameters.size() == 1);
+    CHECK(mpeoe->requires_parameters());
+    CHECK(mpeoe->option_schema().size() == 1);
 
-    assert(peoe->requirements().requires_common_parameters());
-    assert(peoe->requirements().requires_atom_parameters());
-    assert(peoe->requirements().common_parameters.size() == 1);
-    assert(peoe->requirements().atom_parameters.size() == 3);
-    assert(peoe->requires_parameters());
-    assert(peoe->option_schema().size() == 1);
+    CHECK(peoe->requirements().requires_common_parameters());
+    CHECK(peoe->requirements().requires_atom_parameters());
+    CHECK(peoe->requirements().common_parameters.size() == 1);
+    CHECK(peoe->requirements().atom_parameters.size() == 3);
+    CHECK(peoe->requires_parameters());
+    CHECK(peoe->option_schema().size() == 1);
 
-    assert(charge2->id() == std::string_view{"charge2"});
-    assert(charge2->metadata().name == std::string_view{"Charge2"});
-    assert(charge2->metadata().full_name == std::string_view{"Charge2"});
-    assert(charge2->metadata().publication.has_value());
-    assert(charge2->metadata().priority == 30);
+    CHECK(charge2->id() == std::string_view{"charge2"});
+    CHECK(charge2->metadata().name == std::string_view{"Charge2"});
+    CHECK(charge2->metadata().full_name == std::string_view{"Charge2"});
+    CHECK(charge2->metadata().publication.has_value());
+    CHECK(charge2->metadata().priority == 30);
 
-    assert(charge2->requirements().requires_common_parameters());
-    assert(charge2->requirements().requires_atom_parameters());
-    assert(!charge2->requirements().requires_bond_parameters());
-    assert(charge2->requirements().common_parameters.size() == 6);
-    assert(charge2->requirements().atom_parameters.size() == 3);
-    assert(charge2->requires_parameters());
-    assert(charge2->option_schema().size() == 1);
+    CHECK(charge2->requirements().requires_common_parameters());
+    CHECK(charge2->requirements().requires_atom_parameters());
+    CHECK(!charge2->requirements().requires_bond_parameters());
+    CHECK(charge2->requirements().common_parameters.size() == 6);
+    CHECK(charge2->requirements().atom_parameters.size() == 3);
+    CHECK(charge2->requires_parameters());
+    CHECK(charge2->option_schema().size() == 1);
 
-    assert(delre->id() == std::string_view{"delre"});
-    assert(delre->metadata().name == std::string_view{"DelRe"});
-    assert(delre->metadata().full_name == std::string_view{"Method of Del Re"});
-    assert(delre->metadata().publication.has_value());
-    assert(delre->metadata().priority == 130);
+    CHECK(delre->id() == std::string_view{"delre"});
+    CHECK(delre->metadata().name == std::string_view{"DelRe"});
+    CHECK(delre->metadata().full_name == std::string_view{"Method of Del Re"});
+    CHECK(delre->metadata().publication.has_value());
+    CHECK(delre->metadata().priority == 130);
 
-    assert(delre->requirements().requires_atom_parameters());
-    assert(delre->requirements().requires_bond_parameters());
-    assert(!delre->requirements().requires_common_parameters());
-    assert(delre->requirements().atom_parameters.size() == 1);
-    assert(delre->requirements().bond_parameters.size() == 3);
-    assert(delre->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(delre->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(delre->requires_parameters());
-    assert(delre->option_schema().empty());
+    CHECK(delre->requirements().requires_atom_parameters());
+    CHECK(delre->requirements().requires_bond_parameters());
+    CHECK(!delre->requirements().requires_common_parameters());
+    CHECK(delre->requirements().atom_parameters.size() == 1);
+    CHECK(delre->requirements().bond_parameters.size() == 3);
+    CHECK(delre->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(delre->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(delre->requires_parameters());
+    CHECK(delre->option_schema().empty());
 
-    assert(mgc->id() == std::string_view{"mgc"});
-    assert(mgc->metadata().name == std::string_view{"MGC"});
-    assert(mgc->metadata().full_name == std::string_view{"Molecular Graph Charge"});
-    assert(mgc->metadata().publication.has_value());
-    assert(mgc->metadata().priority == 70);
+    CHECK(mgc->id() == std::string_view{"mgc"});
+    CHECK(mgc->metadata().name == std::string_view{"MGC"});
+    CHECK(mgc->metadata().full_name == std::string_view{"Molecular Graph Charge"});
+    CHECK(mgc->metadata().publication.has_value());
+    CHECK(mgc->metadata().priority == 70);
 
-    assert(!mgc->requires_parameters());
-    assert(mgc->option_schema().empty());
-    assert(mgc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(mgc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(!mgc->requires_parameters());
+    CHECK(mgc->option_schema().empty());
+    CHECK(mgc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(mgc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
 
-    assert(denr->id() == std::string_view{"denr"});
-    assert(denr->metadata().name == std::string_view{"DENR"});
-    assert(denr->metadata().full_name ==
-           std::string_view{"Dynamical Electronegativity Relaxation"});
-    assert(denr->metadata().publication.has_value());
-    assert(denr->metadata().priority == 50);
+    CHECK(denr->id() == std::string_view{"denr"});
+    CHECK(denr->metadata().name == std::string_view{"DENR"});
+    CHECK(denr->metadata().full_name == std::string_view{"Dynamical Electronegativity Relaxation"});
+    CHECK(denr->metadata().publication.has_value());
+    CHECK(denr->metadata().priority == 50);
 
-    assert(!denr->requirements().requires_common_parameters());
-    assert(denr->requirements().requires_atom_parameters());
-    assert(!denr->requirements().requires_bond_parameters());
-    assert(denr->requirements().common_parameters.empty());
-    assert(denr->requirements().atom_parameters.size() == 2);
-    assert(denr->requires_parameters());
+    CHECK(!denr->requirements().requires_common_parameters());
+    CHECK(denr->requirements().requires_atom_parameters());
+    CHECK(!denr->requirements().requires_bond_parameters());
+    CHECK(denr->requirements().common_parameters.empty());
+    CHECK(denr->requirements().atom_parameters.size() == 2);
+    CHECK(denr->requires_parameters());
     const auto denr_option_schema = denr->option_schema();
-    assert(denr_option_schema.size() == 2);
-    assert(denr_option_schema[0].id == std::string_view{"step"});
-    assert(denr_option_schema[0].type == methods::MethodOptionType::floating_point);
-    assert(std::get_if<double>(&denr_option_schema[0].default_value) != nullptr);
-    assert(*std::get_if<double>(&denr_option_schema[0].default_value) == 0.1);
-    assert(denr_option_schema[1].id == std::string_view{"iterations"});
-    assert(denr_option_schema[1].type == methods::MethodOptionType::integer);
-    assert(std::get_if<int>(&denr_option_schema[1].default_value) != nullptr);
-    assert(*std::get_if<int>(&denr_option_schema[1].default_value) == 3);
+    CHECK(denr_option_schema.size() == 2);
+    CHECK(denr_option_schema[0].id == std::string_view{"step"});
+    CHECK(denr_option_schema[0].type == methods::MethodOptionType::floating_point);
+    CHECK(std::get_if<double>(&denr_option_schema[0].default_value) != nullptr);
+    CHECK(*std::get_if<double>(&denr_option_schema[0].default_value) == 0.1);
+    CHECK(denr_option_schema[1].id == std::string_view{"iterations"});
+    CHECK(denr_option_schema[1].type == methods::MethodOptionType::integer);
+    CHECK(std::get_if<int>(&denr_option_schema[1].default_value) != nullptr);
+    CHECK(*std::get_if<int>(&denr_option_schema[1].default_value) == 3);
 
-    assert(denr->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(denr->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(denr->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(denr->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
 
-    assert(kcm->id() == std::string_view{"kcm"});
-    assert(kcm->metadata().name == std::string_view{"KCM"});
-    assert(kcm->metadata().full_name == std::string_view{"Kirchhoff Charge Model"});
-    assert(kcm->metadata().publication.has_value());
-    assert(kcm->metadata().priority == 60);
+    CHECK(kcm->id() == std::string_view{"kcm"});
+    CHECK(kcm->metadata().name == std::string_view{"KCM"});
+    CHECK(kcm->metadata().full_name == std::string_view{"Kirchhoff Charge Model"});
+    CHECK(kcm->metadata().publication.has_value());
+    CHECK(kcm->metadata().priority == 60);
 
-    assert(kcm->requirements().requires_atom_parameters());
-    assert(!kcm->requirements().requires_common_parameters());
-    assert(!kcm->requirements().requires_bond_parameters());
-    assert(kcm->requirements().atom_parameters.size() == 2);
-    assert(kcm->requires_parameters());
-    assert(kcm->option_schema().empty());
+    CHECK(kcm->requirements().requires_atom_parameters());
+    CHECK(!kcm->requirements().requires_common_parameters());
+    CHECK(!kcm->requirements().requires_bond_parameters());
+    CHECK(kcm->requirements().atom_parameters.size() == 2);
+    CHECK(kcm->requires_parameters());
+    CHECK(kcm->option_schema().empty());
 
-    assert(kcm->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(kcm->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(kcm->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(kcm->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
 
-    assert(tsef->id() == std::string_view{"tsef"});
-    assert(tsef->metadata().name == std::string_view{"TSEF"});
-    assert(tsef->metadata().full_name ==
-           std::string_view{"Topologically Symmetrical Energy Function"});
-    assert(tsef->metadata().publication.has_value());
-    assert(tsef->metadata().priority == 55);
+    CHECK(tsef->id() == std::string_view{"tsef"});
+    CHECK(tsef->metadata().name == std::string_view{"TSEF"});
+    CHECK(tsef->metadata().full_name ==
+          std::string_view{"Topologically Symmetrical Energy Function"});
+    CHECK(tsef->metadata().publication.has_value());
+    CHECK(tsef->metadata().priority == 55);
 
-    assert(!tsef->requirements().requires_common_parameters());
-    assert(tsef->requirements().requires_atom_parameters());
-    assert(!tsef->requirements().requires_bond_parameters());
-    assert(tsef->requirements().atom_parameters.size() == 2);
-    assert(tsef->requires_parameters());
-    assert(tsef->option_schema().empty());
+    CHECK(!tsef->requirements().requires_common_parameters());
+    CHECK(tsef->requirements().requires_atom_parameters());
+    CHECK(!tsef->requirements().requires_bond_parameters());
+    CHECK(tsef->requirements().atom_parameters.size() == 2);
+    CHECK(tsef->requires_parameters());
+    CHECK(tsef->option_schema().empty());
 
-    assert(tsef->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(tsef->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(tsef->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(tsef->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
 
-    assert(qeq->id() == std::string_view{"qeq"});
-    assert(qeq->metadata().name == std::string_view{"QEq"});
-    assert(qeq->metadata().full_name == std::string_view{"Charge Equilibration"});
-    assert(qeq->metadata().publication.has_value());
-    assert(qeq->metadata().priority == 170);
+    CHECK(qeq->id() == std::string_view{"qeq"});
+    CHECK(qeq->metadata().name == std::string_view{"QEq"});
+    CHECK(qeq->metadata().full_name == std::string_view{"Charge Equilibration"});
+    CHECK(qeq->metadata().publication.has_value());
+    CHECK(qeq->metadata().priority == 170);
 
-    assert(qeq->requirements().coordinates);
-    assert(qeq->requirements().requires_atom_parameters());
-    assert(!qeq->requirements().requires_common_parameters());
-    assert(!qeq->requirements().requires_bond_parameters());
-    assert(qeq->requirements().atom_parameters.size() == 2);
-    assert(qeq->requires_parameters());
-    assert(qeq->option_schema().size() == 1);
+    CHECK(qeq->requirements().coordinates);
+    CHECK(qeq->requirements().requires_atom_parameters());
+    CHECK(!qeq->requirements().requires_common_parameters());
+    CHECK(!qeq->requirements().requires_bond_parameters());
+    CHECK(qeq->requirements().atom_parameters.size() == 2);
+    CHECK(qeq->requires_parameters());
+    CHECK(qeq->option_schema().size() == 1);
 
-    assert(qeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(qeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(qeq->requirements().resources.supports_cutoff);
-    assert(qeq->requirements().resources.supports_cover);
-    assert(qeq->requirements().resources.fragment_target_charge_policy ==
-           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
+    CHECK(qeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(qeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(qeq->requirements().resources.supports_cutoff);
+    CHECK(qeq->requirements().resources.supports_cover);
+    CHECK(qeq->requirements().resources.fragment_target_charge_policy ==
+          methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
-    assert(sqe->id() == std::string_view{"sqe"});
-    assert(sqe->metadata().name == std::string_view{"SQE"});
-    assert(sqe->metadata().full_name == std::string_view{"Split-charge Equilibration"});
-    assert(sqe->metadata().publication.has_value());
-    assert(sqe->metadata().priority == 90);
-    assert(sqe->requirements().coordinates);
-    assert(sqe->requirements().requires_atom_parameters());
-    assert(sqe->requirements().requires_bond_parameters());
-    assert(!sqe->requirements().requires_common_parameters());
-    assert(sqe->requirements().atom_parameters.size() == 3);
-    assert(sqe->requirements().bond_parameters.size() == 1);
-    assert(sqe->requires_parameters());
-    assert(sqe->option_schema().empty());
-    assert(sqe->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
-    assert(sqe->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
-    assert(sqe->requirements().resources.supports_cutoff);
-    assert(sqe->requirements().resources.supports_cover);
-    assert(sqe->requirements().resources.fragment_target_charge_policy ==
-           methods::FragmentTargetChargePolicy::zero);
+    CHECK(sqe->id() == std::string_view{"sqe"});
+    CHECK(sqe->metadata().name == std::string_view{"SQE"});
+    CHECK(sqe->metadata().full_name == std::string_view{"Split-charge Equilibration"});
+    CHECK(sqe->metadata().publication.has_value());
+    CHECK(sqe->metadata().priority == 90);
+    CHECK(sqe->requirements().coordinates);
+    CHECK(sqe->requirements().requires_atom_parameters());
+    CHECK(sqe->requirements().requires_bond_parameters());
+    CHECK(!sqe->requirements().requires_common_parameters());
+    CHECK(sqe->requirements().atom_parameters.size() == 3);
+    CHECK(sqe->requirements().bond_parameters.size() == 1);
+    CHECK(sqe->requires_parameters());
+    CHECK(sqe->option_schema().empty());
+    CHECK(sqe->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
+    CHECK(sqe->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
+    CHECK(sqe->requirements().resources.supports_cutoff);
+    CHECK(sqe->requirements().resources.supports_cover);
+    CHECK(sqe->requirements().resources.fragment_target_charge_policy ==
+          methods::FragmentTargetChargePolicy::zero);
 
-    assert(sqeq0->id() == std::string_view{"sqeq0"});
-    assert(sqeq0->metadata().name == std::string_view{"SQE+q0"});
-    assert(sqeq0->metadata().full_name ==
-           std::string_view{"Split-charge Equilibration with Initial Formal Charges"});
-    assert(sqeq0->metadata().publication.has_value());
-    assert(sqeq0->metadata().priority == 80);
-    assert(sqeq0->requirements().coordinates);
-    assert(sqeq0->requirements().requires_atom_parameters());
-    assert(sqeq0->requirements().requires_bond_parameters());
-    assert(!sqeq0->requirements().requires_common_parameters());
-    assert(sqeq0->requirements().atom_parameters.size() == 3);
-    assert(sqeq0->requirements().bond_parameters.size() == 1);
-    assert(sqeq0->requires_parameters());
-    assert(sqeq0->option_schema().empty());
-    assert(sqeq0->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
-    assert(sqeq0->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
-    assert(sqeq0->requirements().resources.supports_cutoff);
-    assert(sqeq0->requirements().resources.supports_cover);
-    assert(sqeq0->requirements().resources.fragment_target_charge_policy ==
-           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
+    CHECK(sqeq0->id() == std::string_view{"sqeq0"});
+    CHECK(sqeq0->metadata().name == std::string_view{"SQE+q0"});
+    CHECK(sqeq0->metadata().full_name ==
+          std::string_view{"Split-charge Equilibration with Initial Formal Charges"});
+    CHECK(sqeq0->metadata().publication.has_value());
+    CHECK(sqeq0->metadata().priority == 80);
+    CHECK(sqeq0->requirements().coordinates);
+    CHECK(sqeq0->requirements().requires_atom_parameters());
+    CHECK(sqeq0->requirements().requires_bond_parameters());
+    CHECK(!sqeq0->requirements().requires_common_parameters());
+    CHECK(sqeq0->requirements().atom_parameters.size() == 3);
+    CHECK(sqeq0->requirements().bond_parameters.size() == 1);
+    CHECK(sqeq0->requires_parameters());
+    CHECK(sqeq0->option_schema().empty());
+    CHECK(sqeq0->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
+    CHECK(sqeq0->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
+    CHECK(sqeq0->requirements().resources.supports_cutoff);
+    CHECK(sqeq0->requirements().resources.supports_cover);
+    CHECK(sqeq0->requirements().resources.fragment_target_charge_policy ==
+          methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
-    assert(sqeqp->id() == std::string_view{"sqeqp"});
-    assert(sqeqp->metadata().name == std::string_view{"SQE+qp"});
-    assert(sqeqp->metadata().full_name ==
-           std::string_view{"Split-charge Equilibration with Parameterized Initial Charges"});
-    assert(sqeqp->metadata().publication.has_value());
-    assert(sqeqp->metadata().priority == 210);
-    assert(sqeqp->requirements().coordinates);
-    assert(sqeqp->requirements().requires_atom_parameters());
-    assert(sqeqp->requirements().requires_bond_parameters());
-    assert(!sqeqp->requirements().requires_common_parameters());
-    assert(sqeqp->requirements().atom_parameters.size() == 4);
-    assert(sqeqp->requirements().bond_parameters.size() == 1);
-    assert(sqeqp->requires_parameters());
-    assert(sqeqp->option_schema().empty());
-    assert(sqeqp->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
-    assert(sqeqp->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
-    assert(sqeqp->requirements().resources.supports_cutoff);
-    assert(sqeqp->requirements().resources.supports_cover);
-    assert(sqeqp->requirements().resources.fragment_target_charge_policy ==
-           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
+    CHECK(sqeqp->id() == std::string_view{"sqeqp"});
+    CHECK(sqeqp->metadata().name == std::string_view{"SQE+qp"});
+    CHECK(sqeqp->metadata().full_name ==
+          std::string_view{"Split-charge Equilibration with Parameterized Initial Charges"});
+    CHECK(sqeqp->metadata().publication.has_value());
+    CHECK(sqeqp->metadata().priority == 210);
+    CHECK(sqeqp->requirements().coordinates);
+    CHECK(sqeqp->requirements().requires_atom_parameters());
+    CHECK(sqeqp->requirements().requires_bond_parameters());
+    CHECK(!sqeqp->requirements().requires_common_parameters());
+    CHECK(sqeqp->requirements().atom_parameters.size() == 4);
+    CHECK(sqeqp->requirements().bond_parameters.size() == 1);
+    CHECK(sqeqp->requires_parameters());
+    CHECK(sqeqp->option_schema().empty());
+    CHECK(sqeqp->requirements().resources.time == methods::ComplexityTerm::bonds_cubed);
+    CHECK(sqeqp->requirements().resources.memory == methods::ComplexityTerm::bonds_squared);
+    CHECK(sqeqp->requirements().resources.supports_cutoff);
+    CHECK(sqeqp->requirements().resources.supports_cover);
+    CHECK(sqeqp->requirements().resources.fragment_target_charge_policy ==
+          methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
-    assert(eem->id() == std::string_view{"eem"});
-    assert(eem->metadata().name == std::string_view{"EEM"});
-    assert(eem->metadata().full_name == std::string_view{"Electronegativity Equalization Method"});
-    assert(eem->metadata().publication.has_value());
-    assert(eem->metadata().priority == 200);
+    CHECK(eem->id() == std::string_view{"eem"});
+    CHECK(eem->metadata().name == std::string_view{"EEM"});
+    CHECK(eem->metadata().full_name == std::string_view{"Electronegativity Equalization Method"});
+    CHECK(eem->metadata().publication.has_value());
+    CHECK(eem->metadata().priority == 200);
 
-    assert(eem->requirements().coordinates);
-    assert(eem->requirements().requires_common_parameters());
-    assert(eem->requirements().requires_atom_parameters());
-    assert(!eem->requirements().requires_bond_parameters());
-    assert(eem->requirements().common_parameters.size() == 1);
-    assert(eem->requirements().atom_parameters.size() == 2);
-    assert(eem->requires_parameters());
-    assert(eem->option_schema().empty());
+    CHECK(eem->requirements().coordinates);
+    CHECK(eem->requirements().requires_common_parameters());
+    CHECK(eem->requirements().requires_atom_parameters());
+    CHECK(!eem->requirements().requires_bond_parameters());
+    CHECK(eem->requirements().common_parameters.size() == 1);
+    CHECK(eem->requirements().atom_parameters.size() == 2);
+    CHECK(eem->requires_parameters());
+    CHECK(eem->option_schema().empty());
 
-    assert(eem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(eem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(eem->requirements().resources.supports_cutoff);
-    assert(eem->requirements().resources.supports_cover);
-    assert(eem->requirements().resources.fragment_target_charge_policy ==
-           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
+    CHECK(eem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(eem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(eem->requirements().resources.supports_cutoff);
+    CHECK(eem->requirements().resources.supports_cover);
+    CHECK(eem->requirements().resources.fragment_target_charge_policy ==
+          methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
-    assert(smpqeq->id() == std::string_view{"smpqeq"});
-    assert(smpqeq->metadata().name == std::string_view{"SMP/QEq"});
-    assert(smpqeq->metadata().full_name ==
-           std::string_view{"Self-Consistent Charge Equilibration Method"});
-    assert(smpqeq->metadata().publication.has_value());
-    assert(smpqeq->metadata().priority == 160);
+    CHECK(smpqeq->id() == std::string_view{"smpqeq"});
+    CHECK(smpqeq->metadata().name == std::string_view{"SMP/QEq"});
+    CHECK(smpqeq->metadata().full_name ==
+          std::string_view{"Self-Consistent Charge Equilibration Method"});
+    CHECK(smpqeq->metadata().publication.has_value());
+    CHECK(smpqeq->metadata().priority == 160);
 
-    assert(smpqeq->requirements().coordinates);
-    assert(smpqeq->requirements().requires_atom_parameters());
-    assert(!smpqeq->requirements().requires_common_parameters());
-    assert(!smpqeq->requirements().requires_bond_parameters());
-    assert(smpqeq->requirements().atom_parameters.size() == 4);
-    assert(smpqeq->requires_parameters());
-    assert(smpqeq->option_schema().empty());
+    CHECK(smpqeq->requirements().coordinates);
+    CHECK(smpqeq->requirements().requires_atom_parameters());
+    CHECK(!smpqeq->requirements().requires_common_parameters());
+    CHECK(!smpqeq->requirements().requires_bond_parameters());
+    CHECK(smpqeq->requirements().atom_parameters.size() == 4);
+    CHECK(smpqeq->requires_parameters());
+    CHECK(smpqeq->option_schema().empty());
 
-    assert(smpqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(smpqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(smpqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(smpqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
 
-    assert(sfkeem->id() == std::string_view{"sfkeem"});
-    assert(sfkeem->metadata().name == std::string_view{"SFKEEM"});
-    assert(sfkeem->metadata().full_name ==
-           std::string_view{"Selfconsistent Functional Kernel Equalized Electronegativity Method"});
-    assert(sfkeem->metadata().publication.has_value());
-    assert(sfkeem->metadata().priority == 180);
+    CHECK(sfkeem->id() == std::string_view{"sfkeem"});
+    CHECK(sfkeem->metadata().name == std::string_view{"SFKEEM"});
+    CHECK(sfkeem->metadata().full_name ==
+          std::string_view{"Selfconsistent Functional Kernel Equalized Electronegativity Method"});
+    CHECK(sfkeem->metadata().publication.has_value());
+    CHECK(sfkeem->metadata().priority == 180);
 
-    assert(sfkeem->requirements().coordinates);
-    assert(sfkeem->requirements().requires_common_parameters());
-    assert(sfkeem->requirements().requires_atom_parameters());
-    assert(!sfkeem->requirements().requires_bond_parameters());
-    assert(sfkeem->requirements().common_parameters.size() == 1);
-    assert(sfkeem->requirements().atom_parameters.size() == 2);
-    assert(sfkeem->requires_parameters());
-    assert(sfkeem->option_schema().empty());
+    CHECK(sfkeem->requirements().coordinates);
+    CHECK(sfkeem->requirements().requires_common_parameters());
+    CHECK(sfkeem->requirements().requires_atom_parameters());
+    CHECK(!sfkeem->requirements().requires_bond_parameters());
+    CHECK(sfkeem->requirements().common_parameters.size() == 1);
+    CHECK(sfkeem->requirements().atom_parameters.size() == 2);
+    CHECK(sfkeem->requires_parameters());
+    CHECK(sfkeem->option_schema().empty());
 
-    assert(sfkeem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(sfkeem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(!sfkeem->requirements().resources.supports_cutoff);
+    CHECK(sfkeem->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(sfkeem->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(!sfkeem->requirements().resources.supports_cutoff);
 
-    assert(eqeq->id() == std::string_view{"eqeq"});
-    assert(eqeq->metadata().name == std::string_view{"EQeq"});
-    assert(eqeq->metadata().full_name == std::string_view{"Extended Charge Equilibration Method"});
-    assert(eqeq->metadata().publication.has_value());
-    assert(eqeq->metadata().priority == 150);
+    CHECK(eqeq->id() == std::string_view{"eqeq"});
+    CHECK(eqeq->metadata().name == std::string_view{"EQeq"});
+    CHECK(eqeq->metadata().full_name == std::string_view{"Extended Charge Equilibration Method"});
+    CHECK(eqeq->metadata().publication.has_value());
+    CHECK(eqeq->metadata().priority == 150);
 
-    assert(eqeq->requirements().coordinates);
-    assert(!eqeq->requirements().requires_common_parameters());
-    assert(!eqeq->requirements().requires_atom_parameters());
-    assert(!eqeq->requirements().requires_bond_parameters());
-    assert(!eqeq->requires_parameters());
-    assert(eqeq->option_schema().empty());
+    CHECK(eqeq->requirements().coordinates);
+    CHECK(!eqeq->requirements().requires_common_parameters());
+    CHECK(!eqeq->requirements().requires_atom_parameters());
+    CHECK(!eqeq->requirements().requires_bond_parameters());
+    CHECK(!eqeq->requires_parameters());
+    CHECK(eqeq->option_schema().empty());
 
-    assert(eqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(eqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(eqeq->requirements().resources.supports_cutoff);
-    assert(eqeq->requirements().resources.supports_cover);
-    assert(eqeq->requirements().resources.fragment_target_charge_policy ==
-           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
+    CHECK(eqeq->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(eqeq->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(eqeq->requirements().resources.supports_cutoff);
+    CHECK(eqeq->requirements().resources.supports_cover);
+    CHECK(eqeq->requirements().resources.fragment_target_charge_policy ==
+          methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
-    assert(eqeqc->id() == std::string_view{"eqeqc"});
-    assert(eqeqc->metadata().name == std::string_view{"EQeq+C"});
-    assert(eqeqc->metadata().full_name ==
-           std::string_view{"Bond-Order-Corrected Extended Charge Equilibration Method"});
-    assert(eqeqc->metadata().publication.has_value());
-    assert(eqeqc->metadata().priority == 140);
+    CHECK(eqeqc->id() == std::string_view{"eqeqc"});
+    CHECK(eqeqc->metadata().name == std::string_view{"EQeq+C"});
+    CHECK(eqeqc->metadata().full_name ==
+          std::string_view{"Bond-Order-Corrected Extended Charge Equilibration Method"});
+    CHECK(eqeqc->metadata().publication.has_value());
+    CHECK(eqeqc->metadata().priority == 140);
 
-    assert(eqeqc->requirements().coordinates);
-    assert(eqeqc->requirements().requires_common_parameters());
-    assert(eqeqc->requirements().requires_atom_parameters());
-    assert(!eqeqc->requirements().requires_bond_parameters());
-    assert(eqeqc->requirements().common_parameters.size() == 1);
-    assert(eqeqc->requirements().atom_parameters.size() == 1);
-    assert(eqeqc->requires_parameters());
-    assert(eqeqc->option_schema().empty());
+    CHECK(eqeqc->requirements().coordinates);
+    CHECK(eqeqc->requirements().requires_common_parameters());
+    CHECK(eqeqc->requirements().requires_atom_parameters());
+    CHECK(!eqeqc->requirements().requires_bond_parameters());
+    CHECK(eqeqc->requirements().common_parameters.size() == 1);
+    CHECK(eqeqc->requirements().atom_parameters.size() == 1);
+    CHECK(eqeqc->requires_parameters());
+    CHECK(eqeqc->option_schema().empty());
 
-    assert(eqeqc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
-    assert(eqeqc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
-    assert(eqeqc->requirements().resources.supports_cutoff);
-    assert(eqeqc->requirements().resources.supports_cover);
-    assert(eqeqc->requirements().resources.fragment_target_charge_policy ==
-           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
+    CHECK(eqeqc->requirements().resources.time == methods::ComplexityTerm::atoms_cubed);
+    CHECK(eqeqc->requirements().resources.memory == methods::ComplexityTerm::atoms_squared);
+    CHECK(eqeqc->requirements().resources.supports_cutoff);
+    CHECK(eqeqc->requirements().resources.supports_cover);
+    CHECK(eqeqc->requirements().resources.fragment_target_charge_policy ==
+          methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
-    assert(abeem->id() == std::string_view{"abeem"});
-    assert(abeem->metadata().name == std::string_view{"ABEEM"});
-    assert(abeem->metadata().full_name ==
-           std::string_view{"Atom-Bond Electronegativity Equalization Method"});
-    assert(abeem->metadata().publication.has_value());
-    assert(abeem->metadata().priority == 190);
+    CHECK(abeem->id() == std::string_view{"abeem"});
+    CHECK(abeem->metadata().name == std::string_view{"ABEEM"});
+    CHECK(abeem->metadata().full_name ==
+          std::string_view{"Atom-Bond Electronegativity Equalization Method"});
+    CHECK(abeem->metadata().publication.has_value());
+    CHECK(abeem->metadata().priority == 190);
 
-    assert(abeem->requirements().coordinates);
-    assert(abeem->requirements().requires_common_parameters());
-    assert(abeem->requirements().requires_atom_parameters());
-    assert(abeem->requirements().requires_bond_parameters());
-    assert(abeem->requirements().common_parameters.size() == 1);
-    assert(abeem->requirements().atom_parameters.size() == 3);
-    assert(abeem->requirements().bond_parameters.size() == 4);
-    assert(abeem->requires_parameters());
-    assert(abeem->option_schema().empty());
+    CHECK(abeem->requirements().coordinates);
+    CHECK(abeem->requirements().requires_common_parameters());
+    CHECK(abeem->requirements().requires_atom_parameters());
+    CHECK(abeem->requirements().requires_bond_parameters());
+    CHECK(abeem->requirements().common_parameters.size() == 1);
+    CHECK(abeem->requirements().atom_parameters.size() == 3);
+    CHECK(abeem->requirements().bond_parameters.size() == 4);
+    CHECK(abeem->requires_parameters());
+    CHECK(abeem->option_schema().empty());
 
-    assert(abeem->requirements().resources.time == methods::ComplexityTerm::atoms_plus_bonds_cubed);
-    assert(abeem->requirements().resources.memory ==
-           methods::ComplexityTerm::atoms_plus_bonds_squared);
-    assert(abeem->requirements().resources.supports_cutoff);
-    assert(abeem->requirements().resources.supports_cover);
-    assert(abeem->requirements().resources.fragment_target_charge_policy ==
-           methods::FragmentTargetChargePolicy::proportional_to_atom_count);
+    CHECK(abeem->requirements().resources.time == methods::ComplexityTerm::atoms_plus_bonds_cubed);
+    CHECK(abeem->requirements().resources.memory ==
+          methods::ComplexityTerm::atoms_plus_bonds_squared);
+    CHECK(abeem->requirements().resources.supports_cutoff);
+    CHECK(abeem->requirements().resources.supports_cover);
+    CHECK(abeem->requirements().resources.fragment_target_charge_policy ==
+          methods::FragmentTargetChargePolicy::proportional_to_atom_count);
 
     const auto water = chargefw::test::make_water_graph();
 
     const auto dummy_charges = calculate(*dummy, water);
-    assert(dummy_charges.size() == water.atom_count());
+    CHECK(dummy_charges.size() == water.atom_count());
 
     for (const auto charge : dummy_charges.values()) {
-        assert(charge == 0.0);
+        CHECK(charge == 0.0);
     }
 
     const auto veem_charges = calculate(*veem, water);
-    assert(veem_charges.size() == water.atom_count());
+    CHECK(veem_charges.size() == water.atom_count());
 
-    assert(veem_charges[0] < 0.0);
-    assert(veem_charges[1] > 0.0);
-    assert(veem_charges[2] > 0.0);
-    assert(std::abs(veem_charges[1] - veem_charges[2]) < 1.0e-12);
-    assert(std::abs(veem_charges.total()) < 1.0e-12);
+    CHECK(veem_charges[0] < 0.0);
+    CHECK(veem_charges[1] > 0.0);
+    CHECK(veem_charges[2] > 0.0);
+    CHECK(std::abs(veem_charges[1] - veem_charges[2]) < 1.0e-12);
+    CHECK(std::abs(veem_charges.total()) < 1.0e-12);
 
     const auto mgc_charges = calculate(*mgc, water);
 
-    assert(mgc_charges.size() == water.atom_count());
-    assert(mgc_charges[0] < 0.0);
-    assert(mgc_charges[1] > 0.0);
-    assert(mgc_charges[2] > 0.0);
-    assert(std::abs(mgc_charges[1] - mgc_charges[2]) < 1.0e-12);
-    assert(std::abs(mgc_charges.total()) < 1.0e-12);
+    CHECK(mgc_charges.size() == water.atom_count());
+    CHECK(mgc_charges[0] < 0.0);
+    CHECK(mgc_charges[1] > 0.0);
+    CHECK(mgc_charges[2] > 0.0);
+    CHECK(std::abs(mgc_charges[1] - mgc_charges[2]) < 1.0e-12);
+    CHECK(std::abs(mgc_charges.total()) < 1.0e-12);
 
     const auto charged_pair = chargefw::test::make_formally_charged_pair();
 
     const auto formal_charges = calculate(*formal, charged_pair);
-    assert(formal_charges.size() == charged_pair.atom_count());
+    CHECK(formal_charges.size() == charged_pair.atom_count());
 
-    assert(formal_charges[0] == 1.0);
-    assert(formal_charges[1] == -1.0);
-    assert(formal_charges.total() == 0.0);
-
-    return 0;
+    CHECK(formal_charges[0] == 1.0);
+    CHECK(formal_charges[1] == -1.0);
+    CHECK(formal_charges.total() == 0.0);
 }

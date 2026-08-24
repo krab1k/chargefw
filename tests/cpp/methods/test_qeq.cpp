@@ -1,4 +1,3 @@
-#include "support/test_assertions.h"
 #include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
@@ -8,8 +7,8 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
-#include <cassert>
 #include <cmath>
+#include <snitch/snitch.hpp>
 #include <vector>
 
 namespace parameters = chargefw::parameters;
@@ -31,7 +30,7 @@ auto make_parameter_set() -> parameters::ParameterSet {
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("QEq produces conformer-dependent water charges", "[methods][qeq]") {
     const auto charge_set = chargefw::test::calculate_method(
         chargefw::test::make_two_conformer_water(), "qeq", {make_parameter_set()});
     const auto& charges = charge_set.assignment(0).charges;
@@ -39,14 +38,12 @@ auto main() -> int {
     chargefw::test::assert_calculation_provenance(charge_set, "qeq", "test-qeq");
     chargefw::test::assert_conformer_dependent(charge_set, 2);
 
-    assert(charges.size() == 3);
-    chargefw::test::assert_close(charges[0], -0.22710866, 1.0e-8);
-    chargefw::test::assert_close(charges[1], 0.11355540, 1.0e-8);
-    chargefw::test::assert_close(charges[2], 0.11355326, 1.0e-8);
-    chargefw::test::assert_close(charges.total(), 0.0, 1.0e-8);
-    assert(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
+    CHECK(charges.size() == 3);
+    CHECK(std::abs(charges[0] - (-0.22710866)) < 1.0e-8);
+    CHECK(std::abs(charges[1] - (0.11355540)) < 1.0e-8);
+    CHECK(std::abs(charges[2] - (0.11355326)) < 1.0e-8);
+    CHECK(std::abs(charges.total() - (0.0)) < 1.0e-8);
+    CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
 
     chargefw::test::assert_water_charges_labeling_invariant("qeq", {make_parameter_set()});
-
-    return 0;
 }

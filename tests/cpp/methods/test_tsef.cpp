@@ -3,13 +3,13 @@
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
 
-#include <cassert>
+#include <snitch/snitch.hpp>
 
 namespace methods = chargefw::methods;
 
-auto main() -> int {
+TEST_CASE("TSEF rejects unsupported unbonded molecules", "[methods][tsef]") {
     const auto* tsef = methods::method_registry().find("tsef");
-    assert(tsef != nullptr);
+    CHECK(tsef != nullptr);
 
     const chargefw::core::Molecule unbonded_pair{
         {chargefw::core::Atom{1}, chargefw::core::Atom{8}}};
@@ -18,10 +18,8 @@ auto main() -> int {
     const auto prerequisite_result = tsef->check_method_prerequisites(
         {.prepared_molecule = prepared_pair, .method_options = options});
 
-    assert(!prerequisite_result);
-    assert(prerequisite_result.issues().size() == 1);
-    assert(prerequisite_result.issues()[0].kind ==
-           methods::PrerequisiteIssueKind::unsupported_molecule);
-
-    return 0;
+    CHECK(!prerequisite_result);
+    CHECK(prerequisite_result.issues().size() == 1);
+    CHECK(prerequisite_result.issues()[0].kind ==
+          methods::PrerequisiteIssueKind::unsupported_molecule);
 }

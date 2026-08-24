@@ -1,4 +1,3 @@
-#include <cassert>
 #include <chargefw/adapters/native/sdf_output.h>
 #include <chargefw/charges/atomic_charges.h>
 #include <chargefw/charges/charge_collection.h>
@@ -7,6 +6,7 @@
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/position.h>
+#include <snitch/snitch.hpp>
 
 #include <array>
 #include <sstream>
@@ -33,7 +33,7 @@ constexpr std::string_view first_record =
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("adapter contract", "[adapters]") {
     const auto second_record =
         std::string{"second\r\nchargefw\r\n\r\n  1  0  0  0  0  0  0  0  0  0999 V2000\r\n"
                     "    0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\r\n"
@@ -51,22 +51,21 @@ auto main() -> int {
         sdf_output::SdfWriter{output}.write_preserving_buffer(source, properties,
                                                               sdf_output::WriteMode::replace);
         const auto text = output.str();
-        assert(text.contains("> <SOURCE_ID>\nkept\n\n"));
-        assert(!text.contains("9.0000 9.0000"));
-        assert(text.contains("> <CHARGEFW_CHARGES_1>\n-0.1235 0.1235\n\n"));
-        assert(text.contains("> <CHARGEFW_CHARGES_2>\n-0.2000 0.2000\n\n"));
-        assert(
-            text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=eem/2015\n\n"));
-        assert(text.contains("> <CHARGEFW_CHARGES_1>\r\n-0.5000\r\n\r\n"
-                             "> <CHARGEFW_CHARGE_METADATA_1>\r\n"
-                             "type=empirical; method=eem/2015\r\n\r\n"
-                             "> <CHARGEFW_CHARGES_2>\r\n-0.4000\r\n\r\n"
-                             "> <CHARGEFW_CHARGE_METADATA_2>\r\n"
-                             "type=empirical; method=unknown\r\n\r\n$$$$\r\n"));
+        CHECK(text.contains("> <SOURCE_ID>\nkept\n\n"));
+        CHECK_FALSE(text.contains("9.0000 9.0000"));
+        CHECK(text.contains("> <CHARGEFW_CHARGES_1>\n-0.1235 0.1235\n\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGES_2>\n-0.2000 0.2000\n\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=eem/2015\n\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGES_1>\r\n-0.5000\r\n\r\n"
+                            "> <CHARGEFW_CHARGE_METADATA_1>\r\n"
+                            "type=empirical; method=eem/2015\r\n\r\n"
+                            "> <CHARGEFW_CHARGES_2>\r\n-0.4000\r\n\r\n"
+                            "> <CHARGEFW_CHARGE_METADATA_2>\r\n"
+                            "type=empirical; method=unknown\r\n\r\n$$$$\r\n"));
         auto expected_prefix = std::string{first_record};
         const auto old_field = std::string{"> <CHARGEFW_CHARGES_1>\n9.0000 9.0000\n\n"};
         expected_prefix.erase(expected_prefix.find(old_field), old_field.size());
-        assert(text.starts_with(expected_prefix));
+        CHECK(text.starts_with(expected_prefix));
     }
 
     {
@@ -80,8 +79,8 @@ auto main() -> int {
         sdf_output::SdfWriter{output}.write_preserving_buffer(source_with_metadata, one_record,
                                                               sdf_output::WriteMode::replace);
         const auto text = output.str();
-        assert(!text.contains("method=obsolete"));
-        assert(text.contains("method=eem/2015"));
+        CHECK_FALSE(text.contains("method=obsolete"));
+        CHECK(text.contains("method=eem/2015"));
     }
 
     {
@@ -91,9 +90,9 @@ auto main() -> int {
         sdf_output::SdfWriter{output}.write_preserving_buffer(source, only_type_one,
                                                               sdf_output::WriteMode::append);
         const auto text = output.str();
-        assert(text.contains("> <CHARGEFW_CHARGES_1>\n9.0000 9.0000\n\n"));
-        assert(text.contains("> <CHARGEFW_CHARGES_1>\n-0.1235 0.1235\n\n"));
-        assert(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=unknown\n\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGES_1>\n9.0000 9.0000\n\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGES_1>\n-0.1235 0.1235\n\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=unknown\n\n"));
     }
 
     {
@@ -106,7 +105,7 @@ auto main() -> int {
         } catch (const std::invalid_argument&) {
             rejected = true;
         }
-        assert(rejected);
+        CHECK(rejected);
     }
 
     const auto molecule = chargefw::core::Molecule{
@@ -127,11 +126,11 @@ auto main() -> int {
         sdf_output::SdfWriter{output}.write_generated(molecule, generated_properties,
                                                       sdf_output::MolFormat::v2000);
         const auto text = output.str();
-        assert(text.contains("  3  2  0  0  0  0  0  0  0  0999 V2000\n"));
-        assert(text.contains("M  CHG  1   1  -1\nM  END\n"));
-        assert(text.contains("> <CHARGEFW_CHARGES_1>\n-0.8000 0.4000 0.4000\n\n"));
-        assert(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=unknown\n\n"));
-        assert(text.ends_with("$$$$\n"));
+        CHECK(text.contains("  3  2  0  0  0  0  0  0  0  0999 V2000\n"));
+        CHECK(text.contains("M  CHG  1   1  -1\nM  END\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGES_1>\n-0.8000 0.4000 0.4000\n\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=unknown\n\n"));
+        CHECK(text.ends_with("$$$$\n"));
     }
 
     {
@@ -139,12 +138,10 @@ auto main() -> int {
         sdf_output::SdfWriter{output}.write_generated(molecule, generated_properties,
                                                       sdf_output::MolFormat::v3000);
         const auto text = output.str();
-        assert(text.contains("999 V3000\nM  V30 BEGIN CTAB\nM  V30 COUNTS 3 2 0 0 0\n"));
-        assert(text.contains("M  V30 1 O 0 0 0 0 CHG=-1\n"));
-        assert(text.contains("M  V30 1 1 1 2\nM  V30 2 1 1 3\n"));
-        assert(text.contains("> <CHARGEFW_CHARGES_2>\n-0.7000 0.3500 0.3500\n\n"));
-        assert(text.ends_with("$$$$\n"));
+        CHECK(text.contains("999 V3000\nM  V30 BEGIN CTAB\nM  V30 COUNTS 3 2 0 0 0\n"));
+        CHECK(text.contains("M  V30 1 O 0 0 0 0 CHG=-1\n"));
+        CHECK(text.contains("M  V30 1 1 1 2\nM  V30 2 1 1 3\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGES_2>\n-0.7000 0.3500 0.3500\n\n"));
+        CHECK(text.ends_with("$$$$\n"));
     }
-
-    return 0;
 }

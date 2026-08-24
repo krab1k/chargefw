@@ -1,6 +1,6 @@
-#include <cassert>
 #include <chargefw/adapters/native/json_input.h>
 #include <chargefw/core/bond.h>
+#include <snitch/snitch.hpp>
 
 #include <exception>
 #include <sstream>
@@ -8,7 +8,7 @@
 
 namespace json = chargefw::adapters::native::json_input;
 
-auto main() -> int {
+TEST_CASE("adapter contract", "[adapters]") {
     {
         std::istringstream input{R"json(
 {
@@ -42,22 +42,22 @@ auto main() -> int {
 )json"};
         auto reader = json::JsonReader{input, "water.json"};
         const auto result = reader.next();
-        assert(result.has_value());
+        CHECK(result.has_value());
         const auto& record = *result;
-        assert(record.identity.source == "water.json");
-        assert(record.identity.record_index == 0);
-        assert(record.identity.record_id == "water-1");
-        assert(record.molecule.name() == "water");
-        assert(record.molecule.atom_count() == 3);
-        assert(record.molecule.atom(0).atomic_number() == 8);
-        assert(record.molecule.atom(0).formal_charge() == 0);
-        assert(record.molecule.atom(0).name().empty());
-        assert(record.molecule.bond_count() == 2);
-        assert(record.molecule.bond(0).order() == chargefw::core::BondOrder::SINGLE);
-        assert(record.molecule.conformer_count() == 1);
-        assert(record.molecule.conformer(0).name() == "model-1");
-        assert(record.molecule.conformer(0)[1].x == 0.9572);
-        assert(!reader.next().has_value());
+        CHECK(record.identity.source == "water.json");
+        CHECK(record.identity.record_index == 0);
+        CHECK(record.identity.record_id == "water-1");
+        CHECK(record.molecule.name() == "water");
+        CHECK(record.molecule.atom_count() == 3);
+        CHECK(record.molecule.atom(0).atomic_number() == 8);
+        CHECK(record.molecule.atom(0).formal_charge() == 0);
+        CHECK(record.molecule.atom(0).name().empty());
+        CHECK(record.molecule.bond_count() == 2);
+        CHECK(record.molecule.bond(0).order() == chargefw::core::BondOrder::SINGLE);
+        CHECK(record.molecule.conformer_count() == 1);
+        CHECK(record.molecule.conformer(0).name() == "model-1");
+        CHECK(record.molecule.conformer(0)[1].x == 0.9572);
+        CHECK_FALSE(reader.next().has_value());
     }
 
     {
@@ -84,7 +84,7 @@ auto main() -> int {
         } catch (const std::exception&) {
             rejected = true;
         }
-        assert(rejected);
+        CHECK(rejected);
     }
 
     {
@@ -100,8 +100,6 @@ auto main() -> int {
         } catch (const std::runtime_error&) {
             rejected = true;
         }
-        assert(rejected);
+        CHECK(rejected);
     }
-
-    return 0;
 }

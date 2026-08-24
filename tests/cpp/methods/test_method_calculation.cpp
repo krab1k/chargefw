@@ -16,9 +16,9 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
-#include <cassert>
 #include <cstddef>
 #include <optional>
+#include <snitch/snitch.hpp>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -183,14 +183,15 @@ auto make_parameterized_candidate(const AtomParameterMethod& method,
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("method calculation dispatches parameterized and geometry-dependent targets",
+          "[methods][method-calculation]") {
     const auto collection = make_collection();
     const features::PreparedMoleculeCollection prepared{collection};
 
     const auto& registry = methods::method_registry();
     const auto* dummy = registry.find("dummy");
 
-    assert(dummy != nullptr);
+    CHECK(dummy != nullptr);
 
     const methods::ApplicableMethod dummy_candidate{
         .method = dummy,
@@ -201,16 +202,16 @@ auto main() -> int {
     const auto dummy_charges =
         calculation::calculate({.molecules = prepared, .selected = dummy_candidate}).charges;
 
-    assert(dummy_charges.method_id() == std::string_view{"dummy"});
-    assert(!dummy_charges.parameter_set_id().has_value());
-    assert(dummy_charges.size() == prepared.size());
+    CHECK(dummy_charges.method_id() == std::string_view{"dummy"});
+    CHECK(!dummy_charges.parameter_set_id().has_value());
+    CHECK(dummy_charges.size() == prepared.size());
 
-    assert(dummy_charges.assignment(0).target.molecule_index == 0);
-    assert(!dummy_charges.assignment(0).target.conformer_index.has_value());
-    assert(dummy_charges.assignment(0).charges.size() == collection[0].atom_count());
+    CHECK(dummy_charges.assignment(0).target.molecule_index == 0);
+    CHECK(!dummy_charges.assignment(0).target.conformer_index.has_value());
+    CHECK(dummy_charges.assignment(0).charges.size() == collection[0].atom_count());
 
     for (const auto value : dummy_charges.assignment(0).charges.values()) {
-        assert(value == 0.0);
+        CHECK(value == 0.0);
     }
 
     const AtomParameterMethod parameterized_method;
@@ -223,78 +224,54 @@ auto main() -> int {
         calculation::calculate({.molecules = prepared, .selected = parameterized_candidate})
             .charges;
 
-    assert(parameterized_charges.method_id() == std::string_view{"atom-parameter-test"});
-    assert(parameterized_charges.parameter_set_id().has_value());
-    assert(*parameterized_charges.parameter_set_id() == std::string_view{"test-parameters"});
-    assert(parameterized_charges.size() == prepared.size());
+    CHECK(parameterized_charges.method_id() == std::string_view{"atom-parameter-test"});
+    CHECK(parameterized_charges.parameter_set_id().has_value());
+    CHECK(*parameterized_charges.parameter_set_id() == std::string_view{"test-parameters"});
+    CHECK(parameterized_charges.size() == prepared.size());
 
     const auto& water_charges = parameterized_charges.assignment(0).charges;
 
-    assert(water_charges.size() == 3);
-    assert(water_charges[0] == 2.0);
-    assert(water_charges[1] == 1.0);
-    assert(water_charges[2] == 1.0);
+    CHECK(water_charges.size() == 3);
+    CHECK(water_charges[0] == 2.0);
+    CHECK(water_charges[1] == 1.0);
+    CHECK(water_charges[2] == 1.0);
 
     const auto& charged_pair_charges = parameterized_charges.assignment(1).charges;
 
-    assert(charged_pair_charges.size() == 2);
-    assert(charged_pair_charges[0] == 3.0);
-    assert(charged_pair_charges[1] == 4.0);
+    CHECK(charged_pair_charges.size() == 2);
+    CHECK(charged_pair_charges[0] == 3.0);
+    CHECK(charged_pair_charges[1] == 4.0);
 
-    bool rejected_null_method = false;
+    const auto null_method_call = [&] {
+        const methods::ApplicableMethod invalid{.method = nullptr,
+                                                .parameter_set = nullptr,
+                                                .method_options = {},
+                                                .classifications = {}};
+        static_cast<void>(calculation::calculate({.molecules = prepared, .selected = invalid}));
+    };
+    CHECK_THROWS_AS(null_method_call(), std::invalid_argument);
 
-    try {
-        const methods::ApplicableMethod invalid_candidate{.method = nullptr,
-                                                          .parameter_set = nullptr,
-                                                          .method_options = {},
-                                                          .classifications = {}};
+    const auto missing_classification_call = [&] {
+        const methods::ApplicableMethod invalid{.method = &parameterized_method,
+                                                .parameter_set = &parameter_set,
+                                                .method_options = {},
+                                                .classifications = {}};
+        static_cast<void>(calculation::calculate({.molecules = prepared, .selected = invalid}));
+    };
+    CHECK_THROWS_AS(missing_classification_call(), std::invalid_argument);
 
-        [[maybe_unused]] const auto invalid_charges =
-            calculation::calculate({.molecules = prepared, .selected = invalid_candidate});
-    } catch (const std::invalid_argument&) {
-        rejected_null_method = true;
-    }
-
-    assert(rejected_null_method);
-
-    bool rejected_missing_classification = false;
-
-    try {
-        const methods::ApplicableMethod invalid_candidate{.method = &parameterized_method,
-                                                          .parameter_set = &parameter_set,
-                                                          .method_options = {},
-                                                          .classifications = {}};
-
-        [[maybe_unused]] const auto invalid_charges =
-            calculation::calculate({.molecules = prepared, .selected = invalid_candidate});
-    } catch (const std::invalid_argument&) {
-        rejected_missing_classification = true;
-    }
-
-    assert(rejected_missing_classification);
-
-    bool rejected_wrong_charge_count = false;
-
-    try {
+    const auto wrong_charge_count_call = [&] {
         const WrongSizeMethod wrong_size_method;
+        const methods::ApplicableMethod invalid{.method = &wrong_size_method,
+                                                .parameter_set = nullptr,
+                                                .method_options = {},
+                                                .classifications = {}};
+        static_cast<void>(calculation::calculate({.molecules = prepared, .selected = invalid}));
+    };
+    CHECK_THROWS_AS(wrong_charge_count_call(), std::invalid_argument);
 
-        const methods::ApplicableMethod invalid_candidate{.method = &wrong_size_method,
-                                                          .parameter_set = nullptr,
-                                                          .method_options = {},
-                                                          .classifications = {}};
-
-        [[maybe_unused]] const auto invalid_charges =
-            calculation::calculate({.molecules = prepared, .selected = invalid_candidate});
-    } catch (const std::invalid_argument&) {
-        rejected_wrong_charge_count = true;
-    }
-
-    assert(rejected_wrong_charge_count);
-
-    bool rejected_invalid_classification = false;
-
-    try {
-        const methods::ApplicableMethod invalid_candidate{
+    const auto invalid_classification_call = [&] {
+        const methods::ApplicableMethod invalid{
             .method = &parameterized_method,
             .parameter_set = &parameter_set,
             .method_options = {},
@@ -303,14 +280,9 @@ auto main() -> int {
                     parameters::AtomParameterClassification{std::vector<std::size_t>{999, 0, 0}}},
                 parameters::ParameterClassification{
                     parameters::AtomParameterClassification{std::vector<std::size_t>{2, 3}}}}};
-
-        [[maybe_unused]] const auto invalid_charges =
-            calculation::calculate({.molecules = prepared, .selected = invalid_candidate});
-    } catch (const std::invalid_argument&) {
-        rejected_invalid_classification = true;
-    }
-
-    assert(rejected_invalid_classification);
+        static_cast<void>(calculation::calculate({.molecules = prepared, .selected = invalid}));
+    };
+    CHECK_THROWS_AS(invalid_classification_call(), std::invalid_argument);
 
     const GeometryMethod geometry_method;
 
@@ -330,21 +302,19 @@ auto main() -> int {
             {.molecules = prepared_two_conformer_collection, .selected = geometry_candidate})
             .charges;
 
-    assert(geometry_charges.method_id() == std::string_view{"geometry-test"});
-    assert(!geometry_charges.parameter_set_id().has_value());
-    assert(geometry_charges.size() == 2);
+    CHECK(geometry_charges.method_id() == std::string_view{"geometry-test"});
+    CHECK(!geometry_charges.parameter_set_id().has_value());
+    CHECK(geometry_charges.size() == 2);
 
-    assert(geometry_charges.assignment(0).target.molecule_index == 0);
-    assert(geometry_charges.assignment(0).target.conformer_index == std::optional<std::size_t>{0});
+    CHECK(geometry_charges.assignment(0).target.molecule_index == 0);
+    CHECK(geometry_charges.assignment(0).target.conformer_index == std::optional<std::size_t>{0});
 
-    assert(geometry_charges.assignment(1).target.molecule_index == 0);
-    assert(geometry_charges.assignment(1).target.conformer_index == std::optional<std::size_t>{1});
+    CHECK(geometry_charges.assignment(1).target.molecule_index == 0);
+    CHECK(geometry_charges.assignment(1).target.conformer_index == std::optional<std::size_t>{1});
 
-    assert(geometry_charges.assignment(0).charges.size() == 3);
-    assert(geometry_charges.assignment(1).charges.size() == 3);
+    CHECK(geometry_charges.assignment(0).charges.size() == 3);
+    CHECK(geometry_charges.assignment(1).charges.size() == 3);
 
-    assert(geometry_charges.assignment(0).charges[1] == 0.9572);
-    assert(geometry_charges.assignment(1).charges[1] == 1.1000);
-
-    return 0;
+    CHECK(geometry_charges.assignment(0).charges[1] == 0.9572);
+    CHECK(geometry_charges.assignment(1).charges[1] == 1.1000);
 }

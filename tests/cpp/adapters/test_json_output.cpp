@@ -1,8 +1,8 @@
-#include <cassert>
 #include <chargefw/adapters/charge_result_document.h>
 #include <chargefw/adapters/native/json_output.h>
 #include <chargefw/charges/atomic_charges.h>
 #include <chargefw/charges/charge_collection.h>
+#include <snitch/snitch.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -14,7 +14,7 @@ namespace adapters = chargefw::adapters;
 namespace charges = chargefw::charges;
 namespace json_output = chargefw::adapters::native::json_output;
 
-auto main() -> int {
+TEST_CASE("adapter contract", "[adapters]") {
     const auto document = adapters::ChargeResultDocument{
         .generator_name = "ChargeFW",
         .generator_version = "test",
@@ -64,53 +64,51 @@ auto main() -> int {
     json_output::JsonWriter{output}.write(document);
     const auto result = nlohmann::json::parse(output.str());
 
-    assert(result.at("schema_version") == "1.0");
-    assert(result.at("generator").at("name") == "ChargeFW");
-    assert(result.at("results").size() == 2);
+    CHECK(result.at("schema_version") == "1.0");
+    CHECK(result.at("generator").at("name") == "ChargeFW");
+    CHECK(result.at("results").size() == 2);
     const auto& provenance = result.at("calculation_provenance");
     const auto& requested = provenance.at("requested");
-    assert(requested.at("method").is_null());
-    assert(requested.at("parameter_set").is_null());
-    assert(requested.at("execution").at("kind") == "auto");
-    assert(requested.at("execution").at("radius_angstrom").is_null());
-    assert(requested.at("classification").at("permissive_types") == true);
-    assert(requested.at("resource_policy").at("cutoff_atom_threshold") == "unlimited");
-    assert(requested.at("resource_policy").at("cover_atom_threshold") == "unlimited");
-    assert(requested.at("resource_policy").at("max_threads") == 0);
-    assert(requested.at("structural_input").at("selection") == "polymers");
-    assert(requested.at("structural_input").at("bonds") == "hybrid");
-    assert(requested.at("input").at("conformers") == "all");
-    assert(requested.at("method_options").at("qeq").at("overlap_term") == "Ohno");
+    CHECK(requested.at("method").is_null());
+    CHECK(requested.at("parameter_set").is_null());
+    CHECK(requested.at("execution").at("kind") == "auto");
+    CHECK(requested.at("execution").at("radius_angstrom").is_null());
+    CHECK(requested.at("classification").at("permissive_types") == true);
+    CHECK(requested.at("resource_policy").at("cutoff_atom_threshold") == "unlimited");
+    CHECK(requested.at("resource_policy").at("cover_atom_threshold") == "unlimited");
+    CHECK(requested.at("resource_policy").at("max_threads") == 0);
+    CHECK(requested.at("structural_input").at("selection") == "polymers");
+    CHECK(requested.at("structural_input").at("bonds") == "hybrid");
+    CHECK(requested.at("input").at("conformers") == "all");
+    CHECK(requested.at("method_options").at("qeq").at("overlap_term") == "Ohno");
     const auto& effective = provenance.at("effective");
     const auto& metrics = provenance.at("execution_metrics");
-    assert(metrics.at("started_at") == "2026-08-20T10:00:00.000Z");
-    assert(metrics.at("ended_at") == "2026-08-20T10:00:01.250Z");
-    assert(metrics.at("runtime_seconds") == 1.235);
-    assert(metrics.at("phases").at("parsing_seconds") == 0.1);
-    assert(metrics.at("phases").at("applicability_seconds") == 0.20);
-    assert(metrics.at("phases").at("computation_seconds") == 0.80);
-    assert(metrics.at("phases").at("writing_seconds") == 0.15);
-    assert(metrics.at("peak_resident_memory_mb") == 123.457);
-    assert(effective.at("execution").at("mode") == "cutoff");
-    assert(effective.at("method").at("id") == "formal");
-    assert(effective.at("parameter_set").at("id") == "test-formal");
-    assert(effective.at("execution").at("radius_angstrom") == 8.0);
-    assert(effective.at("execution").at("charge_correction") == "uniform");
-    assert(effective.at("warnings").at(0) == "full execution exceeds the shared threshold");
-    assert(effective.at("method_options").at("formal").empty());
+    CHECK(metrics.at("started_at") == "2026-08-20T10:00:00.000Z");
+    CHECK(metrics.at("ended_at") == "2026-08-20T10:00:01.250Z");
+    CHECK(metrics.at("runtime_seconds") == 1.235);
+    CHECK(metrics.at("phases").at("parsing_seconds") == 0.1);
+    CHECK(metrics.at("phases").at("applicability_seconds") == 0.20);
+    CHECK(metrics.at("phases").at("computation_seconds") == 0.80);
+    CHECK(metrics.at("phases").at("writing_seconds") == 0.15);
+    CHECK(metrics.at("peak_resident_memory_mb") == 123.457);
+    CHECK(effective.at("execution").at("mode") == "cutoff");
+    CHECK(effective.at("method").at("id") == "formal");
+    CHECK(effective.at("parameter_set").at("id") == "test-formal");
+    CHECK(effective.at("execution").at("radius_angstrom") == 8.0);
+    CHECK(effective.at("execution").at("charge_correction") == "uniform");
+    CHECK(effective.at("warnings").at(0) == "full execution exceeds the shared threshold");
+    CHECK(effective.at("method_options").at("formal").empty());
 
     const auto& calculated = result.at("results").at(0);
-    assert(calculated.at("status") == "success");
-    assert(!calculated.at("input").contains("atom_mapping"));
-    assert(calculated.at("assignments").at(0).at("conformer_index") == 0);
-    assert(calculated.at("assignments").at(0).at("charges").size() == 3);
-    assert(calculated.at("assignments").at(0).at("charges").at(0) == -0.8765);
-    assert(calculated.at("assignments").at(0).at("charges").at(1) == 0.4383);
+    CHECK(calculated.at("status") == "success");
+    CHECK_FALSE(calculated.at("input").contains("atom_mapping"));
+    CHECK(calculated.at("assignments").at(0).at("conformer_index") == 0);
+    CHECK(calculated.at("assignments").at(0).at("charges").size() == 3);
+    CHECK(calculated.at("assignments").at(0).at("charges").at(0) == -0.8765);
+    CHECK(calculated.at("assignments").at(0).at("charges").at(1) == 0.4383);
 
     const auto& unavailable = result.at("results").at(1);
-    assert(unavailable.at("status") == "error");
-    assert(!unavailable.at("input").contains("atom_mapping"));
-    assert(unavailable.at("diagnostics").at(0).at("code") == "no_applicable_method");
-
-    return 0;
+    CHECK(unavailable.at("status") == "error");
+    CHECK_FALSE(unavailable.at("input").contains("atom_mapping"));
+    CHECK(unavailable.at("diagnostics").at(0).at("code") == "no_applicable_method");
 }

@@ -1,9 +1,7 @@
-#include "support/test_assertions.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
 #include <algorithm>
-#include <cassert>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
@@ -20,6 +18,7 @@
 #include <concepts>
 #include <limits>
 #include <optional>
+#include <snitch/snitch.hpp>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -219,7 +218,8 @@ auto calculate_automatically(
 
 } // namespace
 
-auto main() -> int {
+TEST_CASE("calculation facade dispatches full and reduced execution",
+          "[calculation][calculation]") {
     static_assert(!HasPublicParameterSets<calculation::AssessmentResult>);
     static_assert(!HasPublicSelectedCandidate<calculation::AssessmentResult>);
     static_assert(std::is_move_constructible_v<calculation::AssessmentResult>);
@@ -234,18 +234,18 @@ auto main() -> int {
     const auto applicability = methods::find_applicable_methods(
         {.molecules = prepared, .methods = methods, .parameter_sets = parameters});
     const auto* selected = calculation::select_applicable_method(applicability);
-    assert(selected != nullptr);
+    CHECK(selected != nullptr);
     const auto plan =
         calculation::select_execution_plan(applicability, calculation::ExecutionSelection{});
-    assert(plan.has_value());
-    assert(plan->selected == selected);
-    assert(plan->policy.mode() == calculation::ExecutionMode::full);
-    assert(plan->issues.empty());
+    CHECK(plan.has_value());
+    CHECK(plan->selected == selected);
+    CHECK(plan->policy.mode() == calculation::ExecutionMode::full);
+    CHECK(plan->issues.empty());
     const auto result = calculation::calculate({.molecules = prepared, .selected = *selected});
-    assert(result.charges.method_id() == std::string_view{"higher"});
-    assert(result.charges.size() == 1);
-    assert(result.charges.assignment(0).charges[0] == 10.0);
-    assert(applicability.applicable.size() == 2);
+    CHECK(result.charges.method_id() == std::string_view{"higher"});
+    CHECK(result.charges.size() == 1);
+    CHECK(result.charges.assignment(0).charges[0] == 10.0);
+    CHECK(applicability.applicable.size() == 2);
 
     const auto parallel_collection = core::MoleculeCollection{
         std::vector{chargefw::test::make_water(), chargefw::test::make_water()}};
@@ -255,19 +255,20 @@ auto main() -> int {
                                 .selected = *selected,
                                 .execution_policy = calculation::ExecutionPolicy{},
                                 .max_threads = 2});
-    assert(parallel_result.charges.size() == 2);
-    assert(parallel_result.charges.assignment(0).target.molecule_index == 0);
-    assert(parallel_result.charges.assignment(1).target.molecule_index == 1);
-    assert(parallel_result.charges.assignment(0).charges[0] == 10.0);
-    assert(parallel_result.charges.assignment(1).charges[0] == 10.0);
+    CHECK(parallel_result.charges.size() == 2);
+    CHECK(parallel_result.charges.assignment(0).target.molecule_index == 0);
+    CHECK(parallel_result.charges.assignment(1).target.molecule_index == 1);
+    CHECK(parallel_result.charges.assignment(0).charges[0] == 10.0);
+    CHECK(parallel_result.charges.assignment(1).charges[0] == 10.0);
 
-    assert(chargefw::test::throws_invalid_argument([&] -> void {
+    const auto throw_fn_0 = [&] -> void {
         static_cast<void>(
             calculation::calculate({.molecules = prepared,
                                     .selected = *selected,
                                     .execution_policy = calculation::ExecutionPolicy{},
                                     .max_threads = std::numeric_limits<std::size_t>::max()}));
-    }));
+    };
+    CHECK_THROWS_AS(throw_fn_0(), std::invalid_argument);
 
     const FixedChargeMethod alpha{"alpha", 1, 2.0};
     const FixedChargeMethod beta{"beta", 1, 3.0};
@@ -275,11 +276,9 @@ auto main() -> int {
 
     const auto tied_result = calculate_automatically(prepared, tied_methods, parameters);
 
-    if (!tied_result.charges.has_value()) {
-        return 1;
-    }
-    assert(tied_result.charges->method_id() == std::string_view{"alpha"});
-    assert(tied_result.charges->assignment(0).charges[0] == 2.0);
+    REQUIRE(tied_result.charges.has_value());
+    CHECK(tied_result.charges->method_id() == std::string_view{"alpha"});
+    CHECK(tied_result.charges->assignment(0).charges[0] == 2.0);
 
     const ParameterizedFixedChargeMethod parameterized{"parameterized", 0, 4.0};
     const std::vector<const methods::Method*> parameterized_methods{&parameterized};
@@ -289,17 +288,15 @@ auto main() -> int {
     const auto parameterized_result =
         calculate_automatically(prepared, parameterized_methods, parameter_sets);
 
-    if (!parameterized_result.charges.has_value()) {
-        return 1;
-    }
-    assert(parameterized_result.charges->method_id() == std::string_view{"parameterized"});
-    assert(parameterized_result.charges->parameter_set_id() == std::string_view{"zeta"});
+    REQUIRE(parameterized_result.charges.has_value());
+    CHECK(parameterized_result.charges->method_id() == std::string_view{"parameterized"});
+    CHECK(parameterized_result.charges->parameter_set_id() == std::string_view{"zeta"});
 
     const std::vector<const methods::Method*> no_methods;
     const auto no_result = calculate_automatically(prepared, no_methods, parameters);
 
-    assert(!no_result.calculated());
-    assert(no_result.applicability.empty());
+    CHECK(!no_result.calculated());
+    CHECK(no_result.applicability.empty());
 
     const core::MoleculeCollection double_bonded_collection{
         std::vector{make_double_bonded_carbons()}};
@@ -310,23 +307,24 @@ auto main() -> int {
 
     const auto strict_permissive_result = calculate_automatically(
         double_bonded_prepared, permissive_methods, permissive_parameter_sets);
-    assert(!strict_permissive_result.calculated());
+    CHECK(!strict_permissive_result.calculated());
 
     const auto permissive_calculation_result =
         calculate_automatically(double_bonded_prepared, permissive_methods,
                                 permissive_parameter_sets, {.permissive_types = true});
-    assert(permissive_calculation_result.calculated());
-    assert(permissive_calculation_result.applicability.applicable.size() == 1);
-    assert(permissive_calculation_result.charges->assignment(0).charges[0] == 3.0);
-    assert(permissive_calculation_result.charges->assignment(0).charges[1] == 3.0);
+    CHECK(permissive_calculation_result.calculated());
+    CHECK(permissive_calculation_result.applicability.applicable.size() == 1);
+    CHECK(permissive_calculation_result.charges->assignment(0).charges[0] == 3.0);
+    CHECK(permissive_calculation_result.charges->assignment(0).charges[1] == 3.0);
 
-    assert(chargefw::test::throws_invalid_argument([] -> void {
+    const auto throw_fn_1 = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
             .parameter_sets = {make_permissive_peoe_parameter_set()},
             .method_id = "peoe",
             .parameter_set_id = "permissive-peoe-parameters"}));
-    }));
+    };
+    CHECK_THROWS_AS(throw_fn_1(), std::invalid_argument);
 
     const auto permissive_application_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
@@ -334,8 +332,8 @@ auto main() -> int {
         .method_id = "peoe",
         .parameter_set_id = "permissive-peoe-parameters",
         .classification_options = {.permissive_types = true}});
-    assert(permissive_application_result.calculated());
-    assert(permissive_application_result.charges->method_id() == std::string_view{"peoe"});
+    CHECK(permissive_application_result.calculated());
+    CHECK(permissive_application_result.charges->method_id() == std::string_view{"peoe"});
 
     // The returned report owns its IDs and does not retain parameter-set pointers from the consumed
     // assessment. Moving the assessment before execution must preserve the indexed selected plan.
@@ -349,13 +347,13 @@ auto main() -> int {
         auto relocated_assessment = std::move(assessment);
         return calculation::calculate(std::move(relocated_assessment));
     }();
-    assert(owned_parameterized_result.calculated());
-    assert(owned_parameterized_result.applicability.applicable.size() == 1);
-    assert(owned_parameterized_result.applicability.applicable[0].method_id == "peoe");
-    assert(owned_parameterized_result.applicability.applicable[0].parameter_set_id ==
-           std::optional<std::string>{"permissive-peoe-parameters"});
-    assert(owned_parameterized_result.applicability.selected_candidate_index ==
-           std::optional<std::size_t>{0});
+    CHECK(owned_parameterized_result.calculated());
+    CHECK(owned_parameterized_result.applicability.applicable.size() == 1);
+    CHECK(owned_parameterized_result.applicability.applicable[0].method_id == "peoe");
+    CHECK(owned_parameterized_result.applicability.applicable[0].parameter_set_id ==
+          std::optional<std::string>{"permissive-peoe-parameters"});
+    CHECK(owned_parameterized_result.applicability.selected_candidate_index ==
+          std::optional<std::size_t>{0});
 
     // Rvalue assessment transfers the request's heavy inputs while preserving its lightweight
     // selection data until assessment has completed.
@@ -367,14 +365,14 @@ auto main() -> int {
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}};
     auto consuming_assessment = calculation::assess(std::move(consuming_request));
-    assert(consuming_assessment.executable());
-    assert(consuming_assessment.applicability().selected_candidate_index ==
-           std::optional<std::size_t>{0});
+    CHECK(consuming_assessment.executable());
+    CHECK(consuming_assessment.applicability().selected_candidate_index ==
+          std::optional<std::size_t>{0});
     const auto consuming_result = calculation::calculate(std::move(consuming_assessment));
-    assert(consuming_result.calculated());
-    assert(consuming_result.charges->size() == 2);
-    assert(consuming_result.charges->assignment(0).target.molecule_index == 0);
-    assert(consuming_result.charges->assignment(1).target.molecule_index == 1);
+    CHECK(consuming_result.calculated());
+    CHECK(consuming_result.charges->size() == 2);
+    CHECK(consuming_result.charges->assignment(0).target.molecule_index == 0);
+    CHECK(consuming_result.charges->assignment(1).target.molecule_index == 1);
 
     auto peoe_options = methods::MethodOptions{};
     peoe_options.set("iters", 1);
@@ -385,13 +383,13 @@ auto main() -> int {
         .parameter_set_id = "permissive-peoe-parameters",
         .method_options = {{"peoe", peoe_options}},
         .classification_options = {.permissive_types = true}});
-    assert(configured_peoe_result.calculated());
-    assert(configured_peoe_result.effective_method_options.has_value());
-    assert(configured_peoe_result.effective_method_options->get<int>("iters") == 1);
+    CHECK(configured_peoe_result.calculated());
+    CHECK(configured_peoe_result.effective_method_options.has_value());
+    CHECK(configured_peoe_result.effective_method_options->get<int>("iters") == 1);
 
     auto invalid_peoe_options = methods::MethodOptions{};
     invalid_peoe_options.set("iters", std::string{"one"});
-    assert(chargefw::test::throws_invalid_argument([&] -> void {
+    const auto throw_fn_2 = [&] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
             .parameter_sets = {make_permissive_peoe_parameter_set()},
@@ -399,26 +397,27 @@ auto main() -> int {
             .parameter_set_id = "permissive-peoe-parameters",
             .method_options = {{"peoe", invalid_peoe_options}},
             .classification_options = {.permissive_types = true}}));
-    }));
+    };
+    CHECK_THROWS_AS(throw_fn_2(), std::invalid_argument);
 
     const auto rejected_explicit_assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .method_id = "smpqeq"});
-    assert(!rejected_explicit_assessment.executable());
-    assert(rejected_explicit_assessment.applicability().rejected.size() == 1);
-    assert(rejected_explicit_assessment.applicability().rejected[0].method_id == "smpqeq");
-    assert(!rejected_explicit_assessment.applicability().rejected[0].issues.empty());
+    CHECK(!rejected_explicit_assessment.executable());
+    CHECK(rejected_explicit_assessment.applicability().rejected.size() == 1);
+    CHECK(rejected_explicit_assessment.applicability().rejected[0].method_id == "smpqeq");
+    CHECK(!rejected_explicit_assessment.applicability().rejected[0].issues.empty());
 
     const auto rejected_parameter_assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
         .parameter_sets = {make_permissive_peoe_parameter_set()},
         .method_id = "peoe",
         .parameter_set_id = "permissive-peoe-parameters"});
-    assert(!rejected_parameter_assessment.executable());
-    assert(rejected_parameter_assessment.applicability().rejected.size() == 1);
-    assert(rejected_parameter_assessment.applicability().rejected[0].method_id == "peoe");
-    assert(rejected_parameter_assessment.applicability().rejected[0].parameter_set_id ==
-           std::optional<std::string>{"permissive-peoe-parameters"});
+    CHECK(!rejected_parameter_assessment.executable());
+    CHECK(rejected_parameter_assessment.applicability().rejected.size() == 1);
+    CHECK(rejected_parameter_assessment.applicability().rejected[0].method_id == "peoe");
+    CHECK(rejected_parameter_assessment.applicability().rejected[0].parameter_set_id ==
+          std::optional<std::string>{"permissive-peoe-parameters"});
 
     auto automatic_rejected_assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}}});
@@ -429,8 +428,8 @@ auto main() -> int {
                              [](const calculation::RejectedCandidateReport& candidate) {
                                  return candidate.method_id == "smpqeq";
                              });
-    assert(rejected_smpqeq != automatic_rejected_result.applicability.rejected.end());
-    assert(!rejected_smpqeq->issues.empty());
+    CHECK(rejected_smpqeq != automatic_rejected_result.applicability.rejected.end());
+    CHECK(!rejected_smpqeq->issues.empty());
 
     const auto application_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -440,14 +439,12 @@ auto main() -> int {
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-    if (!application_result.charges.has_value()) {
-        return 1;
-    }
-    assert(application_result.charges->method_id() == std::string_view{"formal"});
-    assert(application_result.charges->size() == 1);
-    assert(application_result.execution_policy.has_value());
-    assert(application_result.execution_policy->mode() == calculation::ExecutionMode::full);
-    assert(application_result.execution_issues.empty());
+    REQUIRE(application_result.charges.has_value());
+    CHECK(application_result.charges->method_id() == std::string_view{"formal"});
+    CHECK(application_result.charges->size() == 1);
+    CHECK(application_result.execution_policy.has_value());
+    CHECK(application_result.execution_policy->mode() == calculation::ExecutionMode::full);
+    CHECK(application_result.execution_issues.empty());
 
     auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -455,37 +452,37 @@ auto main() -> int {
         .method_id = "formal",
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
-    assert(assessment.executable());
-    assert(assessment.applicability().applicable.size() == 1);
-    assert(assessment.applicability().selected_candidate_index == std::optional<std::size_t>{0});
-    assert(assessment.applicability().applicable[0].method_id == "formal");
-    assert(assessment.execution_policy()->mode() == calculation::ExecutionMode::full);
+    CHECK(assessment.executable());
+    CHECK(assessment.applicability().applicable.size() == 1);
+    CHECK(assessment.applicability().selected_candidate_index == std::optional<std::size_t>{0});
+    CHECK(assessment.applicability().applicable[0].method_id == "formal");
+    CHECK(assessment.execution_policy()->mode() == calculation::ExecutionMode::full);
 
     const auto assessed_result = calculation::calculate(std::move(assessment), 1);
-    assert(assessed_result.calculated());
-    assert(assessed_result.charges->method_id() == std::string_view{"formal"});
-    assert(assessed_result.metrics.applicability_seconds >= 0.0);
+    CHECK(assessed_result.calculated());
+    CHECK(assessed_result.charges->method_id() == std::string_view{"formal"});
+    CHECK(assessed_result.metrics.applicability_seconds >= 0.0);
 
     const auto automatic_fallback_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {},
         .resource_policy = {.cutoff_atom_threshold = 2}});
-    assert(automatic_fallback_result.calculated());
-    assert(automatic_fallback_result.charges->method_id() == std::string_view{"eqeq"});
-    assert(automatic_fallback_result.execution_policy.has_value());
-    assert(automatic_fallback_result.execution_policy->mode() ==
-           calculation::ExecutionMode::cutoff);
-    assert(automatic_fallback_result.execution_policy->radius() ==
-           std::optional<double>{calculation::default_automatic_reduced_radius});
-    assert(automatic_fallback_result.execution_issues.empty());
+    CHECK(automatic_fallback_result.calculated());
+    CHECK(automatic_fallback_result.charges->method_id() == std::string_view{"eqeq"});
+    CHECK(automatic_fallback_result.execution_policy.has_value());
+    CHECK(automatic_fallback_result.execution_policy->mode() == calculation::ExecutionMode::cutoff);
+    CHECK(automatic_fallback_result.execution_policy->radius() ==
+          std::optional<double>{calculation::default_automatic_reduced_radius});
+    CHECK(automatic_fallback_result.execution_issues.empty());
 
-    assert(chargefw::test::throws_invalid_argument([] -> void {
+    const auto throw_fn_3 = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "mgc",
             .resource_policy = {.cutoff_atom_threshold = 2}}));
-    }));
+    };
+    CHECK_THROWS_AS(throw_fn_3(), std::invalid_argument);
 
     const auto explicit_full_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -494,13 +491,13 @@ auto main() -> int {
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
         .resource_policy = {.cutoff_atom_threshold = 2}});
-    assert(explicit_full_result.calculated());
-    assert(explicit_full_result.charges->method_id() == std::string_view{"mgc"});
-    assert(explicit_full_result.execution_policy.has_value());
-    assert(explicit_full_result.execution_policy->mode() == calculation::ExecutionMode::full);
-    assert(explicit_full_result.execution_issues.size() == 1);
-    assert(explicit_full_result.execution_issues[0].kind ==
-           methods::ExecutionIssueKind::resource_threshold_exceeded);
+    CHECK(explicit_full_result.calculated());
+    CHECK(explicit_full_result.charges->method_id() == std::string_view{"mgc"});
+    CHECK(explicit_full_result.execution_policy.has_value());
+    CHECK(explicit_full_result.execution_policy->mode() == calculation::ExecutionMode::full);
+    CHECK(explicit_full_result.execution_issues.size() == 1);
+    CHECK(explicit_full_result.execution_issues[0].kind ==
+          methods::ExecutionIssueKind::resource_threshold_exceeded);
 
     const auto unlimited_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -508,46 +505,51 @@ auto main() -> int {
         .method_id = "mgc",
         .resource_policy = {.cutoff_atom_threshold = std::nullopt,
                             .cover_atom_threshold = std::nullopt}});
-    assert(unlimited_result.calculated());
-    assert(unlimited_result.charges->method_id() == std::string_view{"mgc"});
-    assert(unlimited_result.execution_issues.empty());
+    CHECK(unlimited_result.calculated());
+    CHECK(unlimited_result.charges->method_id() == std::string_view{"mgc"});
+    CHECK(unlimited_result.execution_issues.empty());
 
-    assert(chargefw::test::throws_invalid_argument([] -> void {
+    const auto throw_fn_4 = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "mgc",
             .execution_selection = calculation::ExecutionSelection{
                 calculation::ExecutionSelectionKind::cutoff, 8.0}}));
-    }));
+    };
+    CHECK_THROWS_AS(throw_fn_4(), std::invalid_argument);
 
-    assert(chargefw::test::throws_invalid_argument([] -> void {
+    const auto throw_fn_5 = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "missing",
             .parameter_set_id = std::nullopt}));
-    }));
+    };
+    CHECK_THROWS_AS(throw_fn_5(), std::invalid_argument);
 
-    assert(chargefw::test::throws_invalid_argument([] -> void {
+    const auto throw_fn_6 = [] -> void {
         static_cast<void>(calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {},
             .method_id = "formal",
             .parameter_set_id = "missing"}));
-    }));
+    };
+    CHECK_THROWS_AS(throw_fn_6(), std::invalid_argument);
 
-    assert(chargefw::test::throws_invalid_argument([] -> void {
+    const auto throw_fn_7 = [] -> void {
         static_cast<void>(calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .resource_policy = {.cutoff_atom_threshold = std::nullopt,
                                 .cover_atom_threshold = 10}}));
-    }));
-    assert(chargefw::test::throws_invalid_argument([] -> void {
+    };
+    CHECK_THROWS_AS(throw_fn_7(), std::invalid_argument);
+    const auto throw_fn_8 = [] -> void {
         static_cast<void>(calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .resource_policy = {.cutoff_atom_threshold = 20, .cover_atom_threshold = 10}}));
-    }));
+    };
+    CHECK_THROWS_AS(throw_fn_8(), std::invalid_argument);
 
     // Explicit unsupported execution does not fall back to another mode and requires an executable
     // plan when passed to the facade.
@@ -556,27 +558,28 @@ auto main() -> int {
         .method_id = "formal",
         .execution_selection = calculation::ExecutionSelection{
             calculation::ExecutionSelectionKind::cover, calculation::minimum_reduced_radius}});
-    assert(!unsupported_cover_assessment.executable());
-    assert(unsupported_cover_assessment.requires_executable_plan());
-    assert(unsupported_cover_assessment.applicability().applicable.size() == 1);
-    assert(chargefw::test::throws_invalid_argument([&] -> void {
+    CHECK(!unsupported_cover_assessment.executable());
+    CHECK(unsupported_cover_assessment.requires_executable_plan());
+    CHECK(unsupported_cover_assessment.applicability().applicable.size() == 1);
+    const auto throw_fn_9 = [&] -> void {
         static_cast<void>(calculation::calculate(std::move(unsupported_cover_assessment)));
-    }));
+    };
+    CHECK_THROWS_AS(throw_fn_9(), std::invalid_argument);
 
     // Empty collections and empty targets retain their distinct cardinalities: no collection
     // entries produce no assignments, while an empty molecule still produces one source assignment.
     const auto empty_collection_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector<core::Molecule>{}},
         .method_id = "formal"});
-    assert(empty_collection_result.calculated());
-    assert(empty_collection_result.charges->empty());
+    CHECK(empty_collection_result.calculated());
+    CHECK(empty_collection_result.charges->empty());
 
     const auto empty_target_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{core::Molecule{{}, {}, {}, "empty"}}},
         .method_id = "formal"});
-    assert(empty_target_result.calculated());
-    assert(empty_target_result.charges->size() == 1);
-    assert(empty_target_result.charges->assignment(0).charges.empty());
+    CHECK(empty_target_result.calculated());
+    CHECK(empty_target_result.charges->size() == 1);
+    CHECK(empty_target_result.charges->assignment(0).charges.empty());
 
     // AssessmentRequest rejects duplicate parameter-set IDs before filtering or applicability. This
     // remains true when the duplicates target the same or different methods and for both overloads.
@@ -585,15 +588,17 @@ auto main() -> int {
              {std::pair{"qeq", "qeq"}, std::pair{"qeq", "eem"}}) {
             const auto lvalue_request = make_duplicate_parameter_request(
                 first_method_id, second_method_id, explicit_selection);
-            assert(chargefw::test::throws_invalid_argument([&lvalue_request] -> void {
+            const auto throw_fn_10 = [&lvalue_request] -> void {
                 static_cast<void>(calculation::assess(lvalue_request));
-            }));
+            };
+            CHECK_THROWS_AS(throw_fn_10(), std::invalid_argument);
 
             auto rvalue_request = make_duplicate_parameter_request(
                 first_method_id, second_method_id, explicit_selection);
-            assert(chargefw::test::throws_invalid_argument([&rvalue_request] -> void {
+            const auto throw_fn_11 = [&rvalue_request] -> void {
                 static_cast<void>(calculation::assess(std::move(rvalue_request)));
-            }));
+            };
+            CHECK_THROWS_AS(throw_fn_11(), std::invalid_argument);
         }
     }
 
@@ -613,16 +618,16 @@ auto main() -> int {
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}};
     auto rvalue_assessment = calculation::assess(std::move(rvalue_request));
-    assert(lvalue_assessment.applicability().selected_candidate_index ==
-           rvalue_assessment.applicability().selected_candidate_index);
-    assert(lvalue_assessment.execution_policy()->mode() ==
-           rvalue_assessment.execution_policy()->mode());
+    CHECK(lvalue_assessment.applicability().selected_candidate_index ==
+          rvalue_assessment.applicability().selected_candidate_index);
+    CHECK(lvalue_assessment.execution_policy()->mode() ==
+          rvalue_assessment.execution_policy()->mode());
     const auto lvalue_result = calculation::calculate(std::move(lvalue_assessment));
     const auto rvalue_result = calculation::calculate(std::move(rvalue_assessment));
-    assert(lvalue_result.calculated());
-    assert(rvalue_result.calculated());
-    assert(std::ranges::equal(lvalue_result.charges->assignment(0).charges.values(),
-                              rvalue_result.charges->assignment(0).charges.values()));
+    CHECK(lvalue_result.calculated());
+    CHECK(rvalue_result.calculated());
+    CHECK(std::ranges::equal(lvalue_result.charges->assignment(0).charges.values(),
+                             rvalue_result.charges->assignment(0).charges.values()));
 
     // Parallel execution may emit progress out of order, but materialized assignments always retain
     // the source molecule/conformer order.
@@ -633,17 +638,15 @@ auto main() -> int {
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
         .resource_policy = {.max_threads = 2}});
-    assert(parallel_ordered_result.calculated());
-    assert(parallel_ordered_result.charges->size() == 3);
-    assert(parallel_ordered_result.charges->assignment(0).target.molecule_index == 0);
-    assert(parallel_ordered_result.charges->assignment(0).target.conformer_index ==
-           std::optional<std::size_t>{0});
-    assert(parallel_ordered_result.charges->assignment(1).target.molecule_index == 0);
-    assert(parallel_ordered_result.charges->assignment(1).target.conformer_index ==
-           std::optional<std::size_t>{1});
-    assert(parallel_ordered_result.charges->assignment(2).target.molecule_index == 1);
-    assert(parallel_ordered_result.charges->assignment(2).target.conformer_index ==
-           std::optional<std::size_t>{0});
-
-    return 0;
+    CHECK(parallel_ordered_result.calculated());
+    CHECK(parallel_ordered_result.charges->size() == 3);
+    CHECK(parallel_ordered_result.charges->assignment(0).target.molecule_index == 0);
+    CHECK(parallel_ordered_result.charges->assignment(0).target.conformer_index ==
+          std::optional<std::size_t>{0});
+    CHECK(parallel_ordered_result.charges->assignment(1).target.molecule_index == 0);
+    CHECK(parallel_ordered_result.charges->assignment(1).target.conformer_index ==
+          std::optional<std::size_t>{1});
+    CHECK(parallel_ordered_result.charges->assignment(2).target.molecule_index == 1);
+    CHECK(parallel_ordered_result.charges->assignment(2).target.conformer_index ==
+          std::optional<std::size_t>{0});
 }

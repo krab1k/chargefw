@@ -76,6 +76,9 @@ endfunction()
 function(chargefw_setup_test_dependencies)
     find_package(snitch 1.3.2 CONFIG QUIET)
     if(NOT TARGET snitch::snitch)
+        # Snitch assertions must remain active under NDEBUG so that release
+        # builds execute the same checks as debug builds.
+        set(SNITCH_ENABLE ON CACHE BOOL "" FORCE)
         FetchContent_Declare(
                 snitch
                 SYSTEM
