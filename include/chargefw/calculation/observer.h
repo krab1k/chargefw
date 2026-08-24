@@ -10,11 +10,11 @@
 
 namespace chargefw::calculation {
 
-// Coarse calculation phases reported by the facade and executors. Target-level events are always
-// emitted (rare); fragment-level events are throttled by progress_for_indexed to avoid starving the
-// solver on large inputs.
+// Coarse calculation phases reported by calculation execution and its executors. Target-level
+// events are always emitted (rare); fragment-level events are throttled by progress_for_indexed to
+// avoid starving the solver on large inputs.
 enum class CalculationPhase : std::uint8_t {
-    // Facade-level computation phases. computation_finished is the terminal event, emitted once
+    // Execution-level computation phases. computation_finished is the terminal event, emitted once
     // after every emitted computation_started regardless of success, cancellation, or failure.
     computation_started,
     computation_finished,
@@ -62,10 +62,10 @@ struct CalculationProgress {
 //
 // The observer is purely observational: it must not mutate method options, parameters, execution
 // policy, geometry, or selection. Implementations should not throw; callback exceptions are ignored
-// so they cannot affect calculation control flow. A computation_finished event is emitted after
-// every computation_started, including when a non-cancellation calculation exception propagates.
-// Returning true from cancelled() requests early termination; the application facade converts this
-// into a cancelled result with no partial charges.
+// so they cannot affect calculation control flow. Every calculate() overload emits
+// computation_finished after computation_started, including when a non-cancellation calculation
+// exception propagates. Returning true from cancelled() requests early termination; the application
+// facade converts this into a cancelled result with no partial charges.
 class CalculationObserver {
   public:
     CalculationObserver() = default;

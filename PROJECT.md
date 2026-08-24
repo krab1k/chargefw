@@ -164,10 +164,12 @@ Non-owning views in the snapshot are valid only during the callback.
 
 Three event tiers exist:
 
-- **Computation phases** — `computation_started/finished`. Each start has exactly one terminal
-  `computation_finished` event, emitted on success, cancellation, and non-cancellation calculation
-  failure; the latter still propagates unchanged from the low-level and application boundaries. Both
-  carry the effective mode and method ID. Assessment is not observed.
+- **Computation phases** — `computation_started/finished`. The low-level
+  `calculate(const CalculationRequest&)` owns this tier, so both public calculation overloads emit
+  each start with exactly one terminal `computation_finished` event on success, cancellation, and
+  non-cancellation calculation failure. The low-level boundary propagates cancellation and failures;
+  the owned facade converts cancellation to its result. Both events carry the effective mode and
+  method ID. Assessment is not observed.
 - **Per-target events** — `target_started/finished` for each molecule+conformer pair. Emitted by the
   executors with correct per-target `molecule_index` and `conformer_index`.
 - **Fragment progress** — `fragment_progress` reports aggregate completed/total counts for cutoff

@@ -9,7 +9,10 @@
 #include <chargefw/calculation/observer.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
+#include <chargefw/features/prepared_molecule_collection.h>
+#include <chargefw/methods/method.h>
 #include <chargefw/methods/method_applicability.h>
+#include <chargefw/methods/method_metadata.h>
 #include <chargefw/parameters/models/atom_parameters.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
@@ -24,6 +27,7 @@
 namespace calculation = chargefw::calculation;
 namespace charges = chargefw::charges;
 namespace core = chargefw::core;
+namespace features = chargefw::features;
 namespace methods = chargefw::methods;
 
 namespace {
@@ -187,6 +191,44 @@ class ThrowOnEveryCallbackObserver final : public calculation::CalculationObserv
     mutable std::atomic<std::size_t> callbacks_{0};
 };
 
+class DirectTestMethod final : public methods::Method {
+  public:
+    explicit DirectTestMethod(const bool fails = false) : fails_{fails} {}
+
+    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
+        return metadata_;
+    }
+
+    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
+        return {.coordinates = true,
+                .resources = {.supports_cutoff = true,
+                              .supports_cover = true,
+                              .fragment_target_charge_policy =
+                                  methods::FragmentTargetChargePolicy::zero}};
+    }
+
+    [[nodiscard]] auto option_schema() const noexcept
+        -> std::span<const methods::MethodOptionSpec> override {
+        return {};
+    }
+
+    [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
+        -> charges::AtomicCharges override {
+        if (fails_) {
+            throw std::logic_error{"direct observer test failure"};
+        }
+        return charges::AtomicCharges{std::vector<double>(input.molecule().atom_count())};
+    }
+
+  private:
+    methods::MethodMetadata metadata_{.id = "direct-test",
+                                      .name = "Direct test",
+                                      .full_name = "Direct observer test method",
+                                      .publication = std::nullopt,
+                                      .priority = 0};
+    bool fails_;
+};
+
 auto assert_single_terminal_fragment_progress(const std::vector<RecordedProgress>& events,
                                               const std::size_t fragment_count) -> void {
     assert(!events.empty());
@@ -257,6 +299,21 @@ auto make_many_separated_waters() -> core::Molecule {
                           std::move(bonds),
                           {core::Conformer{std::move(positions)}},
                           "many-separated-waters"};
+}
+
+auto assert_computation_boundary(const std::vector<RecordedProgress>& events,
+                                 const calculation::ExecutionMode mode) -> void {
+    assert(!events.empty());
+    assert(events.front().phase == calculation::CalculationPhase::computation_started);
+    assert(events.back().phase == calculation::CalculationPhase::computation_finished);
+    assert(events.front().mode == mode);
+    assert(events.back().mode == mode);
+    assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
+               return event.phase == calculation::CalculationPhase::computation_started;
+           }) == 1);
+    assert(std::count_if(events.begin(), events.end(), [](const auto& event) {
+               return event.phase == calculation::CalculationPhase::computation_finished;
+           }) == 1);
 }
 
 } // namespace
@@ -735,6 +792,73 @@ auto main() -> int {
                        return event.phase == calculation::CalculationPhase::computation_finished;
                    }) == 1);
             assert(events.back().phase == calculation::CalculationPhase::computation_finished);
+        }
+    }
+
+    // --- Test 18: direct calculation emits one computation boundary in every mode ---
+    for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
+                            calculation::ExecutionMode::cover}) {
+        const auto observer = RecordingObserver{};
+        const auto molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}};
+        const auto prepared = features::PreparedMoleculeCollection{molecules};
+        const auto method = DirectTestMethod{};
+        const auto selected = methods::ApplicableMethod{.method = &method};
+        const auto policy =
+            mode == calculation::ExecutionMode::full
+                ? calculation::ExecutionPolicy{}
+                : calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius,
+                                               calculation::ChargeCorrectionPolicy::uniform};
+
+        const auto result = calculation::calculate({.molecules = prepared,
+                                                    .selected = selected,
+                                                    .execution_policy = policy,
+                                                    .max_threads = 1,
+                                                    .observer = observer});
+        assert(result.charges.size() == 1);
+        assert_computation_boundary(observer.events(), mode);
+    }
+
+    // --- Test 19: direct failures and cancellation both finish observation in every mode ---
+    for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
+                            calculation::ExecutionMode::cover}) {
+        const auto policy =
+            mode == calculation::ExecutionMode::full
+                ? calculation::ExecutionPolicy{}
+                : calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius,
+                                               calculation::ChargeCorrectionPolicy::uniform};
+
+        {
+            const auto observer = RecordingObserver{};
+            const auto molecules =
+                core::MoleculeCollection{std::vector{chargefw::test::make_water()}};
+            const auto prepared = features::PreparedMoleculeCollection{molecules};
+            const auto method = DirectTestMethod{true};
+            const auto selected = methods::ApplicableMethod{.method = &method};
+            assert(chargefw::test::throws<std::exception>([&] -> void {
+                static_cast<void>(calculation::calculate({.molecules = prepared,
+                                                          .selected = selected,
+                                                          .execution_policy = policy,
+                                                          .max_threads = 1,
+                                                          .observer = observer}));
+            }));
+            assert_computation_boundary(observer.events(), mode);
+        }
+
+        {
+            const auto observer = CancelAfterFirstTarget{};
+            const auto molecules =
+                core::MoleculeCollection{std::vector{chargefw::test::make_water()}};
+            const auto prepared = features::PreparedMoleculeCollection{molecules};
+            const auto method = DirectTestMethod{};
+            const auto selected = methods::ApplicableMethod{.method = &method};
+            assert(chargefw::test::throws<calculation::CalculationCancelled>([&] -> void {
+                static_cast<void>(calculation::calculate({.molecules = prepared,
+                                                          .selected = selected,
+                                                          .execution_policy = policy,
+                                                          .max_threads = 1,
+                                                          .observer = observer}));
+            }));
+            assert_computation_boundary(observer.events(), mode);
         }
     }
 

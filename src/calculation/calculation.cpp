@@ -49,6 +49,16 @@ class ComputationFinishedEmitter {
 } // namespace
 
 auto calculate(const CalculationRequest& request) -> CalculationResult {
+    const auto computation_started = std::chrono::steady_clock::now();
+    const auto computation_finished =
+        ComputationFinishedEmitter{request.observer, request.execution_policy.mode(),
+                                   request.selected.method->id(), computation_started};
+    detail::report_progress(request.observer, CalculationProgress{
+                                                  .phase = CalculationPhase::computation_started,
+                                                  .mode = request.execution_policy.mode(),
+                                                  .method_id = request.selected.method->id(),
+                                              });
+
     switch (request.execution_policy.mode()) {
     case ExecutionMode::full:
         return CalculationResult{.charges =
@@ -89,18 +99,9 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
 
     const auto& selected =
         assessment.applicability_.applicable.at(*assessment.selected_candidate_index_);
-    const auto mode = assessment.execution_policy_->mode();
-    const auto method_id = selected.method->id();
     const auto effective_method_options = selected.method_options;
 
     const auto computation_started = std::chrono::steady_clock::now();
-    const auto computation_finished =
-        ComputationFinishedEmitter{observer, mode, method_id, computation_started};
-    detail::report_progress(observer, CalculationProgress{
-                                          .phase = CalculationPhase::computation_started,
-                                          .mode = mode,
-                                          .method_id = method_id,
-                                      });
 
     try {
         auto result =

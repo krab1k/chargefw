@@ -49,11 +49,15 @@ struct ExecutionResult {
 };
 
 // Executes an already applicable and selected candidate. Its stored parameter classifications are
-// used directly; classification policy is not reconsidered during execution.
+// used directly; classification policy is not reconsidered during execution. Emits one enclosing
+// computation_started/computation_finished observer pair. Cancellation and calculation failures
+// propagate to the caller after computation_finished.
 [[nodiscard]] auto calculate(const CalculationRequest& request) -> CalculationResult;
 
 // Executes a plan returned by assess() without repeating preparation or applicability assessment.
-// The assessment is consumed because the result owns its classifications and parameter data.
+// The assessment is consumed because the result owns its classifications and parameter data. It
+// delegates computation observation to the low-level overload and converts cancellation to a
+// result.
 [[nodiscard]] auto calculate(AssessmentResult assessment, std::size_t max_threads = 0,
                              const CalculationObserver& observer = default_calculation_observer())
     -> ExecutionResult;
