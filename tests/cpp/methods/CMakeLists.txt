@@ -102,3 +102,11 @@ chargefw_add_snitch_test(test_eqeqc
 chargefw_add_snitch_test(test_abeem
         test_abeem.cpp
 )
+
+chargefw_add_snitch_test(test_mgc
+        test_mgc.cpp
+)
+
+chargefw_add_snitch_test(test_charge2
+        test_charge2.cpp
+)

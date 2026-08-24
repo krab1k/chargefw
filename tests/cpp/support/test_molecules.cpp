@@ -56,25 +56,6 @@ auto make_two_conformer_water() -> core::Molecule {
     return core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers), "water"};
 }
 
-auto make_hf_graph() -> core::Molecule {
-    std::vector atoms{core::Atom{1, 0, "H"}, core::Atom{9, 0, "F"}};
-
-    std::vector bonds{core::Bond{0, 1, core::BondOrder::SINGLE}};
-
-    return core::Molecule{std::move(atoms), std::move(bonds), {}, "hf"};
-}
-
-auto make_methane_graph() -> core::Molecule {
-    std::vector atoms{core::Atom{6, 0, "C"}, core::Atom{1, 0, "H1"}, core::Atom{1, 0, "H2"},
-                      core::Atom{1, 0, "H3"}, core::Atom{1, 0, "H4"}};
-
-    std::vector bonds{
-        core::Bond{0, 1, core::BondOrder::SINGLE}, core::Bond{0, 2, core::BondOrder::SINGLE},
-        core::Bond{0, 3, core::BondOrder::SINGLE}, core::Bond{0, 4, core::BondOrder::SINGLE}};
-
-    return core::Molecule{std::move(atoms), std::move(bonds), {}, "methane"};
-}
-
 auto make_formally_charged_pair() -> core::Molecule {
     std::vector atoms{core::Atom{7, 1, "N"}, core::Atom{17, -1, "Cl"}};
 

@@ -8,6 +8,7 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
+#include <chargefw/methods/method_options.h>
 #include <cmath>
 #include <snitch/snitch.hpp>
 
@@ -24,7 +25,7 @@ auto make_peoe_parameters() -> parameters::ParameterSet {
                                      .parameters = {{.name = "A", .value = 7.17},
                                                     {.name = "B", .value = 6.24},
                                                     {.name = "C", .value = -0.56}}},
-                                    {.key = chargefw::test::plain_atom_key(9),
+                                    {.key = chargefw::test::plain_atom_key(8),
                                      .parameters = {{.name = "A", .value = 12.06},
                                                     {.name = "B", .value = 13.85},
                                                     {.name = "C", .value = 3.98}}}}}};
@@ -32,17 +33,15 @@ auto make_peoe_parameters() -> parameters::ParameterSet {
 
 } // namespace
 
-TEST_CASE("PEOE produces conformer-independent HF charges", "[methods][peoe]") {
-    const auto charge_set = chargefw::test::calculate_single_method(
-        chargefw::test::make_hf_graph(), "peoe", {make_peoe_parameters()});
+TEST_CASE("PEOE iteration option changes water charges", "[methods][peoe]") {
+    auto one_iteration = chargefw::methods::MethodOptions{};
+    one_iteration.set("iters", 1);
 
-    chargefw::test::assert_calculation_provenance(charge_set, "peoe", "peoe-test-parameters");
-    chargefw::test::assert_conformer_independent(charge_set);
+    const auto default_charges = chargefw::test::calculate_single_method(
+        chargefw::test::make_water_graph(), "peoe", {make_peoe_parameters()});
+    const auto one_iteration_charges = chargefw::test::calculate_single_method(
+        chargefw::test::make_water_graph(), "peoe", {make_peoe_parameters()}, &one_iteration);
 
-    const auto& charges = charge_set.assignment(0).charges;
-
-    CHECK(charges.size() == 2);
-    CHECK(charges[0] > 0.0);
-    CHECK(charges[1] < 0.0);
-    CHECK(std::abs(charges.total()) < 1.0e-12);
+    CHECK(std::abs(default_charges.assignment(0).charges[0] -
+                   one_iteration_charges.assignment(0).charges[0]) > 1.0e-6);
 }

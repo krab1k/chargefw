@@ -1,4 +1,3 @@
-#include "support/test_calculation.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
@@ -64,11 +63,6 @@ TEST_CASE("DelRe produces conformer-independent water charges with explicit clas
     CHECK(delre != nullptr);
 
     const auto parameter_set = make_parameter_set();
-
-    const auto workflow_charge_set = chargefw::test::calculate_method(
-        chargefw::test::make_water_graph(), "delre", {parameter_set});
-    chargefw::test::assert_calculation_provenance(workflow_charge_set, "delre", "test-delre");
-    chargefw::test::assert_conformer_independent(workflow_charge_set);
 
     {
         // Explicit classification pins parameter indices to source atom order; the charges

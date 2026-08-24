@@ -122,7 +122,7 @@ type, but that is not its reason to exist.
 | A — value and model | `test_atom`, `test_bond`, `test_conformer`, `test_molecule`, `test_molecule_collection`, `test_periodic_table`, `test_atomic_charges`, `test_charge_collection`, `test_execution_policy` |
 | B — features and parameters | `test_topology_features`, `test_conformer_features`, `test_spatial_fragment`, `test_parameter_classifier`, `test_parameter_set_io` |
 | C — built-in and method conformance | `test_builtin_methods`, `test_method_options`, `test_method_registry`, `test_method_prerequisites`, `test_method_applicability`, `test_method_calculation`, `test_calculation_input` |
-| D — method-specific algorithms | `test_peoe`, `test_mpeoe`, `test_veem`, `test_gdac`, `test_tsef`, `test_delre`, `test_denr`, `test_kcm`, `test_qeq`, `test_sqe`, `test_sqeq0`, `test_sqeqp`, `test_eem`, `test_smpqeq`, `test_sfkeem`, `test_eqeq`, `test_eqeqc`, `test_abeem` |
+| D — method-specific algorithms | `test_peoe`, `test_mpeoe`, `test_veem`, `test_gdac`, `test_tsef`, `test_delre`, `test_denr`, `test_kcm`, `test_qeq`, `test_sqe`, `test_sqeq0`, `test_sqeqp`, `test_eem`, `test_smpqeq`, `test_sfkeem`, `test_eqeq`, `test_eqeqc`, `test_abeem`, `test_mgc`, `test_charge2` |
 | E — calculation planning and execution | `test_planning`, `test_calculation`, `test_observer`, `test_calculation_targets`, `test_cutoff_execution`, `test_cover_execution` |
 | F — adapters and CLI | `test_mol`, `test_json`, `test_json_output`, `test_mol2_output`, `test_sdf_output`, `test_pdb`, `test_mmcif`, `test_mmcif_output`, `test_chargefw_cli_outputs`, `test_chargefw_cli_structural_outputs` |
 
@@ -293,6 +293,11 @@ method-specific tests.
 
 ### Step 4 — Rationalize method-specific tests
 
+**Status: complete.** Method-specific tests now retain only distinguishing contracts: options,
+prerequisites, classification, geometry response, or small explainable numerical regressions. Charge2,
+TSEF, VEEM, and MGC have focused water regressions; Charge2 and PEOE verify iteration effects, while
+MPEOE verifies bond-attenuation behavior.
+
 1. Preserve only assertions that demonstrate behavior unique to a method.
 2. Add a small fixed regression fixture for methods currently lacking one, beginning with `charge2`,
    `tsef`, `veem`, `mgc`, `peoe`, `mpeoe`, `abeem`, and the SQE family.
@@ -347,8 +352,8 @@ not duplicate library-unit behavior.
 Use the smallest fixture that demonstrates the contract:
 
 - **unit fixtures:** constructed in code for invalid states and exact topology/geometry;
-- **shared molecular fixtures:** water, HF, methane, charged pair, disconnected small systems, and
-  a small asymmetric molecule in `tests/cpp/support`;
+- **shared molecular fixtures:** water, charged pair, disconnected small systems, and a small asymmetric
+  molecule in `tests/cpp/support`;
 - **format fixtures:** checked-in files for parser and preservation behavior, with a short description
   of the special syntax or failure they exercise;
 - **corpus fixtures:** only where scale or real-format structure is essential.

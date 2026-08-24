@@ -17,7 +17,7 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto make_mpeoe_parameters() -> parameters::ParameterSet {
+auto make_mpeoe_parameters(const double bond_attenuation) -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
             .id = "test-mpeoe", .method_id = "mpeoe", .name = "Test MPEOE parameters"},
@@ -25,34 +25,20 @@ auto make_mpeoe_parameters() -> parameters::ParameterSet {
         parameters::AtomParameters{
             {{.key = chargefw::test::hbo_atom_key(1, "1"),
               .parameters = {{.name = "A", .value = 7.674}, {.name = "B", .value = 28.689}}},
-             {.key = chargefw::test::hbo_atom_key(6, "1"),
+             {.key = chargefw::test::hbo_atom_key(8, "1"),
               .parameters = {{.name = "A", .value = 7.976}, {.name = "B", .value = 4.625}}}}},
         parameters::BondParameters{{{.key = chargefw::test::plain_bond_key(),
-                                     .parameters = {{.name = "f", .value = 0.505}}}}}};
+                                     .parameters = {{.name = "f", .value = bond_attenuation}}}}}};
 }
 
 } // namespace
 
-TEST_CASE("MPEOE produces conformer-independent methane charges", "[methods][mpeoe]") {
-    const auto charge_set = chargefw::test::calculate_single_method(
-        chargefw::test::make_methane_graph(), "mpeoe", {make_mpeoe_parameters()});
+TEST_CASE("MPEOE bond attenuation changes water charges", "[methods][mpeoe]") {
+    const auto reference_charges = chargefw::test::calculate_single_method(
+        chargefw::test::make_water_graph(), "mpeoe", {make_mpeoe_parameters(0.505)});
+    const auto lower_attenuation_charges = chargefw::test::calculate_single_method(
+        chargefw::test::make_water_graph(), "mpeoe", {make_mpeoe_parameters(0.25)});
 
-    chargefw::test::assert_calculation_provenance(charge_set, "mpeoe", "test-mpeoe");
-    chargefw::test::assert_conformer_independent(charge_set);
-
-    const auto& charges = charge_set.assignment(0).charges;
-
-    CHECK(charges.size() == 5);
-
-    const auto carbon_charge = charges[0];
-    const auto hydrogen_charge = charges[1];
-
-    CHECK(carbon_charge < 0.0);
-    CHECK(hydrogen_charge > 0.0);
-
-    CHECK(std::abs(charges[1] - charges[2]) < 1.0e-12);
-    CHECK(std::abs(charges[1] - charges[3]) < 1.0e-12);
-    CHECK(std::abs(charges[1] - charges[4]) < 1.0e-12);
-
-    CHECK(std::abs(charges.total()) < 1.0e-12);
+    CHECK(std::abs(reference_charges.assignment(0).charges[0] -
+                   lower_attenuation_charges.assignment(0).charges[0]) > 1.0e-6);
 }

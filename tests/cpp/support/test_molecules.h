@@ -18,12 +18,6 @@ namespace chargefw::test {
 /// geometry-dependent methods.
 [[nodiscard]] auto make_two_conformer_water() -> core::Molecule;
 
-/// Hydrogen fluoride graph without coordinates.
-[[nodiscard]] auto make_hf_graph() -> core::Molecule;
-
-/// Methane graph without coordinates.
-[[nodiscard]] auto make_methane_graph() -> core::Molecule;
-
 [[nodiscard]] auto make_formally_charged_pair() -> core::Molecule;
 
 /// Returns a numbering-only relabeling of the molecule: atom `new_atom_order[new_index]` of the
