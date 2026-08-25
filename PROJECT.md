@@ -24,8 +24,8 @@ The repository currently provides:
 - native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;
 - JSON, SDF, MOL2, and mmCIF charge output through a focused CLI.
 
-Broad reduced-mode compatibility/accuracy validation, Python bindings, packaged distribution, and a
-stable failure-capable result schema remain unfinished.
+Broad method/parameter compatibility and reduced-mode accuracy validation, relocatable native
+packaging, Python bindings, and packaged distribution remain unfinished.
 
 ## Architecture
 
@@ -292,8 +292,10 @@ kcm, mgc, mpeoe, peoe, qeq, sfkeem, smpqeq, sqe, sqeq0, sqeqp, tsef, veem
 ```
 
 Bundled parameter sets live in `data/parameters/` and install under
-`share/chargefw/parameters`. All nine archived SQE-family sets are migrated. Numerical parity with
-ChargeFW2 remains incomplete and release-blocking for production adoption.
+`share/chargefw/parameters`. All nine archived SQE-family sets are migrated. Scientific comparison
+against ChargeFW2 and ACC III remains incomplete and release-blocking for production adoption; parity
+with the archived implementation is not assumed where the publication, inputs, or current design
+justify a difference.
 
 ## Molecular I/O and CLI
 
@@ -396,6 +398,11 @@ Installation currently provides the library, public headers, CLI, generated conf
 parameter JSON. Exported CMake package targets are not implemented. There are no repository CI
 workflows, Python bindings/wheels, Conda recipe, or container image yet.
 
+Default parameter discovery checks `CHARGEFW_PARAMETER_DIR` and then the configure-time install data
+path. The installed CLI works without the environment override when it remains under that configured
+prefix, but parameter discovery is not yet relocatable after moving the install or overriding only the
+`cmake --install` prefix.
+
 ## Integration direction
 
 The intended front ends converge on the same owned application facade:
@@ -418,8 +425,10 @@ not make RDKit a dependency of the core library or base wheel.
 - Record method, parameter set, options when exposed, execution approximation, correction, and warnings.
 - Keep exact full calculations distinct from cutoff/cover approximations.
 - Make automatic policy explainable and explicitly overridable.
-- Compare ChargeFW2 with identical graphs, charges, coordinates, options, and parameter data.
-- Record per-method tolerances and intentional deviations in tests or maintained compatibility data.
+- Compare ChargeFW2 with identical graphs, charges, coordinates, options, and parameter data, while
+  treating its output as evidence for investigation rather than an automatic oracle.
+- Investigate and classify per-method differences as a current defect, a legacy defect, an intentional
+  change, or unresolved; record tolerances and rationale in tests or maintained comparison data.
 - Do not claim cutoff accuracy from whole-fragment equality or one-off large-structure measurements.
 
 The prioritized unfinished work and acceptance criteria are maintained only in [TODO.md](TODO.md).

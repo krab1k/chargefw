@@ -14,7 +14,6 @@ SMILES/chemistry-preparation tool.
 | --- | --- |
 | [PROJECT.md](PROJECT.md) | Implemented architecture, capabilities, limits, and product direction |
 | [TODO.md](TODO.md) | Unfinished deliverables and acceptance criteria |
-| [TESTING.md](TESTING.md) | Test-suite contracts, organization, and migration strategy |
 | [AGENTS.md](AGENTS.md) | Repository boundaries and implementation rules |
 
 ## Requirements
@@ -109,7 +108,7 @@ the cutoff threshold, it uses supported cutoff at 12 Å. Above the cover thresho
 cover. Explicit execution overrides these thresholds; explicit full or cutoff records any applicable
 threshold warning.
 
-Cutoff and explicit cover are available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp.
+Cutoff and cover are available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp.
 Cover retains source-ordered charges within 3 Å of each solved pivot halo; it remains a new
 approximation without a general accuracy envelope.
 
@@ -173,16 +172,21 @@ Feature preparation is included in applicability timing; computation timing cove
 
 ## Install
 
-After configuring and building, install to a chosen prefix:
+Configure, build, and install to a chosen prefix:
 
 ```bash
-cmake --install build/gcc-release --prefix "$PWD/_install" --strip
+cmake --preset gcc-release -DCMAKE_INSTALL_PREFIX="$PWD/_install"
+cmake --build --preset gcc-release
+cmake --install build/gcc-release --strip
 env -u CHARGEFW_PARAMETER_DIR \
   _install/bin/chargefw calculate tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
-Installation includes the library, public headers, CLI, and parameter data. Exported CMake package
-targets and binary distribution packages are not implemented yet.
+Configure the install prefix before building because bundled parameter lookup currently records that
+path; overriding only `cmake --install --prefix` does not make the install relocatable.
+`CHARGEFW_PARAMETER_DIR` remains available as an explicit override. Installation includes the library,
+public headers, CLI, and parameter data. Exported CMake package targets and binary distribution packages
+are not implemented yet.
 
 ## Formatting
 
