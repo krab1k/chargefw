@@ -326,7 +326,10 @@ occurrence. Compact templates cover standard amino acids, standard RNA/DNA nucle
 sequential peptide/nucleotide links. There is no distance-based bond perception or full CCD provider.
 
 Adapters preserve selected source atom order, formal charges, selected conformer identity, and record
-identity.
+identity. For mmCIF, the original document and imported block mapping are retained for
+preservation-oriented output: unselected alternate-location rows remain in the source structure, while
+charge rows reference only the selected `_atom_site.id` values. PDB input is converted to normalized
+mmCIF containing only selected atoms.
 
 Calculation JSON includes execution metrics for parsing, applicability, computation, non-JSON output
 writing, wall-clock timestamps, and peak resident memory. Applicability and computation timings use

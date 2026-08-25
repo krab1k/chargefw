@@ -13,8 +13,6 @@ accuracy studies are deliberately separate from implementation-completion work.
 - [ ] Add complete calculation provenance to SDF, MOL2, and mmCIF in format-appropriate fields. Include
   effective method options once application-facing options exist; do not duplicate JSON schema
   internals unnecessarily.
-- [ ] Complete structural mapping/provenance for omitted alternate locations and retain enough opaque
-  mmCIF source state for preservation-oriented export.
 - [ ] Complete PDB/mmCIF reader regression fixtures for empty/incompatible models, unknown elements,
   insertion codes and chain breaks, alternate-location omissions, filtered records,
   explicit/template/hybrid conflicts, and malformed or partially usable multi-block input.
