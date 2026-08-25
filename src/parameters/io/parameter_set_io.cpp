@@ -283,6 +283,15 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     }
 }
 
+[[nodiscard]] auto make_atom_parameter_key(const std::string& symbol,
+                                           const std::string& classification,
+                                           const std::string& type,
+                                           const std::string& symbol_context) -> AtomParameterKey {
+    return AtomParameterKey{.atomic_number = atomic_number_from_symbol(symbol, symbol_context),
+                            .classification = atom_classification_kind_from_string(classification),
+                            .type = type};
+}
+
 [[nodiscard]] auto parse_atom_key(const Json& key_json, const std::string& context)
     -> AtomParameterKey {
     ensure_array(key_json, context);
@@ -295,10 +304,7 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     const auto classification = require_string(key_json[1], array_context(context, 1));
     const auto type = require_string(key_json[2], array_context(context, 2));
 
-    return AtomParameterKey{.atomic_number =
-                                atomic_number_from_symbol(symbol, array_context(context, 0)),
-                            .classification = atom_classification_kind_from_string(classification),
-                            .type = type};
+    return make_atom_parameter_key(symbol, classification, type, array_context(context, 0));
 }
 
 [[nodiscard]] auto parse_bond_type_key(const Json& key_json, const std::string& context)
@@ -339,16 +345,10 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     const auto bond_type = require_string(key_json[7], array_context(context, 7));
 
     return BondParameterKey{
-        .first_atom =
-            AtomParameterKey{
-                .atomic_number = atomic_number_from_symbol(first_symbol, array_context(context, 0)),
-                .classification = atom_classification_kind_from_string(first_classification),
-                .type = first_type},
-        .second_atom = AtomParameterKey{.atomic_number = atomic_number_from_symbol(
-                                            second_symbol, array_context(context, 3)),
-                                        .classification = atom_classification_kind_from_string(
-                                            second_classification),
-                                        .type = second_type},
+        .first_atom = make_atom_parameter_key(first_symbol, first_classification, first_type,
+                                              array_context(context, 0)),
+        .second_atom = make_atom_parameter_key(second_symbol, second_classification, second_type,
+                                               array_context(context, 3)),
         .bond =
             BondTypeKey{.classification = bond_classification_kind_from_string(bond_classification),
                         .type = bond_type}};
