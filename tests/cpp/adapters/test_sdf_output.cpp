@@ -43,8 +43,12 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
     const auto type_one = std::vector{assignment(0, {-0.12345, 0.12345}), assignment(1, {-0.5})};
     const auto type_two = std::vector{assignment(0, {-0.2, 0.2}), assignment(1, {-0.4})};
     const auto properties =
-        std::array{sdf_output::ChargeProperty{
-                       .charge_type_id = 1, .assignments = type_one, .method = "eem/2015"},
+        std::array{sdf_output::ChargeProperty{.charge_type_id = 1,
+                                              .assignments = type_one,
+                                              .method = "eem",
+                                              .parameter_set = "2015",
+                                              .software_name = "ChargeFW",
+                                              .software_version = "0.0.1"},
                    sdf_output::ChargeProperty{.charge_type_id = 2, .assignments = type_two}};
 
     {
@@ -56,13 +60,17 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
         CHECK_FALSE(text.contains("9.0000 9.0000"));
         CHECK(text.contains("> <CHARGEFW_CHARGES_1>\n-0.1235 0.1235\n\n"));
         CHECK(text.contains("> <CHARGEFW_CHARGES_2>\n-0.2000 0.2000\n\n"));
-        CHECK(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=eem/2015\n\n"));
+        CHECK(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=eem; "
+                            "parameter_set=2015; software_name=ChargeFW; "
+                            "software_version=0.0.1\n\n"));
         CHECK(text.contains("> <CHARGEFW_CHARGES_1>\r\n-0.5000\r\n\r\n"
                             "> <CHARGEFW_CHARGE_METADATA_1>\r\n"
-                            "type=empirical; method=eem/2015\r\n\r\n"
+                            "type=empirical; method=eem; parameter_set=2015; "
+                            "software_name=ChargeFW; software_version=0.0.1\r\n\r\n"
                             "> <CHARGEFW_CHARGES_2>\r\n-0.4000\r\n\r\n"
                             "> <CHARGEFW_CHARGE_METADATA_2>\r\n"
-                            "type=empirical; method=unknown\r\n\r\n$$$$\r\n"));
+                            "type=empirical; method=unknown; parameter_set=.; "
+                            "software_name=unknown; software_version=unknown\r\n\r\n$$$$\r\n"));
         auto expected_prefix = std::string{first_record};
         const auto old_field = std::string{"> <CHARGEFW_CHARGES_1>\n9.0000 9.0000\n\n"};
         expected_prefix.erase(expected_prefix.find(old_field), old_field.size());
@@ -75,13 +83,19 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
                                           "method=obsolete\n\n$$$$\n";
         auto output = std::ostringstream{};
         const auto one_record_assignments = std::vector{assignment(0, {-0.12345, 0.12345})};
-        const auto one_record = std::array{sdf_output::ChargeProperty{
-            .charge_type_id = 1, .assignments = one_record_assignments, .method = "eem/2015"}};
+        const auto one_record =
+            std::array{sdf_output::ChargeProperty{.charge_type_id = 1,
+                                                  .assignments = one_record_assignments,
+                                                  .method = "eem",
+                                                  .parameter_set = "2015",
+                                                  .software_name = "ChargeFW",
+                                                  .software_version = "0.0.1"}};
         sdf_output::SdfWriter{output}.write_preserving_buffer(source_with_metadata, one_record,
                                                               sdf_output::WriteMode::replace);
         const auto text = output.str();
         CHECK_FALSE(text.contains("method=obsolete"));
-        CHECK(text.contains("method=eem/2015"));
+        CHECK(text.contains("method=eem; parameter_set=2015; software_name=ChargeFW; "
+                            "software_version=0.0.1"));
     }
 
     {
@@ -93,7 +107,9 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
         const auto text = output.str();
         CHECK(text.contains("> <CHARGEFW_CHARGES_1>\n9.0000 9.0000\n\n"));
         CHECK(text.contains("> <CHARGEFW_CHARGES_1>\n-0.1235 0.1235\n\n"));
-        CHECK(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=unknown\n\n"));
+        CHECK(
+            text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=unknown; "
+                          "parameter_set=.; software_name=unknown; software_version=unknown\n\n"));
     }
 
     {
@@ -130,7 +146,9 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
         CHECK(text.contains("  3  2  0  0  0  0  0  0  0  0999 V2000\n"));
         CHECK(text.contains("M  CHG  1   1  -1\nM  END\n"));
         CHECK(text.contains("> <CHARGEFW_CHARGES_1>\n-0.8000 0.4000 0.4000\n\n"));
-        CHECK(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=unknown\n\n"));
+        CHECK(
+            text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=unknown; "
+                          "parameter_set=.; software_name=unknown; software_version=unknown\n\n"));
         CHECK(text.ends_with("$$$$\n"));
     }
 

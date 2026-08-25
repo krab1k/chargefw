@@ -152,23 +152,32 @@ void write_mol2(const std::filesystem::path& path, const std::string& input_path
 }
 
 void write_sdf(const std::filesystem::path& path, const std::string& input_path,
-               const ImportedExportContext& export_context,
-               const std::span<const charges::ChargeAssignment> assignments,
-               const std::string_view method) {
+               const ImportedExportContext& export_context, const charges::ChargeSet& charge_set) {
     auto output = std::ofstream{path, std::ios::binary};
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
     auto writer = adapters::native::sdf_output::SdfWriter{output};
+    const auto assignments = charge_set.assignments();
     const auto properties = std::array{adapters::native::sdf_output::ChargeProperty{
-        .charge_type_id = 1, .assignments = assignments, .method = method}};
+        .charge_type_id = 1,
+        .assignments = assignments,
+        .method = charge_set.method_id(),
+        .parameter_set = charge_set.parameter_set_id().value_or(""),
+        .software_name = "ChargeFW",
+        .software_version = "0.0.1"}};
     if (export_context.format == ImportedExportContext::Format::sdf) {
         writer.write_preserving_source(input_path, properties);
         return;
     }
     for (std::size_t index = 0; index < export_context.records.size(); ++index) {
         const auto property = std::array{adapters::native::sdf_output::ChargeProperty{
-            .charge_type_id = 1, .assignments = assignments.subspan(index, 1), .method = method}};
+            .charge_type_id = 1,
+            .assignments = assignments.subspan(index, 1),
+            .method = charge_set.method_id(),
+            .parameter_set = charge_set.parameter_set_id().value_or(""),
+            .software_name = "ChargeFW",
+            .software_version = "0.0.1"}};
         writer.write_generated(export_context.records[index].molecule, property,
                                adapters::native::sdf_output::MolFormat::v2000);
     }
@@ -417,8 +426,7 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
         std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
     } else {
         const auto assignments = assignments_by_molecule(*charges, export_context.records.size());
-        write_sdf(prefix.string() + ".sdf", input_path, export_context, assignments,
-                  charges->method_id());
+        write_sdf(prefix.string() + ".sdf", input_path, export_context, *charges);
         write_mol2(prefix.string() + ".mol2", input_path, export_context, assignments);
         std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json",
                      prefix.string() + ".sdf", prefix.string() + ".mol2", prefix.string() + ".cif");

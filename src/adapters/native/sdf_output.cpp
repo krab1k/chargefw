@@ -146,9 +146,15 @@ auto write_charge_property(const ChargeProperty& property,
 
 auto write_metadata_property(const ChargeProperty& property, const std::string_view ending,
                              std::ostream& output) -> void {
-    std::print(output, "> <{}{}>{}type=empirical; method={}{}{}", metadata_property_prefix,
-               property.charge_type_id, ending,
-               property.method.empty() ? "unknown" : property.method, ending, ending);
+    std::print(output,
+               "> <{}{}>{}type=empirical; method={}; parameter_set={}; software_name={}; "
+               "software_version={}{}{}",
+               metadata_property_prefix, property.charge_type_id, ending,
+               property.method.empty() ? "unknown" : property.method,
+               property.parameter_set.empty() ? "." : property.parameter_set,
+               property.software_name.empty() ? "unknown" : property.software_name,
+               property.software_version.empty() ? "unknown" : property.software_version, ending,
+               ending);
 }
 
 auto write_record(const std::string_view record, const std::string_view ending,

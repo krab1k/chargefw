@@ -18,6 +18,9 @@ struct ChargeProperty {
     std::size_t charge_type_id = 0;
     std::span<const charges::ChargeAssignment> assignments;
     std::string_view method;
+    std::string_view parameter_set;
+    std::string_view software_name;
+    std::string_view software_version;
 };
 
 // Copies an SDF source while attaching ChargeFW charge properties and their method metadata before
