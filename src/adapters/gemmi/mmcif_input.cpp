@@ -44,6 +44,9 @@ auto MmcifReader::next() -> std::optional<ImportedMoleculeRecord> {
         }
 
         const auto structure = ::gemmi::make_structure_from_block(block);
+        if (structure.models.empty()) {
+            throw std::runtime_error{"structural input contains no models"};
+        }
         const auto selected =
             selection::SelectedModel{structure.models.front(), options_.selection};
         auto explicit_bonds = bonds::explicit_mmcif(structure, block, selected);

@@ -112,6 +112,18 @@ void add_sequential_bonds(BondAccumulator& bonds,
                           const component_templates::ComponentKind kind,
                           const std::string_view previous_atom,
                           const std::string_view current_atom) {
+    const auto sequentially_adjacent = [](const ::gemmi::Residue& previous,
+                                          const ::gemmi::Residue& current) -> bool {
+        // Normal peptide/nucleotide progression increments the residue sequence number.
+        if (previous.seqid.num.value + 1 == current.seqid.num.value) {
+            return true;
+        }
+        // An insertion code keeps the parent sequence number: the base residue has a blank
+        // insertion code and the first inserted residue reuses the parent number with a code.
+        return previous.seqid.num.value == current.seqid.num.value && previous.seqid.icode == ' ' &&
+               current.seqid.icode != ' ';
+    };
+
     for (std::size_t index = 1; index < residues.size(); ++index) {
         const auto& previous = residues[index - 1];
         const auto& current = residues[index];
@@ -119,7 +131,8 @@ void add_sequential_bonds(BondAccumulator& bonds,
         const auto* const current_template = component_templates::find(current.residue->name);
         if (previous_template == nullptr || current_template == nullptr ||
             previous_template->kind != kind || current_template->kind != kind ||
-            previous.residue->seqid.num.value + 1 != current.residue->seqid.num.value) {
+            previous.chain_name != current.chain_name ||
+            !sequentially_adjacent(*previous.residue, *current.residue)) {
             continue;
         }
 

@@ -16,6 +16,7 @@ namespace chargefw::adapters::gemmi::selection {
 
 struct SelectedResidue {
     const ::gemmi::Residue* residue;
+    std::string_view chain_name;
     std::vector<std::pair<std::string_view, std::size_t>> atom_indices;
 
     [[nodiscard]] auto find_atom(std::string_view name) const -> std::optional<std::size_t>;

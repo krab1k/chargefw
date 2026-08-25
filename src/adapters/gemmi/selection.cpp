@@ -77,7 +77,8 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
                 continue;
             }
 
-            SelectedResidue selected{.residue = std::addressof(residue), .atom_indices = {}};
+            SelectedResidue selected{
+                .residue = std::addressof(residue), .chain_name = chain.name, .atom_indices = {}};
             selected.atom_indices.reserve(residue.atoms.size());
             for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
                 if (!is_first_named_atom(residue, index)) {

@@ -10,13 +10,6 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Result contract, molecular I/O, and CLI
 
-- [ ] Complete PDB/mmCIF reader regression fixtures for empty/incompatible models, unknown elements,
-  insertion codes and chain breaks, alternate-location omissions, filtered records,
-  explicit/template/hybrid conflicts, and malformed or partially usable multi-block input.
-- [ ] Expand native-parser and CLI integration tests for V2000/V3000 boundaries, malformed and mixed
-  records, execution-policy validation, deterministic output, and documented failure exit statuses. Run
-  affected parser tests under ASan and UBSan when parser code changes.
-
 ## 2. Scientific and compatibility validation
 
 These are evidence and release-readiness work, not implementation-completion blockers. Cutoff and cover

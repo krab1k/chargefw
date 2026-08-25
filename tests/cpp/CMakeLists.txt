@@ -68,6 +68,8 @@ if(CHARGEFW_BUILD_CLI)
                     -DCHARGEFW_PARAMETER_DIR=${PROJECT_SOURCE_DIR}/data/parameters
                     -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/water.sdf
                     -DCHARGEFW_MOL2_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/mol2/aromatic.mol2
+                    -DCHARGEFW_MIXED_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/mixed_v2000_v3000.sdf
+                    -DCHARGEFW_MALFORMED_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/malformed_then_water.sdf
                     -DCHARGEFW_VERSION=${PROJECT_VERSION}
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_outputs.cmake
     )

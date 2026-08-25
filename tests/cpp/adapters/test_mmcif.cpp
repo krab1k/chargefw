@@ -289,3 +289,42 @@ ALA N CA DOUB
     CHECK(read_duplicate_bond(gemmi_adapter::BondStrategy::hybrid).order() ==
           chargefw::core::BondOrder::DOUBLE);
 }
+
+TEST_CASE("mmCIF input rejects incompatible conformer atom sequences", "[adapters][mmcif]") {
+    const auto incompatible_input = R"cif(data_incompatible
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+HETATM 1 C C1 . LIG A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 LIG A C1 1
+HETATM 2 O O1 . LIG A 1 ? 1.0 0.0 0.0 1.0 20.0 0 1 LIG A O1 1
+HETATM 3 C C1 . LIG A 1 ? 0.1 0.0 0.0 1.0 20.0 0 1 LIG A C1 2
+#
+)cif";
+    std::istringstream input{incompatible_input};
+    auto reader = mmcif::MmcifReader{input};
+    bool rejected = false;
+    try {
+        [[maybe_unused]] const auto record = reader.next();
+    } catch (const std::exception&) {
+        rejected = true;
+    }
+    CHECK(rejected);
+}

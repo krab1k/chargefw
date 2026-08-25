@@ -52,6 +52,100 @@ foreach(mode IN ITEMS full cutoff cover)
     file(REMOVE_RECURSE "${mode_output_directory}")
 endforeach()
 
+function(expect_invalid_policy label)
+    set(policy_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_invalid_${label}")
+    file(REMOVE_RECURSE "${policy_output_directory}")
+    execute_process(
+            COMMAND "${CMAKE_COMMAND}" -E env
+                    "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                    "${CHARGEFW_CLI}" calculate ${ARGN} "${CHARGEFW_INPUT}" "${policy_output_directory}"
+            RESULT_VARIABLE policy_result
+            ERROR_VARIABLE policy_error
+    )
+    if(NOT policy_result EQUAL 2)
+        message(FATAL_ERROR "${label} policy exit status was ${policy_result}: ${policy_error}")
+    endif()
+    if(EXISTS "${policy_output_directory}/water.chargefw.json")
+        message(FATAL_ERROR "${label} policy unexpectedly wrote a result document")
+    endif()
+    file(REMOVE_RECURSE "${policy_output_directory}")
+endfunction()
+
+expect_invalid_policy(missing_radius --execution cutoff)
+expect_invalid_policy(short_radius --execution cover --radius 7)
+expect_invalid_policy(full_correction --execution full --charge-correction uniform)
+
+set(malformed_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_malformed")
+file(REMOVE_RECURSE "${malformed_output_directory}")
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" calculate "${CHARGEFW_MALFORMED_INPUT}" "${malformed_output_directory}"
+        RESULT_VARIABLE malformed_result
+        ERROR_VARIABLE malformed_error
+)
+if(NOT malformed_result EQUAL 2 OR
+   EXISTS "${malformed_output_directory}/malformed_then_water.chargefw.json")
+    message(FATAL_ERROR "malformed input did not fail before writing output: ${malformed_error}")
+endif()
+file(REMOVE_RECURSE "${malformed_output_directory}")
+
+set(mixed_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_mixed")
+set(mixed_output_prefix "${mixed_output_directory}/mixed_v2000_v3000.chargefw")
+file(REMOVE_RECURSE "${mixed_output_directory}")
+execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env
+                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                "${CHARGEFW_CLI}" calculate --method eem --execution full "${CHARGEFW_MIXED_INPUT}"
+                "${mixed_output_directory}"
+        RESULT_VARIABLE mixed_result
+        ERROR_VARIABLE mixed_error
+)
+if(NOT mixed_result EQUAL 0)
+    message(FATAL_ERROR "mixed V2000/V3000 CLI calculation failed: ${mixed_error}")
+endif()
+file(READ "${mixed_output_prefix}.json" mixed_json)
+string(JSON mixed_record_count LENGTH "${mixed_json}" results)
+string(JSON mixed_first_id GET "${mixed_json}" results 0 input record_id)
+string(JSON mixed_second_id GET "${mixed_json}" results 1 input record_id)
+if(NOT mixed_record_count EQUAL 2 OR NOT mixed_first_id STREQUAL "v2000" OR
+   NOT mixed_second_id STREQUAL "v3000")
+    message(FATAL_ERROR "mixed V2000/V3000 records were not preserved")
+endif()
+file(REMOVE_RECURSE "${mixed_output_directory}")
+
+set(deterministic_result "")
+foreach(run IN ITEMS 1 2)
+    set(deterministic_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_deterministic_${run}")
+    set(deterministic_output_prefix "${deterministic_output_directory}/water.chargefw")
+    file(REMOVE_RECURSE "${deterministic_output_directory}")
+    execute_process(
+            COMMAND "${CMAKE_COMMAND}" -E env
+                    "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
+                    "${CHARGEFW_CLI}" calculate --method eem --execution full "${CHARGEFW_INPUT}"
+                    "${deterministic_output_directory}"
+            RESULT_VARIABLE deterministic_run_result
+            ERROR_VARIABLE deterministic_error
+    )
+    if(NOT deterministic_run_result EQUAL 0)
+        message(FATAL_ERROR "deterministic CLI calculation failed: ${deterministic_error}")
+    endif()
+    file(READ "${deterministic_output_prefix}.json" deterministic_json)
+    string(JSON deterministic_method GET "${deterministic_json}" calculation_provenance effective method id)
+    string(JSON deterministic_mode GET "${deterministic_json}" calculation_provenance effective execution mode)
+    string(JSON deterministic_charge_0 GET "${deterministic_json}" results 0 assignments 0 charges 0)
+    string(JSON deterministic_charge_1 GET "${deterministic_json}" results 0 assignments 0 charges 1)
+    string(JSON deterministic_charge_2 GET "${deterministic_json}" results 0 assignments 0 charges 2)
+    set(current_deterministic_result
+        "${deterministic_method}|${deterministic_mode}|${deterministic_charge_0}|${deterministic_charge_1}|${deterministic_charge_2}")
+    if(deterministic_result STREQUAL "")
+        set(deterministic_result "${current_deterministic_result}")
+    elseif(NOT deterministic_result STREQUAL current_deterministic_result)
+        message(FATAL_ERROR "CLI stable result fields differ between identical runs")
+    endif()
+    file(REMOVE_RECURSE "${deterministic_output_directory}")
+endforeach()
+
 set(no_plan_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_no_plan")
 set(no_plan_output_prefix "${no_plan_output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${no_plan_output_directory}")

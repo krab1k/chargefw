@@ -323,7 +323,11 @@ Structural input supports record selection (`all`, `polymers-and-ligands`, `poly
 (`none`, `explicit`, `templates`, `hybrid`). Library structural readers default to `none`; the CLI
 deliberately defaults to `hybrid`. Alternate locations select blank, then `A`, then the first
 occurrence. Compact templates cover standard amino acids, standard RNA/DNA nucleotides, water, and
-sequential peptide/nucleotide links. There is no distance-based bond perception or full CCD provider.
+sequential peptide/nucleotide links. Sequential links require the same chain and consecutive residue
+sequence numbers, with insertion-code continuity allowed when the first inserted residue keeps the
+parent sequence number. There is no distance-based bond perception or full CCD provider. Structural
+readers reject empty models and conformer sequences whose selected atom identity, element, formal
+charge, or name differ across models.
 
 Adapters preserve selected source atom order, formal charges, selected conformer identity, and record
 identity. For mmCIF, the original document and imported block mapping are retained for

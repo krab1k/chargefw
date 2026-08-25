@@ -23,6 +23,9 @@ PdbReader::PdbReader(std::istream& input, std::string source,
     }
 
     structure_ = ::gemmi::read_pdb_string(contents, source);
+    if (structure_.models.empty()) {
+        throw std::runtime_error{"structural input contains no models"};
+    }
     const auto name = structure_.name.empty() ? source : structure_.name;
     const auto selected = selection::SelectedModel{structure_.models.front(), options.selection};
     auto explicit_bonds = bonds::explicit_pdb(structure_, selected);

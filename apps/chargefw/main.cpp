@@ -169,6 +169,9 @@ auto main(int argc, char* argv[]) noexcept -> int {
     } catch (const std::invalid_argument& error) {
         std::print(std::cerr, "Invalid input or request: {}\n", error.what());
         return 2;
+    } catch (const std::out_of_range& error) {
+        std::print(std::cerr, "Invalid input or request: {}\n", error.what());
+        return 2;
     } catch (const std::runtime_error& error) {
         std::print(std::cerr, "Invalid input or request: {}\n", error.what());
         return 2;

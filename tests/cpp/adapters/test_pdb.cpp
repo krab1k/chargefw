@@ -2,6 +2,7 @@
 #include <chargefw/core/bond.h>
 #include <snitch/snitch.hpp>
 
+#include <exception>
 #include <sstream>
 #include <string>
 
@@ -132,4 +133,57 @@ END
         CHECK(read_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 1);
         CHECK(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 1);
     }
+}
+
+TEST_CASE("PDB input rejects empty and incompatible selected models", "[adapters][pdb]") {
+    {
+        std::istringstream input{"END\n"};
+        bool rejected = false;
+        try {
+            [[maybe_unused]] auto reader = pdb::PdbReader{input};
+        } catch (const std::exception&) {
+            rejected = true;
+        }
+        CHECK(rejected);
+    }
+
+    {
+        std::istringstream input{R"pdb(MODEL        1
+ATOM      1  C   UNL A   1       0.000   0.000   0.000  1.00 20.00           C
+ENDMDL
+MODEL        2
+ATOM      1  O   UNL A   1       0.000   0.000   0.000  1.00 20.00           O
+ENDMDL
+END
+)pdb"};
+        bool rejected = false;
+        try {
+            [[maybe_unused]] auto reader = pdb::PdbReader{input};
+        } catch (const std::exception&) {
+            rejected = true;
+        }
+        CHECK(rejected);
+    }
+}
+
+TEST_CASE("PDB template links respect chains and insertion codes", "[adapters][pdb]") {
+    const auto read_bond_count = [](const std::string_view text) {
+        std::istringstream input{std::string{text}};
+        auto reader =
+            pdb::PdbReader{input, {}, {.bond_strategy = gemmi_adapter::BondStrategy::templates}};
+        const auto record = reader.next();
+        REQUIRE(record.has_value());
+        return record->molecule.bond_count();
+    };
+
+    CHECK(read_bond_count(
+              R"pdb(ATOM      1  C   ALA A   1       0.000   0.000   0.000  1.00 20.00           C
+ATOM      2  N   GLY B   2       1.000   0.000   0.000  1.00 20.00           N
+END
+)pdb") == 0);
+    CHECK(read_bond_count(
+              R"pdb(ATOM      1  C   ALA A   1       0.000   0.000   0.000  1.00 20.00           C
+ATOM      2  N   GLY A   1A      1.000   0.000   0.000  1.00 20.00           N
+END
+)pdb") == 1);
 }

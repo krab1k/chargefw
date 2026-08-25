@@ -138,6 +138,38 @@ TEST_CASE("native readers preserve molecular mapping and reject malformed record
     }
 
     {
+        std::ifstream input{fixture("synthetic/sdf/mixed_v2000_v3000.sdf")};
+        auto reader = sdf::SdfReader{input, "mixed_v2000_v3000.sdf"};
+        const auto first = reader.next();
+        const auto second = reader.next();
+        REQUIRE(first.has_value());
+        REQUIRE(second.has_value());
+        CHECK(first->identity.record_id == "v2000");
+        CHECK(second->identity.record_id == "v3000");
+        CHECK(first->molecule.atom_count() == 1);
+        CHECK(second->molecule.atom_count() == 1);
+        CHECK_FALSE(reader.next().has_value());
+    }
+
+    for (const auto malformed :
+         {std::string_view{"bad-v2000\nchargefw\n\n  1  1  0  0  0  0  0  0  0  0999 V2000\n"
+                           "    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n"
+                           "  1  2  1  0  0  0  0\nM  END\n"},
+          std::string_view{"bad-v3000\nchargefw\n\n  0  0  0  0  0  0  0  0  0  0999 V3000\n"
+                           "M  V30 BEGIN CTAB\nM  V30 COUNTS 2 0 0 0 0\nM  V30 BEGIN ATOM\n"
+                           "M  V30 1 C 0 0 0 0\nM  V30 1 O 1 0 0 0\nM  V30 END ATOM\n"
+                           "M  V30 BEGIN BOND\nM  V30 END BOND\nM  V30 END CTAB\nM  END\n"}}) {
+        std::istringstream input{std::string{malformed}};
+        bool rejected = false;
+        try {
+            [[maybe_unused]] const auto record = mol::parse_mol(input, {});
+        } catch (const std::exception&) {
+            rejected = true;
+        }
+        CHECK(rejected);
+    }
+
+    {
         std::ifstream input{fixture("corpus/sdf/heme/ideal.sdf")};
         auto reader = sdf::SdfReader{input, "HEM_ideal.sdf"};
         const auto result = reader.next();
