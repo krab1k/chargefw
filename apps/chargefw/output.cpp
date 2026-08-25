@@ -1,6 +1,7 @@
 #include "cli_support.h"
 
 #include <chargefw/charges/charge_collection.h>
+#include <chargefw/config.h>
 
 #include <array>
 #include <chrono>
@@ -125,12 +126,13 @@ void write_mmcif(const std::filesystem::path& path, const ImportedExportContext&
     auto writer = adapters::gemmi::mmcif_output::MmcifWriter{output};
     if (export_context.mmcif_source.has_value()) {
         writer.write_mmcif(export_context.records, charges, *export_context.mmcif_source,
-                           "ChargeFW", "0.0.1");
+                           "ChargeFW", CHARGEFW_VERSION_STRING);
     } else if (export_context.pdb_source.has_value()) {
         writer.write_pdb(export_context.records.front(), charges, *export_context.pdb_source,
-                         "ChargeFW", "0.0.1");
+                         "ChargeFW", CHARGEFW_VERSION_STRING);
     } else {
-        writer.write_generated(export_context.records, charges, "ChargeFW", "0.0.1");
+        writer.write_generated(export_context.records, charges, "ChargeFW",
+                               CHARGEFW_VERSION_STRING);
     }
 }
 
@@ -165,7 +167,7 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
         .method = charge_set.method_id(),
         .parameter_set = charge_set.parameter_set_id().value_or(""),
         .software_name = "ChargeFW",
-        .software_version = "0.0.1"}};
+        .software_version = CHARGEFW_VERSION_STRING}};
     if (export_context.format == ImportedExportContext::Format::sdf) {
         writer.write_preserving_source(input_path, properties);
         return;
@@ -177,7 +179,7 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
             .method = charge_set.method_id(),
             .parameter_set = charge_set.parameter_set_id().value_or(""),
             .software_name = "ChargeFW",
-            .software_version = "0.0.1"}};
+            .software_version = CHARGEFW_VERSION_STRING}};
         writer.write_generated(export_context.records[index].molecule, property,
                                adapters::native::sdf_output::MolFormat::v2000);
     }
@@ -259,7 +261,7 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
     }
     auto document = adapters::ChargeResultDocument{
         .generator_name = "ChargeFW",
-        .generator_version = "0.0.1",
+        .generator_version = CHARGEFW_VERSION_STRING,
         .status = status,
         .diagnostics = diagnostic.has_value() ? std::vector{*diagnostic}
                                               : std::vector<adapters::ResultDiagnostic>{},

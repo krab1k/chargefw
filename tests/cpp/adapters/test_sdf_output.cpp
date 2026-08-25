@@ -48,7 +48,7 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
                                               .method = "eem",
                                               .parameter_set = "2015",
                                               .software_name = "ChargeFW",
-                                              .software_version = "0.0.1"},
+                                              .software_version = "test-version"},
                    sdf_output::ChargeProperty{.charge_type_id = 2, .assignments = type_two}};
 
     {
@@ -62,11 +62,11 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
         CHECK(text.contains("> <CHARGEFW_CHARGES_2>\n-0.2000 0.2000\n\n"));
         CHECK(text.contains("> <CHARGEFW_CHARGE_METADATA_1>\ntype=empirical; method=eem; "
                             "parameter_set=2015; software_name=ChargeFW; "
-                            "software_version=0.0.1\n\n"));
+                            "software_version=test-version\n\n"));
         CHECK(text.contains("> <CHARGEFW_CHARGES_1>\r\n-0.5000\r\n\r\n"
                             "> <CHARGEFW_CHARGE_METADATA_1>\r\n"
                             "type=empirical; method=eem; parameter_set=2015; "
-                            "software_name=ChargeFW; software_version=0.0.1\r\n\r\n"
+                            "software_name=ChargeFW; software_version=test-version\r\n\r\n"
                             "> <CHARGEFW_CHARGES_2>\r\n-0.4000\r\n\r\n"
                             "> <CHARGEFW_CHARGE_METADATA_2>\r\n"
                             "type=empirical; method=unknown; parameter_set=.; "
@@ -89,13 +89,13 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
                                                   .method = "eem",
                                                   .parameter_set = "2015",
                                                   .software_name = "ChargeFW",
-                                                  .software_version = "0.0.1"}};
+                                                  .software_version = "test-version"}};
         sdf_output::SdfWriter{output}.write_preserving_buffer(source_with_metadata, one_record,
                                                               sdf_output::WriteMode::replace);
         const auto text = output.str();
         CHECK_FALSE(text.contains("method=obsolete"));
         CHECK(text.contains("method=eem; parameter_set=2015; software_name=ChargeFW; "
-                            "software_version=0.0.1"));
+                            "software_version=test-version"));
     }
 
     {

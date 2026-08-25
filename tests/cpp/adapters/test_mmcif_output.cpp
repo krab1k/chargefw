@@ -159,9 +159,9 @@ HETATM 2 O O1 . UNL A 1 1 0 0 1 0 -1 1 UNL A O1 1
                                   .block_indices = appended_reader.source_block_indices(),
                                   .selection = appended_reader.options().selection};
     std::ostringstream appended_output;
-    mmcif_output::MmcifWriter{appended_output}.write_mmcif(appended_records, charge_set(1),
-                                                           appended_source, "ChargeFW", "0.0.1",
-                                                           mmcif_output::WriteMode::append);
+    mmcif_output::MmcifWriter{appended_output}.write_mmcif(
+        appended_records, charge_set(1), appended_source, "ChargeFW", "test-version",
+        mmcif_output::WriteMode::append);
     auto appended = ::gemmi::cif::read_string(appended_output.str());
     REQUIRE(appended.blocks.size() == 1);
     CHECK(
@@ -301,7 +301,7 @@ END
                                                 .selection = reader.options().selection};
     std::ostringstream output;
     mmcif_output::MmcifWriter{output}.write_pdb(records.front(), two_conformer_charges(), source,
-                                                "ChargeFW", "0.0.1");
+                                                "ChargeFW", "test-version");
     auto document = ::gemmi::cif::read_string(output.str());
     REQUIRE(document.blocks.size() == 1);
     auto metadata = document.blocks[0].find(
@@ -312,7 +312,7 @@ END
     CHECK(::gemmi::cif::as_string(metadata[1][2]) == "qeq");
     CHECK(::gemmi::cif::as_string(metadata[1][3]) == "qeq-default");
     CHECK(::gemmi::cif::as_string(metadata[1][4]) == "ChargeFW");
-    CHECK(::gemmi::cif::as_string(metadata[1][5]) == "0.0.1");
+    CHECK(::gemmi::cif::as_string(metadata[1][5]) == "test-version");
 
     auto charges = document.blocks[0].find("_sb_ncbr_partial_atomic_charges.",
                                            {"type_id", "atom_id", "charge"});
