@@ -10,13 +10,6 @@ accuracy studies are deliberately separate from implementation-completion work.
 
 ## 1. Result contract, molecular I/O, and CLI
 
-- [ ] Publish and adopt `mmcif_charges_v11.dic`. Keep the existing atom-charge category unchanged;
-  extend each charge-set metadata row with method-only identity, optional parameter-set identity,
-  producer software name, and producer software version. The SDF writer already emits equivalent
-  compact attribution in `CHARGEFW_CHARGE_METADATA_N`: `type`, `method`, `parameter_set`,
-  `software_name`, and `software_version`. Update the mmCIF writer/dictionary declaration and add
-  validation fixtures for parameterized and parameter-free methods. Do not add execution policy,
-  method options, diagnostics, metrics, or other complete-invocation data; JSON remains authoritative.
 - [ ] Complete PDB/mmCIF reader regression fixtures for empty/incompatible models, unknown elements,
   insertion codes and chain breaks, alternate-location omissions, filtered records,
   explicit/template/hybrid conflicts, and malformed or partially usable multi-block input.

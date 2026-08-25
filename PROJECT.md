@@ -342,10 +342,10 @@ ignored rather than treated as formal charges.
 SDF and MOL2 same-format writers preserve source content while adding/replacing ChargeFW-owned charge
 fields. Each SDF charge vector is identified by property suffix and source atom order and has a compact
 `CHARGEFW_CHARGE_METADATA_N` field: `type`, `method`, `parameter_set` (`.` when inapplicable),
-`software_name`, and `software_version`. This is the SDF representation of the planned mmCIF 1.1
-charge-set attribution; complete invocation provenance remains in the companion JSON result. mmCIF
-uses dictionary assignment IDs and source atom IDs. MOL2 has no portable provenance extension, so its
-output is intentionally limited to the atom partial-charge column and preserved source content.
+`software_name`, and `software_version`. mmCIF uses the same compact assignment-level attribution in
+the published `mmcif_charges_v11.dic`, with dictionary assignment IDs and source atom IDs. Complete
+invocation provenance remains in the companion JSON result. MOL2 has no portable provenance extension,
+so its output is intentionally limited to the atom partial-charge column and preserved source content.
 The Gemmi writer semantically preserves mmCIF categories (presentation may normalize), converts PDB
 through Gemmi, and generates local `UNL` blocks for nonstructural input. Its universal partial-charge
 dictionary attribution is not intended to duplicate complete ChargeFW invocation provenance.
@@ -378,10 +378,8 @@ Current limitations:
 
 - failures before source import or request construction completes cannot produce a source-record result
   document;
-- mmCIF currently uses `mmcif_charges_v10.dic`; adopting the planned 1.1 assignment-level producer
-  and parameter-set attribution remains outstanding. MOL2 and mmCIF intentionally do not carry
-  complete JSON provenance: MOL2 carries charge values without portable provenance metadata, while
-  mmCIF uses the universal partial-charge dictionary.
+- MOL2 and mmCIF intentionally do not carry complete JSON provenance: MOL2 carries charge values
+  without portable provenance metadata, while mmCIF uses the universal partial-charge dictionary.
 
 ## Build, installation, and distribution
 

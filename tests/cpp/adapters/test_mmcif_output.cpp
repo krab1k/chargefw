@@ -71,6 +71,22 @@ TEST_CASE("mmCIF generated output preserves charge mapping", "[adapters][mmcif]"
     CHECK(::gemmi::cif::as_string(atom_types[0][0]) == "C");
     CHECK(::gemmi::cif::as_string(atom_types[1][0]) == "O");
     CHECK(document.blocks[0].has_mmcif_category("_sb_ncbr_partial_atomic_charges_meta."));
+    auto dictionary =
+        document.blocks[0].find("_audit_conform.", {"dict_name", "dict_version", "dict_location"});
+    REQUIRE(dictionary.length() == 1);
+    CHECK(::gemmi::cif::as_string(dictionary[0][0]) == "mmcif_charges_v11.dic");
+    CHECK(::gemmi::cif::as_string(dictionary[0][1]) == "1.1");
+    CHECK(::gemmi::cif::as_string(dictionary[0][2]) ==
+          "https://sb-ncbr.github.io/charges-schema/schemas/mmcif_charges_v11.dic");
+    auto metadata = document.blocks[0].find(
+        "_sb_ncbr_partial_atomic_charges_meta.",
+        {"type", "method", "parameter_set", "software_name", "software_version"});
+    REQUIRE(metadata.length() == 1);
+    CHECK(::gemmi::cif::as_string(metadata[0][0]) == "empirical");
+    CHECK(::gemmi::cif::as_string(metadata[0][1]) == "qeq");
+    CHECK(::gemmi::cif::as_string(metadata[0][2]) == "qeq-default");
+    CHECK(::gemmi::cif::as_string(metadata[0][3]) == "ChargeFW");
+    CHECK(::gemmi::cif::as_string(metadata[0][4]) == "unknown");
     const auto* bond_order = document.blocks[0].find_value("_chem_comp_bond.value_order");
     REQUIRE(bond_order != nullptr);
     CHECK(::gemmi::cif::as_string(*bond_order) == "doub");
@@ -284,14 +300,19 @@ END
     const auto source = mmcif_output::PdbSource{.structure = reader.source_structure(),
                                                 .selection = reader.options().selection};
     std::ostringstream output;
-    mmcif_output::MmcifWriter{output}.write_pdb(records.front(), two_conformer_charges(), source);
+    mmcif_output::MmcifWriter{output}.write_pdb(records.front(), two_conformer_charges(), source,
+                                                "ChargeFW", "0.0.1");
     auto document = ::gemmi::cif::read_string(output.str());
     REQUIRE(document.blocks.size() == 1);
-    auto metadata =
-        document.blocks[0].find("_sb_ncbr_partial_atomic_charges_meta.", {"id", "type", "method"});
+    auto metadata = document.blocks[0].find(
+        "_sb_ncbr_partial_atomic_charges_meta.",
+        {"id", "type", "method", "parameter_set", "software_name", "software_version"});
     REQUIRE(metadata.length() == 2);
     CHECK(::gemmi::cif::as_string(metadata[0][1]) == "empirical");
-    CHECK(::gemmi::cif::as_string(metadata[1][2]) == "qeq/qeq-default");
+    CHECK(::gemmi::cif::as_string(metadata[1][2]) == "qeq");
+    CHECK(::gemmi::cif::as_string(metadata[1][3]) == "qeq-default");
+    CHECK(::gemmi::cif::as_string(metadata[1][4]) == "ChargeFW");
+    CHECK(::gemmi::cif::as_string(metadata[1][5]) == "0.0.1");
 
     auto charges = document.blocks[0].find("_sb_ncbr_partial_atomic_charges.",
                                            {"type_id", "atom_id", "charge"});
@@ -308,10 +329,14 @@ END
                                                              source);
     auto no_parameter_document = ::gemmi::cif::read_string(no_parameter_output.str());
     REQUIRE(no_parameter_document.blocks.size() == 1);
-    auto no_parameter_metadata =
-        no_parameter_document.blocks[0].find("_sb_ncbr_partial_atomic_charges_meta.", {"method"});
+    auto no_parameter_metadata = no_parameter_document.blocks[0].find(
+        "_sb_ncbr_partial_atomic_charges_meta.",
+        {"method", "parameter_set", "software_name", "software_version"});
     REQUIRE(no_parameter_metadata.length() == 1);
     CHECK(::gemmi::cif::as_string(no_parameter_metadata[0][0]) == "formal");
+    CHECK(::gemmi::cif::as_string(no_parameter_metadata[0][1]).empty());
+    CHECK(::gemmi::cif::as_string(no_parameter_metadata[0][2]) == "ChargeFW");
+    CHECK(::gemmi::cif::as_string(no_parameter_metadata[0][3]) == "unknown");
 
     std::istringstream round_trip{output.str()};
     auto round_trip_reader = mmcif_input::MmcifReader{round_trip};
