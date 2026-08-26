@@ -43,10 +43,9 @@ complete.
 
 ## 2. Native installation and automation
 
-- [ ] Make the native install relocatable and consumable: export `chargefw::core` for
-  `find_package(chargefw CONFIG REQUIRED)`, resolve bundled parameters relative to the installed
-  location while retaining an explicit custom-directory override, and test a clean moved-prefix CLI
-  run and downstream CMake consumer.
+- [ ] Make the native install relocatable and consumable: resolve bundled parameter JSON relative to
+  the installed location, export `chargefw::core` for `find_package(chargefw CONFIG REQUIRED)`, and
+  test a clean moved-prefix CLI run and downstream CMake consumer.
 - [ ] Add a lean CI baseline for the supported development platform: formatting, GCC debug/release
   tests, Clang ASan/UBSan, and the native install/consumer smoke test. Add further compiler, platform,
   or package jobs when they protect a supported distribution rather than maintaining an unused matrix.

@@ -16,9 +16,7 @@ foreach(mode IN ITEMS full cutoff cover)
     endif()
 
     execute_process(
-            COMMAND "${CMAKE_COMMAND}" -E env
-                    "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                    "${CHARGEFW_CLI}" calculate ${execution_arguments} "${CHARGEFW_INPUT}"
+            COMMAND "${CHARGEFW_CLI}" calculate ${execution_arguments} "${CHARGEFW_INPUT}"
                     "${mode_output_directory}"
             RESULT_VARIABLE mode_result
             ERROR_VARIABLE mode_error
@@ -56,9 +54,7 @@ function(expect_invalid_policy label)
     set(policy_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_invalid_${label}")
     file(REMOVE_RECURSE "${policy_output_directory}")
     execute_process(
-            COMMAND "${CMAKE_COMMAND}" -E env
-                    "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                    "${CHARGEFW_CLI}" calculate ${ARGN} "${CHARGEFW_INPUT}" "${policy_output_directory}"
+            COMMAND "${CHARGEFW_CLI}" calculate ${ARGN} "${CHARGEFW_INPUT}" "${policy_output_directory}"
             RESULT_VARIABLE policy_result
             ERROR_VARIABLE policy_error
     )
@@ -78,9 +74,7 @@ expect_invalid_policy(full_correction --execution full --charge-correction unifo
 set(malformed_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_malformed")
 file(REMOVE_RECURSE "${malformed_output_directory}")
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" calculate "${CHARGEFW_MALFORMED_INPUT}" "${malformed_output_directory}"
+        COMMAND "${CHARGEFW_CLI}" calculate "${CHARGEFW_MALFORMED_INPUT}" "${malformed_output_directory}"
         RESULT_VARIABLE malformed_result
         ERROR_VARIABLE malformed_error
 )
@@ -94,9 +88,7 @@ set(mixed_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_mixed")
 set(mixed_output_prefix "${mixed_output_directory}/mixed_v2000_v3000.chargefw")
 file(REMOVE_RECURSE "${mixed_output_directory}")
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" calculate --method eem --execution full "${CHARGEFW_MIXED_INPUT}"
+        COMMAND "${CHARGEFW_CLI}" calculate --method eem --execution full "${CHARGEFW_MIXED_INPUT}"
                 "${mixed_output_directory}"
         RESULT_VARIABLE mixed_result
         ERROR_VARIABLE mixed_error
@@ -120,9 +112,7 @@ foreach(run IN ITEMS 1 2)
     set(deterministic_output_prefix "${deterministic_output_directory}/water.chargefw")
     file(REMOVE_RECURSE "${deterministic_output_directory}")
     execute_process(
-            COMMAND "${CMAKE_COMMAND}" -E env
-                    "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                    "${CHARGEFW_CLI}" calculate --method eem --execution full "${CHARGEFW_INPUT}"
+            COMMAND "${CHARGEFW_CLI}" calculate --method eem --execution full "${CHARGEFW_INPUT}"
                     "${deterministic_output_directory}"
             RESULT_VARIABLE deterministic_run_result
             ERROR_VARIABLE deterministic_error
@@ -150,9 +140,7 @@ set(no_plan_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_no_plan")
 set(no_plan_output_prefix "${no_plan_output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${no_plan_output_directory}")
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" calculate --method smpqeq "${CHARGEFW_INPUT}"
+        COMMAND "${CHARGEFW_CLI}" calculate --method smpqeq "${CHARGEFW_INPUT}"
                 "${no_plan_output_directory}"
         RESULT_VARIABLE no_plan_result
         OUTPUT_VARIABLE no_plan_output
@@ -189,9 +177,7 @@ set(warning_input_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_inp
 set(warning_input_output_prefix "${warning_input_output_directory}/aromatic.chargefw")
 file(REMOVE_RECURSE "${warning_input_output_directory}")
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" calculate --method eem "${CHARGEFW_MOL2_INPUT}"
+        COMMAND "${CHARGEFW_CLI}" calculate --method eem "${CHARGEFW_MOL2_INPUT}"
                 "${warning_input_output_directory}"
         RESULT_VARIABLE warning_input_result
         ERROR_VARIABLE warning_input_error
@@ -210,9 +196,7 @@ set(invalid_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_invalid")
 set(invalid_output_prefix "${invalid_output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${invalid_output_directory}")
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" calculate --threads 18446744073709551615 "${CHARGEFW_INPUT}"
+        COMMAND "${CHARGEFW_CLI}" calculate --threads 18446744073709551615 "${CHARGEFW_INPUT}"
                 "${invalid_output_directory}"
         RESULT_VARIABLE invalid_result
         ERROR_VARIABLE invalid_error
@@ -235,9 +219,7 @@ file(REMOVE_RECURSE "${invalid_output_directory}")
 set(warning_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_warning")
 file(REMOVE_RECURSE "${warning_output_directory}")
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" calculate --method eem --execution full --cutoff-atom-threshold 0
+        COMMAND "${CHARGEFW_CLI}" calculate --method eem --execution full --cutoff-atom-threshold 0
                 --cover-atom-threshold 0
                 "${CHARGEFW_INPUT}" "${warning_output_directory}"
         RESULT_VARIABLE warning_result
@@ -249,9 +231,7 @@ endif()
 file(REMOVE_RECURSE "${warning_output_directory}")
 
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" calculate "${CHARGEFW_INPUT}" "${output_directory}"
+        COMMAND "${CHARGEFW_CLI}" calculate "${CHARGEFW_INPUT}" "${output_directory}"
         RESULT_VARIABLE result
         OUTPUT_VARIABLE output
         ERROR_VARIABLE error
@@ -336,9 +316,7 @@ endif()
 file(REMOVE_RECURSE "${output_directory}")
 
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" inspect "${CHARGEFW_INPUT}"
+        COMMAND "${CHARGEFW_CLI}" inspect "${CHARGEFW_INPUT}"
         RESULT_VARIABLE inspect_result
         OUTPUT_VARIABLE inspect_output
 )
@@ -348,9 +326,7 @@ if(NOT inspect_result EQUAL 0 OR NOT inspect_output MATCHES "records: 1" OR
 endif()
 
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" applicability --method formal "${CHARGEFW_INPUT}"
+        COMMAND "${CHARGEFW_CLI}" applicability --method formal "${CHARGEFW_INPUT}"
         RESULT_VARIABLE applicability_result
         OUTPUT_VARIABLE applicability_output
 )
@@ -359,9 +335,7 @@ if(NOT applicability_result EQUAL 0 OR NOT applicability_output MATCHES "applica
 endif()
 
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" applicability --method smpqeq "${CHARGEFW_INPUT}"
+        COMMAND "${CHARGEFW_CLI}" applicability --method smpqeq "${CHARGEFW_INPUT}"
         RESULT_VARIABLE rejected_applicability_result
         OUTPUT_VARIABLE rejected_applicability_output
 )
@@ -377,9 +351,7 @@ if(NOT methods_output MATCHES "formal" OR NOT methods_output MATCHES "minimum>=1
 endif()
 
 execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E env
-                "CHARGEFW_PARAMETER_DIR=${CHARGEFW_PARAMETER_DIR}"
-                "${CHARGEFW_CLI}" parameters qeq
+        COMMAND "${CHARGEFW_CLI}" parameters qeq
         OUTPUT_VARIABLE parameters_output
 )
 if(NOT parameters_output MATCHES "QEq_original" OR parameters_output MATCHES "EEM_original")

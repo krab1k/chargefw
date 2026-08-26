@@ -577,8 +577,7 @@ auto load_default_parameter_sets() -> std::vector<ParameterSet> {
     }
 
     if (parameter_sets.empty()) {
-        throw std::invalid_argument{"no parameter sets were loaded; set CHARGEFW_PARAMETER_DIR or "
-                                    "install bundled parameters"};
+        throw std::invalid_argument{"no bundled parameter sets were loaded"};
     }
 
     return parameter_sets;

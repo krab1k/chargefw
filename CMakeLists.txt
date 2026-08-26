@@ -59,6 +59,7 @@ target_link_libraries(chargefw_core
 target_compile_definitions(chargefw_core
   PRIVATE
     EIGEN_DONT_PARALLELIZE
+    CHARGEFW_BUILD_PARAMETER_DIR="${PROJECT_SOURCE_DIR}/data/parameters"
 )
 
 chargefw_enable_optimizations(chargefw_core)

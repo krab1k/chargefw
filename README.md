@@ -64,11 +64,10 @@ The tracked preset palette is `gcc-debug`, `clang-debug`, `gcc-release`, `clang-
 
 ## CLI quick start
 
-The build-tree executable needs the parameter directory:
+The build-tree executable loads the bundled source-tree parameter JSON:
 
 ```bash
-CHARGEFW_PARAMETER_DIR="$PWD/data/parameters" \
-  build/gcc-debug/apps/chargefw/chargefw calculate \
+build/gcc-debug/apps/chargefw/chargefw calculate \
   tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
@@ -178,15 +177,13 @@ Configure, build, and install to a chosen prefix:
 cmake --preset gcc-release -DCMAKE_INSTALL_PREFIX="$PWD/_install"
 cmake --build --preset gcc-release
 cmake --install build/gcc-release --strip
-env -u CHARGEFW_PARAMETER_DIR \
-  _install/bin/chargefw calculate tests/fixtures/synthetic/sdf/water.sdf output
+_install/bin/chargefw calculate tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
 Configure the install prefix before building because bundled parameter lookup currently records that
-path; overriding only `cmake --install --prefix` does not make the install relocatable.
-`CHARGEFW_PARAMETER_DIR` remains available as an explicit override. Installation includes the library,
-public headers, CLI, and parameter data. Exported CMake package targets and binary distribution packages
-are not implemented yet.
+path; overriding only `cmake --install --prefix` does not make the install relocatable. Installation
+includes the library, public headers, CLI, and parameter data. Exported CMake package targets and binary
+distribution packages are not implemented yet.
 
 ## Formatting
 

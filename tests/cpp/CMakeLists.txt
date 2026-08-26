@@ -65,7 +65,6 @@ if(CHARGEFW_BUILD_CLI)
             NAME test_chargefw_cli_outputs
             COMMAND ${CMAKE_COMMAND}
                     -DCHARGEFW_CLI=$<TARGET_FILE:chargefw_cli>
-                    -DCHARGEFW_PARAMETER_DIR=${PROJECT_SOURCE_DIR}/data/parameters
                     -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/water.sdf
                     -DCHARGEFW_MOL2_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/mol2/aromatic.mol2
                     -DCHARGEFW_MIXED_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/mixed_v2000_v3000.sdf
@@ -77,7 +76,6 @@ if(CHARGEFW_BUILD_CLI)
             NAME test_chargefw_cli_structural_outputs
             COMMAND ${CMAKE_COMMAND}
                     -DCHARGEFW_CLI=$<TARGET_FILE:chargefw_cli>
-                    -DCHARGEFW_PARAMETER_DIR=${PROJECT_SOURCE_DIR}/data/parameters
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_structural_outputs.cmake
     )
 endif()
