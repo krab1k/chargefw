@@ -17,11 +17,12 @@ material, not an oracle: a difference is a finding to investigate, not evidence 
 is wrong. Cutoff and cover remain explicit approximations until their method-specific validation is
 complete.
 
-- [ ] Build a reusable ChargeFW2 comparison harness that runs both implementations with identical
-  topology, formal charges, conformers, method options, and parameter data. Keep small comparison
-  inputs, source-order mappings, observed outputs, and method-specific tolerances in version control.
-- [ ] Use the harness to examine every built-in method and every bundled parameter set with a ChargeFW2
-  counterpart on at least one compatible molecule. Add neutral, ionic, disconnected, and
+- [ ] Conduct a one-time ChargeFW2 comparison campaign with identical topology, formal charges,
+  conformers, method options, and parameter data. Record the compared inputs, source-order mappings,
+  observed outputs, method-specific tolerances, and conclusions in maintained project documentation;
+  do not add ChargeFW2 or a continuous comparison harness to the production test suite.
+- [ ] Use the comparison campaign to examine every built-in method and every bundled parameter set with a
+  ChargeFW2 counterpart on at least one compatible molecule. Add neutral, ionic, disconnected, and
   multi-conformer cases where they exercise relevant method behavior. For each difference, investigate
   the equations, parameters, input interpretation, numerical solver, and legacy implementation before
   classifying it as a ChargeFW defect, a ChargeFW2 defect, an intentional change, or unresolved.

@@ -63,11 +63,7 @@ auto assignment_conformer(const core::Molecule& molecule,
                           const charges::ChargeAssignment& assignment,
                           const std::string_view format_name) -> const core::Conformer& {
     validate_assignment(assignment.charges, molecule.atom_count());
-    if (!assignment.target.conformer_index.has_value()) {
-        throw std::invalid_argument{"generated " + std::string{format_name} +
-                                    " output requires a conformer-specific assignment"};
-    }
-    const auto conformer_index = *assignment.target.conformer_index;
+    const auto conformer_index = assignment.target.conformer_index.value_or(0);
     if (conformer_index >= molecule.conformer_count()) {
         throw std::invalid_argument{"charge assignment references an unavailable conformer"};
     }

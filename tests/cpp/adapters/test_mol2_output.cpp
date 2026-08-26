@@ -35,6 +35,11 @@ namespace {
             .charges = charges::AtomicCharges{std::move(values)}};
 }
 
+[[nodiscard]] auto geometry_independent_assignment(std::vector<double> values)
+    -> charges::ChargeAssignment {
+    return {.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{std::move(values)}};
+}
+
 } // namespace
 
 TEST_CASE("MOL2 output preserves source structure and replaces atom charges", "[adapters][mol2]") {
@@ -135,5 +140,19 @@ TEST_CASE("MOL2 output preserves source structure and replaces atom charges", "[
         CHECK(text.contains("1 O1 0 0 0 O 1 UNL -0.9753"));
         CHECK(text.contains("2 H2 0.9 0 0 H 1 UNL 0.4877"));
         CHECK(text.contains("@<TRIPOS>BOND\n1 1 2 1\n2 1 3 1\n"));
+    }
+
+    {
+        const auto molecule = chargefw::core::Molecule{
+            {chargefw::core::Atom{8}, chargefw::core::Atom{1}, chargefw::core::Atom{1}},
+            {chargefw::core::Bond{0, 1}, chargefw::core::Bond{0, 2}},
+            {chargefw::core::Conformer{{{.x = 0.0, .y = 0.0, .z = 0.0},
+                                        {.x = 0.9, .y = 0.0, .z = 0.0},
+                                        {.x = -0.2, .y = 0.9, .z = 0.0}}}},
+            "water"};
+        auto output = std::ostringstream{};
+        mol2_output::Mol2Writer{output}.write_generated(
+            molecule, geometry_independent_assignment({-0.97533, 0.48766, 0.48767}));
+        CHECK(output.str().contains("1 O1 0 0 0 O 1 UNL -0.9753"));
     }
 }

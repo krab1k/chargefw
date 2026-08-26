@@ -25,6 +25,11 @@ namespace {
             .charges = charges::AtomicCharges{std::move(values)}};
 }
 
+[[nodiscard]] auto geometry_independent_assignment(std::vector<double> values)
+    -> charges::ChargeAssignment {
+    return {.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{std::move(values)}};
+}
+
 constexpr std::string_view first_record =
     "first\nchargefw\n\n  2  0  0  0  0  0  0  0  0  0999 V2000\n"
     "    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n"
@@ -162,5 +167,16 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
         CHECK(text.contains("M  V30 1 1 1 2\nM  V30 2 1 1 3\n"));
         CHECK(text.contains("> <CHARGEFW_CHARGES_2>\n-0.7000 0.3500 0.3500\n\n"));
         CHECK(text.ends_with("$$$$\n"));
+    }
+
+    {
+        const auto geometry_independent =
+            std::vector{geometry_independent_assignment({-0.8, 0.4, 0.4})};
+        const auto properties = std::array{
+            sdf_output::ChargeProperty{.charge_type_id = 1, .assignments = geometry_independent}};
+        auto output = std::ostringstream{};
+        sdf_output::SdfWriter{output}.write_generated(molecule, properties,
+                                                      sdf_output::MolFormat::v2000);
+        CHECK(output.str().contains("> <CHARGEFW_CHARGES_1>\n-0.8000 0.4000 0.4000\n\n"));
     }
 }

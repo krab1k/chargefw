@@ -321,6 +321,9 @@ imported execution molecules from retained source/export context before assessme
 provenance and execution thread policy before consuming the assessment request; applicability-only
 execution transfers imported molecules because it has no export phase.
 
+Generated SDF and MOL2 output uses source conformer zero for a geometry-independent assignment. It
+therefore requires source coordinates but does not require the selected method to depend on geometry.
+
 Structural input supports record selection (`all`, `polymers-and-ligands`, `polymers`) and connectivity
 (`none`, `explicit`, `templates`, `hybrid`). Library structural readers default to `none`; the CLI
 deliberately defaults to `hybrid`. Alternate locations select blank, then `A`, then the first
@@ -423,6 +426,17 @@ implicit sanitization, hydrogen changes, protonation, embedding, or optimization
 not make RDKit a dependency of the core library or base wheel.
 
 ## Scientific and compatibility principles
+
+### Initial ChargeFW2 smoke comparison
+
+An initial full-execution comparison used a 29-atom neutral CHNO SDF molecule with identical topology,
+coordinates, formal charges, and migrated parameter data. EEM, QEq, EQeq+C, ABEEM, SFKEEM, SQE,
+SQE+q0, SQE+qp, and Charge2 matched ChargeFW2 to the four decimal places emitted by the legacy tool.
+PEOE, MPEOE, and GDAC also matched at that precision when current ChargeFW used six iterations.
+ChargeFW2 advertises `iters=7` for those methods but its loop executes six iterations; current ChargeFW
+deliberately treats `iters=7` as seven iterations. This is a legacy option-semantics difference, not a
+current parity target. The run is preliminary evidence only; it does not replace the one-time campaign's
+unrounded tolerances or wider corpus required by [TODO.md](TODO.md).
 
 - Preserve source atom order and identify every molecule/conformer assignment.
 - Record method, parameter set, options when exposed, execution approximation, correction, and warnings.
