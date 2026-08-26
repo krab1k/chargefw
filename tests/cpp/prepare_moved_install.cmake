@@ -1,6 +1,5 @@
-if(NOT DEFINED CHARGEFW_BUILD_DIR OR NOT DEFINED CHARGEFW_INSTALL_BINDIR OR
-   NOT DEFINED CHARGEFW_INSTALL_PREFIX)
-    message(FATAL_ERROR "Installed CLI test setup requires build directory, bindir, and prefix")
+if(NOT DEFINED CHARGEFW_BUILD_DIR OR NOT DEFINED CHARGEFW_INSTALL_PREFIX)
+    message(FATAL_ERROR "Moved-install test setup requires a build directory and prefix")
 endif()
 
 set(install_source_prefix "${CHARGEFW_INSTALL_PREFIX}_source")
@@ -16,4 +15,7 @@ if(NOT install_result EQUAL 0)
 endif()
 
 file(RENAME "${install_source_prefix}" "${CHARGEFW_INSTALL_PREFIX}")
-set(CHARGEFW_CLI "${CHARGEFW_INSTALL_PREFIX}/${CHARGEFW_INSTALL_BINDIR}/chargefw")
+
+if(DEFINED CHARGEFW_INSTALL_BINDIR)
+    set(CHARGEFW_CLI "${CHARGEFW_INSTALL_PREFIX}/${CHARGEFW_INSTALL_BINDIR}/chargefw")
+endif()

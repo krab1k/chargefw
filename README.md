@@ -21,11 +21,12 @@ SMILES/chemistry-preparation tool.
 - CMake 3.28 or newer
 - Ninja
 - GCC or Clang with C++23 support
-- Internet access on first configure unless dependencies are already available to CMake
+- Internet access on first configure unless FetchContent sources are already cached or supplied
 
-CMake searches for CLI11 2.7.2, nlohmann/json 3.12, Eigen 5.0, nanoflann 1.12, and Gemmi 0.7.4, then uses
-`FetchContent` when needed. When `CHARGEFW_BUILD_TESTS` is enabled, it similarly searches for Snitch
-1.3.2 and fetches it only if unavailable; production-only builds do not require Snitch.
+CMake fetches pinned CLI11 2.7.2, nlohmann/json 3.12.0, Eigen 5.0.1, nanoflann 1.12.1, oneTBB 2023.1.0,
+and Gemmi 0.7.4 into the build tree by default. Set `CHARGEFW_USE_SYSTEM_DEPENDENCIES=ON` to prefer
+compatible installed packages and fetch only missing dependencies. When `CHARGEFW_BUILD_TESTS` is
+enabled, CMake similarly searches for Snitch 1.3.2 and fetches it only if unavailable.
 
 ## Build and test
 
@@ -190,9 +191,13 @@ find_package(chargefw CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE chargefw::core)
 ```
 
-The package resolves its public nlohmann/json and Gemmi dependencies through CMake package discovery.
-Add the ChargeFW prefix and any unbundled public dependency prefixes to `CMAKE_PREFIX_PATH` when
-configuring a downstream project.
+The default installation includes nlohmann/json and Gemmi development packages and the private oneTBB
+runtime, so adding the ChargeFW prefix to `CMAKE_PREFIX_PATH` is sufficient. A build configured with
+`CHARGEFW_USE_SYSTEM_DEPENDENCIES=ON` instead requires those dependency prefixes to remain discoverable.
+
+ChargeFW can also be added with `FetchContent`. Its CLI and tests default to off when it is a subproject;
+installing the parent project installs ChargeFW's library, parameter JSON, and bundled dependencies into
+the parent's prefix.
 
 ## Formatting
 

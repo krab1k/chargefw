@@ -23,6 +23,7 @@ target_sources(chargefw_core
         FILES
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/molecule_record.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/charge_result_document.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/conformer_selection.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/all.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/input_options.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/mmcif_input.h

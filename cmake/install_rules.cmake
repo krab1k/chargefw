@@ -1,13 +1,20 @@
-set_target_properties(chargefw_core chargefw_cli
+set_target_properties(chargefw_core
         PROPERTIES
-        INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
+        INSTALL_RPATH "$ORIGIN"
 )
 
 # Prefer the installed dependency copies over same-named libraries from
 # LD_LIBRARY_PATH. This is important for fetched dependencies such as Gemmi,
 # whose unversioned SONAME can collide with another installation.
 target_link_options(chargefw_core PRIVATE "LINKER:--disable-new-dtags")
-target_link_options(chargefw_cli PRIVATE "LINKER:--disable-new-dtags")
+
+if(TARGET chargefw_cli)
+    set_target_properties(chargefw_cli
+            PROPERTIES
+            INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
+    )
+    target_link_options(chargefw_cli PRIVATE "LINKER:--disable-new-dtags")
+endif()
 
 install(
         TARGETS chargefw_core
@@ -62,7 +69,9 @@ install(
 )
 
 if(CHARGEFW_TBB_FETCHED AND TARGET tbb)
+    set_target_properties(tbb PROPERTIES EXPORT_NAME _tbb_runtime)
     install(TARGETS tbb
+            EXPORT chargefwTargets
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

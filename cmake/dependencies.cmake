@@ -1,18 +1,29 @@
 include(FetchContent)
 
 function(chargefw_setup_dependencies)
-    find_package(CLI11 2.7.2 CONFIG QUIET)
-    if(NOT TARGET CLI11::CLI11)
-        FetchContent_Declare(
-                cli11
-                SYSTEM
-                URL https://github.com/CLIUtils/CLI11/archive/refs/tags/v2.7.2.tar.gz
-        )
-        FetchContent_MakeAvailable(cli11)
+    set(CHARGEFW_TBB_FETCHED OFF PARENT_SCOPE)
+    set(CHARGEFW_GEMMI_FETCHED OFF PARENT_SCOPE)
+
+    if(CHARGEFW_BUILD_CLI)
+        if(CHARGEFW_USE_SYSTEM_DEPENDENCIES)
+            find_package(CLI11 2.7.2 CONFIG QUIET)
+        endif()
+        if(NOT TARGET CLI11::CLI11)
+            FetchContent_Declare(
+                    cli11
+                    SYSTEM
+                    EXCLUDE_FROM_ALL
+                    URL https://github.com/CLIUtils/CLI11/archive/refs/tags/v2.7.2.tar.gz
+            )
+            FetchContent_MakeAvailable(cli11)
+        endif()
     endif()
 
-    find_package(nlohmann_json 3.12 CONFIG QUIET)
+    if(CHARGEFW_USE_SYSTEM_DEPENDENCIES)
+        find_package(nlohmann_json 3.12 CONFIG QUIET)
+    endif()
     if(NOT TARGET nlohmann_json::nlohmann_json)
+        set(JSON_Install ON)
         FetchContent_Declare(
                 nlohmann_json
                 SYSTEM
@@ -21,35 +32,43 @@ function(chargefw_setup_dependencies)
         FetchContent_MakeAvailable(nlohmann_json)
     endif()
 
-    find_package(Eigen3 5.0 CONFIG QUIET)
+    if(CHARGEFW_USE_SYSTEM_DEPENDENCIES)
+        find_package(Eigen3 5.0 CONFIG QUIET)
+    endif()
     if(NOT TARGET Eigen3::Eigen)
         FetchContent_Declare(
                 eigen
                 SYSTEM
+                EXCLUDE_FROM_ALL
                 URL https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.gz
         )
         FetchContent_MakeAvailable(eigen)
     endif()
 
-    find_package(nanoflann 1.12 CONFIG QUIET)
+    if(CHARGEFW_USE_SYSTEM_DEPENDENCIES)
+        find_package(nanoflann 1.12 CONFIG QUIET)
+    endif()
     if(NOT TARGET nanoflann::nanoflann)
-        set(NANOFLANN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-        set(NANOFLANN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(NANOFLANN_BUILD_EXAMPLES OFF)
+        set(NANOFLANN_BUILD_TESTS OFF)
         FetchContent_Declare(
                 nanoflann
                 SYSTEM
+                EXCLUDE_FROM_ALL
                 URL https://github.com/jlblancoc/nanoflann/archive/refs/tags/1.12.1.tar.gz
         )
         FetchContent_MakeAvailable(nanoflann)
     endif()
 
-    find_package(TBB 2023.1 CONFIG QUIET)
+    if(CHARGEFW_USE_SYSTEM_DEPENDENCIES)
+        find_package(TBB 2023.1 CONFIG QUIET)
+    endif()
     if(NOT TARGET TBB::tbb)
-        set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
-        set(TBB_TEST OFF CACHE BOOL "" FORCE)
-        set(TBB_STRICT OFF CACHE BOOL "" FORCE)
-        set(TBB_INSTALL OFF CACHE BOOL "" FORCE)
-        set(CHARGEFW_TBB_FETCHED ON CACHE INTERNAL "oneTBB was fetched by ChargeFW")
+        set(BUILD_SHARED_LIBS ON)
+        set(TBB_TEST OFF)
+        set(TBB_STRICT OFF)
+        set(TBB_INSTALL OFF)
+        set(CHARGEFW_TBB_FETCHED ON PARENT_SCOPE)
         FetchContent_Declare(
                 onetbb
                 SYSTEM
@@ -58,13 +77,16 @@ function(chargefw_setup_dependencies)
         FetchContent_MakeAvailable(onetbb)
     endif()
 
-    find_package(gemmi 0.7.4 CONFIG QUIET)
+    if(CHARGEFW_USE_SYSTEM_DEPENDENCIES)
+        find_package(gemmi 0.7.4 CONFIG QUIET)
+    endif()
     if(NOT TARGET gemmi::gemmi_cpp)
-        set(BUILD_GEMMI_PROGRAM OFF CACHE BOOL "" FORCE)
-        set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
-        set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-        set(GEMMI_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-        set(CHARGEFW_GEMMI_FETCHED ON CACHE INTERNAL "Gemmi was fetched by ChargeFW")
+        set(BUILD_GEMMI_PROGRAM OFF)
+        set(BUILD_SHARED_LIBS ON)
+        set(BUILD_TESTING OFF)
+        set(GEMMI_BUILD_TESTING OFF)
+        set(INSTALL_DEV_FILES ON)
+        set(CHARGEFW_GEMMI_FETCHED ON PARENT_SCOPE)
         FetchContent_Declare(
                 gemmi
                 SYSTEM

@@ -16,8 +16,9 @@ file(RELATIVE_PATH CHARGEFW_PARAMETER_DIRECTORY_FROM_LIBRARY
 )
 
 option(CHARGEFW_ENABLE_CCACHE "Use ccache if available" ON)
-option(CHARGEFW_BUILD_TESTS "Build tests" ON)
-option(CHARGEFW_BUILD_CLI "Build the chargefw command-line application" ON)
+option(CHARGEFW_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
+option(CHARGEFW_BUILD_CLI "Build the chargefw command-line application" ${PROJECT_IS_TOP_LEVEL})
+option(CHARGEFW_USE_SYSTEM_DEPENDENCIES "Prefer compatible system dependencies" OFF)
 option(CHARGEFW_ENABLE_WARNINGS "Enable project warnings" ON)
 option(CHARGEFW_ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(CHARGEFW_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
@@ -55,24 +56,16 @@ target_include_directories(chargefw_core
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_include_directories(chargefw_core SYSTEM PRIVATE
-  $<TARGET_PROPERTY:TBB::tbb,INTERFACE_INCLUDE_DIRECTORIES>
-)
-
 target_link_libraries(chargefw_core
   PUBLIC
     nlohmann_json::nlohmann_json
     gemmi::gemmi_cpp
   PRIVATE
-    $<BUILD_INTERFACE:Eigen3::Eigen>
-    $<BUILD_INTERFACE:nanoflann::nanoflann>
-    $<BUILD_INTERFACE:$<TARGET_FILE:TBB::tbb>>
-    $<BUILD_INTERFACE:${CMAKE_DL_LIBS}>
+    $<BUILD_LOCAL_INTERFACE:Eigen3::Eigen>
+    $<BUILD_LOCAL_INTERFACE:nanoflann::nanoflann>
+    TBB::tbb
+    $<BUILD_LOCAL_INTERFACE:${CMAKE_DL_LIBS}>
 )
-
-if(TARGET tbb)
-  add_dependencies(chargefw_core tbb)
-endif()
 
 target_compile_definitions(chargefw_core
   PRIVATE
