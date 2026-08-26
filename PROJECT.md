@@ -19,7 +19,7 @@ The repository currently provides:
 - deterministic method/parameter selection and owned application facades;
 - focused planning and execution contracts for no-plan, explicit-policy, ownership, cardinality,
   source-order, and reduced failure behavior;
-- exact full execution, oneTBB-parallelized KD-tree spatial cutoff and spatial cover for eight
+- exact full execution, oneTBB-parallelized KD-tree spatial cutoff and spatial cover for nine
   reduced-capable methods;
 - native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;
 - JSON, SDF, MOL2, and mmCIF charge output through a focused CLI.
@@ -225,7 +225,7 @@ lvalue/rvalue assessment, and source-ordered multi-molecule/multi-conformer resu
 Cutoff and cover are declared for:
 
 ```text
-abeem, eem, eqeq, eqeqc, qeq, sqe, sqeq0, sqeqp
+abeem, eem, eqeq, eqeqc, qeq, sfkeem, sqe, sqeq0, sqeqp
 ```
 
 The shared executor builds one source-ordered induced spatial fragment per source atom, projects the
@@ -275,9 +275,6 @@ memory and convergence toward full execution:
   `1ek9.cif` (11,426 atoms), and `8yax.cif` (40,738 atoms). Per-conformer tree construction took
   0.8–3.8 ms; source-order result materialization limits the advantage as radius and neighbor count
   grow.
-- SFKEEM is intentionally not cutoff-capable: local neutral-fragment target charges lose its global
-  chemical-potential constraint. It needs a dedicated truncated-kernel solver or a separately
-  validated fragment policy.
 
 Hardware, build, parameter data, charge state, and structure affect these observations. They are
 regression-investigation references only, not automatic-policy evidence or compatibility tolerances.

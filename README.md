@@ -114,7 +114,7 @@ the cutoff threshold, it uses supported cutoff at 12 Å. Above the cover thresho
 cover. Explicit execution overrides these thresholds; explicit full or cutoff records any applicable
 threshold warning.
 
-Cutoff and cover are available for ABEEM, EEM, EQeq, EQeq+C, QEq, SQE, SQE+q0, and SQE+qp.
+Cutoff and cover are available for ABEEM, EEM, EQeq, EQeq+C, QEq, SFKEEM, SQE, SQE+q0, and SQE+qp.
 Cover retains source-ordered charges within 3 Å of each solved pivot halo; it remains a new
 approximation without a general accuracy envelope.
 
