@@ -18,7 +18,7 @@ SMILES/chemistry-preparation tool.
 
 ## Requirements
 
-- CMake 3.27 or newer
+- CMake 3.28 or newer
 - Ninja
 - GCC or Clang with C++23 support
 - Internet access on first configure unless dependencies are already available to CMake

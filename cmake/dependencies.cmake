@@ -48,6 +48,7 @@ function(chargefw_setup_dependencies)
         set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
         set(TBB_TEST OFF CACHE BOOL "" FORCE)
         set(TBB_STRICT OFF CACHE BOOL "" FORCE)
+        set(TBB_INSTALL OFF CACHE BOOL "" FORCE)
         set(CHARGEFW_TBB_FETCHED ON CACHE INTERNAL "oneTBB was fetched by ChargeFW")
         FetchContent_Declare(
                 onetbb
@@ -82,6 +83,7 @@ function(chargefw_setup_test_dependencies)
         FetchContent_Declare(
                 snitch
                 SYSTEM
+                EXCLUDE_FROM_ALL
                 URL https://github.com/cschreib/snitch/archive/refs/tags/v1.3.2.tar.gz
         )
         FetchContent_MakeAvailable(snitch)
