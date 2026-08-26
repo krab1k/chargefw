@@ -8,6 +8,7 @@ project(
 )
 
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 file(RELATIVE_PATH CHARGEFW_PARAMETER_DIRECTORY_FROM_LIBRARY
   "${CMAKE_INSTALL_FULL_LIBDIR}"
@@ -37,6 +38,7 @@ chargefw_setup_developer_tools()
 
 add_library(chargefw_core SHARED)
 add_library(chargefw::core ALIAS chargefw_core)
+set_target_properties(chargefw_core PROPERTIES EXPORT_NAME core)
 
 target_compile_features(chargefw_core
   PUBLIC
@@ -48,7 +50,13 @@ target_include_directories(chargefw_core
     src
 
   PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/generated>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
+target_include_directories(chargefw_core SYSTEM PRIVATE
+  $<TARGET_PROPERTY:TBB::tbb,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_link_libraries(chargefw_core
@@ -56,11 +64,15 @@ target_link_libraries(chargefw_core
     nlohmann_json::nlohmann_json
     gemmi::gemmi_cpp
   PRIVATE
-    Eigen3::Eigen
-    nanoflann::nanoflann
-    TBB::tbb
-    ${CMAKE_DL_LIBS}
+    $<BUILD_INTERFACE:Eigen3::Eigen>
+    $<BUILD_INTERFACE:nanoflann::nanoflann>
+    $<BUILD_INTERFACE:$<TARGET_FILE:TBB::tbb>>
+    $<BUILD_INTERFACE:${CMAKE_DL_LIBS}>
 )
+
+if(TARGET tbb)
+  add_dependencies(chargefw_core tbb)
+endif()
 
 target_compile_definitions(chargefw_core
   PRIVATE

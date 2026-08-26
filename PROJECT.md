@@ -394,13 +394,15 @@ nlohmann/json and Gemmi; Eigen, nanoflann, and oneTBB are private and CLI11 is u
 CMake first searches for compatible packages and otherwise fetches CLI11 2.7.2, nlohmann/json 3.12.0,
 Eigen 5.0.1, nanoflann 1.12.1, oneTBB 2023.1.0, and Gemmi 0.7.4.
 
-Installation currently provides the library, public headers, CLI, generated config header, and bundled
-parameter JSON. Exported CMake package targets are not implemented. There are no repository CI
-workflows, Python bindings/wheels, Conda recipe, or container image yet.
+Installation provides the library, public headers, CLI, generated config header, bundled parameter JSON,
+and an exported `chargefw::core` CMake target. The package config resolves public nlohmann/json and Gemmi
+dependencies through CMake package discovery. There are no repository CI workflows, Python bindings/wheels,
+Conda recipe, or container image yet.
 
 Default parameter discovery resolves installed JSON relative to the loaded ChargeFW library, so an
 installed prefix remains usable after it is moved. Build-tree CLI execution is unsupported; CLI tests
-install to a temporary prefix before running.
+install to a temporary prefix before running. A downstream CMake smoke test configures, builds, and runs
+against the moved prefix using `find_package(chargefw CONFIG REQUIRED)`.
 
 ## Integration direction
 

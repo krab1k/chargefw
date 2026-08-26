@@ -183,8 +183,16 @@ _install/bin/chargefw calculate tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
 The installed directory can be moved after installation; bundled parameter JSON remains discoverable.
-Installation includes the library, public headers, CLI, and parameter data. Exported CMake package
-targets and binary distribution packages are not implemented yet.
+Installation includes the library, public headers, CLI, parameter data, and an exported CMake package:
+
+```cmake
+find_package(chargefw CONFIG REQUIRED)
+target_link_libraries(my_target PRIVATE chargefw::core)
+```
+
+The package resolves its public nlohmann/json and Gemmi dependencies through CMake package discovery.
+Add the ChargeFW prefix and any unbundled public dependency prefixes to `CMAKE_PREFIX_PATH` when
+configuring a downstream project.
 
 ## Formatting
 

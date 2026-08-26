@@ -82,6 +82,13 @@ if(CHARGEFW_BUILD_CLI)
                     -DCHARGEFW_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/tests/cpp/chargefw_cli_structural_outputs_prefix
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_structural_outputs.cmake
     )
+    add_test(
+            NAME test_chargefw_cmake_consumer
+            COMMAND ${CMAKE_COMMAND}
+                    -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
+                    -DCHARGEFW_INSTALL_BINDIR=${CMAKE_INSTALL_BINDIR}
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cmake_consumer.cmake
+    )
 endif()
 
 add_subdirectory(core)

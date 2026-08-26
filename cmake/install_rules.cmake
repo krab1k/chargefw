@@ -11,6 +11,7 @@ target_link_options(chargefw_cli PRIVATE "LINKER:--disable-new-dtags")
 
 install(
         TARGETS chargefw_core
+        EXPORT chargefwTargets
         FILE_SET HEADERS
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         ARCHIVE
@@ -35,6 +36,29 @@ install(
         ${PROJECT_BINARY_DIR}/generated/chargefw/config.h
         DESTINATION
         ${CMAKE_INSTALL_INCLUDEDIR}/chargefw
+)
+
+configure_package_config_file(
+        ${PROJECT_SOURCE_DIR}/cmake/chargefwConfig.cmake.in
+        ${PROJECT_BINARY_DIR}/chargefwConfig.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/chargefw
+)
+write_basic_package_version_file(
+        ${PROJECT_BINARY_DIR}/chargefwConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+)
+install(
+        EXPORT chargefwTargets
+        FILE chargefwTargets.cmake
+        NAMESPACE chargefw::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/chargefw
+)
+install(
+        FILES
+        ${PROJECT_BINARY_DIR}/chargefwConfig.cmake
+        ${PROJECT_BINARY_DIR}/chargefwConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/chargefw
 )
 
 if(CHARGEFW_TBB_FETCHED AND TARGET tbb)
