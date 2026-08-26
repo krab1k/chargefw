@@ -28,6 +28,14 @@ chargefw_add_snitch_test(test_reduced_execution
         test_reduced_execution.cpp
 )
 
+chargefw_add_snitch_test(test_representative_execution
+        test_representative_execution.cpp
+)
+target_compile_definitions(test_representative_execution
+        PRIVATE
+        CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
+
 chargefw_add_snitch_test(test_cover_execution
         test_cover_execution.cpp
 )

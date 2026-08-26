@@ -14,33 +14,11 @@ concrete supported workflow.
 The implementation and execution contracts have focused regression coverage. The remaining work is
 scientific evidence and release readiness. ChargeFW2 is a previous implementation and useful comparison
 material, not an oracle: a difference is a finding to investigate, not evidence by itself that ChargeFW
-is wrong. Cutoff and cover remain explicit approximations until their method-specific validation is
-complete.
+is wrong. Cutoff and cover remain explicit approximations; the accepted audit establishes their execution
+behavior but makes no general reduced-mode accuracy claim.
 
-- [ ] Conduct a one-time ChargeFW2 comparison campaign with identical topology, formal charges,
-  conformers, method options, and parameter data. Record the compared inputs, source-order mappings,
-  observed outputs, method-specific tolerances, and conclusions in maintained project documentation;
-  do not add ChargeFW2 or a continuous comparison harness to the production test suite.
-- [ ] Use the comparison campaign to examine every built-in method and every bundled parameter set with a
-  ChargeFW2 counterpart on at least one compatible molecule. Add neutral, ionic, disconnected, and
-  multi-conformer cases where they exercise relevant method behavior. For each difference, investigate
-  the equations, parameters, input interpretation, numerical solver, and legacy implementation before
-  classifying it as a ChargeFW defect, a ChargeFW2 defect, an intentional change, or unresolved.
-- [ ] Investigate ChargeFW2 cutoff behavior for the overlapping EEM/QEq-like methods (`eem`, `eqeq`,
-  `eqeqc`, and `qeq`) at representative radii. Compare fragment selection, target charge, correction,
-  and failure behavior, but do not treat reproducing the old result as the acceptance criterion. Record
-  the scientific rationale for the selected current behavior and any unresolved differences.
-- [ ] Establish a representative full-versus-cutoff/cover corpus for the eight reduced-capable methods
-  across multiple radii, charge states, disconnected systems, conformers, and at least one practically
-  large structure. Report mean/max charge error, charge conservation, runtime, and peak memory, then
-  state method-specific accuracy guidance without implying exact equivalence.
-- [ ] Review each built-in method's equations, default options, prerequisites, diagnostics, and citation
-  against its publication and the archived implementation while adding the numerical comparisons. Use
-  the publication and current scientific reasoning to resolve conflicts; the archived implementation is
-  evidence, not the final authority.
-- [ ] Add targeted robustness cases for the actual dense-solver failure modes that remain untested,
-  especially singular or nearly singular systems. Require either finite charge-conserving output or an
-  actionable failure with molecule/conformer context; do not build a combinatorial edge-case matrix.
+- [ ] Close the remaining ABEEM parameter-provenance finding in [COMPARISON.md](COMPARISON.md): verify
+  the bundled common `k=2.66` against the cited Yang/Shen MEEM source, including its units and derivation.
 
 ## 2. Native installation and automation
 
