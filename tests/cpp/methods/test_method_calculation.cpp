@@ -268,7 +268,7 @@ TEST_CASE("method calculation dispatches parameterized and geometry-dependent ta
                                                 .classifications = {}};
         static_cast<void>(calculation::calculate({.molecules = prepared, .selected = invalid}));
     };
-    CHECK_THROWS_AS(wrong_charge_count_call(), std::invalid_argument);
+    CHECK_THROWS_AS(wrong_charge_count_call(), std::runtime_error);
 
     const auto invalid_classification_call = [&] {
         const methods::ApplicableMethod invalid{

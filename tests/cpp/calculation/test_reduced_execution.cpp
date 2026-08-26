@@ -375,29 +375,22 @@ TEST_CASE("reduced solver failures retain method and target context",
           "[calculation][reduced-execution]") {
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
-        const auto calculate_invalid_qeq = [mode] {
-            static_cast<void>(calculate_application(calculation::AssessmentRequest{
-                .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-                .parameter_sets = {make_invalid_qeq_parameters()},
-                .method_id = "qeq",
-                .parameter_set_id = "invalid-qeq",
-                .execution_selection =
-                    calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
-                .resource_policy = {.max_threads = 1}}));
-        };
+        const auto result = calculate_application(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {make_invalid_qeq_parameters()},
+            .method_id = "qeq",
+            .parameter_set_id = "invalid-qeq",
+            .execution_selection =
+                calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
+            .resource_policy = {.max_threads = 1}});
 
-        try {
-            calculate_invalid_qeq();
-            CHECK(false);
-        } catch (const std::runtime_error& error) {
-            const auto message = std::string_view{error.what()};
-            CHECK(message.contains(mode == calculation::ExecutionSelectionKind::cutoff
-                                       ? "center atom"
-                                       : "pivot atom"));
-            CHECK(message.contains("method 'qeq'"));
-            CHECK(message.contains("molecule 'water'"));
-            CHECK(message.contains("conformer 0"));
-        }
+        CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
+        CHECK_FALSE(result.calculated());
+        REQUIRE(result.failure_message.has_value());
+        const auto message = std::string_view{*result.failure_message};
+        CHECK(message.contains(mode == calculation::ExecutionSelectionKind::cutoff ? "center atom"
+                                                                                   : "pivot atom"));
+        CHECK(message.contains("method 'qeq', molecule 1 ('water'), conformer 1"));
     }
 }
 

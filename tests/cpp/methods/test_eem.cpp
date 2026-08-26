@@ -30,6 +30,18 @@ auto make_parameter_set() -> parameters::ParameterSet {
 
 } // namespace
 
+TEST_CASE("EEM enforces a charged molecular target", "[methods][eem]") {
+    const chargefw::core::Molecule cation{
+        {chargefw::core::Atom{1, 1}},
+        {},
+        {chargefw::core::Conformer{{chargefw::core::Position{}}}}};
+    const auto charge_set =
+        chargefw::test::calculate_single_method(cation, "eem", {make_parameter_set()});
+
+    CHECK(std::abs(charge_set.assignment(0).charges[0] - 1.0) < 1.0e-12);
+    CHECK(std::abs(charge_set.assignment(0).charges.total() - 1.0) < 1.0e-12);
+}
+
 TEST_CASE("EEM has a stable water regression and responds to geometry", "[methods][eem]") {
     const auto charge_set = chargefw::test::calculate_method(
         chargefw::test::make_two_conformer_water(), "eem", {make_parameter_set()});

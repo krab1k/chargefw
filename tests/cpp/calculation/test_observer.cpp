@@ -490,7 +490,7 @@ TEST_CASE("validation failures finish observation and propagate unchanged",
     }
 }
 
-TEST_CASE("solver failures finish observation and propagate unchanged", "[calculation][observer]") {
+TEST_CASE("solver failures finish observation with a numerical result", "[calculation][observer]") {
     {
         const auto observer = RecordingObserver{};
         auto assessment = calculation::assess(calculation::AssessmentRequest{
@@ -501,10 +501,11 @@ TEST_CASE("solver failures finish observation and propagate unchanged", "[calcul
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        const auto calculate_with_invalid_qeq_parameters = [&] -> void {
-            static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
-        };
-        CHECK_THROWS_AS(calculate_with_invalid_qeq_parameters(), std::logic_error);
+        const auto result = calculation::calculate(std::move(assessment), 1, observer);
+        CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
+        CHECK_FALSE(result.calculated());
+        REQUIRE(result.failure_message.has_value());
+        CHECK(result.failure_message->contains("method 'qeq', molecule 1 ('water')"));
 
         const auto events = observer.events();
         REQUIRE(!events.empty());
@@ -741,7 +742,8 @@ TEST_CASE("no-plan failures occur before calculation observation begins",
     }
 }
 
-TEST_CASE("reduced fragment failures finish observation and propagate", "[calculation][observer]") {
+TEST_CASE("reduced fragment failures finish observation with a numerical result",
+          "[calculation][observer]") {
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
         const auto observer = RecordingObserver{};
@@ -754,11 +756,11 @@ TEST_CASE("reduced fragment failures finish observation and propagate", "[calcul
                 calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
             .resource_policy = {.max_threads = 1}});
 
-        try {
-            static_cast<void>(calculation::calculate(std::move(assessment), 1, observer));
-            CHECK(false);
-        } catch (const std::runtime_error&) {
-        }
+        const auto result = calculation::calculate(std::move(assessment), 1, observer);
+        CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
+        CHECK_FALSE(result.calculated());
+        REQUIRE(result.failure_message.has_value());
+        CHECK(result.failure_message->contains("method 'qeq', molecule 1 ('water')"));
 
         const auto events = observer.events();
         REQUIRE(!events.empty());

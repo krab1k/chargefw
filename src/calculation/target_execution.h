@@ -11,8 +11,10 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -28,6 +30,19 @@ enum class ParallelizationLevel : std::uint8_t {
     targets,
     fragments,
 };
+
+[[nodiscard]] inline auto make_target_failure_message(const methods::ApplicableMethod& selected,
+                                                      const features::PreparedMolecule& molecule,
+                                                      const CalculationTarget& target,
+                                                      const std::exception& error) -> std::string {
+    auto message = "method '" + std::string{selected.method->id()} + "', molecule " +
+                   std::to_string(target.molecule_index + 1) + " ('" +
+                   std::string{molecule.molecule().name()} + "')";
+    if (target.conformer_index.has_value()) {
+        message += ", conformer " + std::to_string(*target.conformer_index + 1);
+    }
+    return message + " failed: " + error.what();
+}
 
 [[nodiscard]] inline auto
 make_calculation_targets(const features::PreparedMoleculeCollection& molecules,
@@ -88,11 +103,23 @@ execute_calculation_targets(const methods::ApplicableMethod& selected,
         emit_target_event(observer, CalculationPhase::target_started, target_ctx);
         check_cancellation(observer);
 
-        calculated[target_index] = charges::ChargeAssignment{
-            .target = charges::ChargeTarget{.molecule_index = target.molecule_index,
-                                            .conformer_index = target.conformer_index},
-            .charges = calculate_target(molecule, classification, target.conformer_index,
-                                        fragment_max_threads, target_ctx)};
+        try {
+            calculated[target_index] = charges::ChargeAssignment{
+                .target = charges::ChargeTarget{.molecule_index = target.molecule_index,
+                                                .conformer_index = target.conformer_index},
+                .charges = calculate_target(molecule, classification, target.conformer_index,
+                                            fragment_max_threads, target_ctx)};
+        } catch (const CalculationCancelled&) {
+            throw;
+        } catch (const std::invalid_argument& error) {
+            throw std::invalid_argument{
+                make_target_failure_message(selected, molecule, target, error)};
+        } catch (const std::logic_error& error) {
+            throw std::logic_error{make_target_failure_message(selected, molecule, target, error)};
+        } catch (const std::exception& error) {
+            throw std::runtime_error{
+                make_target_failure_message(selected, molecule, target, error)};
+        }
 
         emit_target_event(observer, CalculationPhase::target_finished, target_ctx);
     });

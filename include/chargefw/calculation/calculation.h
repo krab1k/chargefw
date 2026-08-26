@@ -73,8 +73,9 @@ struct ExecutionResult {
 
 // Executes a plan returned by assess() without repeating preparation or applicability assessment.
 // The assessment is consumed because the result owns its classifications and parameter data. It
-// delegates computation observation to the low-level overload and converts no-plan and cancellation
-// outcomes to values. Calculation failures propagate to the caller.
+// delegates computation observation to the low-level overload and converts no-plan, cancellation,
+// and calculation failures to result values. Invalid request arguments still propagate to the
+// caller.
 [[nodiscard]] auto calculate(AssessmentResult assessment, std::size_t max_threads = 0,
                              const CalculationObserver& observer = default_calculation_observer())
     -> ExecutionResult;

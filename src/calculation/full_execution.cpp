@@ -38,11 +38,20 @@ auto validate_calculated_charges(const methods::Method& method,
     const auto expected_size = molecule.molecule().atom_count();
 
     if (atomic_charges.size() != expected_size) {
-        throw std::invalid_argument{"method '" + std::string{method.id()} + "' produced " +
-                                    std::to_string(atomic_charges.size()) +
-                                    " charges for molecule '" +
-                                    std::string{molecule.molecule().name()} + "' with " +
-                                    std::to_string(expected_size) + " atoms"};
+        throw std::runtime_error{"method '" + std::string{method.id()} + "' produced " +
+                                 std::to_string(atomic_charges.size()) + " charges for molecule '" +
+                                 std::string{molecule.molecule().name()} + "' with " +
+                                 std::to_string(expected_size) + " atoms"};
+    }
+}
+
+[[nodiscard]] auto calculate_method(const methods::Method& method,
+                                    const methods::CalculationInput& input)
+    -> charges::AtomicCharges {
+    try {
+        return method.calculate(input);
+    } catch (const std::invalid_argument& error) {
+        throw std::runtime_error{error.what()};
     }
 }
 
@@ -57,7 +66,7 @@ auto validate_calculated_charges(const methods::Method& method,
         const methods::CalculationInput input{molecule, selected.method_options,
                                               core::total_formal_charge(molecule.molecule()),
                                               geometry ? std::addressof(*geometry) : nullptr};
-        auto atomic_charges = selected.method->calculate(input);
+        auto atomic_charges = calculate_method(*selected.method, input);
         validate_calculated_charges(*selected.method, molecule, atomic_charges);
         return atomic_charges;
     }
@@ -68,7 +77,7 @@ auto validate_calculated_charges(const methods::Method& method,
     const methods::CalculationInput input{
         molecule, selected.method_options, core::total_formal_charge(molecule.molecule()),
         geometry ? std::addressof(*geometry) : nullptr, &parameter_view};
-    auto atomic_charges = selected.method->calculate(input);
+    auto atomic_charges = calculate_method(*selected.method, input);
     validate_calculated_charges(*selected.method, molecule, atomic_charges);
     return atomic_charges;
 }

@@ -64,6 +64,28 @@ auto make_parameter_set(std::string id, std::string method_id, const std::uint16
               .parameters = {{.name = "value", .value = 1.0}}}}}};
 }
 
+auto make_singular_eem_parameter_set() -> chargefw::parameters::ParameterSet {
+    return chargefw::parameters::ParameterSet{
+        chargefw::parameters::ParameterSetMetadata{
+            .id = "singular-eem", .method_id = "eem", .name = "Singular EEM parameters"},
+        chargefw::parameters::CommonParameters{{{.name = "kappa", .value = 1.0}}},
+        chargefw::parameters::AtomParameters{
+            {{.key = chargefw::test::atom_key(
+                  1, chargefw::parameters::AtomParameterClassificationKind::PLAIN, "*"),
+              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 1.0}}},
+             {.key = chargefw::test::atom_key(
+                  8, chargefw::parameters::AtomParameterClassificationKind::PLAIN, "*"),
+              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 1.0}}}}}};
+}
+
+auto make_singular_eem_molecule() -> core::Molecule {
+    return core::Molecule{
+        std::vector{core::Atom{1}, core::Atom{8}},
+        {},
+        {core::Conformer{{core::Position{0.0, 0.0, 0.0}, core::Position{1.0, 0.0, 0.0}}}},
+        "singular-eem"};
+}
+
 auto make_duplicate_parameter_request(const std::string_view first_method_id,
                                       const std::string_view second_method_id,
                                       const bool explicit_selection)
@@ -120,6 +142,21 @@ static_assert(!HasPublicParameterSets<calculation::AssessmentResult>);
 static_assert(!HasPublicSelectedCandidate<calculation::AssessmentResult>);
 static_assert(std::is_move_constructible_v<calculation::AssessmentResult>);
 static_assert(!std::is_move_assignable_v<calculation::AssessmentResult>);
+
+TEST_CASE("calculation facade reports singular solver failures with target context",
+          "[calculation][calculation]") {
+    const auto result = calculate_application(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{make_singular_eem_molecule()}},
+        .parameter_sets = {make_singular_eem_parameter_set()},
+        .method_id = "eem",
+        .parameter_set_id = "singular-eem"});
+
+    CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
+    CHECK(!result.charges.has_value());
+    REQUIRE(result.failure_message.has_value());
+    CHECK(result.failure_message->find("method 'eem', molecule 1 ('singular-eem'), conformer 1") !=
+          std::string::npos);
+}
 
 TEST_CASE("assessment preserves owned selection state and validates method options",
           "[calculation][calculation]") {
