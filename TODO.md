@@ -4,23 +4,11 @@ This file contains unfinished work only. Implemented state belongs in [PROJECT.m
 in [README.md](README.md), and implementation rules in [AGENTS.md](AGENTS.md). Remove an item when its
 full acceptance criteria are met; do not retain checked history here.
 
-Work is ordered by current product dependency: establish scientific reference evidence, make the native
-package consumable and continuously checked, then add Python distribution. ACC III replacement has
-separate adoption gates. Optional integrations and distribution formats should be added only for a
-concrete supported workflow.
+Work is ordered by current product dependency: make the native package consumable and continuously
+checked, then add Python distribution. ACC III replacement has separate adoption gates. Optional
+integrations and distribution formats should be added only for a concrete supported workflow.
 
-## 1. Scientific validation and ChargeFW2 comparison
-
-The implementation and execution contracts have focused regression coverage. The remaining work is
-scientific evidence and release readiness. ChargeFW2 is a previous implementation and useful comparison
-material, not an oracle: a difference is a finding to investigate, not evidence by itself that ChargeFW
-is wrong. Cutoff and cover remain explicit approximations; the accepted audit establishes their execution
-behavior but makes no general reduced-mode accuracy claim.
-
-- [ ] Close the remaining ABEEM parameter-provenance finding in [COMPARISON.md](COMPARISON.md): verify
-  the bundled common `k=2.66` against the cited Yang/Shen MEEM source, including its units and derivation.
-
-## 2. Native installation and automation
+## 1. Native installation and automation
 
 - [ ] Add a lean CI baseline for the supported development platform: formatting, GCC debug/release
   tests, Clang ASan/UBSan, and the native install/consumer smoke test. Add further compiler, platform,
@@ -29,7 +17,7 @@ behavior but makes no general reduced-mode accuracy claim.
   provenance. Before 1.0, document how software, result-schema, and parameter-data versions affect
   compatibility and reproducibility.
 
-## 3. Python and toolkit integration
+## 2. Python and toolkit integration
 
 - [ ] Define a synchronous toolkit-neutral Python API accepting atomic numbers, formal charges,
   indexed bonds, source names/identities, and zero or more coordinate arrays; return NumPy charge
@@ -44,7 +32,7 @@ behavior but makes no general reduced-mode accuracy claim.
   perform no implicit sanitization, hydrogen changes, protonation, embedding, or optimization, and do
   not overwrite existing properties unless requested.
 
-## 4. ACC III adoption gates
+## 3. ACC III adoption gates
 
 - [ ] Establish a reproducible ACC III comparison corpus with licensed/reference inputs, parameter
   versions, options, mappings, and method-specific tolerances. Treat licensed ACC III/ChargeFW2 outputs

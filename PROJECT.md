@@ -24,8 +24,8 @@ The repository currently provides:
 - native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;
 - JSON, SDF, MOL2, and mmCIF charge output through a focused CLI.
 
-Broad method/parameter compatibility and reduced-mode accuracy validation, relocatable native
-packaging, Python bindings, and packaged distribution remain unfinished.
+Independent broad-accuracy and reduced-mode validation, relocatable native packaging, Python bindings,
+and packaged distribution remain unfinished.
 
 ## Architecture
 
@@ -205,6 +205,11 @@ after import, with document and source-record status/diagnostics; non-successful
 charge assignments or molecular output. CLI exits are `0` for success, `1` for an unexpected internal
 failure, `2` for invalid input/request, `3` for no executable plan, `4` for numerical failure, and `5`
 for cancellation.
+
+Target calculation failures retain method, one-based molecule, molecule-name, and conformer context.
+The owned facade preserves invalid request exceptions for the caller/CLI input boundary, converts other
+method or solver failures into a `numerical_failure` result with that context, and preserves cancellation.
+The singular EEM regression exercises this path without treating it as a general conditioning benchmark.
 
 The CLI progress observer serializes standard-error updates and clears the full rendered line before
 every target/fragment update and terminal newline, preventing stale suffixes when messages shrink or
@@ -427,16 +432,23 @@ not make RDKit a dependency of the core library or base wheel.
 
 ## Scientific and compatibility principles
 
-### Initial ChargeFW2 smoke comparison
+### ChargeFW2 and publication audit
 
-An initial full-execution comparison used a 29-atom neutral CHNO SDF molecule with identical topology,
-coordinates, formal charges, and migrated parameter data. EEM, QEq, EQeq+C, ABEEM, SFKEEM, SQE,
-SQE+q0, SQE+qp, and Charge2 matched ChargeFW2 to the four decimal places emitted by the legacy tool.
-PEOE, MPEOE, and GDAC also matched at that precision when current ChargeFW used six iterations.
-ChargeFW2 advertises `iters=7` for those methods but its loop executes six iterations; current ChargeFW
-deliberately treats `iters=7` as seven iterations. This is a legacy option-semantics difference, not a
-current parity target. The run is preliminary evidence only; it does not replace the one-time campaign's
-unrounded tolerances or wider corpus required by [TODO.md](TODO.md).
+The bounded audit covered the 20 scientific methods shared with ChargeFW2, their bundled parameter sets
+where applicable, a canonical CHNO control, ionic and geometry-independent controls, and a compact
+representative panel. Current and legacy calculations have exact or near-machine numerical parity under
+identical finite-molecule inputs and algorithm-parity options. Methods whose cited neutral-only
+formulation cannot satisfy ionic requests reject those inputs.
+
+Publication review supports the implemented finite, non-periodic variants and records intentional scope
+differences. In particular, periodic/Ewald branches, EQeq charge centers, and original-QEq Slater,
+hydrogen-iteration, and charge-bound branches are unsupported. The audit is compatibility and
+conformance evidence, not a general QM-accuracy or reduced-mode-accuracy claim.
+
+The committed representative execution panel covers water, ethanol, benzene, acetate, methylammonium,
+glycine zwitterion, dimethyl sulfoxide, chlorobenzene, methyl phosphate, and heme. It provides stable,
+inspectable behavior controls for calculation and full/cutoff/cover tests; it is not a substitute for a
+method-specific reduced-mode accuracy study.
 
 - Preserve source atom order and identify every molecule/conformer assignment.
 - Record method, parameter set, options when exposed, execution approximation, correction, and warnings.

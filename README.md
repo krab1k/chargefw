@@ -8,6 +8,10 @@ classification, applicability/execution planning, full and parallel reduced calc
 adapters, and a focused CLI. It is not yet a production ACC III backend, Python package, or general
 SMILES/chemistry-preparation tool.
 
+A bounded ChargeFW2/publication audit found numerical parity for the supported finite-molecule variants.
+Periodic, Ewald, and other unsupported publication branches remain out of scope; reduced modes are explicit
+approximations without a general accuracy claim.
+
 ## Documentation
 
 | Document | Purpose |
