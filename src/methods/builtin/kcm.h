@@ -31,6 +31,10 @@ class KCMMethod final : public Method {
 
     [[nodiscard]] auto calculate(const CalculationInput& input) const
         -> charges::AtomicCharges override;
+
+  protected:
+    auto add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                 PrerequisiteResult& result) const -> void override;
 };
 
 } // namespace chargefw::methods::builtin

@@ -2,6 +2,7 @@
 
 #include "methods/builtin/element_prerequisites.h"
 
+#include <chargefw/core/molecule.h>
 #include <chargefw/core/periodic_table.h>
 
 #include <stdexcept>
@@ -16,6 +17,13 @@ auto VEEMMethod::add_method_specific_prerequisite_issues(const MethodPrerequisit
         [](const core::Element& element) -> bool {
             return element.valence_electron_count().has_value() && element.electronegativity != 0.0;
         });
+
+    if (core::total_formal_charge(input.prepared_molecule.molecule()) != 0) {
+        result.add(PrerequisiteIssue{
+            .kind = PrerequisiteIssueKind::unsupported_molecule,
+            .message = "VEEM supports only neutral molecules because its valence-electron equation "
+                       "conserves zero total charge"});
+    }
 }
 
 auto VEEMMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {

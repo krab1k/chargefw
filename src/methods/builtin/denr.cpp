@@ -1,5 +1,6 @@
 #include "methods/builtin/denr.h"
 
+#include <chargefw/core/molecule.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
 #include <Eigen/LU>
@@ -9,6 +10,17 @@
 #include <vector>
 
 namespace chargefw::methods::builtin {
+
+auto DENRMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                         PrerequisiteResult& result) const -> void {
+    if (core::total_formal_charge(input.prepared_molecule.molecule()) != 0) {
+        result.add(PrerequisiteIssue{
+            .kind = PrerequisiteIssueKind::unsupported_molecule,
+            .message =
+                "DENR supports only neutral molecules because its implemented relaxation starts "
+                "from zero total charge"});
+    }
+}
 
 auto DENRMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto& molecule = input.molecule();
