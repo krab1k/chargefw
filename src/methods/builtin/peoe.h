@@ -34,7 +34,7 @@ class PEOEMethod final : public Method {
             MethodOptionSpec{.id = "iters",
                              .description = "Number of PEOE iterations",
                              .type = MethodOptionType::integer,
-                             .default_value = 7,
+                             .default_value = 6,
                              .choices = {},
                              .minimum = 1}};
         return {option_schema.data(), option_schema.size()};
