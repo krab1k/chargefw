@@ -112,6 +112,9 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
             : std::optional{std::string{selected.parameter_set->id()}};
 
     const auto computation_started = std::chrono::steady_clock::now();
+    auto status = ExecutionStatus::success;
+    auto calculated_charges = std::optional<charges::ChargeSet>{};
+    auto failure_message = std::optional<std::string>{};
 
     try {
         auto result =
@@ -120,38 +123,30 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
                                          .execution_policy = *assessment.execution_policy_,
                                          .max_threads = max_threads,
                                          .observer = observer});
-        const auto computation_seconds =
-            std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
-                .count();
-        return ExecutionResult{
-            .status = ExecutionStatus::success,
-            .charges = std::move(result.charges),
-            .applicability = std::move(assessment.applicability_report_),
-            .execution_policy = assessment.execution_policy_,
-            .execution_issues = std::move(assessment.execution_issues_),
-            .effective_method_options = effective_method_options,
-            .selected_method_id = selected_method_id,
-            .selected_parameter_set_id = selected_parameter_set_id,
-            .failure_message = std::nullopt,
-            .metrics = {.applicability_seconds = assessment.applicability_seconds_,
-                        .computation_seconds = computation_seconds}};
+        calculated_charges.emplace(std::move(result.charges));
     } catch (const CalculationCancelled&) {
-        const auto computation_seconds =
-            std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
-                .count();
-        return ExecutionResult{
-            .status = ExecutionStatus::cancelled,
-            .charges = std::nullopt,
-            .applicability = std::move(assessment.applicability_report_),
-            .execution_policy = assessment.execution_policy_,
-            .execution_issues = std::move(assessment.execution_issues_),
-            .effective_method_options = effective_method_options,
-            .selected_method_id = selected_method_id,
-            .selected_parameter_set_id = selected_parameter_set_id,
-            .failure_message = std::nullopt,
-            .metrics = {.applicability_seconds = assessment.applicability_seconds_,
-                        .computation_seconds = computation_seconds}};
+        status = ExecutionStatus::cancelled;
+    } catch (const std::invalid_argument&) {
+        throw;
+    } catch (const std::exception& error) {
+        status = ExecutionStatus::numerical_failure;
+        failure_message = error.what();
     }
+
+    const auto computation_seconds =
+        std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
+            .count();
+    return ExecutionResult{.status = status,
+                           .charges = std::move(calculated_charges),
+                           .applicability = std::move(assessment.applicability_report_),
+                           .execution_policy = assessment.execution_policy_,
+                           .execution_issues = std::move(assessment.execution_issues_),
+                           .effective_method_options = effective_method_options,
+                           .selected_method_id = selected_method_id,
+                           .selected_parameter_set_id = selected_parameter_set_id,
+                           .failure_message = std::move(failure_message),
+                           .metrics = {.applicability_seconds = assessment.applicability_seconds_,
+                                       .computation_seconds = computation_seconds}};
 }
 
 } // namespace chargefw::calculation
