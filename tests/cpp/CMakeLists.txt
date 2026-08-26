@@ -64,7 +64,9 @@ if(CHARGEFW_BUILD_CLI)
     add_test(
             NAME test_chargefw_cli_outputs
             COMMAND ${CMAKE_COMMAND}
-                    -DCHARGEFW_CLI=$<TARGET_FILE:chargefw_cli>
+                    -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
+                    -DCHARGEFW_INSTALL_BINDIR=${CMAKE_INSTALL_BINDIR}
+                    -DCHARGEFW_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/tests/cpp/chargefw_cli_outputs_prefix
                     -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/water.sdf
                     -DCHARGEFW_MOL2_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/mol2/aromatic.mol2
                     -DCHARGEFW_MIXED_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/mixed_v2000_v3000.sdf
@@ -75,7 +77,9 @@ if(CHARGEFW_BUILD_CLI)
     add_test(
             NAME test_chargefw_cli_structural_outputs
             COMMAND ${CMAKE_COMMAND}
-                    -DCHARGEFW_CLI=$<TARGET_FILE:chargefw_cli>
+                    -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
+                    -DCHARGEFW_INSTALL_BINDIR=${CMAKE_INSTALL_BINDIR}
+                    -DCHARGEFW_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/tests/cpp/chargefw_cli_structural_outputs_prefix
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_structural_outputs.cmake
     )
 endif()

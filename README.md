@@ -64,10 +64,12 @@ The tracked preset palette is `gcc-debug`, `clang-debug`, `gcc-release`, `clang-
 
 ## CLI quick start
 
-The build-tree executable loads the bundled source-tree parameter JSON:
+Install ChargeFW before running the CLI; bundled parameter JSON is resolved relative to the installed
+library:
 
 ```bash
-build/gcc-debug/apps/chargefw/chargefw calculate \
+cmake --install build/gcc-debug --prefix "$PWD/_install"
+_install/bin/chargefw calculate \
   tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
@@ -180,10 +182,9 @@ cmake --install build/gcc-release --strip
 _install/bin/chargefw calculate tests/fixtures/synthetic/sdf/water.sdf output
 ```
 
-Configure the install prefix before building because bundled parameter lookup currently records that
-path; overriding only `cmake --install --prefix` does not make the install relocatable. Installation
-includes the library, public headers, CLI, and parameter data. Exported CMake package targets and binary
-distribution packages are not implemented yet.
+The installed directory can be moved after installation; bundled parameter JSON remains discoverable.
+Installation includes the library, public headers, CLI, and parameter data. Exported CMake package
+targets and binary distribution packages are not implemented yet.
 
 ## Formatting
 

@@ -398,10 +398,9 @@ Installation currently provides the library, public headers, CLI, generated conf
 parameter JSON. Exported CMake package targets are not implemented. There are no repository CI
 workflows, Python bindings/wheels, Conda recipe, or container image yet.
 
-Default parameter discovery uses the configure-time install data path, with the source-tree data path as
-a build-tree fallback. The installed CLI works when it remains under that configured prefix, but
-parameter discovery is not yet relocatable after moving the install or overriding only the `cmake
---install` prefix.
+Default parameter discovery resolves installed JSON relative to the loaded ChargeFW library, so an
+installed prefix remains usable after it is moved. Build-tree CLI execution is unsupported; CLI tests
+install to a temporary prefix before running.
 
 ## Integration direction
 

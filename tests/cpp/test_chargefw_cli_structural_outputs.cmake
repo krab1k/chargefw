@@ -1,3 +1,5 @@
+include("${CMAKE_CURRENT_LIST_DIR}/prepare_installed_cli.cmake")
+
 function(run_structural_input extension contents input_stem expected_selection expected_bonds)
     set(input_path "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_${input_stem}.${extension}")
     set(output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_${input_stem}_outputs")

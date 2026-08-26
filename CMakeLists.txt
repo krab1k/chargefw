@@ -9,6 +9,11 @@ project(
 
 include(GNUInstallDirs)
 
+file(RELATIVE_PATH CHARGEFW_PARAMETER_DIRECTORY_FROM_LIBRARY
+  "${CMAKE_INSTALL_FULL_LIBDIR}"
+  "${CMAKE_INSTALL_FULL_DATADIR}/chargefw/parameters"
+)
+
 option(CHARGEFW_ENABLE_CCACHE "Use ccache if available" ON)
 option(CHARGEFW_BUILD_TESTS "Build tests" ON)
 option(CHARGEFW_BUILD_CLI "Build the chargefw command-line application" ON)
@@ -54,12 +59,12 @@ target_link_libraries(chargefw_core
     Eigen3::Eigen
     nanoflann::nanoflann
     TBB::tbb
+    ${CMAKE_DL_LIBS}
 )
 
 target_compile_definitions(chargefw_core
   PRIVATE
     EIGEN_DONT_PARALLELIZE
-    CHARGEFW_BUILD_PARAMETER_DIR="${PROJECT_SOURCE_DIR}/data/parameters"
 )
 
 chargefw_enable_optimizations(chargefw_core)
