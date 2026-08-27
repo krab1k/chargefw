@@ -15,10 +15,36 @@ find_package(nanobind CONFIG REQUIRED)
 
 set(CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY "${PROJECT_BINARY_DIR}/python/chargefw")
 file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}")
-file(COPY "${PROJECT_SOURCE_DIR}/data/parameters"
-     DESTINATION "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_data")
-file(COPY "${PROJECT_SOURCE_DIR}/python/chargefw/_chargefw"
-     DESTINATION "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}")
+set(CHARGEFW_PYTHON_STUB_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_chargefw")
+set(CHARGEFW_PYTHON_PARAMETER_DIRECTORY
+    "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_data/parameters")
+file(REMOVE_RECURSE
+    "${CHARGEFW_PYTHON_STUB_DIRECTORY}"
+    "${CHARGEFW_PYTHON_PARAMETER_DIRECTORY}"
+)
+file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_STUB_DIRECTORY}"
+                    "${CHARGEFW_PYTHON_PARAMETER_DIRECTORY}")
+
+file(GLOB CHARGEFW_PYTHON_PARAMETER_SOURCES CONFIGURE_DEPENDS
+     "${PROJECT_SOURCE_DIR}/data/parameters/*.json")
+foreach(parameter_source IN LISTS CHARGEFW_PYTHON_PARAMETER_SOURCES)
+    get_filename_component(parameter_name "${parameter_source}" NAME)
+    configure_file("${parameter_source}"
+                   "${CHARGEFW_PYTHON_PARAMETER_DIRECTORY}/${parameter_name}" COPYONLY)
+endforeach()
+
+set(CHARGEFW_PYTHON_STUB_SOURCES
+    __init__.pyi
+    calculation.pyi
+    core.pyi
+    methods.pyi
+    parameters.pyi
+)
+foreach(stub_source IN LISTS CHARGEFW_PYTHON_STUB_SOURCES)
+    configure_file("chargefw/_chargefw/${stub_source}"
+                   "${CHARGEFW_PYTHON_STUB_DIRECTORY}/${stub_source}" COPYONLY)
+endforeach()
+
 set(CHARGEFW_PYTHON_PACKAGE_SOURCES
     __init__.py
     _arrays.py
