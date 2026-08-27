@@ -412,7 +412,7 @@ class CalculationResult:
                 molecule_index = int(item["molecule_index"])
                 conformer_index = item["conformer_index"]
                 molecule = molecules[molecule_index]
-                source_conformer_id = (
+                conformer_id = (
                     molecule.conformer_ids[int(conformer_index)]
                     if conformer_index is not None
                     else None
@@ -425,8 +425,8 @@ class CalculationResult:
                             int(conformer_index) if conformer_index is not None else None
                         ),
                         source=molecule.source,
-                        source_atom_ids=molecule.source_atom_ids,
-                        source_conformer_id=source_conformer_id,
+                        atom_ids=molecule.atom_ids,
+                        conformer_id=conformer_id,
                     )
                 )
         self._status = payload["status"]
@@ -583,6 +583,9 @@ class Calculator:
         """Value-only descriptors for this calculator's parameter catalog."""
 
         return self._parameter_set_descriptors
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(parameter_sets={len(self.parameter_sets)})"
 
     def assess(
         self,

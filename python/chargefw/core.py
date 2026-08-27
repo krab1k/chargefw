@@ -53,7 +53,6 @@ class Molecule:
         "_bonds",
         "_coordinates",
         "_native_coordinates",
-        "_coordinates_were_2d",
         "_name",
         "_atom_names",
         "_conformer_names",
@@ -68,7 +67,6 @@ class Molecule:
     _bonds: np.ndarray
     _coordinates: np.ndarray
     _native_coordinates: np.ndarray
-    _coordinates_were_2d: bool
     _name: str
     _atom_names: tuple[str, ...]
     _conformer_names: tuple[str, ...]
@@ -92,8 +90,6 @@ class Molecule:
         record_id: Hashable | None = None,
         atom_ids: Iterable[Hashable] | None = None,
         conformer_ids: Iterable[Hashable] | None = None,
-        source_atom_ids: Iterable[Hashable] | None = None,
-        source_conformer_ids: Iterable[Hashable] | None = None,
     ) -> None:
         if name is not None and not isinstance(name, str):
             raise TypeError("name must be a string or None")
@@ -150,27 +146,14 @@ class Molecule:
                 raise TypeError("source_name must be a string or None")
             source_identity = SourceIdentity(source_name or "", record_index, record_id)
 
-        if atom_ids is not None and source_atom_ids is not None:
-            raise ValueError("atom_ids and source_atom_ids are aliases and cannot both be supplied")
-        if conformer_ids is not None and source_conformer_ids is not None:
-            raise ValueError(
-                "conformer_ids and source_conformer_ids are aliases and cannot both be supplied"
-            )
-        atom_id_values = as_ids(
-            atom_ids if atom_ids is not None else source_atom_ids, atom_count, "atom_ids"
-        )
-        conformer_id_values = as_ids(
-            conformer_ids if conformer_ids is not None else source_conformer_ids,
-            conformer_count,
-            "conformer_ids",
-        )
+        atom_id_values = as_ids(atom_ids, atom_count, "atom_ids")
+        conformer_id_values = as_ids(conformer_ids, conformer_count, "conformer_ids")
 
         object.__setattr__(self, "_atomic_numbers", atomic)
         object.__setattr__(self, "_formal_charges", formal)
         object.__setattr__(self, "_bonds", bond_array)
         object.__setattr__(self, "_coordinates", public_coordinates)
         object.__setattr__(self, "_native_coordinates", native_coordinates)
-        object.__setattr__(self, "_coordinates_were_2d", coordinates_were_2d)
         object.__setattr__(self, "_name", name or "")
         object.__setattr__(self, "_atom_names", atom_name_values)
         object.__setattr__(self, "_conformer_names", conformer_name_values)
@@ -247,14 +230,6 @@ class Molecule:
         return self._conformer_ids
 
     @property
-    def source_atom_ids(self) -> tuple[Hashable, ...]:
-        return self._atom_ids
-
-    @property
-    def source_conformer_ids(self) -> tuple[Hashable, ...]:
-        return self._conformer_ids
-
-    @property
     def atom_count(self) -> int:
         return len(self._atomic_numbers)
 
@@ -269,6 +244,12 @@ class Molecule:
     @property
     def has_coordinates(self) -> bool:
         return self.conformer_count != 0
+
+    def __repr__(self) -> str:
+        return (
+            f"{type(self).__name__}(atom_count={self.atom_count}, bond_count={self.bond_count}, "
+            f"conformer_count={self.conformer_count}, name={self.name!r})"
+        )
 
 
 class MoleculeCollection(Sequence[Molecule]):
@@ -305,14 +286,6 @@ class MoleculeCollection(Sequence[Molecule]):
     def __len__(self) -> int:
         return len(self._molecules)
 
-    @property
-    def size(self) -> int:
-        return len(self._molecules)
-
-    @property
-    def empty(self) -> bool:
-        return not self._molecules
-
     @overload
     def __getitem__(self, item: int) -> Molecule: ...
 
@@ -332,3 +305,6 @@ class MoleculeCollection(Sequence[Molecule]):
     @property
     def name(self) -> str:
         return self._name
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(molecules={len(self)}, name={self.name!r})"

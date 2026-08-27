@@ -27,12 +27,24 @@ class ParameterSet:
 
     __slots__ = ("_native", "_descriptor")
 
-    def __init__(self, native: Any) -> None:
+    _native: Any
+    _descriptor: ParameterSetDescriptor
+
+    def __init__(self) -> None:
+        raise TypeError("ParameterSet values must be loaded with load_parameter_set()")
+
+    @classmethod
+    def _from_native(cls, native: Any) -> "ParameterSet":
         descriptors = native._descriptors()
         if len(descriptors) != 1:
             raise RuntimeError("a Python ParameterSet must contain exactly one native parameter set")
-        self._native = native
-        self._descriptor = _descriptor(descriptors[0])
+        result = object.__new__(cls)
+        object.__setattr__(result, "_native", native)
+        object.__setattr__(result, "_descriptor", _descriptor(descriptors[0]))
+        return result
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        raise AttributeError(f"{type(self).__name__} is immutable")
 
     @property
     def descriptor(self) -> ParameterSetDescriptor:
@@ -41,6 +53,9 @@ class ParameterSet:
     @property
     def id(self) -> str:
         return self._descriptor.id
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(id={self.id!r}, method_id={self.descriptor.method_id!r})"
 
 
 def _descriptor(value: dict[str, Any]) -> ParameterSetDescriptor:
@@ -63,11 +78,16 @@ def _normalized_path(value: str | PathLike[str], name: str) -> str:
 def load_parameter_set(path: str | PathLike[str]) -> ParameterSet:
     """Load one immutable parameter set from a JSON file."""
 
-    return ParameterSet(_native_parameters._load_parameter_set(_normalized_path(path, "path")))
+    return ParameterSet._from_native(
+        _native_parameters._load_parameter_set(_normalized_path(path, "path"))
+    )
 
 
 def load_parameter_sets(directory: str | PathLike[str]) -> tuple[ParameterSet, ...]:
     """Load immutable JSON parameter sets from one directory."""
 
     path = _normalized_path(directory, "directory")
-    return tuple(ParameterSet(native) for native in _native_parameters._load_parameter_sets(path))
+    return tuple(
+        ParameterSet._from_native(native)
+        for native in _native_parameters._load_parameter_sets(path)
+    )

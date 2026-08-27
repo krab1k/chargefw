@@ -211,7 +211,7 @@ build-tree package and installs them in wheels, while the import smoke test veri
 - optional coordinates of shape `(N, 3)` for one conformer or `(C, N, 3)` for `C` conformers;
 - molecule, atom, and conformer names;
 - a source identity containing source name, zero-based record index, and record ID; and
-- optional source atom and conformer IDs used only for round-trip mapping.
+- optional atom and conformer IDs used only for round-trip mapping.
 
 Atom and conformer IDs may be Python hashable values. They remain in the Python owner and are returned
 unchanged; the native calculation sees only source order and names. When IDs are omitted, zero-based
@@ -314,7 +314,7 @@ typed Python values rather than nested dictionaries. It exposes:
 - applicability and computation timings.
 
 Each assignment contains a newly owned, C-contiguous `float64` NumPy array plus molecule index,
-optional conformer index, source record identity, source atom IDs, and optional source conformer ID.
+optional conformer index, source record identity, atom IDs, and optional conformer ID.
 Geometry-dependent methods return one assignment per molecule conformer. Geometry-independent methods
 return one per molecule with no conformer identity. Returning Python-owned arrays avoids dangling views
 when the native result or assessment is released.

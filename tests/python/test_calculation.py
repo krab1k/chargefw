@@ -64,8 +64,8 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(assignment.molecule_index, 0)
         self.assertEqual(assignment.conformer_index, 0)
         self.assertEqual(assignment.source.record_id, "water-record")
-        self.assertEqual(assignment.source_atom_ids, ("O", "H1", "H2"))
-        self.assertEqual(assignment.source_conformer_id, "model-a")
+        self.assertEqual(assignment.atom_ids, ("O", "H1", "H2"))
+        self.assertEqual(assignment.conformer_id, "model-a")
         self.assertEqual(assignment.values.dtype, np.dtype(np.float64))
         self.assertTrue(assignment.values.flags.c_contiguous)
         self.assertFalse(assignment.values.flags.writeable)
@@ -107,7 +107,7 @@ class CalculationTests(unittest.TestCase):
             [item.conformer_index for item in multi_result.assignments], [0, 1]
         )
         self.assertEqual(
-            [item.source_conformer_id for item in multi_result.assignments],
+            [item.conformer_id for item in multi_result.assignments],
             ["model-a", "model-b"],
         )
 
@@ -207,11 +207,20 @@ class CalculationTests(unittest.TestCase):
         parameter_set = chargefw.load_parameter_set(eem_path)
         self.assertEqual(parameter_set.descriptor.method_id, "eem")
         self.assertEqual(parameter_set.id, parameter_set.descriptor.id)
+        self.assertEqual(
+            repr(parameter_set),
+            f"ParameterSet(id={parameter_set.id!r}, method_id='eem')",
+        )
+        with self.assertRaises(TypeError):
+            chargefw.ParameterSet()
+        with self.assertRaises(AttributeError):
+            parameter_set._native = None
         loaded_sets = chargefw.load_parameter_sets(parameter_directory)
         self.assertIn(parameter_set.id, {value.id for value in loaded_sets})
 
         explicit_calculator = chargefw.Calculator([parameter_set])
         self.assertEqual(explicit_calculator.parameter_sets, (parameter_set.descriptor,))
+        self.assertEqual(repr(explicit_calculator), "Calculator(parameter_sets=1)")
         result = explicit_calculator.calculate(water(), self.full_eem)
         self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
         effective = result.effective

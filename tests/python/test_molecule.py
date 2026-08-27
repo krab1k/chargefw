@@ -43,8 +43,8 @@ class MoleculeTests(unittest.TestCase):
         self.assertEqual(molecule.coordinates.shape, (2, 4, 3))
         self.assertEqual(molecule.coordinates[0, 0].tolist(), [2.0, 1.0, 0.0])
         self.assertEqual(molecule.source, chargefw.SourceIdentity("fixture.sdf", 3, "record-4"))
-        self.assertEqual(molecule.source_atom_ids, tuple(atom_ids))
-        self.assertEqual(molecule.source_conformer_ids, tuple(conformer_ids))
+        self.assertEqual(molecule.atom_ids, tuple(atom_ids))
+        self.assertEqual(molecule.conformer_ids, tuple(conformer_ids))
         self.assertEqual(molecule._native.atom_count, 4)
         self.assertEqual(molecule._native.bond_count, 3)
         self.assertEqual(molecule._native.conformer_count, 2)
@@ -55,6 +55,10 @@ class MoleculeTests(unittest.TestCase):
             readonly[0] = 2
         with self.assertRaises(AttributeError):
             setattr(molecule, "name", "changed")
+        self.assertEqual(
+            repr(molecule),
+            "Molecule(atom_count=4, bond_count=3, conformer_count=2, name='water-like')",
+        )
 
     def test_collection_is_an_immutable_sequence(self) -> None:
         molecule = chargefw.Molecule([1])
@@ -68,6 +72,7 @@ class MoleculeTests(unittest.TestCase):
         self.assertEqual(collection.name, "fixture")
         self.assertEqual(collection._native.size, 1)
         self.assertEqual(collection._native.name, "fixture")
+        self.assertEqual(repr(collection), "MoleculeCollection(molecules=1, name='fixture')")
 
     def test_coordinate_defaults_and_empty_molecule(self) -> None:
         no_coordinates = chargefw.Molecule([1])

@@ -18,8 +18,8 @@ class ChargeAssignment:
     molecule_index: int
     conformer_index: int | None
     source: SourceIdentity
-    source_atom_ids: tuple[Hashable, ...]
-    source_conformer_id: Hashable | None
+    atom_ids: tuple[Hashable, ...]
+    conformer_id: Hashable | None
 
     def __post_init__(self) -> None:
         values = np.array(self.values, dtype=np.float64, order="C", copy=True)
@@ -34,8 +34,8 @@ class ChargeAssignment:
         molecule_index: int,
         conformer_index: int | None,
         source: SourceIdentity,
-        source_atom_ids: tuple[Hashable, ...],
-        source_conformer_id: Hashable | None,
+        atom_ids: tuple[Hashable, ...],
+        conformer_id: Hashable | None,
     ) -> "ChargeAssignment":
         """Build an assignment from an extension-owned, one-dimensional NumPy array."""
         if values.dtype != np.float64 or values.ndim != 1 or not values.flags.c_contiguous:
@@ -46,10 +46,6 @@ class ChargeAssignment:
         object.__setattr__(result, "molecule_index", molecule_index)
         object.__setattr__(result, "conformer_index", conformer_index)
         object.__setattr__(result, "source", source)
-        object.__setattr__(result, "source_atom_ids", source_atom_ids)
-        object.__setattr__(result, "source_conformer_id", source_conformer_id)
+        object.__setattr__(result, "atom_ids", atom_ids)
+        object.__setattr__(result, "conformer_id", conformer_id)
         return result
-
-    @property
-    def atom_ids(self) -> tuple[Hashable, ...]:
-        return self.source_atom_ids
