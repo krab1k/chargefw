@@ -432,6 +432,8 @@ dependency tests run on them.
 
 ### Binding tests
 
+- `test_chargefw_python_mypy` runs strict mypy over the public package and binding tests, with the private
+  extension stubs on `MYPYPATH`;
 - accepted contiguous/non-contiguous array inputs and exact dtype/range/shape failures;
 - input ownership after original arrays are mutated or destroyed;
 - immutable molecule/collection ordering and source identity;

@@ -28,6 +28,9 @@ approximations without a general accuracy claim.
 - GCC or Clang with C++23 support
 - Internet access on first configure unless FetchContent sources are already cached or supplied
 
+Python-enabled debug tests additionally require the selected interpreter to provide `mypy`. Install it in
+the same environment as the interpreter selected by `CHARGEFW_PYTHON_EXECUTABLE`.
+
 CMake fetches pinned CLI11 2.7.2, nlohmann/json 3.12.0, Eigen 5.0.1, nanoflann 1.12.1, oneTBB 2023.1.0,
 and Gemmi 0.7.4 into the build tree by default. Set `CHARGEFW_USE_SYSTEM_DEPENDENCIES=ON` to prefer
 compatible installed packages and fetch only missing dependencies. When `CHARGEFW_BUILD_TESTS` is

@@ -21,3 +21,12 @@ add_test(
 set_tests_properties(test_chargefw_python_calculation PROPERTIES
     ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
 )
+
+add_test(
+    NAME test_chargefw_python_mypy
+    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" -m mypy --strict python/chargefw tests/python
+)
+set_tests_properties(test_chargefw_python_mypy PROPERTIES
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    ENVIRONMENT "MYPYPATH=${PROJECT_SOURCE_DIR}/python"
+)
