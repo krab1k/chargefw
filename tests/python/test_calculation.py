@@ -112,6 +112,8 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(assignment.values.flags.c_contiguous)
         self.assertFalse(assignment.values.flags.writeable)
         self.assertIsNotNone(assignment.values.base)
+        with self.assertRaises(ValueError):
+            assignment.values.setflags(write=True)
         self.assertTrue(np.isclose(assignment.values.sum(), 0.0))
         self.assertIs(result.requested, self.full_eem)
         effective = result.effective
