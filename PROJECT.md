@@ -412,7 +412,8 @@ The CLI and test suite default to off when ChargeFW is configured as a subprojec
 Installation provides the library, public headers, CLI, generated config header, bundled parameter JSON,
 and an exported `chargefw::core` CMake target. Default installations include nlohmann/json and Gemmi
 development packages and the private oneTBB runtime; private build-only dependencies and test tooling are
-excluded. There are no repository CI workflows, Python bindings/wheels, Conda recipe, or container image yet.
+excluded. A Python package/build skeleton can produce a local wheel, but usable Python calculation
+bindings, repository CI workflows, a Conda recipe, and a container image do not exist yet.
 
 Default parameter discovery resolves installed JSON relative to the loaded ChargeFW library, so an
 installed prefix remains usable after it is moved. Build-tree CLI execution is unsupported; CLI tests

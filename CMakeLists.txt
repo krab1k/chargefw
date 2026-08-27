@@ -18,6 +18,9 @@ file(RELATIVE_PATH CHARGEFW_PARAMETER_DIRECTORY_FROM_LIBRARY
 option(CHARGEFW_ENABLE_CCACHE "Use ccache if available" ON)
 option(CHARGEFW_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 option(CHARGEFW_BUILD_CLI "Build the chargefw command-line application" ${PROJECT_IS_TOP_LEVEL})
+option(CHARGEFW_BUILD_PYTHON "Build the ChargeFW Python extension" OFF)
+set(CHARGEFW_PYTHON_EXECUTABLE "" CACHE FILEPATH
+    "Python interpreter for ChargeFW bindings (empty uses CMake discovery)")
 option(CHARGEFW_USE_SYSTEM_DEPENDENCIES "Prefer compatible system dependencies" OFF)
 option(CHARGEFW_ENABLE_WARNINGS "Enable project warnings" ON)
 option(CHARGEFW_ENABLE_ASAN "Enable AddressSanitizer" OFF)
@@ -93,6 +96,10 @@ if(CHARGEFW_ENABLE_UBSAN)
 endif()
 
 add_subdirectory(src)
+
+if(CHARGEFW_BUILD_PYTHON)
+  add_subdirectory(python)
+endif()
 
 if(CHARGEFW_BUILD_CLI)
   add_subdirectory(apps/chargefw)

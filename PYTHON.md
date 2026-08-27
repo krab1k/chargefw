@@ -7,8 +7,9 @@ release-level acceptance criteria in [TODO.md](TODO.md), and user instructions i
 
 ## Status
 
-No Python package, nanobind target, Python test suite, or wheel is implemented yet. The native code
-already provides the foundations the binding should use rather than duplicate:
+The Python package skeleton, optional nanobind target, and wheel build are implemented. No usable
+calculation API or toolkit adapter is implemented yet. The native code already provides the foundations
+the binding should use rather than duplicate:
 
 - owned toolkit-neutral molecules and conformers;
 - an owned assessment/calculation facade with deterministic selection and structured applicability;
@@ -19,6 +20,34 @@ already provides the foundations the binding should use rather than duplicate:
 The binding must expose the owned facade. Prepared features, parameter classifications, native method
 pointers, low-level `CalculationInput`, and non-owning spans are implementation details and are not part
 of the Python API.
+
+### Milestone 1 — package and build skeleton: complete
+
+Implemented on 2026-08-27:
+
+- `CHARGEFW_BUILD_PYTHON` defaults to `OFF`, and `CHARGEFW_PYTHON_EXECUTABLE` can select the interpreter
+  used for the binding independently of other CMake dependencies;
+- CMake finds nanobind from that interpreter and builds the private `chargefw._chargefw` extension;
+- scikit-build-core provides a PEP 517 build through `pyproject.toml`, including `uv build` support;
+- the package skeleton exposes the native version and ships `py.typed`;
+- Python-enabled installs place the ChargeFW, Gemmi, and oneTBB runtime libraries beside the extension
+  with an origin-relative runtime path; and
+- the focused import/version CTest passes while a native-only configuration builds with Python disabled.
+
+Validation performed:
+
+```text
+uv build --wheel --out-dir /tmp/kilo/chargefw-wheel
+uv pip install --python /tmp/kilo/chargefw-wheel-venv/bin/python --no-index --reinstall \
+  /tmp/kilo/chargefw-wheel/chargefw-0.1-cp314-cp314-linux_x86_64.whl
+cmake --build build/python-skeleton-system --target chargefw_python --parallel 2
+ctest --test-dir build/python-skeleton-system -R test_chargefw_python_import --output-on-failure
+cmake --build build/native-only-skeleton --target chargefw_core --parallel 2
+```
+
+The wheel smoke test currently covers CPython 3.14 on Linux x86-64 only. Runtime NumPy/Gemmi metadata,
+parameter resources, molecule bindings, calculation bindings, and clean-install calculation tests remain
+for later milestones.
 
 ## Product scope
 
@@ -248,6 +277,25 @@ and passes that explicit directory to the native loader. It does not use an envi
 current working directory. Native-only installation continues to use the existing library-relative
 discovery mechanism.
 
+For local iteration, the scikit-build-core build directory is persistent and keyed by the wheel tag
+(`build/python/{wheel_tag}`). CMake and FetchContent can therefore reuse the configured native core and
+dependency build for repeated builds of the same interpreter/platform instead of rebuilding the unchanged
+core in a temporary directory. A source change still causes the normal CMake dependency rebuild when
+needed; a clean rebuild can use `-Ccmake.fresh=true` or remove the corresponding ignored build directory.
+
+Typical low-output local commands are:
+
+```text
+uv build --quiet --wheel
+uv pip install --link-mode=copy --reinstall dist/chargefw-*.whl
+```
+
+The `uv pip` hard-link warning is an installer warning, not a ChargeFW or wheel correctness problem. uv
+normally hard-links packages from its cache into the target environment. If the cache and environment are
+on different filesystems, hard-linking is impossible and uv safely falls back to copying. Use
+`--link-mode=copy` for a deliberate warning-free copy, or set `UV_LINK_MODE=copy` for the shell/project
+workflow. This affects installation speed and disk usage only, not the built wheel.
+
 Start with a declared Linux x86-64 CPython matrix that the existing native toolchain can support; the
 implementation milestone must record exact CPython and manylinux tags after a wheel-toolchain spike.
 Do not claim macOS, Windows, musllinux, PyPy, or additional architectures until clean-install and native
@@ -288,8 +336,8 @@ editable install and a native build with `CHARGEFW_BUILD_PYTHON=OFF` and no Pyth
 
 Each milestone should leave one usable vertical slice and update this status section when complete.
 
-1. **Package and build skeleton** — add the optional CMake target, private extension, Python package,
-   type marker, and focused import/version test; prove the native-only build is unchanged.
+1. **Complete — package and build skeleton** — add the optional CMake target, private extension, Python
+   package, type marker, and focused import/version test; prove the native-only build is unchanged.
 2. **Owned array model** — implement molecule/collection construction, strict validation, source
    metadata, ownership tests, and conversion to native `core` values.
 3. **Calculation vertical slice** — bind `Calculator`, bundled parameter resources, options,
