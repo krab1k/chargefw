@@ -7,9 +7,11 @@ release-level acceptance criteria in [TODO.md](TODO.md), and user instructions i
 
 ## Status
 
-The Python package skeleton, optional nanobind target, and owned array model are implemented. The
-calculation vertical slice is in progress and no toolkit adapter is implemented yet. The native code
-already provides the foundations the binding should use rather than duplicate:
+The Python package skeleton, optional nanobind target, owned array model, and calculation vertical
+slice are implemented. The bindings are organized by the same domain boundaries as the native library,
+and enum-valued policy and report fields use nanobind-backed Python enums. No toolkit adapter is
+implemented yet. The native code already provides the foundations the binding should use rather than
+duplicate:
 
 - owned toolkit-neutral molecules and conformers;
 - an owned assessment/calculation facade with deterministic selection and structured applicability;
@@ -81,7 +83,7 @@ passed. The next milestone can consume the private native objects through the ow
 
 ### Milestone 3 — calculation vertical slice: complete
 
-Implemented so far on 2026-08-27:
+Implemented on 2026-08-27:
 
 - `CalculationOptions` validates application policy and preserves method-scoped option overrides;
 - `Calculator` loads the bundled parameter catalog from package resources and accepts a molecule,
@@ -93,11 +95,15 @@ Implemented so far on 2026-08-27:
 - `CalculationResult` exposes status, source-mapped owned `float64` C-contiguous assignments, reports,
   requested/effective provenance, execution issues, failure text, and timings; and
 - no-plan, numerical-failure, cancellation, and invalid-request exception/result boundaries are wired
-  through typed Python exceptions and result statuses.
+  through typed Python exceptions and result statuses;
+- the native binding is split into `core`, `methods`, `parameters`, and `calculation` registration units,
+  while public Python modules provide the corresponding high-level value API; and
+- execution selection, effective execution mode, charge correction, status, availability, and issue
+  kinds use native enum types rather than binding-local strings.
 
-The public report and provenance values are currently copied Python dictionaries/lists so they remain
-valid after native assessment ownership is consumed. Their shape is covered by the focused calculation
-tests and can be refined by a later compatibility review without exposing native pointers.
+Public report and provenance values are immutable Python dataclasses containing tuples, read-only
+mappings, and native enum values. They remain valid after native assessment ownership is consumed and
+do not expose prepared features, classifications, registry pointers, or other native internals.
 
 Validation added for this milestone:
 
@@ -108,6 +114,10 @@ uv build --quiet --wheel --out-dir /tmp/kilo/chargefw-m3-wheel
 uv pip install --python /tmp/kilo/chargefw-m3-venv/bin/python --no-index --no-deps --reinstall \
   /tmp/kilo/chargefw-m3-wheel/chargefw-0.1-cp314-cp314-linux_x86_64.whl
 ```
+
+The binding-structure and enum refinement was additionally validated with the focused Python suite,
+the complete 62-test `gcc-debug` native suite, a release wheel build, and an installed-wheel calculation
+using the domain modules and enum-valued policy API.
 
 The installed-wheel calculation smoke test ran from `/tmp` and succeeded. The offline environment did
 not contain a NumPy wheel, so installation used `--no-deps` in a system-site-packages environment;
@@ -134,7 +144,12 @@ API. Toolkit adapters translate existing toolkit objects; they must not silently
 
 ```text
 chargefw/
-  __init__.py              Stable high-level API and version
+  __init__.py              Stable convenience re-exports and version
+  core.py                  Molecule ownership and source identity
+  calculation.py           Policy, assessment, execution, reports, and failures
+  charges.py               Source-mapped charge assignments
+  methods.py               Applicability and execution report values
+  parameters.py            Parameter loading and descriptors (milestone 4)
   _chargefw.*              Private nanobind extension
   _data/parameters/*.json  Bundled parameter resources
   adapters/
@@ -204,7 +219,10 @@ molecule = chargefw.Molecule(
 calculator = chargefw.Calculator()
 result = calculator.calculate(
     molecule,
-    chargefw.CalculationOptions(method="eem", execution="full"),
+    chargefw.CalculationOptions(
+        method="eem",
+        execution=chargefw.ExecutionSelectionKind.FULL,
+    ),
 )
 result.raise_for_status()
 charges = result.assignments[0].values
@@ -216,7 +234,7 @@ charges = result.assignments[0].values
 - method-scoped option overrides as
   `Mapping[str, Mapping[str, bool | int | float | str]]`;
 - permissive parameter typing;
-- execution selection (`"auto"`, `"full"`, `"cutoff"`, or `"cover"`), radius, and correction;
+- execution selection as `ExecutionSelectionKind`, radius, and optional `ChargeCorrectionPolicy`;
 - cutoff and cover atom thresholds, where `None` means unlimited; and
 - maximum calculation threads, where zero delegates to oneTBB.
 
@@ -246,10 +264,11 @@ the calling Python thread; exceptions must never escape into oneTBB workers.
 
 ## Results, mapping, and failures
 
-`CalculationResult` is an owned value. It exposes:
+`CalculationResult` is an owned value. Reports, policies, issues, provenance, and timings are immutable
+typed Python values rather than nested dictionaries. It exposes:
 
-- status (`success`, `invalid_input_or_request`, `no_executable_plan`, `numerical_failure`, or
-  `cancelled`);
+- status as `ExecutionStatus` (`SUCCESS`, `INVALID_INPUT_OR_REQUEST`, `NO_EXECUTABLE_PLAN`,
+  `NUMERICAL_FAILURE`, or `CANCELLED`);
 - source-ordered assignments;
 - applicable and rejected candidate reports with structured issue kinds and indices;
 - requested and effective method/options/execution provenance;
@@ -263,11 +282,11 @@ return one per molecule with no conformer identity. Returning Python-owned array
 when the native result or assessment is released.
 
 Construction and request-programming errors use normal Python exceptions: `TypeError` for incompatible
-Python values, `ValueError` for invalid arrays/options/IDs, and `IndexError` only for explicit sequence
-indexing. Scientific inapplicability, numerical failure, and cancellation remain result statuses so
-their reports are not lost. `result.raise_for_status()` provides typed ChargeFW exceptions carrying the
-same result for callers that prefer exception flow. Native exception text must retain molecule,
-conformer, and method context.
+Python values, including strings supplied for enum-valued fields; `ValueError` for invalid
+arrays/options/IDs; and `IndexError` only for explicit sequence indexing. Scientific inapplicability,
+numerical failure, and cancellation remain result statuses so their reports are not lost.
+`result.raise_for_status()` provides typed ChargeFW exceptions carrying the same result for callers that
+prefer exception flow. Native exception text must retain molecule, conformer, and method context.
 
 ## Adapter boundary
 

@@ -17,10 +17,29 @@ set(CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY "${PROJECT_BINARY_DIR}/python/charge
 file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}")
 file(COPY "${PROJECT_SOURCE_DIR}/data/parameters"
      DESTINATION "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_data")
-configure_file(chargefw/__init__.py "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/__init__.py" COPYONLY)
+set(CHARGEFW_PYTHON_PACKAGE_SOURCES
+    __init__.py
+    _arrays.py
+    _resources.py
+    calculation.py
+    charges.py
+    core.py
+    methods.py
+    parameters.py
+)
+foreach(package_source IN LISTS CHARGEFW_PYTHON_PACKAGE_SOURCES)
+    configure_file("chargefw/${package_source}"
+                   "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/${package_source}" COPYONLY)
+endforeach()
 configure_file(chargefw/py.typed "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/py.typed" COPYONLY)
 
-nanobind_add_module(chargefw_python NB_STATIC src/module.cpp)
+nanobind_add_module(chargefw_python NB_STATIC
+    src/calculation.cpp
+    src/core.cpp
+    src/methods.cpp
+    src/module.cpp
+    src/parameters.cpp
+)
 set_target_properties(chargefw_python PROPERTIES
     OUTPUT_NAME _chargefw
     LIBRARY_OUTPUT_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}"

@@ -412,8 +412,9 @@ The CLI and test suite default to off when ChargeFW is configured as a subprojec
 Installation provides the library, public headers, CLI, generated config header, bundled parameter JSON,
 and an exported `chargefw::core` CMake target. Default installations include nlohmann/json and Gemmi
 development packages and the private oneTBB runtime; private build-only dependencies and test tooling are
-excluded. A Python package/build skeleton can produce a local wheel, but usable Python calculation
-bindings, repository CI workflows, a Conda recipe, and a container image do not exist yet.
+excluded. The optional Python package provides owned NumPy molecule values, typed assessment and
+calculation results, and a nanobind-backed calculation facade and enums. Repository CI workflows, a
+Conda recipe, a container image, toolkit adapters, and qualified release wheels do not exist yet.
 
 Default parameter discovery resolves installed JSON relative to the loaded ChargeFW library, so an
 installed prefix remains usable after it is moved. Build-tree CLI execution is unsupported; CLI tests
@@ -426,16 +427,16 @@ runs a custom `lib/chargefw` plus `resources` installation layout.
 The intended front ends converge on the same owned application facade:
 
 ```text
-native files / C++ / future NumPy and RDKit converters
+native files / C++ / NumPy / future toolkit converters
                          |
                          v
 toolkit-neutral molecule data -> native assessment/calculation -> charges + mapping + provenance
 ```
 
-The first Python API should use NumPy-style arrays and nanobind. Its detailed public contract, required
-Gemmi integration, optional toolkit boundaries, packaging design, and phased delivery plan are maintained
-in [PYTHON.md](PYTHON.md). Packaging work must not make RDKit or Biopython a dependency of the core
-library or base wheel.
+The Python API uses NumPy arrays, immutable domain values, and a private nanobind extension organized
+along native library boundaries. Its detailed public contract, required Gemmi integration, optional
+toolkit boundaries, packaging design, and phased delivery plan are maintained in [PYTHON.md](PYTHON.md).
+Packaging work must not make RDKit or Biopython a dependency of the core library or base wheel.
 
 ## Scientific and compatibility principles
 
