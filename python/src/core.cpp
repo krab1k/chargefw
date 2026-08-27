@@ -90,9 +90,10 @@ auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_char
 }
 
 auto make_collection(nb::sequence molecules, std::string name) -> core::MoleculeCollection {
+    const auto molecule_count = nb::len(molecules);
     std::vector<core::Molecule> native_molecules;
-    native_molecules.reserve(nb::len(molecules));
-    for (std::size_t index = 0; index < nb::len(molecules); ++index) {
+    native_molecules.reserve(molecule_count);
+    for (std::size_t index = 0; index < molecule_count; ++index) {
         native_molecules.emplace_back(nb::cast<const core::Molecule&>(molecules[index]));
     }
     return core::MoleculeCollection{std::move(native_molecules), std::move(name)};
