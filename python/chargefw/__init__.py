@@ -30,8 +30,18 @@ from .methods import (
     ExecutionAvailability,
     ExecutionIssue,
     ExecutionIssueKind,
+    MethodDescriptor,
+    MethodOptionDescriptor,
+    MethodOptionType,
     PrerequisiteIssue,
     PrerequisiteIssueKind,
+    method_descriptors,
+)
+from .parameters import (
+    ParameterSet,
+    ParameterSetDescriptor,
+    load_parameter_set,
+    load_parameter_sets,
 )
 
 __version__ = _native_version()
@@ -68,4 +78,12 @@ __all__ = [
     "EffectiveCalculation",
     "CalculationTimings",
     "AssessmentReport",
+    "MethodOptionType",
+    "MethodOptionDescriptor",
+    "MethodDescriptor",
+    "method_descriptors",
+    "ParameterSet",
+    "ParameterSetDescriptor",
+    "load_parameter_set",
+    "load_parameter_sets",
 ]

@@ -44,9 +44,19 @@ assert chargefw.__all__ == [
     "EffectiveCalculation",
     "CalculationTimings",
     "AssessmentReport",
+    "MethodOptionType",
+    "MethodOptionDescriptor",
+    "MethodDescriptor",
+    "method_descriptors",
+    "ParameterSet",
+    "ParameterSetDescriptor",
+    "load_parameter_set",
+    "load_parameter_sets",
 ]
 assert chargefw.Molecule is chargefw.core.Molecule
 assert chargefw.CalculationOptions is chargefw.calculation.CalculationOptions
 assert chargefw.ExecutionIssue is chargefw.methods.ExecutionIssue
 assert chargefw.ExecutionMode.__module__ == "chargefw.calculation"
 assert chargefw.PrerequisiteIssueKind.__module__ == "chargefw.methods"
+assert chargefw.MethodOptionType.__module__ == "chargefw.methods"
+assert chargefw.ParameterSet is chargefw.parameters.ParameterSet

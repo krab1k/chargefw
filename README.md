@@ -5,8 +5,8 @@ modern successor to ChargeFW2, the engine used by Atomic Charge Calculator III (
 
 The repository includes a toolkit-neutral C++ library, 22 built-in methods, parameter loading and
 classification, applicability/execution planning, full and parallel reduced calculation, molecular-file
-adapters, and a focused CLI. It is not yet a production ACC III backend or usable Python calculation
-package, and is not a general SMILES/chemistry-preparation tool.
+adapters, a focused CLI, and an optional Python calculation package. It is not yet a production ACC III
+backend or a qualified Python release, and is not a general SMILES/chemistry-preparation tool.
 
 A bounded ChargeFW2/publication audit found numerical parity for the supported finite-molecule variants.
 Periodic, Ewald, and other unsupported publication branches remain out of scope; reduced modes are explicit

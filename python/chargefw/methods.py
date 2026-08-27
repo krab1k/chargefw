@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import methods as _native_methods
@@ -11,7 +12,13 @@ PrerequisiteIssueKind = _native_methods.PrerequisiteIssueKind
 ExecutionAvailability = _native_methods.ExecutionAvailability
 ExecutionIssueKind = _native_methods.ExecutionIssueKind
 ExecutionMode = _native_calculation.ExecutionMode
-for _enum in (PrerequisiteIssueKind, ExecutionAvailability, ExecutionIssueKind):
+MethodOptionType = _native_methods.MethodOptionType
+for _enum in (
+    PrerequisiteIssueKind,
+    ExecutionAvailability,
+    ExecutionIssueKind,
+    MethodOptionType,
+):
     _enum.__module__ = __name__
 
 
@@ -37,3 +44,62 @@ class ExecutionAssessment:
     mode: ExecutionMode
     availability: ExecutionAvailability
     issues: tuple[ExecutionIssue, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class MethodOptionDescriptor:
+    id: str
+    description: str
+    type: MethodOptionType
+    default: bool | int | float | str
+    choices: tuple[bool | int | float | str, ...]
+    minimum: bool | int | float | str | None
+    minimum_inclusive: bool
+    maximum: bool | int | float | str | None
+    maximum_inclusive: bool
+
+
+@dataclass(frozen=True, slots=True)
+class MethodDescriptor:
+    id: str
+    name: str
+    full_name: str
+    publication: str | None
+    priority: int
+    requires_coordinates: bool
+    supports_cutoff: bool
+    supports_cover: bool
+    options: tuple[MethodOptionDescriptor, ...]
+
+
+def _method_descriptor(value: dict[str, Any]) -> MethodDescriptor:
+    return MethodDescriptor(
+        id=value["id"],
+        name=value["name"],
+        full_name=value["full_name"],
+        publication=value["publication"],
+        priority=value["priority"],
+        requires_coordinates=value["requires_coordinates"],
+        supports_cutoff=value["supports_cutoff"],
+        supports_cover=value["supports_cover"],
+        options=tuple(
+            MethodOptionDescriptor(
+                id=option["id"],
+                description=option["description"],
+                type=option["type"],
+                default=option["default"],
+                choices=tuple(option["choices"]),
+                minimum=option["minimum"],
+                minimum_inclusive=option["minimum_inclusive"],
+                maximum=option["maximum"],
+                maximum_inclusive=option["maximum_inclusive"],
+            )
+            for option in value["options"]
+        ),
+    )
+
+
+def method_descriptors() -> tuple[MethodDescriptor, ...]:
+    """Return value-only descriptors for all built-in methods."""
+
+    return tuple(_method_descriptor(value) for value in _native_methods._method_descriptors())

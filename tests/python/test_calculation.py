@@ -1,6 +1,7 @@
 """Focused calculation facade and result-model checks."""
 
 import numpy as np
+from pathlib import Path
 
 import chargefw
 
@@ -159,3 +160,31 @@ except TypeError:
     pass
 else:
     raise AssertionError("charge correction strings must not be accepted")
+
+methods = calculator.methods
+eem = next(method for method in methods if method.id == "eem")
+assert eem.requires_coordinates
+assert eem.supports_cutoff
+assert eem.supports_cover
+assert isinstance(eem.options, tuple)
+assert all(option.type is chargefw.MethodOptionType.INTEGER for option in eem.options)
+assert chargefw.method_descriptors() == methods
+
+parameter_directory = Path(chargefw.__file__).parent / "_data" / "parameters"
+eem_path = next(parameter_directory.glob("EEM_Ouy2009.json"))
+parameter_set = chargefw.load_parameter_set(eem_path)
+assert parameter_set.descriptor.method_id == "eem"
+assert parameter_set.id == parameter_set.descriptor.id
+loaded_sets = chargefw.load_parameter_sets(parameter_directory)
+assert parameter_set.id in {value.id for value in loaded_sets}
+explicit_calculator = chargefw.Calculator([parameter_set])
+assert explicit_calculator.parameter_sets == (parameter_set.descriptor,)
+explicit_result = explicit_calculator.calculate(water(), options)
+assert explicit_result.status is chargefw.ExecutionStatus.SUCCESS
+assert explicit_result.effective.parameter_set_id == parameter_set.id
+try:
+    chargefw.Calculator([])
+except ValueError:
+    pass
+else:
+    raise AssertionError("an explicit parameter catalog must not be empty")

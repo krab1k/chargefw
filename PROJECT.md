@@ -25,8 +25,8 @@ The repository currently provides:
 - native MOL/SDF/MOL2/JSON and Gemmi-backed PDB/mmCIF input;
 - JSON, SDF, MOL2, and mmCIF charge output through a focused CLI.
 
-Independent broad-accuracy and reduced-mode validation, relocatable native packaging, Python bindings,
-and packaged distribution remain unfinished.
+Independent broad-accuracy and reduced-mode validation, relocatable native packaging, Python toolkit
+adapters, and qualified packaged distribution remain unfinished.
 
 ## Architecture
 
@@ -413,8 +413,9 @@ Installation provides the library, public headers, CLI, generated config header,
 and an exported `chargefw::core` CMake target. Default installations include nlohmann/json and Gemmi
 development packages and the private oneTBB runtime; private build-only dependencies and test tooling are
 excluded. The optional Python package provides owned NumPy molecule values, typed assessment and
-calculation results, and a nanobind-backed calculation facade and enums. Repository CI workflows, a
-Conda recipe, a container image, toolkit adapters, and qualified release wheels do not exist yet.
+calculation results, immutable method/parameter descriptors, explicit external parameter loading, and a
+nanobind-backed calculation facade and enums. Repository CI workflows, a Conda recipe, a container image,
+toolkit adapters, and qualified release wheels do not exist yet.
 
 Default parameter discovery resolves installed JSON relative to the loaded ChargeFW library, so an
 installed prefix remains usable after it is moved. Build-tree CLI execution is unsupported; CLI tests

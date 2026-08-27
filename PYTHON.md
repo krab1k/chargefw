@@ -7,11 +7,11 @@ release-level acceptance criteria in [TODO.md](TODO.md), and user instructions i
 
 ## Status
 
-The Python package skeleton, optional nanobind target, owned array model, and calculation vertical
-slice are implemented. The bindings are organized by the same domain boundaries as the native library,
-and enum-valued policy and report fields use nanobind-backed Python enums. No toolkit adapter is
-implemented yet. The native code already provides the foundations the binding should use rather than
-duplicate:
+The Python package skeleton, optional nanobind target, owned array model, calculation vertical slice,
+and value-only catalog introspection are implemented. The bindings are organized by the same domain
+boundaries as the native library, and enum-valued policy and report fields use nanobind-backed Python
+enums. No toolkit adapter is implemented yet. The native code already provides the foundations the
+binding should use rather than duplicate:
 
 - owned toolkit-neutral molecules and conformers;
 - an owned assessment/calculation facade with deterministic selection and structured applicability;
@@ -122,6 +122,34 @@ using the domain modules and enum-valued policy API.
 The installed-wheel calculation smoke test ran from `/tmp` and succeeded. The offline environment did
 not contain a NumPy wheel, so installation used `--no-deps` in a system-site-packages environment;
 `pyproject.toml` now declares `numpy>=1.26` for normal online installation.
+
+### Milestone 4 — introspection and external parameters: complete
+
+Implemented on 2026-08-27:
+
+- `method_descriptors()` and `Calculator.methods` expose immutable value-only method IDs, names,
+  publications, priorities, coordinate requirements, cutoff/cover capabilities, and complete option
+  schemas, including native-backed option type enums;
+- `ParameterSetDescriptor` exposes immutable parameter-set IDs, method IDs, names, publications, notes,
+  and priorities;
+- `load_parameter_set()` and `load_parameter_sets()` load immutable external JSON parameter values through
+  the native parser without exposing classifications, parameter tables, or native method objects; and
+- `Calculator(parameter_sets)` accepts an explicit non-empty, unique-ID sequence of loaded parameter sets
+  which replaces the bundled catalog, while `Calculator.parameter_sets` exposes its value-only catalog.
+
+Validation performed:
+
+```text
+cmake --build build/python-skeleton-system --target chargefw_python --parallel 2
+ctest --test-dir build/python-skeleton-system -R 'test_chargefw_python_(import|molecule|calculation)' --output-on-failure
+python3 -m compileall -q python/chargefw tests/python/test_import.py tests/python/test_calculation.py
+clang-format --dry-run --Werror python/src/native_parameter_catalog.h python/src/parameters.cpp python/src/methods.cpp
+git diff --check
+```
+
+The complete configured suite passed all ChargeFW tests, including the focused binding tests. Two existing
+test-configuration failures remain unrelated to this milestone: Gemmi's unbuilt `cpptest` executable and
+the custom-install-layout test's missing configured CLI11 source directory.
 
 ## Product scope
 
@@ -425,8 +453,8 @@ Each milestone should leave one usable vertical slice and update this status sec
    source metadata, ownership tests, and conversion to native `core` values.
 3. **Complete — calculation vertical slice** — bind `Calculator`, bundled parameter resources, options,
    assess/calculate, NumPy assignments, reports, provenance, failures, and all-conformer mappings.
-4. **Introspection and external parameters** — expose value-only method/parameter descriptors and
-   explicit immutable parameter loading needed by ACC III without exposing classification internals.
+4. **Complete — introspection and external parameters** — expose value-only method/parameter descriptors
+   and explicit immutable parameter loading needed by ACC III without exposing classification internals.
 5. **Gemmi integration** — require the tested upstream Python package, implement serialized adapter
    entry points, and verify parity with native PDB/mmCIF import semantics.
 6. **Wheel qualification** — build the declared initial matrix and run clean-environment relocation,

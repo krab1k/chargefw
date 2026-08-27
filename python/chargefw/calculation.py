@@ -6,7 +6,6 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 import numbers
 from operator import index as as_index
-from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
@@ -21,7 +20,10 @@ from .methods import (
     ExecutionAssessment,
     ExecutionIssue,
     PrerequisiteIssue,
+    MethodDescriptor,
+    method_descriptors,
 )
+from .parameters import ParameterSet, ParameterSetDescriptor, _descriptor
 
 ExecutionSelectionKind = _native_calculation.ExecutionSelectionKind
 ExecutionMode = _native_calculation.ExecutionMode
@@ -486,17 +488,48 @@ class Assessment:
 
 
 class Calculator:
-    """Synchronous calculator using the bundled immutable parameter catalog."""
+    """Synchronous calculator using bundled or explicit immutable parameter sets."""
 
-    __slots__ = ("_catalog",)
+    __slots__ = ("_catalog", "_method_descriptors", "_parameter_set_descriptors")
 
-    def __init__(self, parameter_directory: str | Path | None = None) -> None:
-        directory = (
-            default_parameter_directory() if parameter_directory is None else parameter_directory
+    def __init__(self, parameter_sets: Iterable[ParameterSet] | None = None) -> None:
+        if parameter_sets is None:
+            self._catalog = _native_parameters._load_parameter_catalog(
+                str(default_parameter_directory())
+            )
+        else:
+            try:
+                values = tuple(parameter_sets)
+            except TypeError as error:
+                raise TypeError(
+                    "parameter_sets must be an iterable of ParameterSet values or None"
+                ) from error
+            if not values:
+                raise ValueError("parameter_sets must not be empty")
+            if not all(isinstance(value, ParameterSet) for value in values):
+                raise TypeError("parameter_sets must contain only ParameterSet values")
+            ids = [value.id for value in values]
+            if len(ids) != len(set(ids)):
+                raise ValueError("parameter_sets must have unique IDs")
+            self._catalog = _native_parameters._load_parameter_catalog_from_sets(
+                [value._native for value in values]
+            )
+        self._method_descriptors = method_descriptors()
+        self._parameter_set_descriptors = tuple(
+            _descriptor(value) for value in self._catalog._descriptors()
         )
-        if not isinstance(directory, (str, Path)):
-            raise TypeError("parameter_directory must be a path or None")
-        self._catalog = _native_parameters._load_parameter_catalog(str(directory))
+
+    @property
+    def methods(self) -> tuple[MethodDescriptor, ...]:
+        """Value-only descriptors for the built-in method registry."""
+
+        return self._method_descriptors
+
+    @property
+    def parameter_sets(self) -> tuple[ParameterSetDescriptor, ...]:
+        """Value-only descriptors for this calculator's parameter catalog."""
+
+        return self._parameter_set_descriptors
 
     def assess(
         self,
