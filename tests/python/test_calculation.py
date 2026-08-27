@@ -162,6 +162,27 @@ except TypeError:
 else:
     raise AssertionError("charge correction strings must not be accepted")
 
+try:
+    chargefw.CalculationOptions(max_threads=True)
+except TypeError:
+    pass
+else:
+    raise AssertionError("boolean thread limits must not be accepted")
+
+try:
+    chargefw.CalculationOptions(cutoff_atom_threshold=False)
+except TypeError:
+    pass
+else:
+    raise AssertionError("boolean atom thresholds must not be accepted")
+
+try:
+    chargefw.CalculationOptions(cover_atom_threshold=np.iinfo(np.uintp).max + 1)
+except ValueError:
+    pass
+else:
+    raise AssertionError("atom thresholds must fit the native size type")
+
 methods = calculator.methods
 eem = next(method for method in methods if method.id == "eem")
 assert eem.requires_coordinates

@@ -41,12 +41,16 @@ MethodOptionValue = bool | int | float | str
 
 
 def _normalized_nonnegative_integer(value: Any, field_name: str) -> int:
+    if isinstance(value, (bool, np.bool_)):
+        raise TypeError(f"{field_name} must be an integer")
     try:
         result = as_index(value)
     except TypeError as error:
         raise TypeError(f"{field_name} must be an integer") from error
     if result < 0:
         raise ValueError(f"{field_name} must be non-negative")
+    if result > np.iinfo(np.uintp).max:
+        raise ValueError(f"{field_name} is outside the native size range")
     return result
 
 
