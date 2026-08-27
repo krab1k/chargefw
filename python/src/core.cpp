@@ -9,6 +9,7 @@
 
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/string_view.h>
 
 #include <cstddef>
 #include <cstdint>

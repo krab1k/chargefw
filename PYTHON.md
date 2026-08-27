@@ -191,6 +191,15 @@ Only documented names re-exported from `chargefw` and `chargefw.adapters` are pu
 private so native organization and binding implementation can change without becoming a Python
 compatibility promise. Type annotations and generated/native stubs are shipped with the wheel.
 
+### Private native stubs
+
+`py.typed` is intentionally empty: it is the PEP 561 marker for the complete typed package. The checked-in
+`python/chargefw/_chargefw/*.pyi` declarations describe the private nanobind extension and its native
+submodules. Whenever a binding registration, its argument/return types, or a native enum changes under
+`python/src/`, update the corresponding stub in the same change. Keep these stubs implementation-focused;
+the public type contract belongs in the ordinary Python modules. CMake copies the declarations into the
+build-tree package and installs them in wheels, while the import smoke test verifies their presence.
+
 ## Molecule contract
 
 `chargefw.Molecule` is an immutable, owned Python-facing value. Its primary constructor accepts:

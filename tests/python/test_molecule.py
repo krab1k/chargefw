@@ -52,6 +52,7 @@ assert molecule.source_conformer_ids == tuple(conformer_ids)
 assert molecule._native.atom_count == 4
 assert molecule._native.bond_count == 3
 assert molecule._native.conformer_count == 2
+assert molecule._native.name == "water-like"
 
 readonly = molecule.atomic_numbers
 raises(ValueError, lambda: readonly.__setitem__(0, 2))
@@ -63,6 +64,7 @@ assert collection[0] is molecule
 assert collection.molecules == (molecule,)
 assert collection.name == "fixture"
 assert collection._native.size == 1
+assert collection._native.name == "fixture"
 
 no_coordinates = chargefw.Molecule([1])
 assert no_coordinates.coordinates.shape == (0, 1, 3)

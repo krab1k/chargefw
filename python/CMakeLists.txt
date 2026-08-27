@@ -17,6 +17,8 @@ set(CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY "${PROJECT_BINARY_DIR}/python/charge
 file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}")
 file(COPY "${PROJECT_SOURCE_DIR}/data/parameters"
      DESTINATION "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_data")
+file(COPY "${PROJECT_SOURCE_DIR}/python/chargefw/_chargefw"
+     DESTINATION "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}")
 set(CHARGEFW_PYTHON_PACKAGE_SOURCES
     __init__.py
     _arrays.py
@@ -56,6 +58,10 @@ install(TARGETS chargefw_python
     LIBRARY DESTINATION chargefw COMPONENT python
     RUNTIME DESTINATION chargefw COMPONENT python
 )
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/python/chargefw/_chargefw"
+        DESTINATION chargefw
+        COMPONENT python
+        FILES_MATCHING PATTERN "*.pyi")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/data/parameters/"
         DESTINATION chargefw/_data/parameters
         COMPONENT python

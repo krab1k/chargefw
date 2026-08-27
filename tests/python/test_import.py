@@ -1,6 +1,7 @@
 """Focused smoke test for the package skeleton."""
 
 import os
+from pathlib import Path
 
 import chargefw
 import chargefw.calculation
@@ -64,6 +65,7 @@ def test_import_surface() -> None:
     assert chargefw.PrerequisiteIssueKind.__module__ == "chargefw.methods"
     assert chargefw.MethodOptionType.__module__ == "chargefw.methods"
     assert chargefw.ParameterSet is chargefw.parameters.ParameterSet
+    assert (Path(chargefw.__file__).parent / "_chargefw" / "__init__.pyi").is_file()
 
 
 if __name__ == "__main__":
