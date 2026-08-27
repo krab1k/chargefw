@@ -24,6 +24,8 @@ class SourceIdentity:
     def __post_init__(self) -> None:
         if not isinstance(self.source, str):
             raise TypeError("source must be a string")
+        if isinstance(self.record_index, (bool, np.bool_)):
+            raise TypeError("record_index must be an integer")
         try:
             normalized_record_index = as_index(self.record_index)
         except TypeError as error:
@@ -132,18 +134,7 @@ class Molecule:
         else:
             if source_name is not None and not isinstance(source_name, str):
                 raise TypeError("source_name must be a string or None")
-            try:
-                normalized_record_index = as_index(record_index)
-            except TypeError as error:
-                raise TypeError("record_index must be an integer") from error
-            if normalized_record_index < 0:
-                raise ValueError("record_index must be non-negative")
-            if record_id is not None:
-                try:
-                    hash(record_id)
-                except TypeError as error:
-                    raise ValueError("record_id must be hashable") from error
-            source_identity = SourceIdentity(source_name or "", normalized_record_index, record_id)
+            source_identity = SourceIdentity(source_name or "", record_index, record_id)
 
         if atom_ids is not None and source_atom_ids is not None:
             raise ValueError("atom_ids and source_atom_ids are aliases and cannot both be supplied")
