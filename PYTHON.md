@@ -46,8 +46,38 @@ cmake --build build/native-only-skeleton --target chargefw_core --parallel 2
 ```
 
 The wheel smoke test currently covers CPython 3.14 on Linux x86-64 only. Runtime NumPy/Gemmi metadata,
-parameter resources, molecule bindings, calculation bindings, and clean-install calculation tests remain
-for later milestones.
+parameter resources, calculation bindings, and clean-install calculation tests remain for later milestones.
+
+### Milestone 2 — owned array model: complete
+
+Implemented on 2026-08-27:
+
+- `chargefw.Molecule` is an immutable Python value object accepting atomic numbers, formal charges,
+  indexed bonds, one or more coordinate conformers, names, source identity, and source atom/conformer IDs;
+- inputs are copied into normalized C-contiguous `int64`/`float64` arrays, with read-only copies returned
+  by public array properties so caller mutation or lifetime cannot alter a molecule;
+- validation rejects incorrect ranks/shapes, non-integral or overflowing integer values, unsupported
+  atomic numbers and bond orders, self/duplicate/out-of-range bonds, non-finite coordinates, invalid
+  names, negative record indices, and unhashable source IDs;
+- omitted atom and conformer IDs default to source-order indices, and `(0, N, 3)` coordinates represent no
+  conformers while `(N, 3)` represents one conformer;
+- `MoleculeCollection` is an immutable source-ordered sequence with a collection name; and
+- the Python owner converts normalized data once to private nanobind-backed native `core::Molecule` and
+  `core::MoleculeCollection` values without adding Python metadata to the toolkit-neutral core.
+
+Validation performed:
+
+```text
+cmake --build build/python-skeleton-system --target chargefw_python --parallel 2
+ctest --test-dir build/python-skeleton-system -R 'test_chargefw_python_(import|molecule)' --output-on-failure
+python3 -m compileall -q python/chargefw tests/python/test_molecule.py tests/python/test_import.py
+clang-format --dry-run --Werror python/src/module.cpp
+git diff --check
+```
+
+The complete CTest invocation in this build directory was not a valid full-suite result because many
+pre-existing native test executables were configured but had not been built; both focused Python tests
+passed. The next milestone can consume the private native objects through the owned calculation facade.
 
 ## Product scope
 
@@ -338,8 +368,8 @@ Each milestone should leave one usable vertical slice and update this status sec
 
 1. **Complete — package and build skeleton** — add the optional CMake target, private extension, Python
    package, type marker, and focused import/version test; prove the native-only build is unchanged.
-2. **Owned array model** — implement molecule/collection construction, strict validation, source
-   metadata, ownership tests, and conversion to native `core` values.
+2. **Complete — owned array model** — implement molecule/collection construction, strict validation,
+   source metadata, ownership tests, and conversion to native `core` values.
 3. **Calculation vertical slice** — bind `Calculator`, bundled parameter resources, options,
    assess/calculate, NumPy assignments, reports, provenance, failures, and all-conformer mappings.
 4. **Introspection and external parameters** — expose value-only method/parameter descriptors and
