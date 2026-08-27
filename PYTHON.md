@@ -388,10 +388,10 @@ native builds. When enabled it:
 Enabling Python must not change the C++ API, CLI, native install contents, or dependency behavior for a
 normal build. Do not fetch Python or nanobind when the option is off.
 
-Development CMake presets pin `CHARGEFW_PYTHON_EXECUTABLE` to `/usr/bin/python3`. GCC and Clang debug
-presets enable the bindings and their CTest suite; release presets leave bindings off. Wheel builds
-intentionally do not use those presets: the PEP 517 frontend selects the target interpreter, which is
-necessary to build a wheel for each supported CPython version.
+Development CMake presets pin `CHARGEFW_PYTHON_EXECUTABLE` to `/usr/bin/python3`. GCC and Clang debug and
+release presets enable the bindings and their CTest suite. Wheel builds intentionally do not use those
+presets: the PEP 517 frontend selects the target interpreter, which is necessary to build a wheel for each
+supported CPython version.
 
 Use `pyproject.toml` with scikit-build-core as the PEP 517 backend, nanobind as a build dependency, and
 NumPy plus the tested upstream Gemmi package as runtime dependencies. The wheel contains the extension,
@@ -461,6 +461,13 @@ Build the wheel, install it into a clean virtual environment, change to an unrel
 and verify that it can import `chargefw` and `gemmi`, discover bundled parameters without environment
 variables, calculate a fixture, preserve mappings, and load required shared libraries. Also test an
 editable install and a native build with `CHARGEFW_BUILD_PYTHON=OFF` and no Python development package.
+
+### Performance conclusion
+
+A one-time GCC release EEM comparison over matched native/Python inputs found no material binding latency:
+at 2,000 atoms, native assessment/calculation medians were 1.25/62.6 ms and Python medians were
+1.32/60.8 ms. The representative SDF corpus selected the same EEM parameter set in both facades; CLI phase
+metrics were too coarsely rounded for comparison.
 
 ## Delivery sequence
 

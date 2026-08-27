@@ -23,7 +23,6 @@
       "binaryDir": "${sourceDir}/build/gcc-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CHARGEFW_BUILD_PYTHON": "OFF",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
       }
     },
@@ -50,8 +49,9 @@
       "binaryDir": "${sourceDir}/build/clang-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CHARGEFW_BUILD_PYTHON": "OFF",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "OFF",
+        "CMAKE_CXX_COMPILER_AR": "/usr/bin/ar",
+        "CMAKE_CXX_COMPILER_RANLIB": "/usr/bin/ranlib"
       }
     },
     {
