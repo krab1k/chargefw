@@ -26,6 +26,7 @@ def water(conformers=1):
 
 
 calculator = chargefw.Calculator()
+assert chargefw.Calculator()._catalog is calculator._catalog
 options = chargefw.CalculationOptions(
     method="eem", execution=chargefw.ExecutionSelectionKind.FULL
 )

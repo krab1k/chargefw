@@ -15,16 +15,19 @@ namespace chargefw::python {
 namespace {
 
 auto make_parameter_catalog(const std::string& directory) -> NativeParameterCatalog {
+    nb::gil_scoped_release release;
     return NativeParameterCatalog{
         parameters::load_parameter_sets_json_directory(std::filesystem::path{directory})};
 }
 
 auto make_parameter_set(const std::string& path) -> NativeParameterCatalog {
+    nb::gil_scoped_release release;
     return NativeParameterCatalog{
         {parameters::load_parameter_set_json_file(std::filesystem::path{path})}};
 }
 
 auto make_parameter_sets(const std::string& directory) -> std::vector<NativeParameterCatalog> {
+    nb::gil_scoped_release release;
     auto result = std::vector<NativeParameterCatalog>{};
     for (auto& parameter_set :
          parameters::load_parameter_sets_json_directory(std::filesystem::path{directory})) {

@@ -6,6 +6,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 import numbers
 from operator import index as as_index
+from threading import Lock
 from types import MappingProxyType
 from typing import Any
 
@@ -38,6 +39,19 @@ for _enum in (
     _enum.__module__ = __name__
 
 MethodOptionValue = bool | int | float | str
+
+_bundled_parameter_catalog: Any | None = None
+_bundled_parameter_catalog_lock = Lock()
+
+
+def _default_parameter_catalog() -> Any:
+    global _bundled_parameter_catalog
+    with _bundled_parameter_catalog_lock:
+        if _bundled_parameter_catalog is None:
+            _bundled_parameter_catalog = _native_parameters._load_parameter_catalog(
+                str(default_parameter_directory())
+            )
+        return _bundled_parameter_catalog
 
 
 def _normalized_nonnegative_integer(value: Any, field_name: str) -> int:
@@ -498,9 +512,7 @@ class Calculator:
 
     def __init__(self, parameter_sets: Iterable[ParameterSet] | None = None) -> None:
         if parameter_sets is None:
-            self._catalog = _native_parameters._load_parameter_catalog(
-                str(default_parameter_directory())
-            )
+            self._catalog = _default_parameter_catalog()
         else:
             try:
                 values = tuple(parameter_sets)
