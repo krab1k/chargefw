@@ -3,6 +3,7 @@
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Thread
+from time import perf_counter, sleep
 import unittest
 from typing import Any, Callable, TypeVar, cast
 
@@ -11,6 +12,8 @@ import numpy as np
 import chargefw
 
 T = TypeVar("T")
+_GIL_OBSERVATION_DELAY_SECONDS = 0.01
+_GIL_TEST_ATOM_COUNT = 500_000
 
 
 def water(conformers: int = 1) -> chargefw.Molecule:
@@ -40,34 +43,33 @@ def formal_options() -> chargefw.CalculationOptions:
     )
 
 
-def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, int]:
+def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, bool, float]:
     started = Event()
     begin = Event()
-    stop = Event()
-    progress = [0]
+    progressed = Event()
 
-    def spin() -> None:
+    def observe() -> None:
         started.set()
         begin.wait()
-        while not stop.is_set():
-            progress[0] += 1
+        sleep(_GIL_OBSERVATION_DELAY_SECONDS)
+        progressed.set()
 
-    worker = Thread(target=spin)
+    worker = Thread(target=observe)
     worker.start()
     if not started.wait(timeout=1.0):
-        stop.set()
         worker.join(timeout=1.0)
         raise AssertionError("worker thread did not start")
     try:
         begin.set()
+        start = perf_counter()
         result = operation()
-        progress_during_operation = progress[0]
+        operation_seconds = perf_counter() - start
+        progressed_during_operation = progressed.is_set()
     finally:
-        stop.set()
         worker.join(timeout=1.0)
     if worker.is_alive():
         raise AssertionError("worker thread did not stop")
-    return result, progress_during_operation
+    return result, progressed_during_operation, operation_seconds
 
 
 class CalculationTests(unittest.TestCase):
@@ -177,19 +179,25 @@ class CalculationTests(unittest.TestCase):
 
     def test_assessment_releases_the_gil(self) -> None:
         calculator = chargefw.Calculator()
-        molecule = chargefw.Molecule([1] * 25_000)
-        assessment, progress = run_while_python_thread_progresses(
+        molecule = chargefw.Molecule([1] * _GIL_TEST_ATOM_COUNT)
+        assessment, progressed, operation_seconds = run_while_python_thread_progresses(
             lambda: calculator.assess(molecule, formal_options())
         )
         self.assertTrue(assessment.executable)
-        self.assertGreater(progress, 0)
+        self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
+        self.assertTrue(progressed)
 
     def test_execution_releases_the_gil(self) -> None:
         calculator = chargefw.Calculator()
-        assessment = calculator.assess(chargefw.Molecule([1] * 25_000), formal_options())
-        result, progress = run_while_python_thread_progresses(assessment.calculate)
+        assessment = calculator.assess(
+            chargefw.Molecule([1] * _GIL_TEST_ATOM_COUNT), formal_options()
+        )
+        result, progressed, operation_seconds = run_while_python_thread_progresses(
+            assessment.calculate
+        )
         self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
-        self.assertGreater(progress, 0)
+        self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
+        self.assertTrue(progressed)
 
     def test_reduced_execution_policies(self) -> None:
         reduced = self.calculator.calculate(
