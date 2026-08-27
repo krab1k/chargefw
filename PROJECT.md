@@ -116,8 +116,10 @@ duplicate IDs are rejected before parameter filtering and applicability assessme
   private and exposes a const value-only applicability report.
 - `calculate(std::move(assessment), max_threads, observer)` executes an assessment without repeating
   preparation or classification. Its result retains the owned value-only report, so applicability
-  diagnostics remain valid after the assessment and its parameter data are destroyed. Thread limits and
-  observation are execution-only inputs.
+  diagnostics remain valid after the assessment and its parameter data are destroyed. When a plan was
+  selected, `ExecutionResult::effective` records the method, optional parameter set, complete validated
+  method options, concrete execution policy, and execution issues. Thread limits and observation are
+  execution-only inputs.
 - Rejected application-facing candidates retain the method identity from the selected applicability
   method list, including explicitly requested methods, rather than using registry ordering.
 - Omitted IDs use deterministic ranking: method priority, parameter-set priority, method ID, then
@@ -381,6 +383,11 @@ each `total_charge` is the sum of those serialized values. Internal calculations
 The result schema remains `1.0` while the project is pre-release and may be refined in place. After the
 first stable release, incompatible changes require a major schema-version change; additive optional
 fields require a minor change and must preserve the meaning of existing fields.
+`generator.version` identifies the ChargeFW release, including its method implementation,
+classification behavior, and bundled publication-derived parameter data. Effective parameter-set IDs
+identify the selected bundled set within that release. Reproducible results require matching software
+version, result-schema version, effective method and parameter-set IDs, input/coordinates, options, and
+execution policy. Custom caller-supplied parameter sets are outside this bundled-data identity guarantee.
 Invocation-level `calculation_provenance` records requested conformer selection, method/parameter IDs,
 permissive typing, cutoff/cover resource thresholds, execution/radius/correction, structural input
 policy, and effective method/parameter/execution plus warnings.

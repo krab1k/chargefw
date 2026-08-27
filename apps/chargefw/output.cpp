@@ -232,33 +232,24 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
         }
         throw std::logic_error{"unknown execution result status"};
     }();
-    auto warnings = std::vector<std::string>{};
-    warnings.reserve(result.execution_issues.size());
-    for (const auto& issue : result.execution_issues) {
-        warnings.push_back(issue.message);
+    auto effective = adapters::EffectiveCalculationProvenance{};
+    if (result.effective.has_value()) {
+        const auto& calculation = *result.effective;
+        effective.method_id = calculation.method_id;
+        effective.parameter_set_id = calculation.parameter_set_id;
+        effective.execution_mode =
+            std::string{calculation::to_string(calculation.execution_policy.mode())};
+        effective.execution_radius = calculation.execution_policy.radius();
+        effective.execution_charge_correction =
+            std::string{calculation::to_string(calculation.execution_policy.charge_correction())};
+        effective.warnings.reserve(calculation.execution_issues.size());
+        for (const auto& issue : calculation.execution_issues) {
+            effective.warnings.push_back(issue.message);
+        }
+        effective.method_options.emplace(calculation.method_id, calculation.method_options);
     }
     auto provenance = adapters::CalculationProvenance{
-        .requested = requested,
-        .effective = {.method_id = result.selected_method_id,
-                      .parameter_set_id = result.selected_parameter_set_id,
-                      .execution_mode = result.execution_policy.has_value()
-                                            ? std::optional{std::string{calculation::to_string(
-                                                  result.execution_policy->mode())}}
-                                            : std::nullopt,
-                      .execution_radius = result.execution_policy.has_value()
-                                              ? result.execution_policy->radius()
-                                              : std::nullopt,
-                      .execution_charge_correction =
-                          result.execution_policy.has_value()
-                              ? std::optional{std::string{calculation::to_string(
-                                    result.execution_policy->charge_correction())}}
-                              : std::nullopt,
-                      .warnings = std::move(warnings)},
-        .execution_metrics = metrics};
-    if (result.effective_method_options.has_value() && result.selected_method_id.has_value()) {
-        provenance.effective.method_options.emplace(*result.selected_method_id,
-                                                    *result.effective_method_options);
-    }
+        .requested = requested, .effective = std::move(effective), .execution_metrics = metrics};
     auto document = adapters::ChargeResultDocument{
         .generator_name = "ChargeFW",
         .generator_version = CHARGEFW_VERSION_STRING,

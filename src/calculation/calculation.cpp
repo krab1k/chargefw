@@ -88,11 +88,7 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
             .status = ExecutionStatus::no_executable_plan,
             .charges = std::nullopt,
             .applicability = std::move(assessment.applicability_report_),
-            .execution_policy = std::nullopt,
-            .execution_issues = {},
-            .effective_method_options = std::nullopt,
-            .selected_method_id = std::nullopt,
-            .selected_parameter_set_id = std::nullopt,
+            .effective = std::nullopt,
             .failure_message = std::nullopt,
             .metrics = {.applicability_seconds = assessment.applicability_seconds_}};
     }
@@ -104,12 +100,14 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
 
     const auto& selected =
         assessment.applicability_.applicable.at(*assessment.selected_candidate_index_);
-    const auto effective_method_options = selected.method_options;
-    const auto selected_method_id = std::string{selected.method->id()};
-    const auto selected_parameter_set_id =
-        selected.parameter_set == nullptr
-            ? std::nullopt
-            : std::optional{std::string{selected.parameter_set->id()}};
+    const auto effective = EffectiveCalculation{
+        .method_id = std::string{selected.method->id()},
+        .parameter_set_id = selected.parameter_set == nullptr
+                                ? std::nullopt
+                                : std::optional{std::string{selected.parameter_set->id()}},
+        .method_options = selected.method_options,
+        .execution_policy = *assessment.execution_policy_,
+        .execution_issues = assessment.execution_issues_};
 
     const auto computation_started = std::chrono::steady_clock::now();
     auto status = ExecutionStatus::success;
@@ -139,11 +137,7 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
     return ExecutionResult{.status = status,
                            .charges = std::move(calculated_charges),
                            .applicability = std::move(assessment.applicability_report_),
-                           .execution_policy = assessment.execution_policy_,
-                           .execution_issues = std::move(assessment.execution_issues_),
-                           .effective_method_options = effective_method_options,
-                           .selected_method_id = selected_method_id,
-                           .selected_parameter_set_id = selected_parameter_set_id,
+                           .effective = std::move(effective),
                            .failure_message = std::move(failure_message),
                            .metrics = {.applicability_seconds = assessment.applicability_seconds_,
                                        .computation_seconds = computation_seconds}};

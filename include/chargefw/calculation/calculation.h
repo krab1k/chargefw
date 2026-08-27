@@ -35,6 +35,15 @@ struct CalculationMetrics {
     double computation_seconds = 0.0;
 };
 
+// The concrete candidate and execution policy selected by the application-facing facade.
+struct EffectiveCalculation {
+    std::string method_id;
+    std::optional<std::string> parameter_set_id;
+    methods::MethodOptions method_options;
+    ExecutionPolicy execution_policy;
+    std::vector<methods::ExecutionIssue> execution_issues;
+};
+
 enum class ExecutionStatus : std::uint8_t {
     success,
     invalid_input_or_request,
@@ -48,11 +57,7 @@ struct ExecutionResult {
     ExecutionStatus status = ExecutionStatus::success;
     std::optional<charges::ChargeSet> charges;
     ApplicabilityReport applicability;
-    std::optional<ExecutionPolicy> execution_policy;
-    std::vector<methods::ExecutionIssue> execution_issues;
-    std::optional<methods::MethodOptions> effective_method_options;
-    std::optional<std::string> selected_method_id;
-    std::optional<std::string> selected_parameter_set_id;
+    std::optional<EffectiveCalculation> effective;
     std::optional<std::string> failure_message;
     CalculationMetrics metrics;
 

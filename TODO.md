@@ -13,9 +13,6 @@ integrations and distribution formats should be added only for a concrete suppor
 - [ ] Add a lean CI baseline for the supported development platform: formatting, GCC debug/release
   tests, Clang ASan/UBSan, and the native install/consumer smoke test. Add further compiler, platform,
   or package jobs when they protect a supported distribution rather than maintaining an unused matrix.
-- [ ] Give bundled parameter data a machine-readable release identifier and retain it in calculation
-  provenance. Before 1.0, document how software, result-schema, and parameter-data versions affect
-  compatibility and reproducibility.
 
 ## 2. Python and toolkit integration
 

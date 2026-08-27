@@ -153,6 +153,9 @@ TEST_CASE("calculation facade reports singular solver failures with target conte
 
     CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
     CHECK(!result.charges.has_value());
+    REQUIRE(result.effective.has_value());
+    CHECK(result.effective->method_id == "eem");
+    CHECK(result.effective->parameter_set_id == std::optional<std::string>{"singular-eem"});
     REQUIRE(result.failure_message.has_value());
     CHECK(result.failure_message->find("method 'eem', molecule 1 ('singular-eem'), conformer 1") !=
           std::string::npos);
@@ -210,8 +213,8 @@ TEST_CASE("assessment preserves owned selection state and validates method optio
         .method_options = {{"peoe", peoe_options}},
         .classification_options = {.permissive_types = true}});
     REQUIRE(configured_peoe_result.calculated());
-    REQUIRE(configured_peoe_result.effective_method_options.has_value());
-    CHECK(configured_peoe_result.effective_method_options->get<int>("iters") == 1);
+    REQUIRE(configured_peoe_result.effective.has_value());
+    CHECK(configured_peoe_result.effective->method_options.get<int>("iters") == 1);
 
     auto invalid_peoe_options = methods::MethodOptions{};
     invalid_peoe_options.set("iters", std::string{"one"});
@@ -272,9 +275,12 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
     REQUIRE(application_result.charges.has_value());
     CHECK(application_result.charges->method_id() == std::string_view{"formal"});
     CHECK(application_result.charges->size() == 1);
-    REQUIRE(application_result.execution_policy.has_value());
-    CHECK(application_result.execution_policy->mode() == calculation::ExecutionMode::full);
-    CHECK(application_result.execution_issues.empty());
+    REQUIRE(application_result.effective.has_value());
+    CHECK(application_result.effective->method_id == "formal");
+    CHECK_FALSE(application_result.effective->parameter_set_id.has_value());
+    CHECK(application_result.effective->execution_policy.mode() ==
+          calculation::ExecutionMode::full);
+    CHECK(application_result.effective->execution_issues.empty());
 
     auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -300,11 +306,13 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
         .resource_policy = {.cutoff_atom_threshold = 2}});
     REQUIRE(automatic_fallback_result.calculated());
     CHECK(automatic_fallback_result.charges->method_id() == std::string_view{"eqeq"});
-    REQUIRE(automatic_fallback_result.execution_policy.has_value());
-    CHECK(automatic_fallback_result.execution_policy->mode() == calculation::ExecutionMode::cutoff);
-    CHECK(automatic_fallback_result.execution_policy->radius() ==
+    REQUIRE(automatic_fallback_result.effective.has_value());
+    CHECK(automatic_fallback_result.effective->method_id == "eqeq");
+    CHECK(automatic_fallback_result.effective->execution_policy.mode() ==
+          calculation::ExecutionMode::cutoff);
+    CHECK(automatic_fallback_result.effective->execution_policy.radius() ==
           std::optional<double>{calculation::default_automatic_reduced_radius});
-    CHECK(automatic_fallback_result.execution_issues.empty());
+    CHECK(automatic_fallback_result.effective->execution_issues.empty());
 
     const auto automatic_mgc_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -313,6 +321,7 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
         .resource_policy = {.cutoff_atom_threshold = 2}});
     CHECK(automatic_mgc_result.status == calculation::ExecutionStatus::no_executable_plan);
     CHECK_FALSE(automatic_mgc_result.calculated());
+    CHECK_FALSE(automatic_mgc_result.effective.has_value());
 
     const auto explicit_full_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -323,10 +332,11 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
         .resource_policy = {.cutoff_atom_threshold = 2}});
     REQUIRE(explicit_full_result.calculated());
     CHECK(explicit_full_result.charges->method_id() == std::string_view{"mgc"});
-    REQUIRE(explicit_full_result.execution_policy.has_value());
-    CHECK(explicit_full_result.execution_policy->mode() == calculation::ExecutionMode::full);
-    REQUIRE(explicit_full_result.execution_issues.size() == 1);
-    CHECK(explicit_full_result.execution_issues[0].kind ==
+    REQUIRE(explicit_full_result.effective.has_value());
+    CHECK(explicit_full_result.effective->execution_policy.mode() ==
+          calculation::ExecutionMode::full);
+    REQUIRE(explicit_full_result.effective->execution_issues.size() == 1);
+    CHECK(explicit_full_result.effective->execution_issues[0].kind ==
           methods::ExecutionIssueKind::resource_threshold_exceeded);
 
     const auto unlimited_result = calculate_application(calculation::AssessmentRequest{
@@ -337,7 +347,8 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
                             .cover_atom_threshold = std::nullopt}});
     REQUIRE(unlimited_result.calculated());
     CHECK(unlimited_result.charges->method_id() == std::string_view{"mgc"});
-    CHECK(unlimited_result.execution_issues.empty());
+    REQUIRE(unlimited_result.effective.has_value());
+    CHECK(unlimited_result.effective->execution_issues.empty());
 
     const auto unsupported_cutoff_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},

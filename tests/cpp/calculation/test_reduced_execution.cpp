@@ -210,12 +210,12 @@ auto assert_reduced_matches_full(
             .resource_policy = {.max_threads = 2}});
 
         REQUIRE(reduced.calculated());
-        REQUIRE(reduced.execution_policy.has_value());
-        CHECK(reduced.execution_policy->mode() ==
+        REQUIRE(reduced.effective.has_value());
+        CHECK(reduced.effective->execution_policy.mode() ==
               (selection_kind == calculation::ExecutionSelectionKind::cutoff
                    ? calculation::ExecutionMode::cutoff
                    : calculation::ExecutionMode::cover));
-        CHECK(reduced.execution_policy->charge_correction() ==
+        CHECK(reduced.effective->execution_policy.charge_correction() ==
               calculation::ChargeCorrectionPolicy::uniform);
         REQUIRE(full.charges->size() == reduced.charges->size());
 
@@ -312,9 +312,10 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
         .method_id = "eem",
         .resource_policy = {.cutoff_atom_threshold = 2}});
     REQUIRE(automatic_cutoff.calculated());
-    REQUIRE(automatic_cutoff.execution_policy.has_value());
-    CHECK(automatic_cutoff.execution_policy->mode() == calculation::ExecutionMode::cutoff);
-    CHECK(automatic_cutoff.execution_policy->radius() ==
+    REQUIRE(automatic_cutoff.effective.has_value());
+    CHECK(automatic_cutoff.effective->execution_policy.mode() ==
+          calculation::ExecutionMode::cutoff);
+    CHECK(automatic_cutoff.effective->execution_policy.radius() ==
           std::optional<double>{calculation::default_automatic_reduced_radius});
 
     const auto overridden_automatic_cutoff = calculate_application(calculation::AssessmentRequest{
@@ -325,10 +326,11 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic, 8.0},
         .resource_policy = {.cutoff_atom_threshold = 2}});
     REQUIRE(overridden_automatic_cutoff.calculated());
-    REQUIRE(overridden_automatic_cutoff.execution_policy.has_value());
-    CHECK(overridden_automatic_cutoff.execution_policy->mode() ==
+    REQUIRE(overridden_automatic_cutoff.effective.has_value());
+    CHECK(overridden_automatic_cutoff.effective->execution_policy.mode() ==
           calculation::ExecutionMode::cutoff);
-    CHECK(overridden_automatic_cutoff.execution_policy->radius() == std::optional<double>{8.0});
+    CHECK(overridden_automatic_cutoff.effective->execution_policy.radius() ==
+          std::optional<double>{8.0});
 
     const auto automatic_cover = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
@@ -336,8 +338,8 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
         .method_id = "eem",
         .resource_policy = {.cutoff_atom_threshold = 2, .cover_atom_threshold = 2}});
     REQUIRE(automatic_cover.calculated());
-    REQUIRE(automatic_cover.execution_policy.has_value());
-    CHECK(automatic_cover.execution_policy->mode() == calculation::ExecutionMode::cover);
+    REQUIRE(automatic_cover.effective.has_value());
+    CHECK(automatic_cover.effective->execution_policy.mode() == calculation::ExecutionMode::cover);
 
     const auto explicit_cutoff_above_cover_threshold =
         calculate_application(calculation::AssessmentRequest{
@@ -349,10 +351,10 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
                                                 calculation::minimum_reduced_radius},
             .resource_policy = {.cutoff_atom_threshold = 2, .cover_atom_threshold = 2}});
     REQUIRE(explicit_cutoff_above_cover_threshold.calculated());
-    REQUIRE(explicit_cutoff_above_cover_threshold.execution_policy.has_value());
-    CHECK(explicit_cutoff_above_cover_threshold.execution_policy->mode() ==
+    REQUIRE(explicit_cutoff_above_cover_threshold.effective.has_value());
+    CHECK(explicit_cutoff_above_cover_threshold.effective->execution_policy.mode() ==
           calculation::ExecutionMode::cutoff);
-    CHECK(explicit_cutoff_above_cover_threshold.execution_issues.size() == 1);
+    CHECK(explicit_cutoff_above_cover_threshold.effective->execution_issues.size() == 1);
 
     assert_reduced_matches_full("qeq", {make_qeq_parameters()});
     assert_reduced_matches_full("eqeq");

@@ -450,7 +450,8 @@ TEST_CASE("cancellation produces a terminal observer event", "[calculation][obse
         CHECK(result.cancelled());
         CHECK(!result.calculated());
         CHECK(result.status == calculation::ExecutionStatus::cancelled);
-        CHECK(result.selected_method_id == "formal");
+        REQUIRE(result.effective.has_value());
+        CHECK(result.effective->method_id == "formal");
         const auto events = observer.events();
         REQUIRE(!events.empty());
         CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
