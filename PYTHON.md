@@ -7,9 +7,9 @@ release-level acceptance criteria in [TODO.md](TODO.md), and user instructions i
 
 ## Status
 
-The Python package skeleton, optional nanobind target, and wheel build are implemented. No usable
-calculation API or toolkit adapter is implemented yet. The native code already provides the foundations
-the binding should use rather than duplicate:
+The Python package skeleton, optional nanobind target, and owned array model are implemented. The
+calculation vertical slice is in progress and no toolkit adapter is implemented yet. The native code
+already provides the foundations the binding should use rather than duplicate:
 
 - owned toolkit-neutral molecules and conformers;
 - an owned assessment/calculation facade with deterministic selection and structured applicability;
@@ -45,8 +45,8 @@ ctest --test-dir build/python-skeleton-system -R test_chargefw_python_import --o
 cmake --build build/native-only-skeleton --target chargefw_core --parallel 2
 ```
 
-The wheel smoke test currently covers CPython 3.14 on Linux x86-64 only. Runtime NumPy/Gemmi metadata,
-parameter resources, calculation bindings, and clean-install calculation tests remain for later milestones.
+The wheel smoke test currently covers CPython 3.14 on Linux x86-64 only. Gemmi metadata and full
+clean-install qualification remain for later milestones.
 
 ### Milestone 2 — owned array model: complete
 
@@ -78,6 +78,40 @@ git diff --check
 The complete CTest invocation in this build directory was not a valid full-suite result because many
 pre-existing native test executables were configured but had not been built; both focused Python tests
 passed. The next milestone can consume the private native objects through the owned calculation facade.
+
+### Milestone 3 — calculation vertical slice: complete
+
+Implemented so far on 2026-08-27:
+
+- `CalculationOptions` validates application policy and preserves method-scoped option overrides;
+- `Calculator` loads the bundled parameter catalog from package resources and accepts a molecule,
+  collection, or molecule iterable;
+- `Calculator.assess()` and `Calculator.calculate()` use the native owned assessment facade, with
+  assessment preparation and native calculation running while the GIL is released;
+- `Assessment` exposes copied applicability, execution-policy, warning, and timing data and enforces
+  one-shot calculation ownership;
+- `CalculationResult` exposes status, source-mapped owned `float64` C-contiguous assignments, reports,
+  requested/effective provenance, execution issues, failure text, and timings; and
+- no-plan, numerical-failure, cancellation, and invalid-request exception/result boundaries are wired
+  through typed Python exceptions and result statuses.
+
+The public report and provenance values are currently copied Python dictionaries/lists so they remain
+valid after native assessment ownership is consumed. Their shape is covered by the focused calculation
+tests and can be refined by a later compatibility review without exposing native pointers.
+
+Validation added for this milestone:
+
+```text
+cmake --build build/python-skeleton-system --target chargefw_python --parallel 2
+ctest --test-dir build/python-skeleton-system -R 'test_chargefw_python_(import|molecule|calculation)' --output-on-failure
+uv build --quiet --wheel --out-dir /tmp/kilo/chargefw-m3-wheel
+uv pip install --python /tmp/kilo/chargefw-m3-venv/bin/python --no-index --no-deps --reinstall \
+  /tmp/kilo/chargefw-m3-wheel/chargefw-0.1-cp314-cp314-linux_x86_64.whl
+```
+
+The installed-wheel calculation smoke test ran from `/tmp` and succeeded. The offline environment did
+not contain a NumPy wheel, so installation used `--no-deps` in a system-site-packages environment;
+`pyproject.toml` now declares `numpy>=1.26` for normal online installation.
 
 ## Product scope
 
@@ -370,7 +404,7 @@ Each milestone should leave one usable vertical slice and update this status sec
    package, type marker, and focused import/version test; prove the native-only build is unchanged.
 2. **Complete — owned array model** — implement molecule/collection construction, strict validation,
    source metadata, ownership tests, and conversion to native `core` values.
-3. **Calculation vertical slice** — bind `Calculator`, bundled parameter resources, options,
+3. **Complete — calculation vertical slice** — bind `Calculator`, bundled parameter resources, options,
    assess/calculate, NumPy assignments, reports, provenance, failures, and all-conformer mappings.
 4. **Introspection and external parameters** — expose value-only method/parameter descriptors and
    explicit immutable parameter loading needed by ACC III without exposing classification internals.

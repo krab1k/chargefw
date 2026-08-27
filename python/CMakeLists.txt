@@ -15,6 +15,8 @@ find_package(nanobind CONFIG REQUIRED)
 
 set(CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY "${PROJECT_BINARY_DIR}/python/chargefw")
 file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}")
+file(COPY "${PROJECT_SOURCE_DIR}/data/parameters"
+     DESTINATION "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_data")
 configure_file(chargefw/__init__.py "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/__init__.py" COPYONLY)
 configure_file(chargefw/py.typed "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/py.typed" COPYONLY)
 
@@ -35,6 +37,10 @@ install(TARGETS chargefw_python
     LIBRARY DESTINATION chargefw COMPONENT python
     RUNTIME DESTINATION chargefw COMPONENT python
 )
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/data/parameters/"
+        DESTINATION chargefw/_data/parameters
+        COMPONENT python
+        FILES_MATCHING PATTERN "*.json")
 install(TARGETS chargefw_core
     LIBRARY DESTINATION chargefw COMPONENT python
     RUNTIME DESTINATION chargefw COMPONENT python
