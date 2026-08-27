@@ -11,6 +11,7 @@
         "CMAKE_CXX_COMPILER": "/usr/bin/g++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CHARGEFW_BUILD_TESTS": "ON",
+        "CHARGEFW_BUILD_PYTHON": "ON",
         "CHARGEFW_ENABLE_WARNINGS": "ON",
         "CHARGEFW_PYTHON_EXECUTABLE": "/usr/bin/python3"
       }
@@ -22,6 +23,7 @@
       "binaryDir": "${sourceDir}/build/gcc-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CHARGEFW_BUILD_PYTHON": "OFF",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
       }
     },
@@ -35,6 +37,7 @@
         "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CHARGEFW_BUILD_TESTS": "ON",
+        "CHARGEFW_BUILD_PYTHON": "ON",
         "CHARGEFW_ENABLE_WARNINGS": "ON",
         "CHARGEFW_ENABLE_CLANG_TIDY": "OFF",
         "CHARGEFW_PYTHON_EXECUTABLE": "/usr/bin/python3"
@@ -47,6 +50,7 @@
       "binaryDir": "${sourceDir}/build/clang-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CHARGEFW_BUILD_PYTHON": "OFF",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
       }
     },

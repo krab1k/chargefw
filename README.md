@@ -82,6 +82,8 @@ charges = result.assignments[0].values
 
 See [PYTHON.md](PYTHON.md) for the complete API contract, supported scope, and packaging status.
 
+The ordinary GCC and Clang debug presets build and test the Python bindings alongside native targets.
+
 AddressSanitizer configuration:
 
 ```bash
