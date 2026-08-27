@@ -270,12 +270,16 @@ auto make_assessment(const core::MoleculeCollection& molecules,
                      const std::optional<std::size_t> cutoff_threshold,
                      const std::optional<std::size_t> cover_threshold,
                      const std::size_t max_threads) -> NativeAssessment {
+    // Convert Python mappings before releasing the GIL. The remaining work copies native-owned
+    // input values and prepares the assessment without accessing Python objects.
+    auto native_method_options = method_options(options);
+    nb::gil_scoped_release release;
     auto request = calculation::AssessmentRequest{
         .molecules = molecules,
         .parameter_sets = catalog.parameter_sets(),
         .method_id = std::move(method_id),
         .parameter_set_id = std::move(parameter_set_id),
-        .method_options = method_options(options),
+        .method_options = std::move(native_method_options),
         .classification_options = {.permissive_types = permissive_types},
         .execution_selection =
             calculation::ExecutionSelection{execution, radius, charge_correction},
@@ -283,7 +287,6 @@ auto make_assessment(const core::MoleculeCollection& molecules,
                             .cover_atom_threshold = cover_threshold,
                             .max_threads = max_threads},
     };
-    nb::gil_scoped_release release;
     return NativeAssessment{calculation::assess(std::move(request)), max_threads};
 }
 
