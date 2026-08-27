@@ -11,21 +11,18 @@
         "CMAKE_CXX_COMPILER": "/usr/bin/g++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CHARGEFW_BUILD_TESTS": "ON",
-        "CHARGEFW_ENABLE_WARNINGS": "ON"
+        "CHARGEFW_ENABLE_WARNINGS": "ON",
+        "CHARGEFW_PYTHON_EXECUTABLE": "/usr/bin/python3"
       }
     },
     {
       "name": "gcc-release",
       "displayName": "GCC Release",
-      "generator": "Ninja",
+      "inherits": "gcc-debug",
       "binaryDir": "${sourceDir}/build/gcc-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON",
-        "CHARGEFW_BUILD_TESTS": "ON",
-        "CHARGEFW_ENABLE_WARNINGS": "ON"
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
       }
     },
     {
@@ -39,7 +36,8 @@
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CHARGEFW_BUILD_TESTS": "ON",
         "CHARGEFW_ENABLE_WARNINGS": "ON",
-        "CHARGEFW_ENABLE_CLANG_TIDY": "OFF"
+        "CHARGEFW_ENABLE_CLANG_TIDY": "OFF",
+        "CHARGEFW_PYTHON_EXECUTABLE": "/usr/bin/python3"
       }
     },
     {

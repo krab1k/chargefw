@@ -386,6 +386,11 @@ native builds. When enabled it:
 Enabling Python must not change the C++ API, CLI, native install contents, or dependency behavior for a
 normal build. Do not fetch Python or nanobind when the option is off.
 
+Development CMake presets pin `CHARGEFW_PYTHON_EXECUTABLE` to `/usr/bin/python3`, so every local GCC and
+Clang configuration uses the system interpreter. Wheel builds intentionally do not use those presets:
+the PEP 517 frontend selects the target interpreter, which is necessary to build a wheel for each supported
+CPython version.
+
 Use `pyproject.toml` with scikit-build-core as the PEP 517 backend, nanobind as a build dependency, and
 NumPy plus the tested upstream Gemmi package as runtime dependencies. The wheel contains the extension,
 required native shared libraries, Python modules/stubs, and parameter JSON. Wheel repair tooling must

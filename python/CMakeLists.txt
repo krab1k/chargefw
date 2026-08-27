@@ -52,6 +52,18 @@ set_target_properties(chargefw_python PROPERTIES
 target_link_libraries(chargefw_python PRIVATE chargefw::core)
 target_link_options(chargefw_python PRIVATE "LINKER:--disable-new-dtags")
 
+if(CHARGEFW_ENABLE_WARNINGS)
+    chargefw_enable_warnings(chargefw_python)
+endif()
+
+if(CHARGEFW_ENABLE_ASAN)
+    chargefw_enable_sanitizer(chargefw_python address)
+endif()
+
+if(CHARGEFW_ENABLE_UBSAN)
+    chargefw_enable_sanitizer(chargefw_python undefined)
+endif()
+
 # A wheel needs the library beside the private extension. The ordinary native installation remains in
 # ${CMAKE_INSTALL_LIBDIR}; this additional copy exists only when Python support is requested.
 install(TARGETS chargefw_python
