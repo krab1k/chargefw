@@ -54,6 +54,7 @@ assert assignment.source_conformer_id == "model-a"
 assert assignment.values.dtype == np.float64
 assert assignment.values.flags.c_contiguous
 assert not assignment.values.flags.writeable
+assert assignment.values.base is not None
 assert np.isclose(assignment.values.sum(), 0.0)
 assert result.requested is options
 assert result.requested.method == "eem"

@@ -365,8 +365,8 @@ class CalculationResult:
                     else None
                 )
                 assignments.append(
-                    ChargeAssignment(
-                        values=np.asarray(item["values"], dtype=np.float64),
+                    ChargeAssignment._from_native_values(
+                        item["values"],
                         molecule_index=molecule_index,
                         conformer_index=(
                             int(conformer_index) if conformer_index is not None else None

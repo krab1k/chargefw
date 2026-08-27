@@ -9,12 +9,15 @@
 #include <chargefw/methods/method_options.h>
 
 #include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 
 #include <cstddef>
+#include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -162,6 +165,18 @@ auto effective_calculation(const calculation::EffectiveCalculation& effective) -
     return result;
 }
 
+auto numpy_charge_values(const std::span<const double> values)
+    -> nb::ndarray<nb::numpy, double, nb::shape<-1>> {
+    auto owned_values = std::make_unique<std::vector<double>>(values.begin(), values.end());
+    const nb::capsule owner{owned_values.get(), [](void* pointer) noexcept {
+                                delete static_cast<std::vector<double>*>(pointer);
+                            }};
+    auto* data = owned_values->data();
+    const auto size = owned_values->size();
+    static_cast<void>(owned_values.release());
+    return {data, {size}, owner};
+}
+
 auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {
     auto result = nb::dict{};
     result["status"] = nb::cast(value.status);
@@ -196,8 +211,7 @@ auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {
         item["conformer_index"] = assignment.target.conformer_index.has_value()
                                       ? nb::cast(*assignment.target.conformer_index)
                                       : nb::none();
-        item["values"] = std::vector<double>{assignment.charges.values().begin(),
-                                             assignment.charges.values().end()};
+        item["values"] = numpy_charge_values(assignment.charges.values());
         assignments.append(std::move(item));
     }
     charge_set["assignments"] = std::move(assignments);
