@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Iterable, Sequence
+from collections.abc import Hashable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from operator import index as as_index
-from typing import Any
+from typing import Any, overload
 
 import numpy as np
 
@@ -62,6 +62,20 @@ class Molecule:
         "_conformer_ids",
         "_native",
     )
+
+    _atomic_numbers: np.ndarray
+    _formal_charges: np.ndarray
+    _bonds: np.ndarray
+    _coordinates: np.ndarray
+    _native_coordinates: np.ndarray
+    _coordinates_were_2d: bool
+    _name: str
+    _atom_names: tuple[str, ...]
+    _conformer_names: tuple[str, ...]
+    _source: SourceIdentity
+    _atom_ids: tuple[Hashable, ...]
+    _conformer_ids: tuple[Hashable, ...]
+    _native: _native_core._NativeMolecule
 
     def __init__(
         self,
@@ -250,7 +264,7 @@ class Molecule:
 
     @property
     def conformer_count(self) -> int:
-        return self._native_coordinates.shape[0]
+        return int(self._native_coordinates.shape[0])
 
     @property
     def has_coordinates(self) -> bool:
@@ -261,6 +275,10 @@ class MoleculeCollection(Sequence[Molecule]):
     """Immutable source-ordered collection of molecules."""
 
     __slots__ = ("_molecules", "_name", "_native")
+
+    _molecules: tuple[Molecule, ...]
+    _name: str
+    _native: _native_core._NativeMoleculeCollection
 
     def __init__(self, molecules: Iterable[Molecule], name: str | None = None) -> None:
         if isinstance(molecules, (str, bytes, Molecule)):
@@ -295,10 +313,16 @@ class MoleculeCollection(Sequence[Molecule]):
     def empty(self) -> bool:
         return not self._molecules
 
+    @overload
+    def __getitem__(self, item: int) -> Molecule: ...
+
+    @overload
+    def __getitem__(self, item: slice) -> tuple[Molecule, ...]: ...
+
     def __getitem__(self, item: int | slice) -> Molecule | tuple[Molecule, ...]:
         return self._molecules[item]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Molecule]:
         return iter(self._molecules)
 
     @property

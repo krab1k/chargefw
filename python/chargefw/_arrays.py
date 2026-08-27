@@ -21,12 +21,19 @@ def as_integer_array(value: Any, field: str, ndim: int) -> np.ndarray:
         raise TypeError(f"{field} must contain integers, not booleans")
     if array.size == 0 and array.dtype.kind == "f":
         return np.empty(array.shape, dtype=np.int64)
-    if array.dtype.kind not in "iu":
-        if array.dtype.kind == "O" and all(
+    if array.dtype.kind == "O":
+        if not all(
             isinstance(item, numbers.Integral) and not isinstance(item, (bool, np.bool_))
             for item in array.flat
         ):
-            raise ValueError(f"{field} contains values outside the supported integer range")
+            raise TypeError(f"{field} must contain integers")
+        try:
+            return np.array(array, dtype=np.int64, order="C", copy=True)
+        except (OverflowError, TypeError, ValueError) as error:
+            raise ValueError(
+                f"{field} contains values outside the supported integer range"
+            ) from error
+    if array.dtype.kind not in "iu":
         raise TypeError(f"{field} must contain integers")
 
     if array.dtype.kind == "u" and np.any(array > np.iinfo(np.int64).max):

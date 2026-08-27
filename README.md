@@ -49,6 +49,39 @@ Run one focused test after building:
 ctest --test-dir build/gcc-debug -R test_reduced_execution --output-on-failure
 ```
 
+## Python quick start
+
+The Python package is pre-release and currently qualified only through local Linux development builds.
+Build and install a wheel from the repository root:
+
+```bash
+uv build --quiet --wheel
+uv pip install --link-mode=copy --reinstall dist/chargefw-*.whl
+```
+
+Calculate charges from toolkit-neutral arrays:
+
+```python
+import chargefw
+
+molecule = chargefw.Molecule(
+    atomic_numbers=[8, 1, 1],
+    bonds=[[0, 1, 1], [0, 2, 1]],
+    coordinates=[[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]],
+)
+result = chargefw.Calculator().calculate(
+    molecule,
+    chargefw.CalculationOptions(
+        method="eem",
+        execution=chargefw.ExecutionSelectionKind.FULL,
+    ),
+)
+result.raise_for_status()
+charges = result.assignments[0].values
+```
+
+See [PYTHON.md](PYTHON.md) for the complete API contract, supported scope, and packaging status.
+
 AddressSanitizer configuration:
 
 ```bash

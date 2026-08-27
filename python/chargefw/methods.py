@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cache
 from typing import Any
 
 from ._chargefw import calculation as _native_calculation
@@ -99,6 +100,7 @@ def _method_descriptor(value: dict[str, Any]) -> MethodDescriptor:
     )
 
 
+@cache
 def method_descriptors() -> tuple[MethodDescriptor, ...]:
     """Return value-only descriptors for all built-in methods."""
 

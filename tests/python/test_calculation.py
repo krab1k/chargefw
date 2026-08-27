@@ -1,12 +1,15 @@
 """Focused calculation facade and result-model checks."""
 
-import numpy as np
 from pathlib import Path
+import unittest
+from typing import Any, cast
+
+import numpy as np
 
 import chargefw
 
 
-def water(conformers=1):
+def water(conformers: int = 1) -> chargefw.Molecule:
     coordinates = np.array(
         [
             [[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]],
@@ -25,189 +28,199 @@ def water(conformers=1):
     )
 
 
-calculator = chargefw.Calculator()
-assert chargefw.Calculator()._catalog is calculator._catalog
-options = chargefw.CalculationOptions(
-    method="eem", execution=chargefw.ExecutionSelectionKind.FULL
-)
-assessment = calculator.assess(water(), options)
-assert assessment.executable
-assert assessment.execution_policy == chargefw.ExecutionPolicy(
-    mode=chargefw.ExecutionMode.FULL,
-    radius=None,
-    charge_correction=chargefw.ChargeCorrectionPolicy.NONE,
-)
-assert assessment.report.applicability == assessment.applicability
-selected_index = assessment.applicability.selected_candidate_index
-selected_candidate = assessment.applicability.applicable[selected_index]
-assert selected_candidate.method_id == "eem"
-assert selected_candidate.execution_assessments[0].mode is chargefw.ExecutionMode.FULL
+class CalculationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.calculator = chargefw.Calculator()
+        self.full_eem = chargefw.CalculationOptions(
+            method="eem", execution=chargefw.ExecutionSelectionKind.FULL
+        )
 
-result = assessment.calculate()
-assert result.status is chargefw.ExecutionStatus.SUCCESS
-assert len(result.assignments) == 1
-assignment = result.assignments[0]
-assert assignment.molecule_index == 0
-assert assignment.conformer_index == 0
-assert assignment.source.record_id == "water-record"
-assert assignment.source_atom_ids == ("O", "H1", "H2")
-assert assignment.source_conformer_id == "model-a"
-assert assignment.values.dtype == np.float64
-assert assignment.values.flags.c_contiguous
-assert not assignment.values.flags.writeable
-assert assignment.values.base is not None
-assert np.isclose(assignment.values.sum(), 0.0)
-assert result.requested is options
-assert result.requested.method == "eem"
-assert result.effective.method_id == "eem"
-assert result.effective.parameter_set_id == selected_candidate.parameter_set_id
-assert result.effective.execution_policy.mode is chargefw.ExecutionMode.FULL
-assert result.timings.applicability_seconds >= 0.0
-assert result.timings.computation_seconds >= 0.0
-try:
-    options.method_options["eem"] = {"unexpected": True}
-except TypeError:
-    pass
-else:
-    raise AssertionError("calculation options must be immutable")
+    def test_assessment_and_full_calculation(self) -> None:
+        assessment = self.calculator.assess(water(), self.full_eem)
+        self.assertTrue(assessment.executable)
+        self.assertEqual(
+            assessment.execution_policy,
+            chargefw.ExecutionPolicy(
+                mode=chargefw.ExecutionMode.FULL,
+                radius=None,
+                charge_correction=chargefw.ChargeCorrectionPolicy.NONE,
+            ),
+        )
+        self.assertEqual(assessment.report.applicability, assessment.applicability)
+        selected_index = assessment.applicability.selected_candidate_index
+        if selected_index is None:
+            self.fail("executable assessment must select a candidate")
+        selected_candidate = assessment.applicability.applicable[selected_index]
+        self.assertEqual(selected_candidate.method_id, "eem")
+        self.assertIs(
+            selected_candidate.execution_assessments[0].mode,
+            chargefw.ExecutionMode.FULL,
+        )
 
-geometry_independent = calculator.calculate(
-    chargefw.Molecule([8, 1, 1]),
-    chargefw.CalculationOptions(
-        method="formal", execution=chargefw.ExecutionSelectionKind.FULL
-    ),
-)
-assert geometry_independent.status is chargefw.ExecutionStatus.SUCCESS
-assert len(geometry_independent.assignments) == 1
-assert geometry_independent.assignments[0].conformer_index is None
+        result = assessment.calculate()
+        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(len(result.assignments), 1)
+        assignment = result.assignments[0]
+        self.assertEqual(assignment.molecule_index, 0)
+        self.assertEqual(assignment.conformer_index, 0)
+        self.assertEqual(assignment.source.record_id, "water-record")
+        self.assertEqual(assignment.source_atom_ids, ("O", "H1", "H2"))
+        self.assertEqual(assignment.source_conformer_id, "model-a")
+        self.assertEqual(assignment.values.dtype, np.dtype(np.float64))
+        self.assertTrue(assignment.values.flags.c_contiguous)
+        self.assertFalse(assignment.values.flags.writeable)
+        self.assertIsNotNone(assignment.values.base)
+        self.assertTrue(np.isclose(assignment.values.sum(), 0.0))
+        self.assertIs(result.requested, self.full_eem)
+        effective = result.effective
+        if effective is None:
+            self.fail("successful calculation must report effective provenance")
+        self.assertEqual(effective.method_id, "eem")
+        self.assertEqual(effective.parameter_set_id, selected_candidate.parameter_set_id)
+        self.assertIs(effective.execution_policy.mode, chargefw.ExecutionMode.FULL)
+        self.assertGreaterEqual(result.timings.applicability_seconds, 0.0)
+        self.assertGreaterEqual(result.timings.computation_seconds, 0.0)
+        with self.assertRaises(TypeError):
+            cast(Any, self.full_eem.method_options)["eem"] = {"unexpected": True}
+        with self.assertRaises(RuntimeError):
+            assessment.calculate()
 
-try:
-    assessment.calculate()
-except RuntimeError:
-    pass
-else:
-    raise AssertionError("assessment must be one-shot")
+    def test_assignment_cardinality_and_mapping(self) -> None:
+        geometry_independent = self.calculator.calculate(
+            chargefw.Molecule([8, 1, 1]),
+            chargefw.CalculationOptions(
+                method="formal", execution=chargefw.ExecutionSelectionKind.FULL
+            ),
+        )
+        self.assertIs(geometry_independent.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(len(geometry_independent.assignments), 1)
+        self.assertIsNone(geometry_independent.assignments[0].conformer_index)
 
-multi_result = calculator.calculate(
-    chargefw.MoleculeCollection([water(2)]),
-    chargefw.CalculationOptions(method="qeq", execution=chargefw.ExecutionSelectionKind.FULL),
-)
-assert multi_result.status is chargefw.ExecutionStatus.SUCCESS
-assert [item.conformer_index for item in multi_result.assignments] == [0, 1]
-assert [item.source_conformer_id for item in multi_result.assignments] == ["model-a", "model-b"]
+        multi_result = self.calculator.calculate(
+            chargefw.MoleculeCollection([water(2)]),
+            chargefw.CalculationOptions(
+                method="qeq", execution=chargefw.ExecutionSelectionKind.FULL
+            ),
+        )
+        self.assertIs(multi_result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(
+            [item.conformer_index for item in multi_result.assignments], [0, 1]
+        )
+        self.assertEqual(
+            [item.source_conformer_id for item in multi_result.assignments],
+            ["model-a", "model-b"],
+        )
 
-reduced = calculator.calculate(
-    water(),
-    chargefw.CalculationOptions(
-        method="eem",
-        execution=chargefw.ExecutionSelectionKind.CUTOFF,
-        radius=8.0,
-        charge_correction=chargefw.ChargeCorrectionPolicy.NONE,
-    ),
-)
-assert reduced.status is chargefw.ExecutionStatus.SUCCESS
-assert reduced.effective.execution_policy == chargefw.ExecutionPolicy(
-    mode=chargefw.ExecutionMode.CUTOFF,
-    radius=8.0,
-    charge_correction=chargefw.ChargeCorrectionPolicy.NONE,
-)
+    def test_reduced_execution_policies(self) -> None:
+        reduced = self.calculator.calculate(
+            water(),
+            chargefw.CalculationOptions(
+                method="eem",
+                execution=chargefw.ExecutionSelectionKind.CUTOFF,
+                radius=8.0,
+                charge_correction=chargefw.ChargeCorrectionPolicy.NONE,
+            ),
+        )
+        self.assertIs(reduced.status, chargefw.ExecutionStatus.SUCCESS)
+        reduced_effective = reduced.effective
+        if reduced_effective is None:
+            self.fail("successful calculation must report effective provenance")
+        self.assertEqual(
+            reduced_effective.execution_policy,
+            chargefw.ExecutionPolicy(
+                mode=chargefw.ExecutionMode.CUTOFF,
+                radius=8.0,
+                charge_correction=chargefw.ChargeCorrectionPolicy.NONE,
+            ),
+        )
 
-covered = calculator.calculate(
-    water(),
-    chargefw.CalculationOptions(
-        method="eem", execution=chargefw.ExecutionSelectionKind.COVER, radius=8.0
-    ),
-)
-assert covered.status is chargefw.ExecutionStatus.SUCCESS
-assert covered.effective.execution_policy.mode is chargefw.ExecutionMode.COVER
+        covered = self.calculator.calculate(
+            water(),
+            chargefw.CalculationOptions(
+                method="eem", execution=chargefw.ExecutionSelectionKind.COVER, radius=8.0
+            ),
+        )
+        self.assertIs(covered.status, chargefw.ExecutionStatus.SUCCESS)
+        covered_effective = covered.effective
+        if covered_effective is None:
+            self.fail("successful calculation must report effective provenance")
+        self.assertIs(covered_effective.execution_policy.mode, chargefw.ExecutionMode.COVER)
 
-no_plan = calculator.assess(
-    chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]]),
-    chargefw.CalculationOptions(method="qeq", execution=chargefw.ExecutionSelectionKind.FULL),
-).calculate()
-assert no_plan.status is chargefw.ExecutionStatus.NO_EXECUTABLE_PLAN
-assert no_plan.assignments == ()
-assert no_plan.applicability.rejected
-assert isinstance(
-    no_plan.applicability.rejected[0].issues[0].kind,
-    chargefw.PrerequisiteIssueKind,
-)
-try:
-    no_plan.raise_for_status()
-except chargefw.NoExecutablePlanError as error:
-    assert error.result is no_plan
-else:
-    raise AssertionError("no-plan result must raise its typed exception")
+    def test_no_plan_result_and_typed_exception(self) -> None:
+        result = self.calculator.assess(
+            chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]]),
+            chargefw.CalculationOptions(
+                method="qeq", execution=chargefw.ExecutionSelectionKind.FULL
+            ),
+        ).calculate()
+        self.assertIs(result.status, chargefw.ExecutionStatus.NO_EXECUTABLE_PLAN)
+        self.assertEqual(result.assignments, ())
+        self.assertTrue(result.applicability.rejected)
+        self.assertIsInstance(
+            result.applicability.rejected[0].issues[0].kind,
+            chargefw.PrerequisiteIssueKind,
+        )
+        with self.assertRaises(chargefw.NoExecutablePlanError) as context:
+            result.raise_for_status()
+        self.assertIs(context.exception.result, result)
 
-try:
-    chargefw.CalculationOptions(
-        execution=chargefw.ExecutionSelectionKind.FULL,
-        charge_correction=chargefw.ChargeCorrectionPolicy.UNIFORM,
-    )
-except ValueError:
-    pass
-else:
-    raise AssertionError("full execution must reject charge correction")
+    def test_invalid_options_are_rejected_early(self) -> None:
+        invalid_options = (
+            (
+                ValueError,
+                dict(
+                    execution=chargefw.ExecutionSelectionKind.FULL,
+                    charge_correction=chargefw.ChargeCorrectionPolicy.UNIFORM,
+                ),
+            ),
+            (TypeError, dict(execution="full")),
+            (TypeError, dict(charge_correction="none")),
+            (TypeError, dict(max_threads=True)),
+            (TypeError, dict(cutoff_atom_threshold=False)),
+            (ValueError, dict(cover_atom_threshold=np.iinfo(np.uintp).max + 1)),
+            (ValueError, dict(max_threads=np.iinfo(np.int32).max + 1)),
+        )
+        for error_type, options in invalid_options:
+            with self.subTest(error_type=error_type, options=options):
+                with self.assertRaises(error_type):
+                    chargefw.CalculationOptions(**options)
 
-try:
-    chargefw.CalculationOptions(execution="full")
-except TypeError:
-    pass
-else:
-    raise AssertionError("execution strings must not be accepted")
+    def test_catalogs_and_descriptors_are_immutable_values(self) -> None:
+        other_calculator = chargefw.Calculator()
+        self.assertIs(other_calculator._catalog, self.calculator._catalog)
+        self.assertIs(other_calculator.parameter_sets, self.calculator.parameter_sets)
+        self.assertIs(chargefw.method_descriptors(), chargefw.method_descriptors())
 
-try:
-    chargefw.CalculationOptions(charge_correction="none")
-except TypeError:
-    pass
-else:
-    raise AssertionError("charge correction strings must not be accepted")
+        methods = self.calculator.methods
+        eem = next(method for method in methods if method.id == "eem")
+        self.assertTrue(eem.requires_coordinates)
+        self.assertTrue(eem.supports_cutoff)
+        self.assertTrue(eem.supports_cover)
+        self.assertIsInstance(eem.options, tuple)
+        self.assertTrue(
+            all(option.type is chargefw.MethodOptionType.INTEGER for option in eem.options)
+        )
+        self.assertEqual(chargefw.method_descriptors(), methods)
 
-try:
-    chargefw.CalculationOptions(max_threads=True)
-except TypeError:
-    pass
-else:
-    raise AssertionError("boolean thread limits must not be accepted")
+        parameter_directory = Path(chargefw.__file__).parent / "_data" / "parameters"
+        eem_path = next(parameter_directory.glob("EEM_Ouy2009.json"))
+        parameter_set = chargefw.load_parameter_set(eem_path)
+        self.assertEqual(parameter_set.descriptor.method_id, "eem")
+        self.assertEqual(parameter_set.id, parameter_set.descriptor.id)
+        loaded_sets = chargefw.load_parameter_sets(parameter_directory)
+        self.assertIn(parameter_set.id, {value.id for value in loaded_sets})
 
-try:
-    chargefw.CalculationOptions(cutoff_atom_threshold=False)
-except TypeError:
-    pass
-else:
-    raise AssertionError("boolean atom thresholds must not be accepted")
+        explicit_calculator = chargefw.Calculator([parameter_set])
+        self.assertEqual(explicit_calculator.parameter_sets, (parameter_set.descriptor,))
+        result = explicit_calculator.calculate(water(), self.full_eem)
+        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        effective = result.effective
+        if effective is None:
+            self.fail("successful calculation must report effective provenance")
+        self.assertEqual(effective.parameter_set_id, parameter_set.id)
+        with self.assertRaises(ValueError):
+            chargefw.Calculator([])
 
-try:
-    chargefw.CalculationOptions(cover_atom_threshold=np.iinfo(np.uintp).max + 1)
-except ValueError:
-    pass
-else:
-    raise AssertionError("atom thresholds must fit the native size type")
 
-methods = calculator.methods
-eem = next(method for method in methods if method.id == "eem")
-assert eem.requires_coordinates
-assert eem.supports_cutoff
-assert eem.supports_cover
-assert isinstance(eem.options, tuple)
-assert all(option.type is chargefw.MethodOptionType.INTEGER for option in eem.options)
-assert chargefw.method_descriptors() == methods
-
-parameter_directory = Path(chargefw.__file__).parent / "_data" / "parameters"
-eem_path = next(parameter_directory.glob("EEM_Ouy2009.json"))
-parameter_set = chargefw.load_parameter_set(eem_path)
-assert parameter_set.descriptor.method_id == "eem"
-assert parameter_set.id == parameter_set.descriptor.id
-loaded_sets = chargefw.load_parameter_sets(parameter_directory)
-assert parameter_set.id in {value.id for value in loaded_sets}
-explicit_calculator = chargefw.Calculator([parameter_set])
-assert explicit_calculator.parameter_sets == (parameter_set.descriptor,)
-explicit_result = explicit_calculator.calculate(water(), options)
-assert explicit_result.status is chargefw.ExecutionStatus.SUCCESS
-assert explicit_result.effective.parameter_set_id == parameter_set.id
-try:
-    chargefw.Calculator([])
-except ValueError:
-    pass
-else:
-    raise AssertionError("an explicit parameter catalog must not be empty")
+if __name__ == "__main__":
+    unittest.main()

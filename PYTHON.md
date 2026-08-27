@@ -273,7 +273,8 @@ charges = result.assignments[0].values
 - permissive parameter typing;
 - execution selection as `ExecutionSelectionKind`, radius, and optional `ChargeCorrectionPolicy`;
 - cutoff and cover atom thresholds, where `None` means unlimited; and
-- maximum calculation threads, where zero delegates to oneTBB.
+- maximum calculation threads, where zero delegates to oneTBB and explicit limits must fit oneTBB's
+  signed integer range.
 
 Method options remain method-scoped even when a method was selected explicitly. The Python layer must
 not add context-sensitive shorthand that could apply an option to a different method after automatic

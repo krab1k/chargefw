@@ -41,17 +41,33 @@ for _enum in (
 MethodOptionValue = bool | int | float | str
 
 _bundled_parameter_catalog: Any | None = None
+_bundled_parameter_descriptors: tuple[ParameterSetDescriptor, ...] | None = None
 _bundled_parameter_catalog_lock = Lock()
+_MAX_NATIVE_THREADS = int(np.iinfo(np.int32).max)
 
 
 def _default_parameter_catalog() -> Any:
     global _bundled_parameter_catalog
-    with _bundled_parameter_catalog_lock:
-        if _bundled_parameter_catalog is None:
+    if _bundled_parameter_catalog is None:
+        with _bundled_parameter_catalog_lock:
+            if _bundled_parameter_catalog is not None:
+                return _bundled_parameter_catalog
             _bundled_parameter_catalog = _native_parameters._load_parameter_catalog(
                 str(default_parameter_directory())
             )
-        return _bundled_parameter_catalog
+    return _bundled_parameter_catalog
+
+
+def _default_parameter_descriptors() -> tuple[ParameterSetDescriptor, ...]:
+    global _bundled_parameter_descriptors
+    catalog = _default_parameter_catalog()
+    if _bundled_parameter_descriptors is None:
+        with _bundled_parameter_catalog_lock:
+            if _bundled_parameter_descriptors is None:
+                _bundled_parameter_descriptors = tuple(
+                    _descriptor(value) for value in catalog._descriptors()
+                )
+    return _bundled_parameter_descriptors
 
 
 def _normalized_nonnegative_integer(value: Any, field_name: str) -> int:
@@ -168,28 +184,39 @@ class CalculationOptions:
                 raise TypeError("radius must be a real number or None")
             if not np.isfinite(float(self.radius)) or float(self.radius) < 8.0:
                 raise ValueError("radius must be finite and at least 8.0")
-        for field_name in ("cutoff_atom_threshold", "cover_atom_threshold"):
-            value = getattr(self, field_name)
-            if value is not None:
-                _normalized_nonnegative_integer(value, field_name)
-        if self.cover_atom_threshold is not None and self.cutoff_atom_threshold is None:
+        cutoff_threshold = (
+            None
+            if self.cutoff_atom_threshold is None
+            else _normalized_nonnegative_integer(
+                self.cutoff_atom_threshold, "cutoff_atom_threshold"
+            )
+        )
+        cover_threshold = (
+            None
+            if self.cover_atom_threshold is None
+            else _normalized_nonnegative_integer(
+                self.cover_atom_threshold, "cover_atom_threshold"
+            )
+        )
+        if cover_threshold is not None and cutoff_threshold is None:
             raise ValueError("cover_atom_threshold requires a finite cutoff_atom_threshold")
         if (
-            self.cover_atom_threshold is not None
-            and self.cover_atom_threshold < self.cutoff_atom_threshold
+            cover_threshold is not None
+            and cutoff_threshold is not None
+            and cover_threshold < cutoff_threshold
         ):
             raise ValueError("cover_atom_threshold must not be smaller than cutoff_atom_threshold")
-        _normalized_nonnegative_integer(self.max_threads, "max_threads")
+        max_threads = _normalized_nonnegative_integer(self.max_threads, "max_threads")
+        if max_threads > _MAX_NATIVE_THREADS:
+            raise ValueError("max_threads exceeds oneTBB's supported integer range")
 
         object.__setattr__(self, "permissive_types", bool(self.permissive_types))
         object.__setattr__(self, "method_options", _frozen_method_options(self.method_options))
         if self.radius is not None:
             object.__setattr__(self, "radius", float(self.radius))
-        if self.cutoff_atom_threshold is not None:
-            object.__setattr__(self, "cutoff_atom_threshold", int(self.cutoff_atom_threshold))
-        if self.cover_atom_threshold is not None:
-            object.__setattr__(self, "cover_atom_threshold", int(self.cover_atom_threshold))
-        object.__setattr__(self, "max_threads", int(self.max_threads))
+        object.__setattr__(self, "cutoff_atom_threshold", cutoff_threshold)
+        object.__setattr__(self, "cover_atom_threshold", cover_threshold)
+        object.__setattr__(self, "max_threads", max_threads)
 
 
 @dataclass(frozen=True, slots=True)
@@ -364,6 +391,14 @@ class CalculationResult:
         "_timings",
     )
 
+    _status: ExecutionStatus
+    _requested: CalculationOptions
+    _assignments: tuple[ChargeAssignment, ...]
+    _applicability: ApplicabilityReport
+    _effective: EffectiveCalculation | None
+    _failure_message: str | None
+    _timings: CalculationTimings
+
     def __init__(
         self,
         payload: Mapping[str, Any],
@@ -513,6 +548,7 @@ class Calculator:
     def __init__(self, parameter_sets: Iterable[ParameterSet] | None = None) -> None:
         if parameter_sets is None:
             self._catalog = _default_parameter_catalog()
+            parameter_set_descriptors = _default_parameter_descriptors()
         else:
             try:
                 values = tuple(parameter_sets)
@@ -530,10 +566,11 @@ class Calculator:
             self._catalog = _native_parameters._load_parameter_catalog_from_sets(
                 [value._native for value in values]
             )
+            parameter_set_descriptors = tuple(
+                _descriptor(value) for value in self._catalog._descriptors()
+            )
         self._method_descriptors = method_descriptors()
-        self._parameter_set_descriptors = tuple(
-            _descriptor(value) for value in self._catalog._descriptors()
-        )
+        self._parameter_set_descriptors = parameter_set_descriptors
 
     @property
     def methods(self) -> tuple[MethodDescriptor, ...]:
