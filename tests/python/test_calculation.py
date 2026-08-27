@@ -1,12 +1,16 @@
 """Focused calculation facade and result-model checks."""
 
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event, Thread
 import unittest
-from typing import Any, cast
+from typing import Any, Callable, TypeVar, cast
 
 import numpy as np
 
 import chargefw
+
+T = TypeVar("T")
 
 
 def water(conformers: int = 1) -> chargefw.Molecule:
@@ -26,6 +30,44 @@ def water(conformers: int = 1) -> chargefw.Molecule:
         atom_ids=["O", "H1", "H2"],
         conformer_ids=["model-a"] if conformers == 1 else ["model-a", "model-b"],
     )
+
+
+def formal_options() -> chargefw.CalculationOptions:
+    return chargefw.CalculationOptions(
+        method="formal",
+        execution=chargefw.ExecutionSelectionKind.FULL,
+        max_threads=1,
+    )
+
+
+def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, int]:
+    started = Event()
+    begin = Event()
+    stop = Event()
+    progress = [0]
+
+    def spin() -> None:
+        started.set()
+        begin.wait()
+        while not stop.is_set():
+            progress[0] += 1
+
+    worker = Thread(target=spin)
+    worker.start()
+    if not started.wait(timeout=1.0):
+        stop.set()
+        worker.join(timeout=1.0)
+        raise AssertionError("worker thread did not start")
+    try:
+        begin.set()
+        result = operation()
+        progress_during_operation = progress[0]
+    finally:
+        stop.set()
+        worker.join(timeout=1.0)
+    if worker.is_alive():
+        raise AssertionError("worker thread did not stop")
+    return result, progress_during_operation
 
 
 class CalculationTests(unittest.TestCase):
@@ -114,6 +156,38 @@ class CalculationTests(unittest.TestCase):
             [item.values.tolist() for item in repeated_result.assignments],
             [item.values.tolist() for item in multi_result.assignments],
         )
+
+    def test_shared_calculator_supports_concurrent_calculations(self) -> None:
+        collection = chargefw.MoleculeCollection([chargefw.Molecule([8, 1, 1])])
+        options = formal_options()
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [
+                executor.submit(self.calculator.calculate, collection, options) for _ in range(4)
+            ]
+        results = [future.result() for future in futures]
+        self.assertTrue(
+            all(result.status is chargefw.ExecutionStatus.SUCCESS for result in results)
+        )
+        self.assertEqual(
+            [result.assignments[0].values.tolist() for result in results],
+            [[0.0, 0.0, 0.0]] * 4,
+        )
+
+    def test_assessment_releases_the_gil(self) -> None:
+        calculator = chargefw.Calculator()
+        molecule = chargefw.Molecule([1] * 25_000)
+        assessment, progress = run_while_python_thread_progresses(
+            lambda: calculator.assess(molecule, formal_options())
+        )
+        self.assertTrue(assessment.executable)
+        self.assertGreater(progress, 0)
+
+    def test_execution_releases_the_gil(self) -> None:
+        calculator = chargefw.Calculator()
+        assessment = calculator.assess(chargefw.Molecule([1] * 25_000), formal_options())
+        result, progress = run_while_python_thread_progresses(assessment.calculate)
+        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertGreater(progress, 0)
 
     def test_reduced_execution_policies(self) -> None:
         reduced = self.calculator.calculate(

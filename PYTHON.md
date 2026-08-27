@@ -443,7 +443,8 @@ dependency tests run on them.
 - full/cutoff/cover policy validation and effective provenance;
 - geometry-independent and all-conformer assignment cardinality;
 - source molecule/atom/conformer mappings and Python-owned output arrays;
-- repeated and concurrent calculations with the GIL released; and
+- repeated and concurrent calculations with the GIL released, including shared-calculator execution and a
+  worker-thread progress check during native work; and
 - cancellation/progress callback safety when that API is introduced.
 
 ### Adapter tests
