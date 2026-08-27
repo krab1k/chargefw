@@ -255,11 +255,11 @@ class Molecule:
 class MoleculeCollection(Sequence[Molecule]):
     """Immutable source-ordered collection of molecules."""
 
-    __slots__ = ("_molecules", "_name", "_native")
+    __slots__ = ("_molecules", "_name", "_native_molecules")
 
     _molecules: tuple[Molecule, ...]
     _name: str
-    _native: _native_core._NativeMoleculeCollection
+    _native_molecules: tuple[_native_core._NativeMolecule, ...]
 
     def __init__(self, molecules: Iterable[Molecule], name: str | None = None) -> None:
         if isinstance(molecules, (str, bytes, Molecule)):
@@ -276,8 +276,8 @@ class MoleculeCollection(Sequence[Molecule]):
         object.__setattr__(self, "_name", name or "")
         object.__setattr__(
             self,
-            "_native",
-            _native_core._make_collection(tuple(value._native for value in values), name or ""),
+            "_native_molecules",
+            tuple(value._native for value in values),
         )
 
     def __setattr__(self, name: str, value: Any) -> None:

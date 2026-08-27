@@ -70,8 +70,7 @@ class MoleculeTests(unittest.TestCase):
         self.assertEqual(tuple(collection), (molecule,))
         self.assertEqual(collection.molecules, (molecule,))
         self.assertEqual(collection.name, "fixture")
-        self.assertEqual(collection._native.size, 1)
-        self.assertEqual(collection._native.name, "fixture")
+        self.assertEqual(collection._native_molecules, (molecule._native,))
         self.assertEqual(repr(collection), "MoleculeCollection(molecules=1, name='fixture')")
 
     def test_coordinate_defaults_and_empty_molecule(self) -> None:

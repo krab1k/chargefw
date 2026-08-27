@@ -4,7 +4,6 @@
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
-#include <chargefw/core/molecule_collection.h>
 #include <chargefw/core/position.h>
 
 #include <nanobind/ndarray.h>
@@ -90,16 +89,6 @@ auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_char
                           std::move(name)};
 }
 
-auto make_collection(nb::sequence molecules, std::string name) -> core::MoleculeCollection {
-    const auto molecule_count = nb::len(molecules);
-    std::vector<core::Molecule> native_molecules;
-    native_molecules.reserve(molecule_count);
-    for (std::size_t index = 0; index < molecule_count; ++index) {
-        native_molecules.emplace_back(nb::cast<const core::Molecule&>(molecules[index]));
-    }
-    return core::MoleculeCollection{std::move(native_molecules), std::move(name)};
-}
-
 } // namespace
 
 void bind_core(nb::module_& module) {
@@ -108,14 +97,9 @@ void bind_core(nb::module_& module) {
         .def_prop_ro("atom_count", &core::Molecule::atom_count)
         .def_prop_ro("bond_count", &core::Molecule::bond_count)
         .def_prop_ro("conformer_count", &core::Molecule::conformer_count);
-    nb::class_<core::MoleculeCollection>(module, "_NativeMoleculeCollection")
-        .def_prop_ro("name", &core::MoleculeCollection::name)
-        .def_prop_ro("size", &core::MoleculeCollection::size);
-
     module.def("_make_molecule", &make_molecule, nb::arg("atomic_numbers"),
                nb::arg("formal_charges"), nb::arg("bonds"), nb::arg("coordinates"),
                nb::arg("atom_names"), nb::arg("conformer_names"), nb::arg("name"));
-    module.def("_make_collection", &make_collection, nb::arg("molecules"), nb::arg("name"));
 }
 
 } // namespace chargefw::python

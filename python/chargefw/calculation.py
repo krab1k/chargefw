@@ -598,7 +598,8 @@ class Calculator:
             raise TypeError("options must be a CalculationOptions value or None")
         collection = _as_collection(molecules)
         native = _native_calculation._make_assessment(
-            collection._native,
+            collection._native_molecules,
+            collection.name,
             self._catalog,
             options.method,
             options.parameter_set_id,

@@ -96,12 +96,11 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(len(geometry_independent.assignments), 1)
         self.assertIsNone(geometry_independent.assignments[0].conformer_index)
 
-        multi_result = self.calculator.calculate(
-            chargefw.MoleculeCollection([water(2)]),
-            chargefw.CalculationOptions(
-                method="qeq", execution=chargefw.ExecutionSelectionKind.FULL
-            ),
+        collection = chargefw.MoleculeCollection([water(2)])
+        options = chargefw.CalculationOptions(
+            method="qeq", execution=chargefw.ExecutionSelectionKind.FULL
         )
+        multi_result = self.calculator.calculate(collection, options)
         self.assertIs(multi_result.status, chargefw.ExecutionStatus.SUCCESS)
         self.assertEqual(
             [item.conformer_index for item in multi_result.assignments], [0, 1]
@@ -109,6 +108,11 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(
             [item.conformer_id for item in multi_result.assignments],
             ["model-a", "model-b"],
+        )
+        repeated_result = self.calculator.calculate(collection, options)
+        self.assertEqual(
+            [item.values.tolist() for item in repeated_result.assignments],
+            [item.values.tolist() for item in multi_result.assignments],
         )
 
     def test_reduced_execution_policies(self) -> None:

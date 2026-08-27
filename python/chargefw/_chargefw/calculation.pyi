@@ -1,7 +1,9 @@
 from enum import Enum
 from typing import Any
 
-from .core import _NativeMoleculeCollection
+from collections.abc import Sequence
+
+from .core import _NativeMolecule
 from .parameters import _NativeParameterCatalog
 
 
@@ -38,7 +40,8 @@ class _NativeAssessment:
 
 
 def _make_assessment(
-    molecules: _NativeMoleculeCollection,
+    molecules: Sequence[_NativeMolecule],
+    molecule_collection_name: str,
     catalog: _NativeParameterCatalog,
     method_id: str | None,
     parameter_set_id: str | None,

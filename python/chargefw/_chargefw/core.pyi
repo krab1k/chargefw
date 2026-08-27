@@ -18,14 +18,6 @@ class _NativeMolecule:
     def conformer_count(self) -> int: ...
 
 
-class _NativeMoleculeCollection:
-    @property
-    def name(self) -> str: ...
-
-    @property
-    def size(self) -> int: ...
-
-
 def _make_molecule(
     atomic_numbers: NDArray[np.int64],
     formal_charges: NDArray[np.int64],
@@ -35,8 +27,3 @@ def _make_molecule(
     conformer_names: Sequence[str],
     name: str,
 ) -> _NativeMolecule: ...
-
-
-def _make_collection(
-    molecules: Sequence[_NativeMolecule], name: str
-) -> _NativeMoleculeCollection: ...

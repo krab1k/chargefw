@@ -64,8 +64,9 @@ Implemented on 2026-08-27:
 - omitted atom and conformer IDs default to source-order indices, and `(0, N, 3)` coordinates represent no
   conformers while `(N, 3)` represents one conformer;
 - `MoleculeCollection` is an immutable source-ordered sequence with a collection name; and
-- the Python owner converts normalized data once to private nanobind-backed native `core::Molecule` and
-  `core::MoleculeCollection` values without adding Python metadata to the toolkit-neutral core.
+- the Python owner converts normalized data once to private nanobind-backed native `core::Molecule`
+  values; an owned native `core::MoleculeCollection` is materialized only for assessment, without adding
+  Python metadata to the toolkit-neutral core.
 
 Validation performed:
 

@@ -260,7 +260,7 @@ class NativeAssessment {
     bool consumed_ = false;
 };
 
-auto make_assessment(const core::MoleculeCollection& molecules,
+auto make_assessment(const nb::sequence& molecules, std::string molecule_collection_name,
                      const NativeParameterCatalog& catalog, std::optional<std::string> method_id,
                      std::optional<std::string> parameter_set_id, const nb::dict& options,
                      const bool permissive_types,
@@ -270,12 +270,25 @@ auto make_assessment(const core::MoleculeCollection& molecules,
                      const std::optional<std::size_t> cutoff_threshold,
                      const std::optional<std::size_t> cover_threshold,
                      const std::size_t max_threads) -> NativeAssessment {
-    // Convert Python mappings before releasing the GIL. The remaining work copies native-owned
-    // input values and prepares the assessment without accessing Python objects.
+    // Convert Python values to stable native references before releasing the GIL. The remaining
+    // work copies native-owned input values and prepares the assessment without accessing Python
+    // objects.
+    const auto molecule_count = static_cast<std::size_t>(nb::len(molecules));
+    auto source_molecules = std::vector<const core::Molecule*>{};
+    source_molecules.reserve(molecule_count);
+    for (std::size_t index = 0; index < molecule_count; ++index) {
+        source_molecules.push_back(&nb::cast<const core::Molecule&>(molecules[index]));
+    }
     auto native_method_options = method_options(options);
     nb::gil_scoped_release release;
+    auto owned_molecules = std::vector<core::Molecule>{};
+    owned_molecules.reserve(source_molecules.size());
+    for (const auto* molecule : source_molecules) {
+        owned_molecules.push_back(*molecule);
+    }
     auto request = calculation::AssessmentRequest{
-        .molecules = molecules,
+        .molecules = core::MoleculeCollection{std::move(owned_molecules),
+                                              std::move(molecule_collection_name)},
         .parameter_sets = catalog.parameter_sets(),
         .method_id = std::move(method_id),
         .parameter_set_id = std::move(parameter_set_id),
@@ -316,11 +329,11 @@ void bind_calculation(nb::module_& module) {
         .def("report", &NativeAssessment::report)
         .def("calculate", &NativeAssessment::calculate);
 
-    module.def("_make_assessment", &make_assessment, nb::arg("molecules"), nb::arg("catalog"),
-               nb::arg("method_id"), nb::arg("parameter_set_id"), nb::arg("method_options"),
-               nb::arg("permissive_types"), nb::arg("execution"), nb::arg("radius"),
-               nb::arg("charge_correction"), nb::arg("cutoff_threshold"),
-               nb::arg("cover_threshold"), nb::arg("max_threads"));
+    module.def("_make_assessment", &make_assessment, nb::arg("molecules"),
+               nb::arg("molecule_collection_name"), nb::arg("catalog"), nb::arg("method_id"),
+               nb::arg("parameter_set_id"), nb::arg("method_options"), nb::arg("permissive_types"),
+               nb::arg("execution"), nb::arg("radius"), nb::arg("charge_correction"),
+               nb::arg("cutoff_threshold"), nb::arg("cover_threshold"), nb::arg("max_threads"));
 }
 
 } // namespace chargefw::python
