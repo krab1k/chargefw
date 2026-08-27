@@ -10,14 +10,17 @@ formats should be added only for a concrete supported workflow.
 
 ## 1. Python and toolkit integration
 
+The detailed API contract, packaging decisions, adapter boundaries, and implementation sequence are
+maintained in [PYTHON.md](PYTHON.md); this roadmap retains only release-level acceptance criteria.
+
 - [ ] Define a synchronous toolkit-neutral Python API accepting atomic numbers, formal charges,
   indexed bonds, source names/identities, and zero or more coordinate arrays; return NumPy charge
   arrays plus mappings, provenance, and diagnostics.
 - [ ] Add nanobind bindings over the owned facade and test ownership, exception translation, array
   validation, collection ordering, source mappings, and all-conformer results.
 - [ ] Build a base wheel with bundled parameter data, package-resource discovery that needs no
-  environment variable, and clean-install tests for a declared initial CPython/platform set. Expand
-  the matrix only to platforms the project intends to support.
+  environment variable, required tested Gemmi Python integration, and clean-install tests for a declared
+  initial CPython/platform set. Expand the matrix only to platforms the project intends to support.
 - [ ] Add a pure-Python `rdkit.Chem.Mol` converter and an explicit charge-attachment helper behind a lazy
   optional dependency. Preserve atom indices, formal charges, supported bonds, and selected conformers;
   perform no implicit sanitization, hydrogen changes, protonation, embedding, or optimization, and do

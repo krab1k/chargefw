@@ -7,6 +7,7 @@ Read this file before changing the repository. Then read only the relevant secti
 - [PROJECT.md](PROJECT.md): implemented architecture, capabilities, compatibility state, and product
   direction;
 - [TODO.md](TODO.md): unfinished deliverables and their acceptance criteria;
+- [PYTHON.md](PYTHON.md): Python API contract, package scope, implementation plan, and delivery status;
 - [README.md](README.md): supported build, test, installation, and CLI usage.
 
 Keep ownership clear. Update the owning document when a change makes it stale; do not copy the same

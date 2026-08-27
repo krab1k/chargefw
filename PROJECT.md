@@ -1,8 +1,9 @@
 # ChargeFW Project Guide
 
 This document is the source of truth for implemented architecture, capabilities, compatibility state,
-and product direction. See [TODO.md](TODO.md) for unfinished work, [README.md](README.md) for usage,
-and [AGENTS.md](AGENTS.md) for implementation rules.
+and product direction. See [TODO.md](TODO.md) for unfinished work, [PYTHON.md](PYTHON.md) for the Python
+API and delivery plan, [README.md](README.md) for usage, and [AGENTS.md](AGENTS.md) for implementation
+rules.
 
 ## Purpose and status
 
@@ -430,10 +431,10 @@ native files / C++ / future NumPy and RDKit converters
 toolkit-neutral molecule data -> native assessment/calculation -> charges + mapping + provenance
 ```
 
-The first Python API should use NumPy-style arrays and nanobind. RDKit integration should initially be
-a pure-Python converter with lazy optional import, preserving atom/conformer identity and performing no
-implicit sanitization, hydrogen changes, protonation, embedding, or optimization. Packaging work must
-not make RDKit a dependency of the core library or base wheel.
+The first Python API should use NumPy-style arrays and nanobind. Its detailed public contract, required
+Gemmi integration, optional toolkit boundaries, packaging design, and phased delivery plan are maintained
+in [PYTHON.md](PYTHON.md). Packaging work must not make RDKit or Biopython a dependency of the core
+library or base wheel.
 
 ## Scientific and compatibility principles
 

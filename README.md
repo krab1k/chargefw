@@ -18,6 +18,7 @@ approximations without a general accuracy claim.
 | --- | --- |
 | [PROJECT.md](PROJECT.md) | Implemented architecture, capabilities, limits, and product direction |
 | [TODO.md](TODO.md) | Unfinished deliverables and acceptance criteria |
+| [PYTHON.md](PYTHON.md) | Python API contract, package scope, implementation plan, and status |
 | [AGENTS.md](AGENTS.md) | Repository boundaries and implementation rules |
 
 ## Requirements
