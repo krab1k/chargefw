@@ -66,6 +66,7 @@ def test_import_surface() -> None:
     assert chargefw.MethodOptionType.__module__ == "chargefw.methods"
     assert chargefw.ParameterSet is chargefw.parameters.ParameterSet
     assert (Path(chargefw.__file__).parent / "_chargefw" / "__init__.pyi").is_file()
+    assert (Path(chargefw.__file__).parent / "py.typed").is_file()
 
 
 if __name__ == "__main__":

@@ -388,6 +388,11 @@ native builds. When enabled it:
 Enabling Python must not change the C++ API, CLI, native install contents, or dependency behavior for a
 normal build. Do not fetch Python or nanobind when the option is off.
 
+Direct CMake installation places the Python component in the selected interpreter's platform package
+directory under the install prefix (for example, `lib64/python3.14/site-packages/chargefw`), rather than
+adding a nonstandard top-level directory. The extension and its required native runtime libraries remain
+beside the package.
+
 Development CMake presets pin `CHARGEFW_PYTHON_EXECUTABLE` to `/usr/bin/python3`. GCC and Clang debug and
 release presets enable the bindings and their CTest suite. Wheel builds intentionally do not use those
 presets: the PEP 517 frontend selects the target interpreter, which is necessary to build a wheel for each

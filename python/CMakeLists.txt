@@ -3,6 +3,20 @@ if(CHARGEFW_PYTHON_EXECUTABLE)
 endif()
 find_package(Python 3.10 REQUIRED COMPONENTS Interpreter Development.Module)
 set(CHARGEFW_RESOLVED_PYTHON_EXECUTABLE "${Python_EXECUTABLE}" PARENT_SCOPE)
+execute_process(
+    COMMAND "${Python_EXECUTABLE}" -c
+            "import sysconfig; print(sysconfig.get_path('platlib', vars=dict(base='', platbase='')).lstrip('/\\\\'))"
+    OUTPUT_VARIABLE CHARGEFW_PYTHON_SITEARCH_RELATIVE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
+)
+if(CHARGEFW_PYTHON_SITEARCH_RELATIVE STREQUAL "")
+    message(FATAL_ERROR "Could not determine the Python platform package installation directory")
+endif()
+set(CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY
+    "${CHARGEFW_PYTHON_SITEARCH_RELATIVE}/chargefw")
+set(CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY
+    "${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}" PARENT_SCOPE)
 
 execute_process(
     COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
@@ -93,32 +107,39 @@ endif()
 # A wheel needs the library beside the private extension. The ordinary native installation remains in
 # ${CMAKE_INSTALL_LIBDIR}; this additional copy exists only when Python support is requested.
 install(TARGETS chargefw_python
-    LIBRARY DESTINATION chargefw COMPONENT python
-    RUNTIME DESTINATION chargefw COMPONENT python
+    LIBRARY DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python
+    RUNTIME DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python
 )
+foreach(package_source IN LISTS CHARGEFW_PYTHON_PACKAGE_SOURCES)
+    install(FILES "chargefw/${package_source}"
+            DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python)
+endforeach()
+install(FILES chargefw/py.typed
+        DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}
+        COMPONENT python)
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/python/chargefw/_chargefw"
-        DESTINATION chargefw
+        DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}
         COMPONENT python
         FILES_MATCHING PATTERN "*.pyi")
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/data/parameters/"
-        DESTINATION chargefw/_data/parameters
+        DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}/_data/parameters
         COMPONENT python
         FILES_MATCHING PATTERN "*.json")
 install(TARGETS chargefw_core
-    LIBRARY DESTINATION chargefw COMPONENT python
-    RUNTIME DESTINATION chargefw COMPONENT python
+    LIBRARY DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python
+    RUNTIME DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python
 )
 
 if(TARGET gemmi_cpp)
     install(TARGETS gemmi_cpp
-        LIBRARY DESTINATION chargefw COMPONENT python
-        RUNTIME DESTINATION chargefw COMPONENT python
+        LIBRARY DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python
+        RUNTIME DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python
     )
 endif()
 
 if(TARGET tbb)
     install(TARGETS tbb
-        LIBRARY DESTINATION chargefw COMPONENT python
-        RUNTIME DESTINATION chargefw COMPONENT python
+        LIBRARY DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python
+        RUNTIME DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python
     )
 endif()
