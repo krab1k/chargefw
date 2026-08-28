@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 
 import chargefw
+import chargefw.adapters
+import chargefw.adapters.gemmi
 import chargefw.calculation
 import chargefw.core
 import chargefw.methods
@@ -64,7 +66,21 @@ def test_import_surface() -> None:
     assert chargefw.PrerequisiteIssueKind.__module__ == "chargefw.methods"
     assert chargefw.MethodOptionType.__module__ == "chargefw.methods"
     assert chargefw.ParameterSet is chargefw.parameters.ParameterSet
+    assert chargefw.adapters.read_pdb is chargefw.adapters.gemmi.read_pdb
+    assert chargefw.adapters.BondStrategy.__module__ == "chargefw.adapters.gemmi"
+    assert chargefw.adapters.__all__ == [
+        "RecordSelection",
+        "BondStrategy",
+        "ConformerSelection",
+        "read_pdb_string",
+        "read_pdb",
+        "read_mmcif_string",
+        "read_mmcif",
+        "from_structure",
+        "from_document",
+    ]
     assert (Path(chargefw.__file__).parent / "_chargefw" / "__init__.pyi").is_file()
+    assert (Path(chargefw.__file__).parent / "_chargefw" / "adapters.pyi").is_file()
     assert (Path(chargefw.__file__).parent / "py.typed").is_file()
 
 

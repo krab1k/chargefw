@@ -3,18 +3,22 @@ if(CHARGEFW_PYTHON_EXECUTABLE)
 endif()
 find_package(Python 3.10 REQUIRED COMPONENTS Interpreter Development.Module)
 set(CHARGEFW_RESOLVED_PYTHON_EXECUTABLE "${Python_EXECUTABLE}" PARENT_SCOPE)
-execute_process(
-    COMMAND "${Python_EXECUTABLE}" -c
-            "import sysconfig; print(sysconfig.get_path('platlib', vars=dict(base='', platbase='')).lstrip('/\\\\'))"
-    OUTPUT_VARIABLE CHARGEFW_PYTHON_SITEARCH_RELATIVE
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
-if(CHARGEFW_PYTHON_SITEARCH_RELATIVE STREQUAL "")
-    message(FATAL_ERROR "Could not determine the Python platform package installation directory")
+if(SKBUILD)
+    set(CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY "chargefw")
+else()
+    execute_process(
+        COMMAND "${Python_EXECUTABLE}" -c
+                "import sysconfig; print(sysconfig.get_path('platlib', vars=dict(base='', platbase='')).lstrip('/\\\\'))"
+        OUTPUT_VARIABLE CHARGEFW_PYTHON_SITEARCH_RELATIVE
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+    if(CHARGEFW_PYTHON_SITEARCH_RELATIVE STREQUAL "")
+        message(FATAL_ERROR "Could not determine the Python platform package installation directory")
+    endif()
+    set(CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY
+        "${CHARGEFW_PYTHON_SITEARCH_RELATIVE}/chargefw")
 endif()
-set(CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY
-    "${CHARGEFW_PYTHON_SITEARCH_RELATIVE}/chargefw")
 set(CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY
     "${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}" PARENT_SCOPE)
 
@@ -29,6 +33,9 @@ find_package(nanobind CONFIG REQUIRED)
 
 set(CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY "${PROJECT_BINARY_DIR}/python/chargefw")
 file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}")
+set(CHARGEFW_PYTHON_ADAPTER_DIRECTORY
+    "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/adapters")
+file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_ADAPTER_DIRECTORY}")
 set(CHARGEFW_PYTHON_STUB_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_chargefw")
 set(CHARGEFW_PYTHON_PARAMETER_DIRECTORY
     "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_data/parameters")
@@ -49,6 +56,7 @@ endforeach()
 
 set(CHARGEFW_PYTHON_STUB_SOURCES
     __init__.pyi
+    adapters.pyi
     calculation.pyi
     core.pyi
     methods.pyi
@@ -77,9 +85,18 @@ foreach(package_source IN LISTS CHARGEFW_PYTHON_PACKAGE_SOURCES)
     configure_file("chargefw/${package_source}"
                    "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/${package_source}" COPYONLY)
 endforeach()
+set(CHARGEFW_PYTHON_ADAPTER_SOURCES
+    __init__.py
+    gemmi.py
+)
+foreach(adapter_source IN LISTS CHARGEFW_PYTHON_ADAPTER_SOURCES)
+    configure_file("chargefw/adapters/${adapter_source}"
+                   "${CHARGEFW_PYTHON_ADAPTER_DIRECTORY}/${adapter_source}" COPYONLY)
+endforeach()
 configure_file(chargefw/py.typed "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/py.typed" COPYONLY)
 
 nanobind_add_module(chargefw_python NB_STATIC NB_SUPPRESS_WARNINGS
+    src/adapters.cpp
     src/calculation.cpp
     src/core.cpp
     src/methods.cpp
@@ -117,6 +134,11 @@ install(TARGETS chargefw_python
 foreach(package_source IN LISTS CHARGEFW_PYTHON_PACKAGE_SOURCES)
     install(FILES "chargefw/${package_source}"
             DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python)
+endforeach()
+foreach(adapter_source IN LISTS CHARGEFW_PYTHON_ADAPTER_SOURCES)
+    install(FILES "chargefw/adapters/${adapter_source}"
+            DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}/adapters
+            COMPONENT python)
 endforeach()
 install(FILES chargefw/py.typed
         DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}

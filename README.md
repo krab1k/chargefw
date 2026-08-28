@@ -83,6 +83,18 @@ result.raise_for_status()
 charges = result.assignments[0].values
 ```
 
+Convert structural data through the required upstream Gemmi package and the same native import policy
+used by the CLI:
+
+```python
+from chargefw.adapters import gemmi as chargefw_gemmi
+
+molecule = chargefw_gemmi.read_pdb(
+    "structure.pdb",
+    bond_strategy=chargefw_gemmi.BondStrategy.HYBRID,
+)
+```
+
 See [PYTHON.md](PYTHON.md) for the complete API contract, supported scope, and packaging status.
 
 The ordinary GCC and Clang debug presets build and test the Python bindings alongside native targets.

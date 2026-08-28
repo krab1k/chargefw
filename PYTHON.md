@@ -8,10 +8,10 @@ release-level acceptance criteria in [TODO.md](TODO.md), and user instructions i
 ## Status
 
 The Python package skeleton, optional nanobind target, owned array model, calculation vertical slice,
-and value-only catalog introspection are implemented. The bindings are organized by the same domain
-boundaries as the native library, and enum-valued policy and report fields use nanobind-backed Python
-enums. No toolkit adapter is implemented yet. The native code already provides the foundations the
-binding should use rather than duplicate:
+value-only catalog introspection, and required Gemmi integration are implemented. The bindings are
+organized by the same domain boundaries as the native library, and enum-valued policy, report, and
+adapter fields use nanobind-backed Python enums. No optional toolkit adapter is implemented yet. The
+native code already provides the foundations the binding should use rather than duplicate:
 
 - owned toolkit-neutral molecules and conformers;
 - an owned assessment/calculation facade with deterministic selection and structured applicability;
@@ -153,6 +153,40 @@ git diff --check
 The complete configured suite passed all ChargeFW tests, including the focused binding tests. Two existing
 test-configuration failures remain unrelated to this milestone: Gemmi's unbuilt `cpptest` executable and
 the custom-install-layout test's missing configured CLI11 source directory.
+
+### Milestone 5 — Gemmi integration: complete
+
+Implemented on 2026-08-28:
+
+- the base Python distribution requires the tested upstream `gemmi==0.7.4` package without importing it
+  from the top-level `chargefw` module;
+- `chargefw.adapters.gemmi` accepts PDB/mmCIF text and files, `gemmi.Structure`, and
+  `gemmi.cif.Document` values through serialization rather than cross-extension C++ object sharing;
+- all serialized input is parsed by the existing native PDB/mmCIF readers, preserving native record
+  selection, alternate-location handling, conformer selection, bond strategies, and failures;
+- imported molecules preserve source record order and identity, atom names/IDs, model names/IDs,
+  coordinates, formal charges, and supported bonds as ordinary owned Python values; and
+- native-backed enums expose record selection, bond strategy, and conformer selection without accepting
+  string shorthand.
+
+Validation performed:
+
+```text
+cmake --build --preset gcc-debug --parallel 2
+ctest --preset gcc-debug --output-on-failure
+cmake --build build/clang-debug --target chargefw_python --parallel 2
+ctest --test-dir build/clang-debug -R 'test_chargefw_python_(import|gemmi|mypy)' --output-on-failure
+uv build --quiet --wheel -Cbuild-dir=/tmp/kilo/chargefw-gemmi-build6 \
+  --out-dir /tmp/kilo/chargefw-gemmi-wheel6
+uv pip install --python /tmp/kilo/chargefw-gemmi-venv6/bin/python --link-mode=copy --reinstall \
+  /tmp/kilo/chargefw-gemmi-wheel6/chargefw-0.1-cp314-cp314-linux_x86_64.whl
+```
+
+The complete 68-test GCC debug suite passed. Focused Clang debug tests, strict mypy, direct-component
+installation, and an installed-wheel Gemmi/construction/calculation smoke test from `/tmp` also passed.
+The wheel used CPython 3.14 on Linux x86-64 and nanobind 3.0.1. A missing nanobind STL string caster
+include found during clean-wheel testing was corrected; ChargeFW remains compatible with both tested
+nanobind 2.15 and 3.0 releases. Declaring and qualifying the release wheel matrix remains milestone 6.
 
 ## Product scope
 
@@ -416,7 +450,7 @@ For local iteration, the scikit-build-core build directory is persistent and key
 (`build/python/{wheel_tag}`). CMake and FetchContent can therefore reuse the configured native core and
 dependency build for repeated builds of the same interpreter/platform instead of rebuilding the unchanged
 core in a temporary directory. A source change still causes the normal CMake dependency rebuild when
-needed; a clean rebuild can use `-Ccmake.fresh=true` or remove the corresponding ignored build directory.
+needed; a clean build can select a new directory with `-Cbuild-dir=/tmp/chargefw-python-build`.
 
 Typical low-output local commands are:
 
@@ -489,7 +523,7 @@ Each milestone should leave one usable vertical slice and update this status sec
    assess/calculate, NumPy assignments, reports, provenance, failures, and all-conformer mappings.
 4. **Complete — introspection and external parameters** — expose value-only method/parameter descriptors
    and explicit immutable parameter loading needed by ACC III without exposing classification internals.
-5. **Gemmi integration** — require the tested upstream Python package, implement serialized adapter
+5. **Complete — Gemmi integration** — require the tested upstream Python package, implement serialized adapter
    entry points, and verify parity with native PDB/mmCIF import semantics.
 6. **Wheel qualification** — build the declared initial matrix and run clean-environment relocation,
    shared-library, resource, and calculation smoke tests.

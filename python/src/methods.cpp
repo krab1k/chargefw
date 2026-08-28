@@ -5,6 +5,7 @@
 #include <chargefw/methods/method_registry.h>
 
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/string.h>
 
 namespace nb = nanobind;
 
