@@ -79,7 +79,7 @@ foreach(package_source IN LISTS CHARGEFW_PYTHON_PACKAGE_SOURCES)
 endforeach()
 configure_file(chargefw/py.typed "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/py.typed" COPYONLY)
 
-nanobind_add_module(chargefw_python NB_STATIC
+nanobind_add_module(chargefw_python NB_STATIC NB_SUPPRESS_WARNINGS
     src/calculation.cpp
     src/core.cpp
     src/methods.cpp
