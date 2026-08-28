@@ -9,7 +9,7 @@ from typing import Any, overload
 
 import numpy as np
 
-from ._arrays import as_coordinates, as_ids, as_integer_array, as_names, readonly_copy
+from ._arrays import as_coordinates, as_ids, as_integer_array, as_names, immutable_array
 from ._chargefw import core as _native_core
 
 
@@ -128,11 +128,8 @@ class Molecule:
             seen_bonds.add(key)
 
         public_coordinates, coordinates_were_2d = as_coordinates(coordinates, atom_count)
-        native_coordinates = public_coordinates
-        if coordinates_were_2d:
-            native_coordinates = public_coordinates.reshape((1, atom_count, 3))
         atom_name_values = as_names(atom_names, atom_count, "atom_names")
-        conformer_count = native_coordinates.shape[0]
+        conformer_count = 1 if coordinates_were_2d else public_coordinates.shape[0]
         conformer_name_values = as_names(conformer_names, conformer_count, "conformer_names")
 
         if source is not None:
@@ -148,6 +145,14 @@ class Molecule:
 
         atom_id_values = as_ids(atom_ids, atom_count, "atom_ids")
         conformer_id_values = as_ids(conformer_ids, conformer_count, "conformer_ids")
+
+        atomic = immutable_array(atomic)
+        formal = immutable_array(formal)
+        bond_array = immutable_array(bond_array)
+        public_coordinates = immutable_array(public_coordinates)
+        native_coordinates = public_coordinates
+        if coordinates_were_2d:
+            native_coordinates = public_coordinates.reshape((1, atom_count, 3))
 
         object.__setattr__(self, "_atomic_numbers", atomic)
         object.__setattr__(self, "_formal_charges", formal)
@@ -179,19 +184,19 @@ class Molecule:
 
     @property
     def atomic_numbers(self) -> np.ndarray:
-        return readonly_copy(self._atomic_numbers)
+        return self._atomic_numbers
 
     @property
     def formal_charges(self) -> np.ndarray:
-        return readonly_copy(self._formal_charges)
+        return self._formal_charges
 
     @property
     def bonds(self) -> np.ndarray:
-        return readonly_copy(self._bonds)
+        return self._bonds
 
     @property
     def coordinates(self) -> np.ndarray:
-        return readonly_copy(self._coordinates)
+        return self._coordinates
 
     @property
     def name(self) -> str:

@@ -127,7 +127,7 @@ def as_ids(
     return result
 
 
-def readonly_copy(array: np.ndarray) -> np.ndarray:
-    result = array.copy()
-    result.setflags(write=False)
-    return result
+def immutable_array(array: np.ndarray) -> np.ndarray:
+    """Copy an array into C-contiguous storage that cannot be made writable."""
+    contiguous = np.asarray(array, order="C")
+    return np.frombuffer(contiguous.tobytes(), dtype=contiguous.dtype).reshape(contiguous.shape)

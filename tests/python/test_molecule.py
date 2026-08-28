@@ -51,8 +51,17 @@ class MoleculeTests(unittest.TestCase):
         self.assertEqual(molecule._native.name, "water-like")
 
         readonly = molecule.atomic_numbers
+        self.assertIs(readonly, molecule.atomic_numbers)
         with self.assertRaises(ValueError):
             readonly[0] = 2
+        with self.assertRaises(ValueError):
+            readonly.setflags(write=True)
+        with self.assertRaises(ValueError):
+            molecule._formal_charges[0] = 2
+        with self.assertRaises(ValueError):
+            molecule._bonds[0, 0] = 1
+        with self.assertRaises(ValueError):
+            molecule._coordinates[0, 0, 0] = 1.0
         with self.assertRaises(AttributeError):
             setattr(molecule, "name", "changed")
         self.assertEqual(

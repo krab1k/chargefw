@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from threading import Lock
 from typing import Any
 
-from ._calculation_options import CalculationOptions, MethodOptionValue
+from ._calculation_options import CalculationOptions
 from ._calculation_values import (
     ApplicableCandidate,
     ApplicabilityReport,

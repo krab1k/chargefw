@@ -56,8 +56,9 @@ Implemented on 2026-08-27:
 
 - `chargefw.Molecule` is an immutable Python value object accepting atomic numbers, formal charges,
   indexed bonds, one or more coordinate conformers, names, source identity, and source atom/conformer IDs;
-- inputs are copied into normalized C-contiguous `int64`/`float64` arrays, with read-only copies returned
-  by public array properties so caller mutation or lifetime cannot alter a molecule;
+- inputs are copied into normalized C-contiguous `int64`/`float64` arrays backed by immutable storage;
+  public array properties return those zero-copy read-only arrays, so caller mutation or lifetime cannot
+  alter a molecule;
 - validation rejects incorrect ranks/shapes, non-integral or overflowing integer values, unsupported
   atomic numbers and bond orders, self/duplicate/out-of-range bonds, non-finite coordinates, invalid
   names, negative record indices, and unhashable source IDs;

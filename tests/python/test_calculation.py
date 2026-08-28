@@ -161,6 +161,87 @@ class CalculationTests(unittest.TestCase):
             [item.values.tolist() for item in multi_result.assignments],
         )
 
+        mapped_collection = chargefw.MoleculeCollection(
+            [
+                chargefw.Molecule(
+                    [1], source_name="first", record_id="record-a", atom_ids=["A"]
+                ),
+                chargefw.Molecule(
+                    [8, 1],
+                    source_name="second",
+                    record_id="record-b",
+                    atom_ids=["B", "C"],
+                ),
+            ]
+        )
+        mapped_result = self.calculator.calculate(mapped_collection, formal_options())
+        self.assertIs(mapped_result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(
+            [assignment.molecule_index for assignment in mapped_result.assignments], [0, 1]
+        )
+        self.assertEqual(
+            [assignment.source.record_id for assignment in mapped_result.assignments],
+            ["record-a", "record-b"],
+        )
+        self.assertEqual(
+            [assignment.atom_ids for assignment in mapped_result.assignments],
+            [("A",), ("B", "C")],
+        )
+
+    def test_public_charge_assignment_is_validated_and_comparable(self) -> None:
+        source = chargefw.SourceIdentity("fixture", 1, "record")
+        assignment = chargefw.ChargeAssignment(
+            values=np.array([0.25, -0.25]),
+            molecule_index=cast(Any, np.int64(2)),
+            conformer_index=0,
+            source=source,
+            atom_ids=("A", "B"),
+            conformer_id="model",
+        )
+        same = chargefw.ChargeAssignment(
+            values=np.array([0.25, -0.25]),
+            molecule_index=2,
+            conformer_index=0,
+            source=source,
+            atom_ids=("A", "B"),
+            conformer_id="model",
+        )
+        different = chargefw.ChargeAssignment(
+            values=np.array([0.5, -0.5]),
+            molecule_index=2,
+            conformer_index=0,
+            source=source,
+            atom_ids=("A", "B"),
+            conformer_id="model",
+        )
+        self.assertEqual(assignment, same)
+        self.assertNotEqual(assignment, different)
+        self.assertFalse(assignment.values.flags.writeable)
+        with self.assertRaises(ValueError):
+            assignment.values.setflags(write=True)
+
+        invalid_assignments = (
+            (ValueError, dict(values=[[0.0]], atom_ids=("A",))),
+            (ValueError, dict(values=[np.nan], atom_ids=("A",))),
+            (ValueError, dict(values=[0.0], atom_ids=())),
+            (ValueError, dict(values=[0.0], atom_ids=("A",), molecule_index=-1)),
+            (
+                ValueError,
+                dict(values=[0.0], atom_ids=("A",), conformer_id="model"),
+            ),
+            (TypeError, dict(values=[0.0], atom_ids=("A",), source="fixture")),
+        )
+        defaults: dict[str, Any] = {
+            "molecule_index": 0,
+            "conformer_index": None,
+            "source": source,
+            "conformer_id": None,
+        }
+        for error_type, overrides in invalid_assignments:
+            with self.subTest(error_type=error_type, overrides=overrides):
+                with self.assertRaises(error_type):
+                    chargefw.ChargeAssignment(**(defaults | overrides))
+
     def test_shared_calculator_supports_concurrent_calculations(self) -> None:
         collection = chargefw.MoleculeCollection([chargefw.Molecule([8, 1, 1])])
         options = formal_options()
@@ -273,6 +354,35 @@ class CalculationTests(unittest.TestCase):
                 with self.assertRaises(error_type):
                     chargefw.CalculationOptions(**options)
 
+    def test_method_option_overrides_are_validated_and_reported(self) -> None:
+        molecule = chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]])
+        options = chargefw.CalculationOptions(
+            method="peoe",
+            method_options={"peoe": {"iters": 2}},
+            execution=chargefw.ExecutionSelectionKind.FULL,
+        )
+        result = self.calculator.calculate(molecule, options)
+        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        if result.effective is None:
+            self.fail("successful calculation must report effective provenance")
+        self.assertEqual(dict(result.effective.method_options), {"iters": 2})
+
+        for method_options in (
+            {"peoe": {"iters": 0}},
+            {"peoe": {"unknown": 1}},
+            {"qeq": {"overlap_term": "Ohno"}},
+        ):
+            with self.subTest(method_options=method_options):
+                with self.assertRaises(ValueError):
+                    self.calculator.assess(
+                        molecule,
+                        chargefw.CalculationOptions(
+                            method="peoe",
+                            method_options=method_options,
+                            execution=chargefw.ExecutionSelectionKind.FULL,
+                        ),
+                    )
+
     def test_catalogs_and_descriptors_are_immutable_values(self) -> None:
         other_calculator = chargefw.Calculator()
         self.assertIs(other_calculator._catalog, self.calculator._catalog)
@@ -284,10 +394,16 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(eem.requires_coordinates)
         self.assertTrue(eem.supports_cutoff)
         self.assertTrue(eem.supports_cover)
-        self.assertIsInstance(eem.options, tuple)
-        self.assertTrue(
-            all(option.type is chargefw.MethodOptionType.INTEGER for option in eem.options)
-        )
+        peoe = next(method for method in methods if method.id == "peoe")
+        self.assertEqual(len(peoe.options), 1)
+        self.assertEqual(peoe.options[0].id, "iters")
+        self.assertIs(peoe.options[0].type, chargefw.MethodOptionType.INTEGER)
+        self.assertEqual(peoe.options[0].default, 6)
+        self.assertEqual(peoe.options[0].minimum, 1)
+        qeq = next(method for method in methods if method.id == "qeq")
+        overlap = next(option for option in qeq.options if option.id == "overlap_term")
+        self.assertIs(overlap.type, chargefw.MethodOptionType.STRING)
+        self.assertIn("Ohno", overlap.choices)
         self.assertEqual(chargefw.method_descriptors(), methods)
 
         parameter_directory = Path(chargefw.__file__).parent / "_data" / "parameters"
@@ -317,6 +433,8 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(effective.parameter_set_id, parameter_set.id)
         with self.assertRaises(ValueError):
             chargefw.Calculator([])
+        with self.assertRaises(ValueError):
+            chargefw.Calculator([parameter_set, parameter_set])
 
 
 if __name__ == "__main__":
