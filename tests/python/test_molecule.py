@@ -80,6 +80,13 @@ class MoleculeTests(unittest.TestCase):
         self.assertFalse(no_coordinates.has_coordinates)
         self.assertEqual(chargefw.Molecule([]).atomic_numbers.dtype, np.dtype(np.int64))
 
+    def test_integer_iterables_and_empty_bonds_are_normalized(self) -> None:
+        molecule = chargefw.Molecule(
+            (atomic_number for atomic_number in [8, 1, 1]), bonds=[]
+        )
+        np.testing.assert_array_equal(molecule.atomic_numbers, [8, 1, 1])
+        self.assertEqual(molecule.bonds.shape, (0, 3))
+
     def test_object_integer_arrays_are_range_checked(self) -> None:
         molecule = chargefw.Molecule(np.array([1, 8], dtype=object))
         np.testing.assert_array_equal(molecule.atomic_numbers, [1, 8])

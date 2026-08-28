@@ -111,7 +111,7 @@ class Molecule:
         if bonds is None:
             bond_array = np.empty((0, 3), dtype=np.int64)
         else:
-            bond_array = as_integer_array(bonds, "bonds", 2)
+            bond_array = as_integer_array(bonds, "bonds", 2, empty_1d_shape=(0, 3))
             if bond_array.shape[1] != 3:
                 raise ValueError("bonds must have shape (B, 3)")
         seen_bonds: set[tuple[int, int]] = set()

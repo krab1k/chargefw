@@ -9,13 +9,28 @@ from typing import Any
 import numpy as np
 
 
-def as_integer_array(value: Any, field: str, ndim: int) -> np.ndarray:
+def as_integer_array(
+    value: Any, field: str, ndim: int, empty_1d_shape: tuple[int, ...] | None = None
+) -> np.ndarray:
     try:
         array = np.asarray(value)
     except Exception as error:
         raise TypeError(f"{field} must be an integer array") from error
 
+    if (
+        array.ndim == 0
+        and array.dtype.kind == "O"
+        and isinstance(value, Iterable)
+        and not isinstance(value, (str, bytes))
+    ):
+        try:
+            array = np.asarray(tuple(value))
+        except Exception as error:
+            raise TypeError(f"{field} must be an integer array") from error
+
     if array.ndim != ndim:
+        if empty_1d_shape is not None and array.ndim == 1 and array.size == 0:
+            return np.empty(empty_1d_shape, dtype=np.int64)
         raise ValueError(f"{field} must have rank {ndim}, got {array.ndim}")
     if array.dtype.kind == "b":
         raise TypeError(f"{field} must contain integers, not booleans")
