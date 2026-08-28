@@ -52,7 +52,6 @@ class Molecule:
         "_formal_charges",
         "_bonds",
         "_coordinates",
-        "_native_coordinates",
         "_name",
         "_atom_names",
         "_conformer_names",
@@ -66,7 +65,6 @@ class Molecule:
     _formal_charges: np.ndarray
     _bonds: np.ndarray
     _coordinates: np.ndarray
-    _native_coordinates: np.ndarray
     _name: str
     _atom_names: tuple[str, ...]
     _conformer_names: tuple[str, ...]
@@ -114,22 +112,18 @@ class Molecule:
             bond_array = as_integer_array(bonds, "bonds", 2, empty_1d_shape=(0, 3))
             if bond_array.shape[1] != 3:
                 raise ValueError("bonds must have shape (B, 3)")
-        seen_bonds: set[tuple[int, int]] = set()
-        for first, second, order in bond_array:
-            if first < 0 or second < 0 or first >= atom_count or second >= atom_count:
+        if len(bond_array) != 0:
+            endpoints = bond_array[:, :2]
+            if np.any((endpoints < 0) | (endpoints >= atom_count)):
                 raise ValueError("bond atom indices must be within the molecule")
-            if first == second:
+            if np.any(endpoints[:, 0] == endpoints[:, 1]):
                 raise ValueError("bond endpoints must refer to different atoms")
-            if order not in (1, 2, 3):
+            if np.any((bond_array[:, 2] < 1) | (bond_array[:, 2] > 3)):
                 raise ValueError("bond orders must be 1, 2, or 3")
-            key = (min(int(first), int(second)), max(int(first), int(second)))
-            if key in seen_bonds:
-                raise ValueError("molecule contains duplicate bonds")
-            seen_bonds.add(key)
 
-        public_coordinates, coordinates_were_2d = as_coordinates(coordinates, atom_count)
+        coordinate_values = as_coordinates(coordinates, atom_count)
         atom_name_values = as_names(atom_names, atom_count, "atom_names")
-        conformer_count = 1 if coordinates_were_2d else public_coordinates.shape[0]
+        conformer_count = coordinate_values.shape[0]
         conformer_name_values = as_names(conformer_names, conformer_count, "conformer_names")
 
         if source is not None:
@@ -149,16 +143,12 @@ class Molecule:
         atomic = immutable_array(atomic)
         formal = immutable_array(formal)
         bond_array = immutable_array(bond_array)
-        public_coordinates = immutable_array(public_coordinates)
-        native_coordinates = public_coordinates
-        if coordinates_were_2d:
-            native_coordinates = public_coordinates.reshape((1, atom_count, 3))
+        coordinate_values = immutable_array(coordinate_values)
 
         object.__setattr__(self, "_atomic_numbers", atomic)
         object.__setattr__(self, "_formal_charges", formal)
         object.__setattr__(self, "_bonds", bond_array)
-        object.__setattr__(self, "_coordinates", public_coordinates)
-        object.__setattr__(self, "_native_coordinates", native_coordinates)
+        object.__setattr__(self, "_coordinates", coordinate_values)
         object.__setattr__(self, "_name", name or "")
         object.__setattr__(self, "_atom_names", atom_name_values)
         object.__setattr__(self, "_conformer_names", conformer_name_values)
@@ -172,14 +162,14 @@ class Molecule:
                 atomic,
                 formal,
                 bond_array,
-                native_coordinates,
+                coordinate_values,
                 atom_name_values,
                 conformer_name_values,
                 name or "",
             ),
         )
 
-    def __setattr__(self, name: str, value: Any) -> None:
+    def __setattr__(self, name: str, value: object) -> None:
         raise AttributeError(f"{type(self).__name__} is immutable")
 
     @property
@@ -244,7 +234,7 @@ class Molecule:
 
     @property
     def conformer_count(self) -> int:
-        return int(self._native_coordinates.shape[0])
+        return int(self._coordinates.shape[0])
 
     @property
     def has_coordinates(self) -> bool:
@@ -285,7 +275,7 @@ class MoleculeCollection(Sequence[Molecule]):
             tuple(value._native for value in values),
         )
 
-    def __setattr__(self, name: str, value: Any) -> None:
+    def __setattr__(self, name: str, value: object) -> None:
         raise AttributeError(f"{type(self).__name__} is immutable")
 
     def __len__(self) -> int:

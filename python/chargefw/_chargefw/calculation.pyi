@@ -1,10 +1,9 @@
-from enum import Enum
 from collections.abc import Sequence
+from enum import Enum
 
 from .._payloads import AssessmentReportPayload, ExecutionResultPayload
 from .core import _NativeMolecule
 from .parameters import _NativeParameterCatalog
-
 
 class ExecutionSelectionKind(Enum):
     AUTOMATIC = ...

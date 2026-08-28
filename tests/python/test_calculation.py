@@ -1,15 +1,19 @@
 """Focused calculation facade and result-model checks."""
 
-from pathlib import Path
+import gc
+import json
+import unittest
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from threading import Event, Thread
 from time import perf_counter, sleep
-import unittest
-from typing import Any, Callable, TypeVar, cast
-
-import numpy as np
+from typing import Any, TypeVar, cast
 
 import chargefw
+import numpy as np
+from chargefw._chargefw import core as _native_core
 
 T = TypeVar("T")
 _GIL_OBSERVATION_DELAY_SECONDS = 0.01
@@ -221,15 +225,21 @@ class CalculationTests(unittest.TestCase):
             assignment.values.setflags(write=True)
 
         invalid_assignments = (
-            (ValueError, dict(values=[[0.0]], atom_ids=("A",))),
-            (ValueError, dict(values=[np.nan], atom_ids=("A",))),
-            (ValueError, dict(values=[0.0], atom_ids=())),
-            (ValueError, dict(values=[0.0], atom_ids=("A",), molecule_index=-1)),
+            (ValueError, {"values": [[0.0]], "atom_ids": ("A",)}),
+            (ValueError, {"values": [np.nan], "atom_ids": ("A",)}),
+            (ValueError, {"values": [0.0], "atom_ids": ()}),
             (
                 ValueError,
-                dict(values=[0.0], atom_ids=("A",), conformer_id="model"),
+                {"values": [0.0], "atom_ids": ("A",), "molecule_index": -1},
             ),
-            (TypeError, dict(values=[0.0], atom_ids=("A",), source="fixture")),
+            (
+                ValueError,
+                {"values": [0.0], "atom_ids": ("A",), "conformer_id": "model"},
+            ),
+            (
+                TypeError,
+                {"values": [0.0], "atom_ids": ("A",), "source": "fixture"},
+            ),
         )
         defaults: dict[str, Any] = {
             "molecule_index": 0,
@@ -238,9 +248,10 @@ class CalculationTests(unittest.TestCase):
             "conformer_id": None,
         }
         for error_type, overrides in invalid_assignments:
-            with self.subTest(error_type=error_type, overrides=overrides):
-                with self.assertRaises(error_type):
-                    chargefw.ChargeAssignment(**(defaults | overrides))
+            with self.subTest(error_type=error_type, overrides=overrides), self.assertRaises(
+                error_type
+            ):
+                chargefw.ChargeAssignment(**(defaults | overrides))
 
     def test_shared_calculator_supports_concurrent_calculations(self) -> None:
         collection = chargefw.MoleculeCollection([chargefw.Molecule([8, 1, 1])])
@@ -265,6 +276,28 @@ class CalculationTests(unittest.TestCase):
             lambda: calculator.assess(molecule, formal_options())
         )
         self.assertTrue(assessment.executable)
+        self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
+        self.assertTrue(progressed)
+
+    def test_native_molecule_construction_releases_the_gil(self) -> None:
+        atom_count = _GIL_TEST_ATOM_COUNT
+        atomic_numbers = np.ones(atom_count, dtype=np.int64)
+        formal_charges = np.zeros(atom_count, dtype=np.int64)
+        bonds = np.empty((0, 3), dtype=np.int64)
+        coordinates = np.empty((0, atom_count, 3), dtype=np.float64)
+        atom_names = ("",) * atom_count
+        molecule, progressed, operation_seconds = run_while_python_thread_progresses(
+            lambda: _native_core._make_molecule(
+                atomic_numbers,
+                formal_charges,
+                bonds,
+                coordinates,
+                atom_names,
+                (),
+                "gil-test",
+            )
+        )
+        self.assertEqual(molecule.atom_count, atom_count)
         self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
         self.assertTrue(progressed)
 
@@ -315,6 +348,37 @@ class CalculationTests(unittest.TestCase):
             self.fail("successful calculation must report effective provenance")
         self.assertIs(covered_effective.execution_policy.mode, chargefw.ExecutionMode.COVER)
 
+    def test_automatic_thresholds_and_explicit_full_warnings(self) -> None:
+        automatic = self.calculator.assess(
+            water(),
+            chargefw.CalculationOptions(
+                method="eem",
+                cutoff_atom_threshold=1,
+                cover_atom_threshold=100,
+            ),
+        )
+        self.assertTrue(automatic.executable)
+        if automatic.execution_policy is None:
+            self.fail("executable assessment must report an execution policy")
+        self.assertIs(automatic.execution_policy.mode, chargefw.ExecutionMode.CUTOFF)
+        self.assertEqual(automatic.execution_policy.radius, 12.0)
+
+        explicit_full = self.calculator.assess(
+            water(),
+            chargefw.CalculationOptions(
+                method="eem",
+                execution=chargefw.ExecutionSelectionKind.FULL,
+                cutoff_atom_threshold=1,
+                cover_atom_threshold=100,
+            ),
+        )
+        self.assertTrue(explicit_full.executable)
+        self.assertTrue(explicit_full.execution_issues)
+        self.assertIs(
+            explicit_full.execution_issues[0].kind,
+            chargefw.ExecutionIssueKind.RESOURCE_THRESHOLD_EXCEEDED,
+        )
+
     def test_no_plan_result_and_typed_exception(self) -> None:
         result = self.calculator.assess(
             chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]]),
@@ -333,26 +397,97 @@ class CalculationTests(unittest.TestCase):
             result.raise_for_status()
         self.assertIs(context.exception.result, result)
 
+    def test_numerical_failure_result_and_typed_exception(self) -> None:
+        parameter_document = {
+            "metadata": {"name": "Singular EEM", "method": "eem"},
+            "common": {"names": ["kappa"], "values": [1.0]},
+            "atom": {
+                "names": ["A", "B"],
+                "data": [
+                    {"key": ["H", "plain", "*"], "value": [1.0, 1.0]},
+                    {"key": ["O", "plain", "*"], "value": [2.0, 1.0]},
+                ],
+            },
+        }
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "singular-eem.json"
+            path.write_text(json.dumps(parameter_document), encoding="utf-8")
+            calculator = chargefw.Calculator([chargefw.load_parameter_set(path)])
+            result = calculator.calculate(
+                chargefw.Molecule(
+                    [1, 8],
+                    coordinates=[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+                    name="singular-eem",
+                ),
+                chargefw.CalculationOptions(
+                    method="eem",
+                    parameter_set_id="singular-eem",
+                    execution=chargefw.ExecutionSelectionKind.FULL,
+                ),
+            )
+        self.assertIs(result.status, chargefw.ExecutionStatus.NUMERICAL_FAILURE)
+        self.assertEqual(result.assignments, ())
+        self.assertIsNotNone(result.effective)
+        self.assertIn(
+            "method 'eem', molecule 1 ('singular-eem'), conformer 1",
+            result.failure_message or "",
+        )
+        with self.assertRaises(chargefw.NumericalFailureError) as context:
+            result.raise_for_status()
+        self.assertIs(context.exception.result, result)
+
+    def test_invalid_selection_requests_raise_value_error(self) -> None:
+        for options in (
+            chargefw.CalculationOptions(method="not-a-method"),
+            chargefw.CalculationOptions(method="eem", parameter_set_id="not-a-parameter-set"),
+        ):
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                self.calculator.assess(water(), options)
+
+    def test_results_outlive_calculation_inputs(self) -> None:
+        def calculate_owned_result() -> tuple[
+            chargefw.CalculationResult, chargefw.AssessmentReport
+        ]:
+            molecule = chargefw.Molecule(
+                [8, 1, 1],
+                source_name="owned",
+                record_id="owned-record",
+                atom_ids=["O", "H1", "H2"],
+            )
+            calculator = chargefw.Calculator()
+            assessment = calculator.assess(molecule, formal_options())
+            report = assessment.report
+            return assessment.calculate(), report
+
+        result, report = calculate_owned_result()
+        gc.collect()
+        self.assertTrue(report.executable)
+        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(result.assignments[0].source.record_id, "owned-record")
+        self.assertEqual(result.assignments[0].atom_ids, ("O", "H1", "H2"))
+        np.testing.assert_array_equal(result.assignments[0].values, [0.0, 0.0, 0.0])
+
     def test_invalid_options_are_rejected_early(self) -> None:
         invalid_options = (
             (
                 ValueError,
-                dict(
-                    execution=chargefw.ExecutionSelectionKind.FULL,
-                    charge_correction=chargefw.ChargeCorrectionPolicy.UNIFORM,
-                ),
+                {
+                    "execution": chargefw.ExecutionSelectionKind.FULL,
+                    "charge_correction": chargefw.ChargeCorrectionPolicy.UNIFORM,
+                },
             ),
-            (TypeError, dict(execution="full")),
-            (TypeError, dict(charge_correction="none")),
-            (TypeError, dict(max_threads=True)),
-            (TypeError, dict(cutoff_atom_threshold=False)),
-            (ValueError, dict(cover_atom_threshold=np.iinfo(np.uintp).max + 1)),
-            (ValueError, dict(max_threads=np.iinfo(np.int32).max + 1)),
+            (TypeError, {"execution": "full"}),
+            (TypeError, {"charge_correction": "none"}),
+            (TypeError, {"max_threads": True}),
+            (TypeError, {"cutoff_atom_threshold": False}),
+            (ValueError, {"cover_atom_threshold": np.iinfo(np.uintp).max + 1}),
+            (ValueError, {"max_threads": np.iinfo(np.int32).max + 1}),
         )
         for error_type, options in invalid_options:
-            with self.subTest(error_type=error_type, options=options):
-                with self.assertRaises(error_type):
-                    chargefw.CalculationOptions(**options)
+            with self.subTest(error_type=error_type, options=options), self.assertRaises(
+                error_type
+            ):
+                chargefw.CalculationOptions(**options)
 
     def test_method_option_overrides_are_validated_and_reported(self) -> None:
         molecule = chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]])
@@ -372,16 +507,15 @@ class CalculationTests(unittest.TestCase):
             {"peoe": {"unknown": 1}},
             {"qeq": {"overlap_term": "Ohno"}},
         ):
-            with self.subTest(method_options=method_options):
-                with self.assertRaises(ValueError):
-                    self.calculator.assess(
-                        molecule,
-                        chargefw.CalculationOptions(
-                            method="peoe",
-                            method_options=method_options,
-                            execution=chargefw.ExecutionSelectionKind.FULL,
-                        ),
-                    )
+            with self.subTest(method_options=method_options), self.assertRaises(ValueError):
+                self.calculator.assess(
+                    molecule,
+                    chargefw.CalculationOptions(
+                        method="peoe",
+                        method_options=method_options,
+                        execution=chargefw.ExecutionSelectionKind.FULL,
+                    ),
+                )
 
     def test_catalogs_and_descriptors_are_immutable_values(self) -> None:
         other_calculator = chargefw.Calculator()
@@ -418,7 +552,7 @@ class CalculationTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             chargefw.ParameterSet()
         with self.assertRaises(AttributeError):
-            parameter_set._native = None
+            cast(Any, parameter_set)._native = None
         loaded_sets = chargefw.load_parameter_sets(parameter_directory)
         self.assertIn(parameter_set.id, {value.id for value in loaded_sets})
 

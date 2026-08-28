@@ -1,6 +1,6 @@
 from enum import Enum
-from .._payloads import MethodDescriptorPayload
 
+from .._payloads import MethodDescriptorPayload
 
 class MethodOptionType(Enum):
     BOOLEAN = ...

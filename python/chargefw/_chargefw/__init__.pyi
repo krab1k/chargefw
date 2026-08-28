@@ -8,5 +8,4 @@ from . import core as core
 from . import methods as methods
 from . import parameters as parameters
 
-
 def version() -> str: ...

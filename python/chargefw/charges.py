@@ -122,7 +122,7 @@ class ChargeAssignment:
         source: SourceIdentity,
         atom_ids: tuple[Hashable, ...],
         conformer_id: Hashable | None,
-    ) -> "ChargeAssignment":
+    ) -> ChargeAssignment:
         """Build an assignment from an extension-owned, one-dimensional NumPy array."""
         if values.dtype != np.float64 or values.ndim != 1 or not values.flags.c_contiguous:
             raise RuntimeError("native charge values must be a C-contiguous float64 vector")
@@ -130,8 +130,10 @@ class ChargeAssignment:
             raise RuntimeError("native charge count does not match the source atom mapping")
         if not np.all(np.isfinite(values)):
             raise RuntimeError("native charge values must be finite")
+        if values.flags.writeable:
+            raise RuntimeError("native charge values must use immutable storage")
         result = object.__new__(cls)
-        object.__setattr__(result, "values", immutable_array(values))
+        object.__setattr__(result, "values", values)
         object.__setattr__(result, "molecule_index", molecule_index)
         object.__setattr__(result, "conformer_index", conformer_index)
         object.__setattr__(result, "source", source)

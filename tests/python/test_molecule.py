@@ -3,9 +3,8 @@
 import unittest
 from typing import Any, cast
 
-import numpy as np
-
 import chargefw
+import numpy as np
 
 
 class MoleculeTests(unittest.TestCase):
@@ -89,6 +88,10 @@ class MoleculeTests(unittest.TestCase):
         self.assertFalse(no_coordinates.has_coordinates)
         self.assertEqual(chargefw.Molecule([]).atomic_numbers.dtype, np.dtype(np.int64))
 
+        one_conformer = chargefw.Molecule([1], coordinates=[[0.0, 0.0, 0.0]])
+        self.assertEqual(one_conformer.coordinates.shape, (1, 1, 3))
+        self.assertEqual(one_conformer.conformer_count, 1)
+
     def test_integer_iterables_and_empty_bonds_are_normalized(self) -> None:
         molecule = chargefw.Molecule(
             (atomic_number for atomic_number in [8, 1, 1]), bonds=[]
@@ -129,9 +132,10 @@ class MoleculeTests(unittest.TestCase):
             ),
         )
         for error_type, operation in invalid_cases:
-            with self.subTest(error_type=error_type, operation=operation):
-                with self.assertRaises(error_type):
-                    operation()
+            with self.subTest(error_type=error_type, operation=operation), self.assertRaises(
+                error_type
+            ):
+                operation()
 
 
 if __name__ == "__main__":

@@ -66,6 +66,7 @@ set(CHARGEFW_PYTHON_PACKAGE_SOURCES
     _calculation_values.py
     _payloads.py
     _resources.py
+    _types.py
     calculation.py
     charges.py
     core.py

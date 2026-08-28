@@ -5,9 +5,11 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <functional>
 #include <span>
 #include <stdexcept>
 #include <string_view>
+#include <unordered_set>
 
 namespace chargefw::core {
 
@@ -34,21 +36,28 @@ auto validate_bond_atom_indices(const std::vector<Atom>& atoms, const std::vecto
     }
 }
 
-auto same_unordered_bond(const Bond& first, const Bond& second) noexcept -> bool {
-    return (first.first_atom_index() == second.first_atom_index() &&
-            first.second_atom_index() == second.second_atom_index()) ||
-           (first.first_atom_index() == second.second_atom_index() &&
-            first.second_atom_index() == second.first_atom_index());
-}
+struct BondKey {
+    std::size_t first = 0;
+    std::size_t second = 0;
+
+    [[nodiscard]] auto operator==(const BondKey&) const noexcept -> bool = default;
+};
+
+struct BondKeyHash {
+    [[nodiscard]] auto operator()(const BondKey& key) const noexcept -> std::size_t {
+        const auto first_hash = std::hash<std::size_t>{}(key.first);
+        const auto second_hash = std::hash<std::size_t>{}(key.second);
+        return first_hash ^ (second_hash << 1U);
+    }
+};
 
 auto validate_no_duplicate_bonds(const std::vector<Bond>& bonds) -> void {
-    for (auto first = bonds.begin(); first != bonds.end(); ++first) {
-        const auto duplicate =
-            std::find_if(std::next(first), bonds.end(), [first](const Bond& second) -> bool {
-                return same_unordered_bond(*first, second);
-            });
-
-        if (duplicate != bonds.end()) {
+    auto seen = std::unordered_set<BondKey, BondKeyHash>{};
+    seen.reserve(bonds.size());
+    for (const auto& bond : bonds) {
+        const auto first = std::min(bond.first_atom_index(), bond.second_atom_index());
+        const auto second = std::max(bond.first_atom_index(), bond.second_atom_index());
+        if (!seen.emplace(first, second).second) {
             throw std::invalid_argument{"molecule contains duplicate bonds"};
         }
     }

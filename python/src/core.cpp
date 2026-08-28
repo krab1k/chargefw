@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -28,8 +29,17 @@ using integer_array_2d =
     nb::ndarray<const std::int64_t, nb::ndim<2>, nb::c_contig, nb::device::cpu>;
 using coordinate_array = nb::ndarray<const double, nb::ndim<3>, nb::c_contig, nb::device::cpu>;
 
-auto sequence_string(const nb::sequence& values, const std::size_t index) -> std::string {
-    return nb::cast<std::string>(values[index]);
+auto sequence_strings(const nb::sequence& values, const std::size_t expected_size,
+                      const std::string_view name) -> std::vector<std::string> {
+    if (static_cast<std::size_t>(nb::len(values)) != expected_size) {
+        throw std::invalid_argument{std::string{name} + " count does not match the molecule"};
+    }
+    auto result = std::vector<std::string>{};
+    result.reserve(expected_size);
+    for (std::size_t index = 0; index < expected_size; ++index) {
+        result.push_back(nb::cast<std::string>(values[index]));
+    }
+    return result;
 }
 
 auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_charges,
@@ -48,12 +58,18 @@ auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_char
         throw std::invalid_argument{"coordinate shape does not match the molecule"};
     }
 
+    const auto conformer_count = static_cast<std::size_t>(coordinates.shape(0));
+    auto native_atom_names = sequence_strings(atom_names, atom_count, "atom name");
+    auto native_conformer_names =
+        sequence_strings(conformer_names, conformer_count, "conformer name");
+    nb::gil_scoped_release release;
+
     std::vector<core::Atom> atoms;
     atoms.reserve(atom_count);
     for (std::size_t index = 0; index < atom_count; ++index) {
         atoms.emplace_back(static_cast<int>(atomic_numbers.data()[index]),
                            static_cast<int>(formal_charges.data()[index]),
-                           sequence_string(atom_names, index));
+                           std::move(native_atom_names[index]));
     }
 
     const auto bond_count = static_cast<std::size_t>(bonds.shape(0));
@@ -67,7 +83,6 @@ auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_char
             core::bond_order_from_value(static_cast<int>(bonds.data()[offset + 2])));
     }
 
-    const auto conformer_count = static_cast<std::size_t>(coordinates.shape(0));
     std::vector<core::Conformer> conformers;
     conformers.reserve(conformer_count);
     for (std::size_t conformer_index = 0; conformer_index < conformer_count; ++conformer_index) {
@@ -82,7 +97,7 @@ auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_char
             });
         }
         conformers.emplace_back(std::move(positions),
-                                sequence_string(conformer_names, conformer_index));
+                                std::move(native_conformer_names[conformer_index]));
     }
 
     return core::Molecule{std::move(atoms), std::move(native_bonds), std::move(conformers),

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cache
+
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import methods as _native_methods
 from ._payloads import MethodDescriptorPayload

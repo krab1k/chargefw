@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TypeAlias, TypedDict
+from typing import TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
 
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import methods as _native_methods
-
-MethodOptionValue: TypeAlias = bool | int | float | str
+from ._types import MethodOptionValue
 
 
 class PrerequisiteIssuePayload(TypedDict):

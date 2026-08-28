@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Iterable, Sequence
 import numbers
+from collections.abc import Hashable, Iterable, Sequence
 from typing import Any
 
 import numpy as np
@@ -59,9 +59,9 @@ def as_integer_array(
         raise ValueError(f"{field} contains values outside the supported integer range") from error
 
 
-def as_coordinates(value: Any, atom_count: int) -> tuple[np.ndarray, bool]:
+def as_coordinates(value: Any, atom_count: int) -> np.ndarray:
     if value is None:
-        return np.empty((0, atom_count, 3), dtype=np.float64), False
+        return np.empty((0, atom_count, 3), dtype=np.float64)
     try:
         array = np.asarray(value)
     except Exception as error:
@@ -69,12 +69,10 @@ def as_coordinates(value: Any, atom_count: int) -> tuple[np.ndarray, bool]:
     if array.ndim == 2:
         if array.shape != (atom_count, 3):
             raise ValueError(f"coordinates must have shape ({atom_count}, 3)")
-        one_conformer = True
         canonical_shape = (1, atom_count, 3)
     elif array.ndim == 3:
         if array.shape[1:] != (atom_count, 3):
             raise ValueError(f"coordinates must have shape (C, {atom_count}, 3)")
-        one_conformer = False
         canonical_shape = array.shape
     else:
         raise ValueError("coordinates must have rank 2 or 3")
@@ -86,8 +84,7 @@ def as_coordinates(value: Any, atom_count: int) -> tuple[np.ndarray, bool]:
         raise ValueError("coordinates contain values outside the supported range") from error
     if not np.all(np.isfinite(canonical)):
         raise ValueError("coordinates must contain only finite values")
-    public = canonical.reshape((atom_count, 3)) if one_conformer else canonical
-    return public, one_conformer
+    return canonical
 
 
 def as_names(value: Sequence[str] | None, count: int, field: str) -> tuple[str, ...]:

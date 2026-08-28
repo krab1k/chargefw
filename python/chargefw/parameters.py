@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
-from typing import Any
 
 from ._chargefw import parameters as _native_parameters
 from ._payloads import ParameterSetDescriptorPayload
@@ -26,16 +25,18 @@ class ParameterSetDescriptor:
 class ParameterSet:
     """An owned immutable parameter set loaded from one JSON file."""
 
-    __slots__ = ("_native", "_descriptor")
+    __slots__ = ("_descriptor", "_native")
 
-    _native: Any
+    _native: _native_parameters._NativeParameterCatalog
     _descriptor: ParameterSetDescriptor
 
     def __init__(self) -> None:
         raise TypeError("ParameterSet values must be loaded with load_parameter_set()")
 
     @classmethod
-    def _from_native(cls, native: Any) -> "ParameterSet":
+    def _from_native(
+        cls, native: _native_parameters._NativeParameterCatalog
+    ) -> ParameterSet:
         descriptors = native._descriptors()
         if len(descriptors) != 1:
             raise RuntimeError("a Python ParameterSet must contain exactly one native parameter set")
@@ -44,7 +45,7 @@ class ParameterSet:
         object.__setattr__(result, "_descriptor", _descriptor(descriptors[0]))
         return result
 
-    def __setattr__(self, name: str, value: Any) -> None:
+    def __setattr__(self, name: str, value: object) -> None:
         raise AttributeError(f"{type(self).__name__} is immutable")
 
     @property

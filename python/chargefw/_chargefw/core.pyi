@@ -3,7 +3,6 @@ from collections.abc import Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-
 class _NativeMolecule:
     @property
     def name(self) -> str: ...

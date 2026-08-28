@@ -15,7 +15,6 @@
 #include <nanobind/stl/vector.h>
 
 #include <cstddef>
-#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -166,15 +165,10 @@ auto effective_calculation(const calculation::EffectiveCalculation& effective) -
 }
 
 auto numpy_charge_values(const std::span<const double> values)
-    -> nb::ndarray<nb::numpy, double, nb::shape<-1>> {
-    auto owned_values = std::make_unique<std::vector<double>>(values.begin(), values.end());
-    const nb::capsule owner{owned_values.get(), [](void* pointer) noexcept {
-                                delete static_cast<std::vector<double>*>(pointer);
-                            }};
-    auto* data = owned_values->data();
-    const auto size = owned_values->size();
-    static_cast<void>(owned_values.release());
-    return {data, {size}, owner};
+    -> nb::ndarray<nb::numpy, const double, nb::shape<-1>> {
+    auto owner = nb::bytes{values.data(), values.size_bytes()};
+    const auto* data = reinterpret_cast<const double*>(owner.c_str());
+    return {data, {values.size()}, owner};
 }
 
 auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {

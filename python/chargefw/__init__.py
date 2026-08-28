@@ -2,8 +2,8 @@
 
 from ._chargefw import version as _native_version
 from .calculation import (
-    ApplicableCandidate,
     ApplicabilityReport,
+    ApplicableCandidate,
     Assessment,
     AssessmentReport,
     CalculationCancelledError,

@@ -1,6 +1,5 @@
 from .._payloads import ParameterSetDescriptorPayload
 
-
 class _NativeParameterCatalog:
     @property
     def size(self) -> int: ...

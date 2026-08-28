@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
+import numbers
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-import numbers
 from operator import index as as_index
 from types import MappingProxyType
-from typing import Any, TypeAlias
+from typing import Any
 
 import numpy as np
 
 from ._chargefw import calculation as _native_calculation
+from ._types import MethodOptionValue
 
-MethodOptionValue: TypeAlias = bool | int | float | str
 _MAX_NATIVE_THREADS = int(np.iinfo(np.int32).max)
 
 

@@ -9,7 +9,6 @@ import chargefw.core
 import chargefw.methods
 import chargefw.parameters
 
-
 expected_version = os.environ.get("CHARGEFW_EXPECTED_VERSION")
 
 def test_import_surface() -> None:

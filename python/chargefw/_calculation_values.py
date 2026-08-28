@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from ._calculation_options import CalculationOptions, MethodOptionValue
+from ._calculation_options import CalculationOptions
 from ._chargefw import calculation as _native_calculation
 from ._payloads import (
     ApplicabilityReportPayload,
@@ -17,6 +17,7 @@ from ._payloads import (
     ExecutionResultPayload,
     PrerequisiteIssuePayload,
 )
+from ._types import MethodOptionValue
 from .charges import ChargeAssignment
 from .core import MoleculeCollection
 from .methods import ExecutionAssessment, ExecutionIssue, PrerequisiteIssue

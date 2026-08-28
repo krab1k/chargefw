@@ -62,8 +62,9 @@ Implemented on 2026-08-27:
 - validation rejects incorrect ranks/shapes, non-integral or overflowing integer values, unsupported
   atomic numbers and bond orders, self/duplicate/out-of-range bonds, non-finite coordinates, invalid
   names, negative record indices, and unhashable source IDs;
-- omitted atom and conformer IDs default to source-order indices, and `(0, N, 3)` coordinates represent no
-  conformers while `(N, 3)` represents one conformer;
+- omitted atom and conformer IDs default to source-order indices, and public coordinates always use
+  canonical `(C, N, 3)` shape; `(0, N, 3)` represents no conformers while `(N, 3)` input is normalized
+  to one conformer;
 - `MoleculeCollection` is an immutable source-ordered sequence with a collection name; and
 - the Python owner converts normalized data once to private nanobind-backed native `core::Molecule`
   values; an owned native `core::MoleculeCollection` is materialized only for assessment, without adding
@@ -230,7 +231,8 @@ than truncate or reinterpret:
 - wrong array rank or cardinality; and
 - non-finite coordinates.
 
-`coordinates=None` and shape `(0, N, 3)` both mean no conformers. Atom, molecule, conformer, and
+`coordinates=None` and shape `(0, N, 3)` both mean no conformers. The public `coordinates` property
+always has shape `(C, N, 3)`, including `(1, N, 3)` for one conformer. Atom, molecule, conformer, and
 collection order are always source order. Arbitrary array-like input may be accepted by the pure-Python
 layer, but the normalized public properties are NumPy arrays with documented dtypes and shapes.
 

@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from threading import Lock
-from typing import Any
 
 from ._calculation_options import CalculationOptions
 from ._calculation_values import (
-    ApplicableCandidate,
     ApplicabilityReport,
+    ApplicableCandidate,
     AssessmentReport,
     CalculationCancelledError,
     CalculationResult,
@@ -85,12 +84,12 @@ for _value_type in (
 ):
     _value_type.__module__ = __name__
 
-_bundled_parameter_catalog: Any | None = None
+_bundled_parameter_catalog: _native_parameters._NativeParameterCatalog | None = None
 _bundled_parameter_descriptors: tuple[ParameterSetDescriptor, ...] | None = None
 _bundled_parameter_catalog_lock = Lock()
 
 
-def _default_parameter_catalog() -> Any:
+def _default_parameter_catalog() -> _native_parameters._NativeParameterCatalog:
     global _bundled_parameter_catalog
     if _bundled_parameter_catalog is None:
         with _bundled_parameter_catalog_lock:
