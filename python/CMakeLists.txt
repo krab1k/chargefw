@@ -62,6 +62,7 @@ endforeach()
 set(CHARGEFW_PYTHON_PACKAGE_SOURCES
     __init__.py
     _arrays.py
+    _payloads.py
     _resources.py
     calculation.py
     charges.py

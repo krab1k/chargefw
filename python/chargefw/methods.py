@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cache
-from typing import Any
-
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import methods as _native_methods
+from ._payloads import MethodDescriptorPayload
 
 PrerequisiteIssueKind = _native_methods.PrerequisiteIssueKind
 ExecutionAvailability = _native_methods.ExecutionAvailability
@@ -73,7 +72,7 @@ class MethodDescriptor:
     options: tuple[MethodOptionDescriptor, ...]
 
 
-def _method_descriptor(value: dict[str, Any]) -> MethodDescriptor:
+def _method_descriptor(value: MethodDescriptorPayload) -> MethodDescriptor:
     return MethodDescriptor(
         id=value["id"],
         name=value["name"],

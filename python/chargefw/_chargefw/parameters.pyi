@@ -1,11 +1,11 @@
-from typing import Any
+from .._payloads import ParameterSetDescriptorPayload
 
 
 class _NativeParameterCatalog:
     @property
     def size(self) -> int: ...
 
-    def _descriptors(self) -> list[dict[str, Any]]: ...
+    def _descriptors(self) -> list[ParameterSetDescriptorPayload]: ...
 
 
 def _load_parameter_catalog(directory: str) -> _NativeParameterCatalog: ...

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ._chargefw import parameters as _native_parameters
+from ._payloads import ParameterSetDescriptorPayload
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,7 +59,7 @@ class ParameterSet:
         return f"{type(self).__name__}(id={self.id!r}, method_id={self.descriptor.method_id!r})"
 
 
-def _descriptor(value: dict[str, Any]) -> ParameterSetDescriptor:
+def _descriptor(value: ParameterSetDescriptorPayload) -> ParameterSetDescriptor:
     return ParameterSetDescriptor(
         id=value["id"],
         method_id=value["method_id"],

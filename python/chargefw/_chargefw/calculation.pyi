@@ -1,8 +1,7 @@
 from enum import Enum
-from typing import Any
-
 from collections.abc import Sequence
 
+from .._payloads import AssessmentReportPayload, ExecutionResultPayload
 from .core import _NativeMolecule
 from .parameters import _NativeParameterCatalog
 
@@ -34,9 +33,9 @@ class ExecutionStatus(Enum):
 
 
 class _NativeAssessment:
-    def report(self) -> dict[str, Any]: ...
+    def report(self) -> AssessmentReportPayload: ...
 
-    def calculate(self) -> dict[str, Any]: ...
+    def calculate(self) -> ExecutionResultPayload: ...
 
 
 def _make_assessment(

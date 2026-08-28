@@ -14,6 +14,16 @@ import numpy as np
 
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import parameters as _native_parameters
+from ._payloads import (
+    ApplicabilityReportPayload,
+    AssessmentReportPayload,
+    EffectiveCalculationPayload,
+    ExecutionAssessmentPayload,
+    ExecutionIssuePayload,
+    ExecutionPolicyPayload,
+    ExecutionResultPayload,
+    PrerequisiteIssuePayload,
+)
 from ._resources import default_parameter_directory
 from .charges import ChargeAssignment
 from .core import Molecule, MoleculeCollection
@@ -274,7 +284,7 @@ class AssessmentReport:
     executable: bool
 
 
-def _prerequisite_issue(value: Mapping[str, Any]) -> PrerequisiteIssue:
+def _prerequisite_issue(value: PrerequisiteIssuePayload) -> PrerequisiteIssue:
     return PrerequisiteIssue(
         kind=value["kind"],
         message=value["message"],
@@ -285,7 +295,7 @@ def _prerequisite_issue(value: Mapping[str, Any]) -> PrerequisiteIssue:
     )
 
 
-def _execution_issue(value: Mapping[str, Any]) -> ExecutionIssue:
+def _execution_issue(value: ExecutionIssuePayload) -> ExecutionIssue:
     return ExecutionIssue(
         kind=value["kind"],
         message=value["message"],
@@ -293,7 +303,7 @@ def _execution_issue(value: Mapping[str, Any]) -> ExecutionIssue:
     )
 
 
-def _execution_assessment(value: Mapping[str, Any]) -> ExecutionAssessment:
+def _execution_assessment(value: ExecutionAssessmentPayload) -> ExecutionAssessment:
     return ExecutionAssessment(
         mode=value["mode"],
         availability=value["availability"],
@@ -301,7 +311,7 @@ def _execution_assessment(value: Mapping[str, Any]) -> ExecutionAssessment:
     )
 
 
-def _applicability_report(value: Mapping[str, Any]) -> ApplicabilityReport:
+def _applicability_report(value: ApplicabilityReportPayload) -> ApplicabilityReport:
     return ApplicabilityReport(
         applicable=tuple(
             ApplicableCandidate(
@@ -326,7 +336,7 @@ def _applicability_report(value: Mapping[str, Any]) -> ApplicabilityReport:
     )
 
 
-def _execution_policy(value: Mapping[str, Any]) -> ExecutionPolicy:
+def _execution_policy(value: ExecutionPolicyPayload) -> ExecutionPolicy:
     return ExecutionPolicy(
         mode=value["mode"],
         radius=value["radius"],
@@ -334,7 +344,7 @@ def _execution_policy(value: Mapping[str, Any]) -> ExecutionPolicy:
     )
 
 
-def _effective_calculation(value: Mapping[str, Any] | None) -> EffectiveCalculation | None:
+def _effective_calculation(value: EffectiveCalculationPayload | None) -> EffectiveCalculation | None:
     if value is None:
         return None
     return EffectiveCalculation(
@@ -401,12 +411,12 @@ class CalculationResult:
 
     def __init__(
         self,
-        payload: Mapping[str, Any],
+        payload: ExecutionResultPayload,
         molecules: MoleculeCollection,
         requested: CalculationOptions,
     ) -> None:
         assignments: list[ChargeAssignment] = []
-        charges = payload.get("charges")
+        charges = payload["charges"]
         if charges is not None:
             for item in charges["assignments"]:
                 molecule_index = int(item["molecule_index"])
@@ -493,7 +503,7 @@ class Assessment:
 
     def __init__(
         self,
-        native: Any,
+        native: _native_calculation._NativeAssessment,
         molecules: MoleculeCollection,
         requested: CalculationOptions,
     ) -> None:

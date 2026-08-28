@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any
+from .._payloads import MethodDescriptorPayload
 
 
 class MethodOptionType(Enum):
@@ -29,4 +29,4 @@ class ExecutionIssueKind(Enum):
     UNSUPPORTED_EXECUTION_MODE = ...
 
 
-def _method_descriptors() -> list[dict[str, Any]]: ...
+def _method_descriptors() -> list[MethodDescriptorPayload]: ...
