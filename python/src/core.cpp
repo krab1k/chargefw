@@ -53,8 +53,7 @@ auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_char
     if (bonds.shape(1) != 3) {
         throw std::invalid_argument{"bonds must have three columns"};
     }
-    if (coordinates.shape(1) != static_cast<std::int64_t>(atom_count) ||
-        coordinates.shape(2) != 3) {
+    if (coordinates.shape(1) != atom_count || coordinates.shape(2) != 3) {
         throw std::invalid_argument{"coordinate shape does not match the molecule"};
     }
 
