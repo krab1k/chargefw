@@ -119,8 +119,8 @@ END
 )pdb";
         const auto read_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
             std::istringstream strategy_stream{strategy_input};
-            auto reader = pdb::PdbReader{strategy_stream, {}, {.bond_strategy = strategy}};
-            const auto record = reader.next();
+            auto strategy_reader = pdb::PdbReader{strategy_stream, {}, {.bond_strategy = strategy}};
+            const auto record = strategy_reader.next();
             REQUIRE(record.has_value());
             return record->molecule.bond_count();
         };
@@ -140,8 +140,9 @@ END
 )pdb";
         const auto read_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
             std::istringstream duplicate_stream{duplicate_input};
-            auto reader = pdb::PdbReader{duplicate_stream, {}, {.bond_strategy = strategy}};
-            const auto record = reader.next();
+            auto duplicate_reader =
+                pdb::PdbReader{duplicate_stream, {}, {.bond_strategy = strategy}};
+            const auto record = duplicate_reader.next();
             REQUIRE(record.has_value());
             return record->molecule.bond_count();
         };

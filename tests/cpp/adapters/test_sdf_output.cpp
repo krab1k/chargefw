@@ -172,10 +172,10 @@ TEST_CASE("SDF output preserves source records while replacing charge properties
     {
         const auto geometry_independent =
             std::vector{geometry_independent_assignment({-0.8, 0.4, 0.4})};
-        const auto properties = std::array{
+        const auto geometry_independent_properties = std::array{
             sdf_output::ChargeProperty{.charge_type_id = 1, .assignments = geometry_independent}};
         auto output = std::ostringstream{};
-        sdf_output::SdfWriter{output}.write_generated(molecule, properties,
+        sdf_output::SdfWriter{output}.write_generated(molecule, geometry_independent_properties,
                                                       sdf_output::MolFormat::v2000);
         CHECK(output.str().contains("> <CHARGEFW_CHARGES_1>\n-0.8000 0.4000 0.4000\n\n"));
     }

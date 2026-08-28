@@ -409,6 +409,39 @@ CMake fetches pinned CLI11 2.7.2, nlohmann/json 3.12.0, Eigen 5.0.1, nanoflann 1
 and Gemmi 0.7.4 by default. `CHARGEFW_USE_SYSTEM_DEPENDENCIES=ON` opts into find-package-first behavior.
 The CLI and test suite default to off when ChargeFW is configured as a subproject.
 
+### Build-diagnostic baseline
+
+A clean 2026-08-28 audit with CMake 4.3.0, GCC 16.2.1, and Clang 22.1.8 configures and builds
+`gcc-debug`, `gcc-release`, `clang-debug`, and `clang-release` with ccache disabled and eight parallel
+jobs. ASan and UBSan are outside this warning audit. The ChargeFW library, CLI, Python extension, C++
+test support, and C++ test executables all use the project warning suite. All four builds complete
+without compiler or linker diagnostics from ChargeFW or fetched dependency sources, and all 68 tests
+pass in each preset.
+
+Targeted warning exceptions document external or intentional constructs rather than suppressing the
+suite globally:
+
+- GCC disables `-Wnull-dereference` because optimized Eigen LU internals produce false positives.
+- CLI and test targets disable `-Wmissing-field-initializers` where partial designated initialization
+  intentionally retains aggregate default member initializers.
+- Snitch test targets disable Clang 22's `-Wc2y-extensions` diagnostic for Snitch 1.3.2 public macros
+  that expand `__COUNTER__`; Snitch's broader pedantic-warning tracking is
+  [snitch-org/snitch#77](https://github.com/snitch-org/snitch/issues/77).
+
+Both release presets enable project-wide IPO. GCC emits `-flto=auto`; Clang emits `-flto=thin` and uses
+a complete Clang C/C++ toolchain with `llvm-ar` and `llvm-ranlib`. Fetched oneTBB inherits that explicit
+project-wide choice, so its own all-enabled-language IPO probe is disabled as redundant. The upstream
+oneTBB IPO diagnostic behavior was introduced by
+[uxlfoundation/oneTBB#1994](https://github.com/uxlfoundation/oneTBB/pull/1994).
+
+ChargeFW selects `CMP0077=NEW` while embedding nanoflann 1.12.1, keeping the requested example and test
+options disabled on the first configure. The remaining CMake warnings are dependency policy
+deprecations: Eigen 5.0.1 explicitly selects `CMP0146=OLD`, and oneTBB 2023.1.0 explicitly selects
+`CMP0148=OLD`. The oneTBB warning is tracked by
+[uxlfoundation/oneTBB#2072](https://github.com/uxlfoundation/oneTBB/issues/2072). Missing hwloc only
+produces oneTBB status messages for unavailable optional `tbbbind` targets; the ordinary oneTBB runtime
+builds and links successfully.
+
 Installation provides the library, public headers, CLI, generated config header, bundled parameter JSON,
 and an exported `chargefw::core` CMake target. Default installations include nlohmann/json and Gemmi
 development packages and the private oneTBB runtime; private build-only dependencies and test tooling are

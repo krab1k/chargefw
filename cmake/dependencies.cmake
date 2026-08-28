@@ -49,6 +49,9 @@ function(chargefw_setup_dependencies)
         find_package(nanoflann 1.12 CONFIG QUIET)
     endif()
     if(NOT TARGET nanoflann::nanoflann)
+        # nanoflann 1.12.1 does not set CMP0077 itself. Select modern option() behavior so these
+        # embedding-project choices remain effective on the first configure.
+        set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
         set(NANOFLANN_BUILD_EXAMPLES OFF)
         set(NANOFLANN_BUILD_TESTS OFF)
         FetchContent_Declare(
@@ -58,12 +61,18 @@ function(chargefw_setup_dependencies)
                 URL https://github.com/jlblancoc/nanoflann/archive/refs/tags/1.12.1.tar.gz
         )
         FetchContent_MakeAvailable(nanoflann)
+        unset(CMAKE_POLICY_DEFAULT_CMP0077)
     endif()
 
     if(CHARGEFW_USE_SYSTEM_DEPENDENCIES)
         find_package(TBB 2023.1 CONFIG QUIET)
     endif()
     if(NOT TARGET TBB::tbb)
+        # An explicit project-wide IPO choice already initializes fetched targets. Avoid oneTBB's
+        # redundant all-enabled-language probe, which is unreliable when C is enabled by a sibling.
+        if(DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+            set(TBB_ENABLE_IPO OFF)
+        endif()
         set(BUILD_SHARED_LIBS ON)
         set(TBB_TEST OFF)
         set(TBB_STRICT OFF)

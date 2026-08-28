@@ -274,8 +274,9 @@ ALA N CA DOUB
 )cif";
     const auto read_duplicate_bond = [&](const gemmi_adapter::BondStrategy strategy) {
         std::istringstream duplicate_stream{duplicate_input};
-        auto reader = mmcif::MmcifReader{duplicate_stream, {}, {.bond_strategy = strategy}};
-        const auto record = reader.next();
+        auto duplicate_reader =
+            mmcif::MmcifReader{duplicate_stream, {}, {.bond_strategy = strategy}};
+        const auto record = duplicate_reader.next();
         REQUIRE(record.has_value());
         const auto molecule = record->molecule;
         REQUIRE(molecule.bond_count() == 1);

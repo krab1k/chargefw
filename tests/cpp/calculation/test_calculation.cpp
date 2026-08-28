@@ -108,19 +108,6 @@ auto make_double_bonded_carbons() -> core::Molecule {
                           "double-bonded-carbons"};
 }
 
-auto make_permissive_parameter_set() -> chargefw::parameters::ParameterSet {
-    return chargefw::parameters::ParameterSet{
-        chargefw::parameters::ParameterSetMetadata{.id = "permissive-parameters",
-                                                   .method_id = "permissive-parameterized",
-                                                   .name = "Permissive parameters"},
-        {},
-        chargefw::parameters::AtomParameters{
-            {{.key = chargefw::test::atom_key(
-                  6, chargefw::parameters::AtomParameterClassificationKind::HIGHEST_BOND_ORDER,
-                  "1"),
-              .parameters = {{.name = "value", .value = 3.0}}}}}};
-}
-
 auto make_permissive_peoe_parameter_set() -> chargefw::parameters::ParameterSet {
     return chargefw::parameters::ParameterSet{
         chargefw::parameters::ParameterSetMetadata{.id = "permissive-peoe-parameters",
@@ -469,7 +456,7 @@ TEST_CASE("calculation preserves empty-input cardinality and assessment ownershi
     // AssessmentRequest rejects duplicate parameter-set IDs before filtering or applicability. This
     // remains true when the duplicates target the same or different methods and for both overloads.
     for (const auto explicit_selection : {false, true}) {
-        for (const auto [first_method_id, second_method_id] :
+        for (const auto& [first_method_id, second_method_id] :
              {std::pair{"qeq", "qeq"}, std::pair{"qeq", "eem"}}) {
             const auto lvalue_request = make_duplicate_parameter_request(
                 first_method_id, second_method_id, explicit_selection);

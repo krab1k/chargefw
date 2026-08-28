@@ -16,7 +16,7 @@ import numpy as np
 from chargefw._chargefw import core as _native_core
 
 T = TypeVar("T")
-_GIL_OBSERVATION_DELAY_SECONDS = 0.01
+_GIL_OBSERVATION_DELAY_SECONDS = 0.001
 _GIL_TEST_ATOM_COUNT = 500_000
 
 
@@ -50,11 +50,13 @@ def formal_options() -> chargefw.CalculationOptions:
 def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, bool, float]:
     started = Event()
     begin = Event()
+    observing = Event()
     progressed = Event()
 
     def observe() -> None:
         started.set()
         begin.wait()
+        observing.set()
         sleep(_GIL_OBSERVATION_DELAY_SECONDS)
         progressed.set()
 
@@ -65,6 +67,8 @@ def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, b
         raise AssertionError("worker thread did not start")
     try:
         begin.set()
+        if not observing.wait(timeout=1.0):
+            raise AssertionError("worker thread did not begin observing")
         start = perf_counter()
         result = operation()
         operation_seconds = perf_counter() - start

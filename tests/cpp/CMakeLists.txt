@@ -13,6 +13,12 @@ target_include_directories(chargefw_test_support
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+if(CHARGEFW_ENABLE_WARNINGS)
+    chargefw_enable_warnings(chargefw_test_support)
+    # Tests use partial designated initialization to emphasize only fields relevant to each fixture.
+    target_compile_options(chargefw_test_support PRIVATE -Wno-missing-field-initializers)
+endif()
+
 function(chargefw_add_test name)
     add_executable(${name}
             ${ARGN}
@@ -25,6 +31,11 @@ function(chargefw_add_test name)
     )
 
     target_link_options(${name} PRIVATE "LINKER:--disable-new-dtags")
+
+    if(CHARGEFW_ENABLE_WARNINGS)
+        chargefw_enable_warnings(${name})
+        target_compile_options(${name} PRIVATE -Wno-missing-field-initializers)
+    endif()
 
     add_test(
             NAME ${name}
@@ -53,6 +64,16 @@ function(chargefw_add_snitch_test name)
     endif()
 
     target_link_options(${name} PRIVATE "LINKER:--disable-new-dtags")
+
+    if(CHARGEFW_ENABLE_WARNINGS)
+        chargefw_enable_warnings(${name})
+        # Snitch 1.3.2 uses __COUNTER__ in its public macros. Clang 22 diagnoses each expansion at
+        # the project call site under -Wpedantic even though the macro definition is a system header.
+        target_compile_options(${name} PRIVATE
+                -Wno-c2y-extensions
+                -Wno-missing-field-initializers
+        )
+    endif()
 
     add_test(
             NAME ${name}

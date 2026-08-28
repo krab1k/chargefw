@@ -33,6 +33,7 @@
       "binaryDir": "${sourceDir}/build/clang-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "/usr/bin/clang",
         "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CHARGEFW_BUILD_TESTS": "ON",
@@ -49,9 +50,7 @@
       "binaryDir": "${sourceDir}/build/clang-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "OFF",
-        "CMAKE_CXX_COMPILER_AR": "/usr/bin/ar",
-        "CMAKE_CXX_COMPILER_RANLIB": "/usr/bin/ranlib"
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
       }
     },
     {
