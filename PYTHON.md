@@ -8,9 +8,10 @@ release-level acceptance criteria in [TODO.md](TODO.md), and user instructions i
 ## Status
 
 The Python package skeleton, optional nanobind target, owned array model, calculation vertical slice,
-value-only catalog introspection, and required Gemmi integration are implemented. The bindings are
-organized by the same domain boundaries as the native library, and enum-valued policy, report, and
-adapter fields use nanobind-backed Python enums. No optional toolkit adapter is implemented yet. The
+value-only method/parameter introspection, and required Gemmi integration are implemented. The bindings
+are organized by the same domain boundaries as the native library. Calculation policy and report
+vocabulary use validated lowercase strings, while the Gemmi adapter retains focused nanobind-backed
+enums. No optional toolkit adapter is implemented yet. The
 native code already provides the foundations the binding should use rather than duplicate:
 
 - owned toolkit-neutral molecules and conformers;
@@ -88,7 +89,8 @@ passed. The next milestone can consume the private native objects through the ow
 
 Implemented on 2026-08-27:
 
-- `CalculationOptions` validates application policy and preserves method-scoped option overrides;
+- `assess()` and `calculate()` accept validated keyword-only application policy, including flat
+  options for an explicit method and method-scoped overrides for automatic selection;
 - package-level `assess()` and `calculate()` load the bundled parameter catalog from package resources
   and accept a molecule, collection, or molecule iterable;
 - `assess()` and `calculate()` use the native owned assessment facade, with
@@ -97,15 +99,15 @@ Implemented on 2026-08-27:
   one-shot calculation ownership;
 - `CalculationResult` exposes status, source-mapped owned `float64` C-contiguous assignments, reports,
   requested/effective provenance, execution issues, failure text, and timings; and
-- no-plan, numerical-failure, cancellation, and invalid-request exception/result boundaries are wired
-  through typed Python exceptions and result statuses;
+- no-plan, numerical-failure, cancellation, and invalid-request boundaries raise typed Python
+  exceptions that retain their complete result;
 - the native binding is split into `core`, `methods`, `parameters`, and `calculation` registration units,
   while public Python modules provide the corresponding high-level value API; and
-- execution selection, effective execution mode, charge correction, status, availability, and issue
-  kinds use native enum types rather than binding-local strings.
+- execution selection and charge correction use validated Python strings; effective modes, statuses,
+  availability, option types, and issue kinds are normalized to documented lowercase strings.
 
-Public report and provenance values are immutable Python dataclasses containing tuples, read-only
-mappings, and native enum values. They remain valid after native assessment ownership is consumed and
+Public report and provenance values are immutable Python dataclasses containing tuples and read-only
+mappings. They remain valid after native assessment ownership is consumed and
 do not expose prepared features, classifications, registry pointers, or other native internals.
 
 Validation added for this milestone:
@@ -118,23 +120,22 @@ uv pip install --python /tmp/kilo/chargefw-m3-venv/bin/python --no-index --no-de
   /tmp/kilo/chargefw-m3-wheel/chargefw-0.1-cp314-cp314-linux_x86_64.whl
 ```
 
-The binding-structure and enum refinement was additionally validated with the focused Python suite,
-the complete 62-test `gcc-debug` native suite, a release wheel build, and an installed-wheel calculation
-using the domain modules and enum-valued policy API.
+The original binding structure was additionally validated with the focused Python suite, the complete
+62-test `gcc-debug` native suite, a release wheel build, and an installed-wheel calculation. The public
+policy surface has since been replaced by keyword-only arguments and lowercase strings.
 
 The installed-wheel calculation smoke test ran from `/tmp` and succeeded. The offline environment did
 not contain a NumPy wheel, so installation used `--no-deps` in a system-site-packages environment;
 `pyproject.toml` now declares `numpy>=1.26` for normal online installation.
 
-### Milestone 4 — bundled catalog introspection: complete
+### Milestone 4 — bundled parameter introspection: complete
 
 Implemented on 2026-08-27:
 
 - package-level `methods`, each method's `options`, and package-level `parameter_sets` are immutable
-  ordered catalogs supporting iteration, integer indexing, and lookup by stable ID; methods also expose
-  their filtered bundled parameter sets, while descriptors retain value-only metadata and
-  native-backed option type enums;
-- `ParameterSetDescriptor` exposes immutable parameter-set IDs, method IDs, names, publications, notes,
+  ordered mappings supporting standard keys, values, items, membership, `get()`, and lookup by stable
+  ID; methods also expose their filtered bundled parameter sets;
+- `ParameterSet` exposes immutable IDs, method IDs, names, publications, notes,
   and priorities; and
 - the Python API deliberately exposes the installed bundled catalog only; arbitrary parameter tables,
   classifications, native method objects, and custom parameter-catalog construction remain private.
@@ -212,8 +213,8 @@ chargefw/
   core.py                  Molecule ownership and source identity
   calculation.py           Policy, assessment, execution, reports, and failures
   charges.py               Source-mapped charge assignments
-  _methods.py              Private method descriptors and catalog implementation
-  _parameters.py           Private bundled parameter descriptor implementation
+  _methods.py              Private method metadata and mapping implementation
+  _parameters.py           Private bundled parameter metadata implementation
   _chargefw.*              Private nanobind extension
   _data/parameters/*.json  Bundled parameter resources
   adapters/
@@ -292,51 +293,51 @@ molecule = chargefw.Molecule(
 
 result = chargefw.calculate(
     molecule,
-    chargefw.CalculationOptions(
-        method="eem",
-        execution=chargefw.ExecutionSelectionKind.FULL,
-    ),
+    method="eem",
+    execution="full",
 )
-result.raise_for_status()
 charges = result.assignments[0].values
 ```
 
-`CalculationOptions` contains only application policy:
+Calculation policy uses keyword-only arguments:
 
-- optional method and parameter-set IDs or descriptors from the package catalogs;
-- method-scoped option overrides as
-  `Mapping[str, Mapping[str, bool | int | float | str]]`;
-- permissive parameter typing;
-- execution selection as `ExecutionSelectionKind`, radius, and optional `ChargeCorrectionPolicy`;
+- optional method and parameter-set IDs or `Method`/`ParameterSet` values from the package mappings;
+- flat `options` for an explicit method or advanced method-scoped `options_by_method` overrides;
+- `parameter_matching="strict" | "permissive"`;
+- `execution="auto" | "full" | "cutoff" | "cover"`, radius, and optional string charge correction;
 - cutoff and cover atom thresholds, where `None` means unlimited; and
-- maximum calculation threads, where zero delegates to oneTBB and explicit limits must fit oneTBB's
+- calculation threads, where zero delegates to oneTBB and explicit limits must fit oneTBB's
   signed integer range.
 
-Method options remain method-scoped even when a method was selected explicitly. The Python layer must
-not add context-sensitive shorthand that could apply an option to a different method after automatic
-selection.
+Flat `options` require an explicit method. `options_by_method` preserves unambiguous overrides during
+automatic selection, and the two forms cannot be combined.
 
 The package loads its bundled parameter resources once and exposes immutable method and parameter-set
-catalogs. Read-only descriptors expose IDs, names, publications, priorities, option schemas, and
+mappings. Read-only metadata exposes IDs, names, publications, priorities, option schemas, and
 supported execution capabilities; parameter matching tables and native method objects remain private.
 The initial Python API does not accept custom parameter catalogs.
 
-The calculator catalogs preserve deterministic order while providing direct lookup and filtering:
+The mappings preserve deterministic order and follow standard mapping behavior:
 
 ```python
 eem = chargefw.methods["eem"]
 iteration_option = chargefw.methods["peoe"].options["iters"]
 eem_parameter_sets = chargefw.parameter_sets.for_method("eem")
 same_parameter_sets = eem.parameter_sets
+
+for method_id, method in chargefw.methods.items():
+    print(method_id, method.name)
 ```
 
 The following two paths share one implementation:
 
-- `calculate(molecules, options)` is the ordinary convenience path; and
-- `assess(molecules, options)` returns a one-shot `Assessment` with a value-only report,
+- `calculate(molecules, **policy)` is the ordinary convenience path; and
+- `assess(molecules, **policy)` returns a one-shot `Assessment` with flattened applicable/rejected
+  methods,
   selected policy, and warnings. `Assessment.calculate()` consumes its native executable state without
   repeating work. The report remains readable after consumption; a second calculation raises
-  `RuntimeError`.
+  `RuntimeError`. Assessments support `with` and `close()` for deterministic release of large prepared
+  native state that will not be executed.
 
 The extension releases the GIL during preparation and calculation. A later progress/cancellation
 callback API may acquire the GIL for each callback, but it is not required for the first usable slice.
@@ -348,8 +349,8 @@ the calling Python thread; exceptions must never escape into oneTBB workers.
 `CalculationResult` is an owned value. Reports, policies, issues, provenance, and timings are immutable
 typed Python values rather than nested dictionaries. It exposes:
 
-- status as `ExecutionStatus` (`SUCCESS`, `INVALID_INPUT_OR_REQUEST`, `NO_EXECUTABLE_PLAN`,
-  `NUMERICAL_FAILURE`, or `CANCELLED`);
+- lowercase status (`success`, `invalid_input_or_request`, `no_executable_plan`, `numerical_failure`, or
+  `cancelled`);
 - source-ordered assignments;
 - applicable and rejected candidate reports with structured issue kinds and indices;
 - requested and effective method/options/execution provenance;
@@ -360,14 +361,14 @@ Each assignment contains a newly owned, C-contiguous `float64` NumPy array plus 
 optional conformer index, source record identity, atom IDs, and optional conformer ID.
 Geometry-dependent methods return one assignment per molecule conformer. Geometry-independent methods
 return one per molecule with no conformer identity. Returning Python-owned arrays avoids dangling views
-when the native result or assessment is released.
+when the native result or assessment is released. `ChargeAssignment` also implements NumPy's array
+conversion protocol, so `np.asarray(assignment)` returns its immutable charge vector.
 
 Construction and request-programming errors use normal Python exceptions: `TypeError` for incompatible
-Python values, including strings supplied for enum-valued fields; `ValueError` for invalid
-arrays/options/IDs; and `IndexError` only for explicit sequence indexing. Scientific inapplicability,
-numerical failure, and cancellation remain result statuses so their reports are not lost.
-`result.raise_for_status()` provides typed ChargeFW exceptions carrying the same result for callers that
-prefer exception flow. Native exception text must retain molecule, conformer, and method context.
+Python values and `ValueError` for invalid arrays, strings, options, or IDs. Scientific inapplicability,
+numerical failure, and cancellation raise typed ChargeFW exceptions from `calculate()`; every exception
+retains the complete result and diagnostics. Native exception text must retain molecule, conformer, and
+method context.
 
 ## Adapter boundary
 
@@ -485,7 +486,7 @@ dependency tests run on them.
 - input ownership after original arrays are mutated or destroyed;
 - immutable molecule/collection ordering and source identity;
 - C++ exception translation and contextual messages;
-- bundled parameter catalogs, option schemas, and deterministic selection;
+- bundled parameter mappings, option schemas, and deterministic selection;
 - applicability/no-plan reports and one-shot assessment ownership;
 - full/cutoff/cover policy validation and effective provenance;
 - geometry-independent and all-conformer assignment cardinality;
@@ -524,10 +525,10 @@ Each milestone should leave one usable vertical slice and update this status sec
    package, type marker, and focused import/version test; prove the native-only build is unchanged.
 2. **Complete — owned array model** — implement molecule/collection construction, strict validation,
    source metadata, ownership tests, and conversion to native `core` values.
-3. **Complete — calculation vertical slice** — bind functional assess/calculate entry points, bundled
-   parameter resources, options, NumPy assignments, reports, provenance, failures, and mappings.
-4. **Complete — bundled catalog introspection** — expose value-only method/parameter descriptors and
-   immutable package catalogs without exposing classification internals.
+3. **Complete — calculation vertical slice** — bind keyword-only functional assess/calculate entry
+   points, bundled parameter resources, NumPy assignments, reports, provenance, failures, and mappings.
+4. **Complete — bundled catalog introspection** — expose value-only method/parameter metadata through
+   immutable package mappings without exposing classification internals.
 5. **Complete — Gemmi integration** — require the tested upstream Python package, implement serialized adapter
    entry points, and verify parity with native PDB/mmCIF import semantics.
 6. **Wheel qualification** — build the declared initial matrix and run clean-environment relocation,

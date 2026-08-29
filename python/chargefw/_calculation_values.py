@@ -5,9 +5,17 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import cast
 
-from ._calculation_options import CalculationOptions
-from ._chargefw import calculation as _native_calculation
+from ._calculation_options import RequestedCalculation
+from ._methods import (
+    ExecutionIssue,
+    ExecutionSupport,
+    Method,
+    MethodCatalog,
+    PrerequisiteIssue,
+)
+from ._parameters import ParameterSet, ParameterSetCatalog
 from ._payloads import (
     ApplicabilityReportPayload,
     EffectiveCalculationPayload,
@@ -17,50 +25,57 @@ from ._payloads import (
     ExecutionResultPayload,
     PrerequisiteIssuePayload,
 )
-from ._types import MethodOptionValue
+from ._types import (
+    ChargeCorrection,
+    ExecutionAvailability,
+    ExecutionIssueKind,
+    ExecutionMode,
+    ExecutionStatus,
+    MethodOptionValue,
+    PrerequisiteIssueKind,
+)
 from .charges import ChargeAssignment
 from .core import MoleculeCollection
-from ._methods import ExecutionAssessment, ExecutionIssue, PrerequisiteIssue
 
 
 @dataclass(frozen=True, slots=True)
 class ExecutionPolicy:
-    mode: _native_calculation.ExecutionMode
+    mode: ExecutionMode
     radius: float | None
-    charge_correction: _native_calculation.ChargeCorrectionPolicy
+    charge_correction: ChargeCorrection
 
 
 @dataclass(frozen=True, slots=True)
-class ApplicableCandidate:
-    method_id: str
-    parameter_set_id: str | None
-    execution_assessments: tuple[ExecutionAssessment, ...]
+class ApplicableMethod:
+    method: Method
+    parameter_set: ParameterSet | None
+    executions: tuple[ExecutionSupport, ...]
 
 
 @dataclass(frozen=True, slots=True)
-class RejectedCandidate:
-    method_id: str
-    parameter_set_id: str | None
+class RejectedMethod:
+    method: Method
+    parameter_set: ParameterSet | None
     issues: tuple[PrerequisiteIssue, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class ApplicabilityReport:
-    applicable: tuple[ApplicableCandidate, ...]
-    rejected: tuple[RejectedCandidate, ...]
+    applicable: tuple[ApplicableMethod, ...]
+    rejected: tuple[RejectedMethod, ...]
     selected_candidate_index: int | None
 
 
 @dataclass(frozen=True, slots=True)
 class EffectiveCalculation:
-    method_id: str
-    parameter_set_id: str | None
-    method_options: Mapping[str, MethodOptionValue]
-    execution_policy: ExecutionPolicy
-    execution_issues: tuple[ExecutionIssue, ...]
+    method: Method
+    parameter_set: ParameterSet | None
+    options: Mapping[str, MethodOptionValue]
+    execution: ExecutionPolicy
+    warnings: tuple[ExecutionIssue, ...]
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "method_options", MappingProxyType(dict(self.method_options)))
+        object.__setattr__(self, "options", MappingProxyType(dict(self.options)))
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +95,7 @@ class AssessmentReport:
 
 def _prerequisite_issue(value: PrerequisiteIssuePayload) -> PrerequisiteIssue:
     return PrerequisiteIssue(
-        kind=value["kind"],
+        kind=cast(PrerequisiteIssueKind, value["kind"].name.lower()),
         message=value["message"],
         molecule_index=value["molecule_index"],
         atom_index=value["atom_index"],
@@ -91,37 +106,51 @@ def _prerequisite_issue(value: PrerequisiteIssuePayload) -> PrerequisiteIssue:
 
 def _execution_issue(value: ExecutionIssuePayload) -> ExecutionIssue:
     return ExecutionIssue(
-        kind=value["kind"],
+        kind=cast(ExecutionIssueKind, value["kind"].name.lower()),
         message=value["message"],
         molecule_index=value["molecule_index"],
     )
 
 
-def _execution_assessment(value: ExecutionAssessmentPayload) -> ExecutionAssessment:
-    return ExecutionAssessment(
-        mode=value["mode"],
-        availability=value["availability"],
+def _execution_support(value: ExecutionAssessmentPayload) -> ExecutionSupport:
+    return ExecutionSupport(
+        mode=cast(ExecutionMode, value["mode"].name.lower()),
+        availability=cast(ExecutionAvailability, value["availability"].name.lower()),
         issues=tuple(_execution_issue(issue) for issue in value["issues"]),
     )
 
 
-def _applicability_report(value: ApplicabilityReportPayload) -> ApplicabilityReport:
+def _resolved_parameter_set(
+    id: str | None, parameter_sets: ParameterSetCatalog
+) -> ParameterSet | None:
+    return None if id is None else parameter_sets[id]
+
+
+def _applicability_report(
+    value: ApplicabilityReportPayload,
+    methods: MethodCatalog,
+    parameter_sets: ParameterSetCatalog,
+) -> ApplicabilityReport:
     return ApplicabilityReport(
         applicable=tuple(
-            ApplicableCandidate(
-                method_id=candidate["method_id"],
-                parameter_set_id=candidate["parameter_set_id"],
-                execution_assessments=tuple(
-                    _execution_assessment(assessment)
+            ApplicableMethod(
+                method=methods[candidate["method_id"]],
+                parameter_set=_resolved_parameter_set(
+                    candidate["parameter_set_id"], parameter_sets
+                ),
+                executions=tuple(
+                    _execution_support(assessment)
                     for assessment in candidate["execution_assessments"]
                 ),
             )
             for candidate in value["applicable"]
         ),
         rejected=tuple(
-            RejectedCandidate(
-                method_id=candidate["method_id"],
-                parameter_set_id=candidate["parameter_set_id"],
+            RejectedMethod(
+                method=methods[candidate["method_id"]],
+                parameter_set=_resolved_parameter_set(
+                    candidate["parameter_set_id"], parameter_sets
+                ),
                 issues=tuple(_prerequisite_issue(issue) for issue in candidate["issues"]),
             )
             for candidate in value["rejected"]
@@ -132,21 +161,25 @@ def _applicability_report(value: ApplicabilityReportPayload) -> ApplicabilityRep
 
 def _execution_policy(value: ExecutionPolicyPayload) -> ExecutionPolicy:
     return ExecutionPolicy(
-        mode=value["mode"],
+        mode=cast(ExecutionMode, value["mode"].name.lower()),
         radius=value["radius"],
-        charge_correction=value["charge_correction"],
+        charge_correction=cast(ChargeCorrection, value["charge_correction"].name.lower()),
     )
 
 
-def _effective_calculation(value: EffectiveCalculationPayload | None) -> EffectiveCalculation | None:
+def _effective_calculation(
+    value: EffectiveCalculationPayload | None,
+    methods: MethodCatalog,
+    parameter_sets: ParameterSetCatalog,
+) -> EffectiveCalculation | None:
     if value is None:
         return None
     return EffectiveCalculation(
-        method_id=value["method_id"],
-        parameter_set_id=value["parameter_set_id"],
-        method_options=value["method_options"],
-        execution_policy=_execution_policy(value["execution_policy"]),
-        execution_issues=tuple(_execution_issue(issue) for issue in value["execution_issues"]),
+        method=methods[value["method_id"]],
+        parameter_set=_resolved_parameter_set(value["parameter_set_id"], parameter_sets),
+        options=value["method_options"],
+        execution=_execution_policy(value["execution_policy"]),
+        warnings=tuple(_execution_issue(issue) for issue in value["execution_issues"]),
     )
 
 
@@ -187,8 +220,8 @@ class CalculationResult:
         "_timings",
     )
 
-    _status: _native_calculation.ExecutionStatus
-    _requested: CalculationOptions
+    _status: ExecutionStatus
+    _requested: RequestedCalculation
     _assignments: tuple[ChargeAssignment, ...]
     _applicability: ApplicabilityReport
     _effective: EffectiveCalculation | None
@@ -199,7 +232,9 @@ class CalculationResult:
         self,
         payload: ExecutionResultPayload,
         molecules: MoleculeCollection,
-        requested: CalculationOptions,
+        requested: RequestedCalculation,
+        methods: MethodCatalog,
+        parameter_sets: ParameterSetCatalog,
     ) -> None:
         assignments: list[ChargeAssignment] = []
         charges = payload["charges"]
@@ -225,11 +260,13 @@ class CalculationResult:
                         conformer_id=conformer_id,
                     )
                 )
-        self._status = payload["status"]
+        self._status = cast(ExecutionStatus, payload["status"].name.lower())
         self._requested = requested
         self._assignments = tuple(assignments)
-        self._applicability = _applicability_report(payload["applicability"])
-        self._effective = _effective_calculation(payload["effective"])
+        self._applicability = _applicability_report(
+            payload["applicability"], methods, parameter_sets
+        )
+        self._effective = _effective_calculation(payload["effective"], methods, parameter_sets)
         self._failure_message = payload["failure_message"]
         self._timings = CalculationTimings(
             applicability_seconds=payload["metrics"]["applicability_seconds"],
@@ -237,7 +274,7 @@ class CalculationResult:
         )
 
     @property
-    def status(self) -> _native_calculation.ExecutionStatus:
+    def status(self) -> ExecutionStatus:
         return self._status
 
     @property
@@ -245,11 +282,20 @@ class CalculationResult:
         return self._assignments
 
     @property
-    def applicability(self) -> ApplicabilityReport:
-        return self._applicability
+    def applicable(self) -> tuple[ApplicableMethod, ...]:
+        return self._applicability.applicable
 
     @property
-    def requested(self) -> CalculationOptions:
+    def rejected(self) -> tuple[RejectedMethod, ...]:
+        return self._applicability.rejected
+
+    @property
+    def selected(self) -> ApplicableMethod | None:
+        index = self._applicability.selected_candidate_index
+        return None if index is None else self.applicable[index]
+
+    @property
+    def requested(self) -> RequestedCalculation:
         return self._requested
 
     @property
@@ -257,10 +303,10 @@ class CalculationResult:
         return self._effective
 
     @property
-    def execution_issues(self) -> tuple[ExecutionIssue, ...]:
+    def warnings(self) -> tuple[ExecutionIssue, ...]:
         if self._effective is None:
             return ()
-        return self._effective.execution_issues
+        return self._effective.warnings
 
     @property
     def failure_message(self) -> str | None:
@@ -270,13 +316,13 @@ class CalculationResult:
     def timings(self) -> CalculationTimings:
         return self._timings
 
-    def raise_for_status(self) -> None:
+    def _raise_for_status(self) -> None:
         exception_types = {
-            _native_calculation.ExecutionStatus.INVALID_INPUT_OR_REQUEST: InvalidInputError,
-            _native_calculation.ExecutionStatus.NO_EXECUTABLE_PLAN: NoExecutablePlanError,
-            _native_calculation.ExecutionStatus.NUMERICAL_FAILURE: NumericalFailureError,
-            _native_calculation.ExecutionStatus.CANCELLED: CalculationCancelledError,
+            "invalid_input_or_request": InvalidInputError,
+            "no_executable_plan": NoExecutablePlanError,
+            "numerical_failure": NumericalFailureError,
+            "cancelled": CalculationCancelledError,
         }
         exception_type = exception_types.get(self.status)
         if exception_type is not None:
-            raise exception_type(self.failure_message or self.status.name, self)
+            raise exception_type(self.failure_message or self.status, self)

@@ -74,12 +74,9 @@ molecule = chargefw.Molecule(
 )
 result = chargefw.calculate(
     molecule,
-    chargefw.CalculationOptions(
-        method="eem",
-        execution=chargefw.ExecutionSelectionKind.FULL,
-    ),
+    method="eem",
+    execution="full",
 )
-result.raise_for_status()
 charges = result.assignments[0].values
 ```
 
@@ -88,7 +85,7 @@ Inspect methods, options, and bundled parameter sets through immutable ordered c
 ```python
 eem = chargefw.methods["eem"]
 
-for method in chargefw.methods:
+for method in chargefw.methods.values():
     print(method.id, method.name)
 
 for parameter_set in eem.parameter_sets:

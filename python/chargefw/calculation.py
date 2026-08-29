@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from threading import Lock
 
-from ._calculation_options import CalculationOptions
+from ._calculation_options import RequestedCalculation
 from ._calculation_values import (
     ApplicabilityReport,
-    ApplicableCandidate,
+    ApplicableMethod,
     AssessmentReport,
     CalculationCancelledError,
     CalculationResult,
@@ -19,61 +19,46 @@ from ._calculation_values import (
     InvalidInputError,
     NoExecutablePlanError,
     NumericalFailureError,
-    RejectedCandidate,
+    RejectedMethod,
     _applicability_report,
     _execution_issue,
     _execution_policy,
 )
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import parameters as _native_parameters
-from ._methods import ExecutionIssue, _method_catalog
-from ._parameters import ParameterSetCatalog, _descriptor
+from ._methods import ExecutionIssue, Method, _method_catalog
+from ._parameters import ParameterSet, ParameterSetCatalog, _parameter_set
 from ._resources import default_parameter_directory
+from ._types import ChargeCorrection, Execution, MethodOptionValue, ParameterMatching
 from .core import Molecule, MoleculeCollection
 
 __all__ = [
-    "ApplicableCandidate",
+    "ApplicableMethod",
     "ApplicabilityReport",
     "Assessment",
     "AssessmentReport",
     "CalculationCancelledError",
-    "CalculationOptions",
     "CalculationResult",
     "CalculationTimings",
-    "ChargeCorrectionPolicy",
     "ChargeFWError",
     "EffectiveCalculation",
-    "ExecutionMode",
     "ExecutionPolicy",
-    "ExecutionSelectionKind",
-    "ExecutionStatus",
     "InvalidInputError",
     "NoExecutablePlanError",
     "NumericalFailureError",
-    "RejectedCandidate",
+    "RejectedMethod",
+    "RequestedCalculation",
     "assess",
     "calculate",
     "methods",
     "parameter_sets",
 ]
 
-ExecutionSelectionKind = _native_calculation.ExecutionSelectionKind
-ExecutionMode = _native_calculation.ExecutionMode
-ChargeCorrectionPolicy = _native_calculation.ChargeCorrectionPolicy
-ExecutionStatus = _native_calculation.ExecutionStatus
-for _enum in (
-    ExecutionSelectionKind,
-    ExecutionMode,
-    ChargeCorrectionPolicy,
-    ExecutionStatus,
-):
-    _enum.__module__ = __name__
-
 for _value_type in (
-    CalculationOptions,
+    RequestedCalculation,
     ExecutionPolicy,
-    ApplicableCandidate,
-    RejectedCandidate,
+    ApplicableMethod,
+    RejectedMethod,
     ApplicabilityReport,
     EffectiveCalculation,
     CalculationTimings,
@@ -111,7 +96,7 @@ def _default_parameter_descriptors() -> ParameterSetCatalog:
         with _bundled_parameter_catalog_lock:
             if _bundled_parameter_descriptors is None:
                 _bundled_parameter_descriptors = ParameterSetCatalog(
-                    tuple(_descriptor(value) for value in catalog._descriptors())
+                    tuple(_parameter_set(value) for value in catalog._descriptors())
                 )
     return _bundled_parameter_descriptors
 
@@ -133,11 +118,13 @@ class Assessment:
 
     __slots__ = ("_native", "_molecules", "_requested", "_report", "_consumed")
 
+    _native: _native_calculation._NativeAssessment | None
+
     def __init__(
         self,
         native: _native_calculation._NativeAssessment,
         molecules: MoleculeCollection,
-        requested: CalculationOptions,
+        requested: RequestedCalculation,
     ) -> None:
         payload = native.report()
         policy = payload["execution_policy"]
@@ -145,7 +132,7 @@ class Assessment:
         self._molecules = molecules
         self._requested = requested
         self._report = AssessmentReport(
-            applicability=_applicability_report(payload["applicability"]),
+            applicability=_applicability_report(payload["applicability"], methods, parameter_sets),
             execution_policy=_execution_policy(policy) if policy is not None else None,
             execution_issues=tuple(
                 _execution_issue(issue) for issue in payload["execution_issues"]
@@ -160,67 +147,149 @@ class Assessment:
         return self._report
 
     @property
-    def applicability(self) -> ApplicabilityReport:
-        return self._report.applicability
+    def applicable(self) -> tuple[ApplicableMethod, ...]:
+        return self._report.applicability.applicable
 
     @property
-    def execution_policy(self) -> ExecutionPolicy | None:
+    def rejected(self) -> tuple[RejectedMethod, ...]:
+        return self._report.applicability.rejected
+
+    @property
+    def selected(self) -> ApplicableMethod | None:
+        index = self._report.applicability.selected_candidate_index
+        return None if index is None else self.applicable[index]
+
+    @property
+    def execution(self) -> ExecutionPolicy | None:
         return self._report.execution_policy
 
     @property
-    def execution_issues(self) -> tuple[ExecutionIssue, ...]:
+    def warnings(self) -> tuple[ExecutionIssue, ...]:
         return self._report.execution_issues
+
+    @property
+    def seconds(self) -> float:
+        return self._report.applicability_seconds
 
     @property
     def executable(self) -> bool:
         return self._report.executable
 
+    def __enter__(self) -> Assessment:
+        if self._native is None:
+            raise RuntimeError("assessment is closed")
+        return self
+
+    def __exit__(self, *exception: object) -> None:
+        self.close()
+
+    def close(self) -> None:
+        """Release prepared native calculation state without executing it."""
+
+        self._native = None
+
     def calculate(self) -> CalculationResult:
         if self._consumed:
             raise RuntimeError("assessment can only be calculated once")
+        if self._native is None:
+            raise RuntimeError("assessment is closed")
         self._consumed = True
-        return CalculationResult(self._native.calculate(), self._molecules, self._requested)
+        native = self._native
+        self._native = None
+        result = CalculationResult(
+            native.calculate(),
+            self._molecules,
+            self._requested,
+            methods,
+            parameter_sets,
+        )
+        result._raise_for_status()
+        return result
 
 
 def assess(
     molecules: Molecule | MoleculeCollection | Iterable[Molecule],
-    options: CalculationOptions | None = None,
+    *,
+    method: str | Method | None = None,
+    parameter_set: str | ParameterSet | None = None,
+    options: Mapping[str, MethodOptionValue] | None = None,
+    options_by_method: Mapping[str, Mapping[str, MethodOptionValue]] | None = None,
+    parameter_matching: ParameterMatching = "strict",
+    execution: Execution = "auto",
+    radius: float | None = None,
+    charge_correction: ChargeCorrection | None = None,
+    cutoff_threshold: int | None = 20_000,
+    cover_threshold: int | None = 80_000,
+    threads: int = 0,
 ) -> Assessment:
     """Assess molecules and return a one-shot executable calculation plan."""
 
-    if options is None:
-        options = CalculationOptions()
-    if not isinstance(options, CalculationOptions):
-        raise TypeError("options must be a CalculationOptions value or None")
+    requested = RequestedCalculation(
+        method=method,
+        parameter_set=parameter_set,
+        options=options,
+        options_by_method=options_by_method,
+        parameter_matching=parameter_matching,
+        execution=execution,
+        radius=radius,
+        charge_correction=charge_correction,
+        cutoff_threshold=cutoff_threshold,
+        cover_threshold=cover_threshold,
+        threads=threads,
+    )
     collection = _as_collection(molecules)
     native = _native_calculation._make_assessment(
         collection._native_molecules,
         collection.name,
         _default_parameter_catalog(),
-        options._method_id,
-        options._parameter_set_id,
+        requested.method,
+        requested.parameter_set,
         {
             method_id: dict(overrides)
-            for method_id, overrides in options.method_options.items()
+            for method_id, overrides in requested.options_by_method.items()
         },
-        options.permissive_types,
-        options.execution,
-        options.radius,
-        options.charge_correction,
-        options.cutoff_atom_threshold,
-        options.cover_atom_threshold,
-        options.max_threads,
+        requested._permissive_types,
+        requested._execution_kind,
+        requested.radius,
+        requested._charge_correction_policy,
+        requested.cutoff_threshold,
+        requested.cover_threshold,
+        requested.threads,
     )
-    return Assessment(native, collection, options)
+    return Assessment(native, collection, requested)
 
 
 def calculate(
     molecules: Molecule | MoleculeCollection | Iterable[Molecule],
-    options: CalculationOptions | None = None,
+    *,
+    method: str | Method | None = None,
+    parameter_set: str | ParameterSet | None = None,
+    options: Mapping[str, MethodOptionValue] | None = None,
+    options_by_method: Mapping[str, Mapping[str, MethodOptionValue]] | None = None,
+    parameter_matching: ParameterMatching = "strict",
+    execution: Execution = "auto",
+    radius: float | None = None,
+    charge_correction: ChargeCorrection | None = None,
+    cutoff_threshold: int | None = 20_000,
+    cover_threshold: int | None = 80_000,
+    threads: int = 0,
 ) -> CalculationResult:
     """Assess and synchronously calculate charges for molecules."""
 
-    return assess(molecules, options).calculate()
+    return assess(
+        molecules,
+        method=method,
+        parameter_set=parameter_set,
+        options=options,
+        options_by_method=options_by_method,
+        parameter_matching=parameter_matching,
+        execution=execution,
+        radius=radius,
+        charge_correction=charge_correction,
+        cutoff_threshold=cutoff_threshold,
+        cover_threshold=cover_threshold,
+        threads=threads,
+    ).calculate()
 
 
 Assessment.__module__ = __name__

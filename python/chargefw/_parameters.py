@@ -8,24 +8,27 @@ from ._catalog import _Catalog
 from ._payloads import ParameterSetDescriptorPayload
 
 
-@dataclass(frozen=True, slots=True)
-class ParameterSetDescriptor:
-    """Value-only metadata for an immutable parameter set."""
+@dataclass(frozen=True, slots=True, repr=False)
+class ParameterSet:
+    """Metadata for an installed immutable parameter set."""
 
     id: str
-    method_id: str
+    method: str
     name: str
     publication: str
     notes: str
     priority: int
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(id={self.id!r}, method={self.method!r}, name={self.name!r})"
 
-class ParameterSetCatalog(_Catalog[ParameterSetDescriptor]):
-    """Immutable ordered parameter-set descriptors with ID and method lookup."""
+
+class ParameterSetCatalog(_Catalog[ParameterSet]):
+    """Installed parameter sets keyed by ID."""
 
     __slots__ = ()
 
-    def __init__(self, values: tuple[ParameterSetDescriptor, ...]) -> None:
+    def __init__(self, values: tuple[ParameterSet, ...]) -> None:
         super().__init__(values, "parameter-set")
 
     def for_method(self, method: str) -> ParameterSetCatalog:
@@ -33,13 +36,15 @@ class ParameterSetCatalog(_Catalog[ParameterSetDescriptor]):
 
         if not isinstance(method, str):
             raise TypeError("method must be a string")
-        return ParameterSetCatalog(tuple(value for value in self if value.method_id == method))
+        return ParameterSetCatalog(
+            tuple(value for value in self.values() if value.method == method)
+        )
 
 
-def _descriptor(value: ParameterSetDescriptorPayload) -> ParameterSetDescriptor:
-    return ParameterSetDescriptor(
+def _parameter_set(value: ParameterSetDescriptorPayload) -> ParameterSet:
+    return ParameterSet(
         id=value["id"],
-        method_id=value["method_id"],
+        method=value["method_id"],
         name=value["name"],
         publication=value["publication"],
         notes=value["notes"],
@@ -47,5 +52,5 @@ def _descriptor(value: ParameterSetDescriptorPayload) -> ParameterSetDescriptor:
     )
 
 
-ParameterSetDescriptor.__module__ = "chargefw"
+ParameterSet.__module__ = "chargefw"
 ParameterSetCatalog.__module__ = "chargefw"

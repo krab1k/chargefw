@@ -1,26 +1,32 @@
 """ChargeFW Python API."""
 
 from ._chargefw import version as _native_version
+from ._methods import (
+    ExecutionIssue,
+    ExecutionSupport,
+    Method,
+    MethodCatalog,
+    MethodOption,
+    MethodOptionCatalog,
+    PrerequisiteIssue,
+)
+from ._parameters import ParameterSet, ParameterSetCatalog
 from .calculation import (
     ApplicabilityReport,
-    ApplicableCandidate,
+    ApplicableMethod,
     Assessment,
     AssessmentReport,
     CalculationCancelledError,
-    CalculationOptions,
     CalculationResult,
     CalculationTimings,
-    ChargeCorrectionPolicy,
     ChargeFWError,
     EffectiveCalculation,
-    ExecutionMode,
     ExecutionPolicy,
-    ExecutionSelectionKind,
-    ExecutionStatus,
     InvalidInputError,
     NoExecutablePlanError,
     NumericalFailureError,
-    RejectedCandidate,
+    RejectedMethod,
+    RequestedCalculation,
     assess,
     calculate,
     methods,
@@ -28,23 +34,6 @@ from .calculation import (
 )
 from .charges import ChargeAssignment
 from .core import Molecule, MoleculeCollection, SourceIdentity
-from ._methods import (
-    ExecutionAssessment,
-    ExecutionAvailability,
-    ExecutionIssue,
-    ExecutionIssueKind,
-    MethodCatalog,
-    MethodDescriptor,
-    MethodOptionCatalog,
-    MethodOptionDescriptor,
-    MethodOptionType,
-    PrerequisiteIssue,
-    PrerequisiteIssueKind,
-)
-from ._parameters import (
-    ParameterSetCatalog,
-    ParameterSetDescriptor,
-)
 
 __version__ = _native_version()
 
@@ -53,7 +42,6 @@ __all__ = [
     "Molecule",
     "MoleculeCollection",
     "SourceIdentity",
-    "CalculationOptions",
     "ChargeAssignment",
     "CalculationResult",
     "Assessment",
@@ -61,33 +49,26 @@ __all__ = [
     "calculate",
     "methods",
     "parameter_sets",
+    "RequestedCalculation",
     "ChargeFWError",
     "InvalidInputError",
     "NoExecutablePlanError",
     "NumericalFailureError",
     "CalculationCancelledError",
-    "ExecutionSelectionKind",
-    "ExecutionMode",
-    "ChargeCorrectionPolicy",
-    "ExecutionStatus",
-    "PrerequisiteIssueKind",
-    "ExecutionAvailability",
-    "ExecutionIssueKind",
     "PrerequisiteIssue",
     "ExecutionIssue",
-    "ExecutionAssessment",
+    "ExecutionSupport",
     "ExecutionPolicy",
-    "ApplicableCandidate",
-    "RejectedCandidate",
+    "ApplicableMethod",
+    "RejectedMethod",
     "ApplicabilityReport",
     "EffectiveCalculation",
     "CalculationTimings",
     "AssessmentReport",
-    "MethodOptionType",
     "MethodOptionCatalog",
-    "MethodOptionDescriptor",
+    "MethodOption",
     "MethodCatalog",
-    "MethodDescriptor",
+    "Method",
     "ParameterSetCatalog",
-    "ParameterSetDescriptor",
+    "ParameterSet",
 ]

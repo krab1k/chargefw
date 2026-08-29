@@ -3,25 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 from ._catalog import _Catalog
-from ._chargefw import calculation as _native_calculation
 from ._chargefw import methods as _native_methods
-from ._payloads import MethodDescriptorPayload
 from ._parameters import ParameterSetCatalog
-
-PrerequisiteIssueKind = _native_methods.PrerequisiteIssueKind
-ExecutionAvailability = _native_methods.ExecutionAvailability
-ExecutionIssueKind = _native_methods.ExecutionIssueKind
-ExecutionMode = _native_calculation.ExecutionMode
-MethodOptionType = _native_methods.MethodOptionType
-for _enum in (
-    PrerequisiteIssueKind,
+from ._payloads import MethodDescriptorPayload
+from ._types import (
     ExecutionAvailability,
     ExecutionIssueKind,
+    ExecutionMode,
     MethodOptionType,
-):
-    _enum.__module__ = "chargefw"
+    PrerequisiteIssueKind,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,14 +36,14 @@ class ExecutionIssue:
 
 
 @dataclass(frozen=True, slots=True)
-class ExecutionAssessment:
+class ExecutionSupport:
     mode: ExecutionMode
     availability: ExecutionAvailability
     issues: tuple[ExecutionIssue, ...] = ()
 
 
-@dataclass(frozen=True, slots=True)
-class MethodOptionDescriptor:
+@dataclass(frozen=True, slots=True, repr=False)
+class MethodOption:
     id: str
     description: str
     type: MethodOptionType
@@ -60,18 +54,21 @@ class MethodOptionDescriptor:
     maximum: bool | int | float | str | None
     maximum_inclusive: bool
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(id={self.id!r}, default={self.default!r})"
 
-class MethodOptionCatalog(_Catalog[MethodOptionDescriptor]):
+
+class MethodOptionCatalog(_Catalog[MethodOption]):
     """Immutable ordered method options with lookup by ID."""
 
     __slots__ = ()
 
-    def __init__(self, values: tuple[MethodOptionDescriptor, ...]) -> None:
+    def __init__(self, values: tuple[MethodOption, ...]) -> None:
         super().__init__(values, "method option")
 
 
-@dataclass(frozen=True, slots=True)
-class MethodDescriptor:
+@dataclass(frozen=True, slots=True, repr=False)
+class Method:
     id: str
     name: str
     full_name: str
@@ -83,20 +80,23 @@ class MethodDescriptor:
     options: MethodOptionCatalog
     parameter_sets: ParameterSetCatalog
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(id={self.id!r}, name={self.name!r})"
 
-class MethodCatalog(_Catalog[MethodDescriptor]):
+
+class MethodCatalog(_Catalog[Method]):
     """Immutable ordered built-in methods with lookup by ID."""
 
     __slots__ = ()
 
-    def __init__(self, values: tuple[MethodDescriptor, ...]) -> None:
+    def __init__(self, values: tuple[Method, ...]) -> None:
         super().__init__(values, "method")
 
 
 def _method_descriptor(
     value: MethodDescriptorPayload, parameter_sets: ParameterSetCatalog
-) -> MethodDescriptor:
-    return MethodDescriptor(
+) -> Method:
+    return Method(
         id=value["id"],
         name=value["name"],
         full_name=value["full_name"],
@@ -107,10 +107,10 @@ def _method_descriptor(
         supports_cover=value["supports_cover"],
         options=MethodOptionCatalog(
             tuple(
-                MethodOptionDescriptor(
+                MethodOption(
                     id=option["id"],
                     description=option["description"],
-                    type=option["type"],
+                    type=cast(MethodOptionType, option["type"].name.lower()),
                     default=option["default"],
                     choices=tuple(option["choices"]),
                     minimum=option["minimum"],
@@ -139,10 +139,10 @@ def _method_catalog(parameter_sets: ParameterSetCatalog) -> MethodCatalog:
 for _value_type in (
     PrerequisiteIssue,
     ExecutionIssue,
-    ExecutionAssessment,
-    MethodOptionDescriptor,
+    ExecutionSupport,
+    MethodOption,
     MethodOptionCatalog,
-    MethodDescriptor,
+    Method,
     MethodCatalog,
 ):
     _value_type.__module__ = "chargefw"

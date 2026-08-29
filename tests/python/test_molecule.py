@@ -45,6 +45,7 @@ class MoleculeTests(unittest.TestCase):
         self.assertEqual(molecule.atom_ids, tuple(atom_ids))
         self.assertEqual(molecule.conformer_ids, tuple(conformer_ids))
         self.assertEqual(molecule._native.atom_count, 4)
+        self.assertEqual(len(molecule), 4)
         self.assertEqual(molecule._native.bond_count, 3)
         self.assertEqual(molecule._native.conformer_count, 2)
         self.assertEqual(molecule._native.name, "water-like")

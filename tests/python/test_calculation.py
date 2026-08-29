@@ -36,12 +36,12 @@ def water(conformers: int = 1) -> chargefw.Molecule:
     )
 
 
-def formal_options() -> chargefw.CalculationOptions:
-    return chargefw.CalculationOptions(
-        method="formal",
-        execution=chargefw.ExecutionSelectionKind.FULL,
-        max_threads=1,
-    )
+def calculate_formal(molecules: Any) -> chargefw.CalculationResult:
+    return chargefw.calculate(molecules, method="formal", execution="full", threads=1)
+
+
+def assess_formal(molecules: Any) -> chargefw.Assessment:
+    return chargefw.assess(molecules, method="formal", execution="full", threads=1)
 
 
 def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, bool, float]:
@@ -78,35 +78,31 @@ def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, b
 
 
 class CalculationTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.full_eem = chargefw.CalculationOptions(
-            method="eem", execution=chargefw.ExecutionSelectionKind.FULL
-        )
+    def test_default_calculation_selects_a_supported_plan(self) -> None:
+        result = chargefw.calculate(water())
+        self.assertEqual(result.status, "success")
+        self.assertIsNotNone(result.selected)
+        self.assertIsNotNone(result.effective)
 
     def test_assessment_and_full_calculation(self) -> None:
-        assessment = chargefw.assess(water(), self.full_eem)
+        assessment = chargefw.assess(water(), method="eem", execution="full")
         self.assertTrue(assessment.executable)
         self.assertEqual(
-            assessment.execution_policy,
+            assessment.execution,
             chargefw.ExecutionPolicy(
-                mode=chargefw.ExecutionMode.FULL,
+                mode="full",
                 radius=None,
-                charge_correction=chargefw.ChargeCorrectionPolicy.NONE,
+                charge_correction="none",
             ),
         )
-        self.assertEqual(assessment.report.applicability, assessment.applicability)
-        selected_index = assessment.applicability.selected_candidate_index
-        if selected_index is None:
-            self.fail("executable assessment must select a candidate")
-        selected_candidate = assessment.applicability.applicable[selected_index]
-        self.assertEqual(selected_candidate.method_id, "eem")
-        self.assertIs(
-            selected_candidate.execution_assessments[0].mode,
-            chargefw.ExecutionMode.FULL,
-        )
+        selected_candidate = assessment.selected
+        if selected_candidate is None:
+            self.fail("executable assessment must select a method")
+        self.assertEqual(selected_candidate.method.id, "eem")
+        self.assertEqual(selected_candidate.executions[0].mode, "full")
 
         result = assessment.calculate()
-        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(result.status, "success")
         self.assertEqual(len(result.assignments), 1)
         assignment = result.assignments[0]
         self.assertEqual(assignment.molecule_index, 0)
@@ -121,45 +117,48 @@ class CalculationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             assignment.values.setflags(write=True)
         self.assertTrue(np.isclose(assignment.values.sum(), 0.0))
-        self.assertIs(result.requested, self.full_eem)
+        self.assertIs(np.asarray(assignment), assignment.values)
+        self.assertEqual(np.asarray(assignment, dtype=np.float32).dtype, np.dtype(np.float32))
+        self.assertEqual(result.requested.method, "eem")
+        self.assertEqual(result.requested.execution, "full")
         effective = result.effective
         if effective is None:
             self.fail("successful calculation must report effective provenance")
-        self.assertEqual(effective.method_id, "eem")
-        self.assertEqual(effective.parameter_set_id, selected_candidate.parameter_set_id)
-        self.assertIs(effective.execution_policy.mode, chargefw.ExecutionMode.FULL)
+        self.assertEqual(effective.method.id, "eem")
+        self.assertEqual(effective.parameter_set, selected_candidate.parameter_set)
+        self.assertEqual(effective.execution.mode, "full")
         self.assertGreaterEqual(result.timings.applicability_seconds, 0.0)
         self.assertGreaterEqual(result.timings.computation_seconds, 0.0)
         with self.assertRaises(TypeError):
-            cast(Any, self.full_eem.method_options)["eem"] = {"unexpected": True}
+            cast(Any, result.requested.options_by_method)["eem"] = {"unexpected": True}
         with self.assertRaises(RuntimeError):
+            assessment.calculate()
+
+    def test_assessment_context_manager_releases_prepared_state(self) -> None:
+        with chargefw.assess(water(), method="eem", execution="full") as assessment:
+            self.assertTrue(assessment.executable)
+        with self.assertRaisesRegex(RuntimeError, "closed"):
             assessment.calculate()
 
     def test_assignment_cardinality_and_mapping(self) -> None:
         geometry_independent = chargefw.calculate(
             chargefw.Molecule([8, 1, 1]),
-            chargefw.CalculationOptions(
-                method="formal", execution=chargefw.ExecutionSelectionKind.FULL
-            ),
+            method="formal",
+            execution="full",
         )
-        self.assertIs(geometry_independent.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(geometry_independent.status, "success")
         self.assertEqual(len(geometry_independent.assignments), 1)
         self.assertIsNone(geometry_independent.assignments[0].conformer_index)
 
         collection = chargefw.MoleculeCollection([water(2)])
-        options = chargefw.CalculationOptions(
-            method="qeq", execution=chargefw.ExecutionSelectionKind.FULL
-        )
-        multi_result = chargefw.calculate(collection, options)
-        self.assertIs(multi_result.status, chargefw.ExecutionStatus.SUCCESS)
-        self.assertEqual(
-            [item.conformer_index for item in multi_result.assignments], [0, 1]
-        )
+        multi_result = chargefw.calculate(collection, method="qeq", execution="full")
+        self.assertEqual(multi_result.status, "success")
+        self.assertEqual([item.conformer_index for item in multi_result.assignments], [0, 1])
         self.assertEqual(
             [item.conformer_id for item in multi_result.assignments],
             ["model-a", "model-b"],
         )
-        repeated_result = chargefw.calculate(collection, options)
+        repeated_result = chargefw.calculate(collection, method="qeq", execution="full")
         self.assertEqual(
             [item.values.tolist() for item in repeated_result.assignments],
             [item.values.tolist() for item in multi_result.assignments],
@@ -167,9 +166,7 @@ class CalculationTests(unittest.TestCase):
 
         mapped_collection = chargefw.MoleculeCollection(
             [
-                chargefw.Molecule(
-                    [1], source_name="first", record_id="record-a", atom_ids=["A"]
-                ),
+                chargefw.Molecule([1], source_name="first", record_id="record-a", atom_ids=["A"]),
                 chargefw.Molecule(
                     [8, 1],
                     source_name="second",
@@ -178,8 +175,8 @@ class CalculationTests(unittest.TestCase):
                 ),
             ]
         )
-        mapped_result = chargefw.calculate(mapped_collection, formal_options())
-        self.assertIs(mapped_result.status, chargefw.ExecutionStatus.SUCCESS)
+        mapped_result = calculate_formal(mapped_collection)
+        self.assertEqual(mapped_result.status, "success")
         self.assertEqual(
             [assignment.molecule_index for assignment in mapped_result.assignments], [0, 1]
         )
@@ -248,22 +245,18 @@ class CalculationTests(unittest.TestCase):
             "conformer_id": None,
         }
         for error_type, overrides in invalid_assignments:
-            with self.subTest(error_type=error_type, overrides=overrides), self.assertRaises(
-                error_type
+            with (
+                self.subTest(error_type=error_type, overrides=overrides),
+                self.assertRaises(error_type),
             ):
                 chargefw.ChargeAssignment(**(defaults | overrides))
 
     def test_functional_api_supports_concurrent_calculations(self) -> None:
         collection = chargefw.MoleculeCollection([chargefw.Molecule([8, 1, 1])])
-        options = formal_options()
         with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [
-                executor.submit(chargefw.calculate, collection, options) for _ in range(4)
-            ]
+            futures = [executor.submit(calculate_formal, collection) for _ in range(4)]
         results = [future.result() for future in futures]
-        self.assertTrue(
-            all(result.status is chargefw.ExecutionStatus.SUCCESS for result in results)
-        )
+        self.assertTrue(all(result.status == "success" for result in results))
         self.assertEqual(
             [result.assignments[0].values.tolist() for result in results],
             [[0.0, 0.0, 0.0]] * 4,
@@ -272,7 +265,7 @@ class CalculationTests(unittest.TestCase):
     def test_assessment_releases_the_gil(self) -> None:
         molecule = chargefw.Molecule([1] * _GIL_TEST_ATOM_COUNT)
         assessment, progressed, operation_seconds = run_while_python_thread_progresses(
-            lambda: chargefw.assess(molecule, formal_options())
+            lambda: assess_formal(molecule)
         )
         self.assertTrue(assessment.executable)
         self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
@@ -301,107 +294,94 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(progressed)
 
     def test_execution_releases_the_gil(self) -> None:
-        assessment = chargefw.assess(
-            chargefw.Molecule([1] * _GIL_TEST_ATOM_COUNT), formal_options()
-        )
+        assessment = assess_formal(chargefw.Molecule([1] * _GIL_TEST_ATOM_COUNT))
         result, progressed, operation_seconds = run_while_python_thread_progresses(
             assessment.calculate
         )
-        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(result.status, "success")
         self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
         self.assertTrue(progressed)
 
     def test_reduced_execution_policies(self) -> None:
         reduced = chargefw.calculate(
             water(),
-            chargefw.CalculationOptions(
-                method="eem",
-                execution=chargefw.ExecutionSelectionKind.CUTOFF,
-                radius=8.0,
-                charge_correction=chargefw.ChargeCorrectionPolicy.NONE,
-            ),
+            method="eem",
+            execution="cutoff",
+            radius=8.0,
+            charge_correction="none",
         )
-        self.assertIs(reduced.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(reduced.status, "success")
         reduced_effective = reduced.effective
         if reduced_effective is None:
             self.fail("successful calculation must report effective provenance")
         self.assertEqual(
-            reduced_effective.execution_policy,
+            reduced_effective.execution,
             chargefw.ExecutionPolicy(
-                mode=chargefw.ExecutionMode.CUTOFF,
+                mode="cutoff",
                 radius=8.0,
-                charge_correction=chargefw.ChargeCorrectionPolicy.NONE,
+                charge_correction="none",
             ),
         )
 
         covered = chargefw.calculate(
             water(),
-            chargefw.CalculationOptions(
-                method="eem", execution=chargefw.ExecutionSelectionKind.COVER, radius=8.0
-            ),
+            method="eem",
+            execution="cover",
+            radius=8.0,
         )
-        self.assertIs(covered.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(covered.status, "success")
         covered_effective = covered.effective
         if covered_effective is None:
             self.fail("successful calculation must report effective provenance")
-        self.assertIs(covered_effective.execution_policy.mode, chargefw.ExecutionMode.COVER)
+        self.assertEqual(covered_effective.execution.mode, "cover")
 
     def test_automatic_thresholds_and_explicit_full_warnings(self) -> None:
         automatic = chargefw.assess(
             water(),
-            chargefw.CalculationOptions(
-                method="eem",
-                cutoff_atom_threshold=1,
-                cover_atom_threshold=100,
-            ),
+            method="eem",
+            cutoff_threshold=1,
+            cover_threshold=100,
         )
         self.assertTrue(automatic.executable)
-        if automatic.execution_policy is None:
+        if automatic.execution is None:
             self.fail("executable assessment must report an execution policy")
-        self.assertIs(automatic.execution_policy.mode, chargefw.ExecutionMode.CUTOFF)
-        self.assertEqual(automatic.execution_policy.radius, 12.0)
+        self.assertEqual(automatic.execution.mode, "cutoff")
+        self.assertEqual(automatic.execution.radius, 12.0)
 
         explicit_full = chargefw.assess(
             water(),
-            chargefw.CalculationOptions(
-                method="eem",
-                execution=chargefw.ExecutionSelectionKind.FULL,
-                cutoff_atom_threshold=1,
-                cover_atom_threshold=100,
-            ),
+            method="eem",
+            execution="full",
+            cutoff_threshold=1,
+            cover_threshold=100,
         )
         self.assertTrue(explicit_full.executable)
-        self.assertTrue(explicit_full.execution_issues)
-        self.assertIs(
-            explicit_full.execution_issues[0].kind,
-            chargefw.ExecutionIssueKind.RESOURCE_THRESHOLD_EXCEEDED,
-        )
+        self.assertTrue(explicit_full.warnings)
+        self.assertEqual(explicit_full.warnings[0].kind, "resource_threshold_exceeded")
 
     def test_no_plan_result_and_typed_exception(self) -> None:
-        result = chargefw.assess(
+        assessment = chargefw.assess(
             chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]]),
-            chargefw.CalculationOptions(
-                method="qeq", execution=chargefw.ExecutionSelectionKind.FULL
-            ),
-        ).calculate()
-        self.assertIs(result.status, chargefw.ExecutionStatus.NO_EXECUTABLE_PLAN)
-        self.assertEqual(result.assignments, ())
-        self.assertTrue(result.applicability.rejected)
-        self.assertIsInstance(
-            result.applicability.rejected[0].issues[0].kind,
-            chargefw.PrerequisiteIssueKind,
+            method="qeq",
+            execution="full",
         )
+        self.assertFalse(assessment.executable)
         with self.assertRaises(chargefw.NoExecutablePlanError) as context:
-            result.raise_for_status()
-        self.assertIs(context.exception.result, result)
+            assessment.calculate()
+        result = context.exception.result
+        self.assertEqual(result.status, "no_executable_plan")
+        self.assertEqual(result.assignments, ())
+        self.assertTrue(result.rejected)
+        self.assertEqual(result.rejected[0].issues[0].kind, "missing_feature")
 
     def test_invalid_selection_requests_raise_value_error(self) -> None:
-        for options in (
-            chargefw.CalculationOptions(method="not-a-method"),
-            chargefw.CalculationOptions(method="eem", parameter_set="not-a-parameter-set"),
-        ):
-            with self.subTest(options=options), self.assertRaises(ValueError):
-                chargefw.assess(water(), options)
+        invalid_requests: tuple[dict[str, Any], ...] = (
+            {"method": "not-a-method"},
+            {"method": "eem", "parameter_set": "not-a-parameter-set"},
+        )
+        for arguments in invalid_requests:
+            with self.subTest(arguments=arguments), self.assertRaises(ValueError):
+                chargefw.assess(water(), **arguments)
 
     def test_results_outlive_calculation_inputs(self) -> None:
         def calculate_owned_result() -> tuple[
@@ -413,67 +393,76 @@ class CalculationTests(unittest.TestCase):
                 record_id="owned-record",
                 atom_ids=["O", "H1", "H2"],
             )
-            assessment = chargefw.assess(molecule, formal_options())
+            assessment = assess_formal(molecule)
             report = assessment.report
             return assessment.calculate(), report
 
         result, report = calculate_owned_result()
         gc.collect()
         self.assertTrue(report.executable)
-        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(result.status, "success")
         self.assertEqual(result.assignments[0].source.record_id, "owned-record")
         self.assertEqual(result.assignments[0].atom_ids, ("O", "H1", "H2"))
         np.testing.assert_array_equal(result.assignments[0].values, [0.0, 0.0, 0.0])
 
     def test_invalid_options_are_rejected_early(self) -> None:
         invalid_options = (
-            (
-                ValueError,
-                {
-                    "execution": chargefw.ExecutionSelectionKind.FULL,
-                    "charge_correction": chargefw.ChargeCorrectionPolicy.UNIFORM,
-                },
-            ),
-            (TypeError, {"execution": "full"}),
-            (TypeError, {"charge_correction": "none"}),
-            (TypeError, {"max_threads": True}),
-            (TypeError, {"cutoff_atom_threshold": False}),
-            (ValueError, {"cover_atom_threshold": np.iinfo(np.uintp).max + 1}),
-            (ValueError, {"max_threads": np.iinfo(np.int32).max + 1}),
+            (ValueError, {"execution": "fast"}),
+            (ValueError, {"charge_correction": "invalid"}),
+            (ValueError, {"parameter_matching": "guess"}),
+            (TypeError, {"threads": True}),
+            (TypeError, {"cutoff_threshold": False}),
+            (ValueError, {"cover_threshold": np.iinfo(np.uintp).max + 1}),
+            (ValueError, {"threads": np.iinfo(np.int32).max + 1}),
         )
         for error_type, options in invalid_options:
-            with self.subTest(error_type=error_type, options=options), self.assertRaises(
-                error_type
+            with (
+                self.subTest(error_type=error_type, options=options),
+                self.assertRaises(error_type),
             ):
-                chargefw.CalculationOptions(**options)
+                chargefw.assess(water(), **options)
+
+        with self.assertRaisesRegex(ValueError, "requires an explicit method"):
+            chargefw.assess(water(), options={"iters": 2})
+        with self.assertRaisesRegex(ValueError, "cannot be used together"):
+            chargefw.assess(
+                water(),
+                method="peoe",
+                options={"iters": 2},
+                options_by_method={"peoe": {"iters": 2}},
+            )
 
     def test_method_option_overrides_are_validated_and_reported(self) -> None:
         molecule = chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]])
-        options = chargefw.CalculationOptions(
+        result = chargefw.calculate(
+            molecule,
             method="peoe",
-            method_options={"peoe": {"iters": 2}},
-            execution=chargefw.ExecutionSelectionKind.FULL,
+            options={"iters": 2},
+            execution="full",
         )
-        result = chargefw.calculate(molecule, options)
-        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(result.status, "success")
         if result.effective is None:
             self.fail("successful calculation must report effective provenance")
-        self.assertEqual(dict(result.effective.method_options), {"iters": 2})
+        self.assertEqual(dict(result.effective.options), {"iters": 2})
 
-        for method_options in (
-            {"peoe": {"iters": 0}},
-            {"peoe": {"unknown": 1}},
-            {"qeq": {"overlap_term": "Ohno"}},
+        for options in (
+            {"iters": 0},
+            {"unknown": 1},
         ):
-            with self.subTest(method_options=method_options), self.assertRaises(ValueError):
+            with self.subTest(options=options), self.assertRaises(ValueError):
                 chargefw.assess(
                     molecule,
-                    chargefw.CalculationOptions(
-                        method="peoe",
-                        method_options=method_options,
-                        execution=chargefw.ExecutionSelectionKind.FULL,
-                    ),
+                    method="peoe",
+                    options=options,
+                    execution="full",
                 )
+        with self.assertRaises(ValueError):
+            chargefw.assess(
+                molecule,
+                method="peoe",
+                options_by_method={"qeq": {"overlap_term": "Ohno"}},
+                execution="full",
+            )
 
     def test_catalogs_and_descriptors_are_immutable_values(self) -> None:
         self.assertFalse(hasattr(chargefw, "Calculator"))
@@ -486,8 +475,8 @@ class CalculationTests(unittest.TestCase):
         self.assertIn("eem", methods)
         self.assertEqual(methods.get("eem"), methods["eem"])
         self.assertIsNone(methods.get("not-a-method"))
-        self.assertEqual(methods.ids(), tuple(method.id for method in methods))
-        self.assertEqual(methods[:2], tuple(methods)[:2])
+        self.assertEqual(tuple(methods), tuple(method.id for method in methods.values()))
+        self.assertEqual(methods["eem"].id, "eem")
         with self.assertRaisesRegex(KeyError, "unknown method ID"):
             methods["not-a-method"]
         with self.assertRaises(AttributeError):
@@ -498,37 +487,35 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(eem.supports_cutoff)
         self.assertTrue(eem.supports_cover)
         self.assertEqual(
-            eem.parameter_sets.ids(),
-            chargefw.parameter_sets.for_method("eem").ids(),
+            tuple(eem.parameter_sets),
+            tuple(chargefw.parameter_sets.for_method("eem")),
         )
         peoe = methods["peoe"]
         self.assertEqual(len(peoe.options), 1)
         self.assertIsInstance(peoe.options, chargefw.MethodOptionCatalog)
         self.assertEqual(peoe.options["iters"].id, "iters")
-        self.assertIs(peoe.options["iters"].type, chargefw.MethodOptionType.INTEGER)
+        self.assertEqual(peoe.options["iters"].type, "integer")
         self.assertEqual(peoe.options["iters"].default, 6)
         self.assertEqual(peoe.options["iters"].minimum, 1)
         qeq = methods["qeq"]
         overlap = qeq.options["overlap_term"]
-        self.assertIs(overlap.type, chargefw.MethodOptionType.STRING)
+        self.assertEqual(overlap.type, "string")
         self.assertIn("Ohno", overlap.choices)
 
         self.assertIsInstance(chargefw.parameter_sets, chargefw.ParameterSetCatalog)
-        parameter_set = eem.parameter_sets[0]
+        parameter_set = next(iter(eem.parameter_sets.values()))
         self.assertEqual(chargefw.parameter_sets[parameter_set.id], parameter_set)
         result = chargefw.calculate(
             water(),
-            chargefw.CalculationOptions(
-                method=eem,
-                parameter_set=parameter_set,
-                execution=chargefw.ExecutionSelectionKind.FULL,
-            ),
+            method=eem,
+            parameter_set=parameter_set,
+            execution="full",
         )
-        self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
+        self.assertEqual(result.status, "success")
         effective = result.effective
         if effective is None:
             self.fail("successful calculation must report effective provenance")
-        self.assertEqual(effective.parameter_set_id, parameter_set.id)
+        self.assertEqual(effective.parameter_set, parameter_set)
 
 
 if __name__ == "__main__":

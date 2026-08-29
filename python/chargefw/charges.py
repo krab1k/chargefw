@@ -112,6 +112,14 @@ class ChargeAssignment:
             and self.conformer_id == other.conformer_id
         )
 
+    def __array__(self, dtype: np.dtype[Any] | None = None, copy: bool | None = None) -> np.ndarray:
+        """Expose charge values through NumPy's array conversion protocol."""
+
+        if copy is False and dtype is not None and np.dtype(dtype) != self.values.dtype:
+            raise ValueError("a dtype conversion cannot be performed without copying")
+        result = self.values if dtype is None else self.values.astype(dtype, copy=False)
+        return result.copy() if copy is True else result
+
     @classmethod
     def _from_native_values(
         cls,

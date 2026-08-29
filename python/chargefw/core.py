@@ -240,6 +240,11 @@ class Molecule:
     def has_coordinates(self) -> bool:
         return self.conformer_count != 0
 
+    def __len__(self) -> int:
+        """Return the number of atoms."""
+
+        return self.atom_count
+
     def __repr__(self) -> str:
         return (
             f"{type(self).__name__}(atom_count={self.atom_count}, bond_count={self.bond_count}, "
