@@ -100,7 +100,7 @@ from chargefw.adapters import gemmi as chargefw_gemmi
 
 molecule = chargefw_gemmi.read_pdb(
     "structure.pdb",
-    bond_strategy=chargefw_gemmi.BondStrategy.HYBRID,
+    bonds="hybrid",
 )
 ```
 

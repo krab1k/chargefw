@@ -103,18 +103,20 @@ auto as_python(const std::vector<MoleculePayload>& payloads) -> nb::list {
     return result;
 }
 
-auto read_pdb(std::string contents, std::string source,
-              const adapters::gemmi::RecordSelection selection,
-              const adapters::gemmi::BondStrategy bond_strategy,
-              const adapters::ConformerSelection conformers) -> nb::list {
+auto read_pdb(std::string contents, std::string source, const std::string& selection,
+              const std::string& bonds, const std::string& conformers) -> nb::list {
+    const auto native_selection = adapters::gemmi::record_selection_from_string(selection);
+    const auto native_bonds = adapters::gemmi::bond_strategy_from_string(bonds);
+    const auto native_conformers = adapters::conformer_selection_from_string(conformers);
     auto payloads = std::vector<MoleculePayload>{};
     {
         nb::gil_scoped_release release;
         std::istringstream input{std::move(contents)};
-        auto reader = adapters::gemmi::pdb_input::PdbReader{
-            input,
-            std::move(source),
-            {.selection = selection, .bond_strategy = bond_strategy, .conformers = conformers}};
+        auto reader = adapters::gemmi::pdb_input::PdbReader{input,
+                                                            std::move(source),
+                                                            {.selection = native_selection,
+                                                             .bond_strategy = native_bonds,
+                                                             .conformers = native_conformers}};
         if (auto record = reader.next()) {
             payloads.push_back(make_payload(std::move(*record)));
         }
@@ -122,18 +124,20 @@ auto read_pdb(std::string contents, std::string source,
     return as_python(payloads);
 }
 
-auto read_mmcif(std::string contents, std::string source,
-                const adapters::gemmi::RecordSelection selection,
-                const adapters::gemmi::BondStrategy bond_strategy,
-                const adapters::ConformerSelection conformers) -> nb::list {
+auto read_mmcif(std::string contents, std::string source, const std::string& selection,
+                const std::string& bonds, const std::string& conformers) -> nb::list {
+    const auto native_selection = adapters::gemmi::record_selection_from_string(selection);
+    const auto native_bonds = adapters::gemmi::bond_strategy_from_string(bonds);
+    const auto native_conformers = adapters::conformer_selection_from_string(conformers);
     auto payloads = std::vector<MoleculePayload>{};
     {
         nb::gil_scoped_release release;
         std::istringstream input{std::move(contents)};
-        auto reader = adapters::gemmi::mmcif_input::MmcifReader{
-            input,
-            std::move(source),
-            {.selection = selection, .bond_strategy = bond_strategy, .conformers = conformers}};
+        auto reader = adapters::gemmi::mmcif_input::MmcifReader{input,
+                                                                std::move(source),
+                                                                {.selection = native_selection,
+                                                                 .bond_strategy = native_bonds,
+                                                                 .conformers = native_conformers}};
         while (auto record = reader.next()) {
             payloads.push_back(make_payload(std::move(*record)));
         }
@@ -144,23 +148,10 @@ auto read_mmcif(std::string contents, std::string source,
 } // namespace
 
 void bind_adapters(nb::module_& module) {
-    nb::enum_<adapters::gemmi::RecordSelection>(module, "RecordSelection")
-        .value("ALL", adapters::gemmi::RecordSelection::all)
-        .value("POLYMERS_AND_LIGANDS", adapters::gemmi::RecordSelection::polymers_and_ligands)
-        .value("POLYMERS", adapters::gemmi::RecordSelection::polymers);
-    nb::enum_<adapters::gemmi::BondStrategy>(module, "BondStrategy")
-        .value("NONE", adapters::gemmi::BondStrategy::none)
-        .value("EXPLICIT_BONDS", adapters::gemmi::BondStrategy::explicit_bonds)
-        .value("TEMPLATES", adapters::gemmi::BondStrategy::templates)
-        .value("HYBRID", adapters::gemmi::BondStrategy::hybrid);
-    nb::enum_<adapters::ConformerSelection>(module, "ConformerSelection")
-        .value("FIRST", adapters::ConformerSelection::first)
-        .value("ALL", adapters::ConformerSelection::all);
-
     module.def("_read_pdb", &read_pdb, nb::arg("contents"), nb::arg("source"), nb::arg("selection"),
-               nb::arg("bond_strategy"), nb::arg("conformers"));
+               nb::arg("bonds"), nb::arg("conformers"));
     module.def("_read_mmcif", &read_mmcif, nb::arg("contents"), nb::arg("source"),
-               nb::arg("selection"), nb::arg("bond_strategy"), nb::arg("conformers"));
+               nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
 }
 
 } // namespace chargefw::python

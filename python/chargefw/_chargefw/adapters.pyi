@@ -1,29 +1,9 @@
-from enum import Enum
-from typing import TypedDict
-
-class RecordSelection(Enum):
-    ALL = ...
-    POLYMERS_AND_LIGANDS = ...
-    POLYMERS = ...
-
-
-class BondStrategy(Enum):
-    NONE = ...
-    EXPLICIT_BONDS = ...
-    TEMPLATES = ...
-    HYBRID = ...
-
-
-class ConformerSelection(Enum):
-    FIRST = ...
-    ALL = ...
-
+from typing import Literal, TypedDict
 
 class DiagnosticPayload(TypedDict):
     code: str
     message: str
     line: int | None
-
 
 class MoleculePayload(TypedDict):
     atomic_numbers: list[int]
@@ -38,20 +18,17 @@ class MoleculePayload(TypedDict):
     record_id: str
     diagnostics: list[DiagnosticPayload]
 
-
 def _read_pdb(
     contents: str,
     source: str,
-    selection: RecordSelection,
-    bond_strategy: BondStrategy,
-    conformers: ConformerSelection,
+    selection: Literal["all", "polymers-and-ligands", "polymers"],
+    bonds: Literal["none", "explicit", "templates", "hybrid"],
+    conformers: Literal["first", "all"],
 ) -> list[MoleculePayload]: ...
-
-
 def _read_mmcif(
     contents: str,
     source: str,
-    selection: RecordSelection,
-    bond_strategy: BondStrategy,
-    conformers: ConformerSelection,
+    selection: Literal["all", "polymers-and-ligands", "polymers"],
+    bonds: Literal["none", "explicit", "templates", "hybrid"],
+    conformers: Literal["first", "all"],
 ) -> list[MoleculePayload]: ...

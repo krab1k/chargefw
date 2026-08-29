@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -29,6 +30,21 @@ using integer_array_2d =
     nb::ndarray<const std::int64_t, nb::ndim<2>, nb::c_contig, nb::device::cpu>;
 using coordinate_array = nb::ndarray<const double, nb::ndim<3>, nb::c_contig, nb::device::cpu>;
 
+auto checked_int(const std::int64_t value, const std::string_view name) -> int {
+    if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) {
+        throw std::invalid_argument{std::string{name} + " is outside the native integer range"};
+    }
+    return static_cast<int>(value);
+}
+
+auto checked_index(const std::int64_t value, const std::string_view name) -> std::size_t {
+    if (value < 0 || static_cast<std::uint64_t>(value) >
+                         static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
+        throw std::invalid_argument{std::string{name} + " is outside the native index range"};
+    }
+    return static_cast<std::size_t>(value);
+}
+
 auto sequence_strings(const nb::sequence& values, const std::size_t expected_size,
                       const std::string_view name) -> std::vector<std::string> {
     if (static_cast<std::size_t>(nb::len(values)) != expected_size) {
@@ -42,9 +58,10 @@ auto sequence_strings(const nb::sequence& values, const std::size_t expected_siz
     return result;
 }
 
-auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_charges,
-                   integer_array_2d bonds, coordinate_array coordinates, nb::sequence atom_names,
-                   nb::sequence conformer_names, std::string name) -> core::Molecule {
+auto make_molecule(const integer_array_1d& atomic_numbers, const integer_array_1d& formal_charges,
+                   const integer_array_2d& bonds, const coordinate_array& coordinates,
+                   const nb::sequence& atom_names, const nb::sequence& conformer_names,
+                   std::string name) -> core::Molecule {
     const auto atom_count = static_cast<std::size_t>(atomic_numbers.shape(0));
 
     if (formal_charges.shape(0) != atomic_numbers.shape(0)) {
@@ -66,8 +83,8 @@ auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_char
     std::vector<core::Atom> atoms;
     atoms.reserve(atom_count);
     for (std::size_t index = 0; index < atom_count; ++index) {
-        atoms.emplace_back(static_cast<int>(atomic_numbers.data()[index]),
-                           static_cast<int>(formal_charges.data()[index]),
+        atoms.emplace_back(checked_int(atomic_numbers.data()[index], "atomic number"),
+                           checked_int(formal_charges.data()[index], "formal charge"),
                            std::move(native_atom_names[index]));
     }
 
@@ -77,9 +94,9 @@ auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_char
     for (std::size_t index = 0; index < bond_count; ++index) {
         const auto offset = index * 3;
         native_bonds.emplace_back(
-            static_cast<std::size_t>(bonds.data()[offset]),
-            static_cast<std::size_t>(bonds.data()[offset + 1]),
-            core::bond_order_from_value(static_cast<int>(bonds.data()[offset + 2])));
+            checked_index(bonds.data()[offset], "first bond atom index"),
+            checked_index(bonds.data()[offset + 1], "second bond atom index"),
+            core::bond_order_from_value(checked_int(bonds.data()[offset + 2], "bond order")));
     }
 
     std::vector<core::Conformer> conformers;
@@ -106,11 +123,7 @@ auto make_molecule(integer_array_1d atomic_numbers, integer_array_1d formal_char
 } // namespace
 
 void bind_core(nb::module_& module) {
-    nb::class_<core::Molecule>(module, "_NativeMolecule")
-        .def_prop_ro("name", &core::Molecule::name)
-        .def_prop_ro("atom_count", &core::Molecule::atom_count)
-        .def_prop_ro("bond_count", &core::Molecule::bond_count)
-        .def_prop_ro("conformer_count", &core::Molecule::conformer_count);
+    [[maybe_unused]] auto native_molecule = nb::class_<core::Molecule>(module, "_NativeMolecule");
     module.def("_make_molecule", &make_molecule, nb::arg("atomic_numbers"),
                nb::arg("formal_charges"), nb::arg("bonds"), nb::arg("coordinates"),
                nb::arg("atom_names"), nb::arg("conformer_names"), nb::arg("name"));

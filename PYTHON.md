@@ -10,8 +10,8 @@ release-level acceptance criteria in [TODO.md](TODO.md), and user instructions i
 The Python package skeleton, optional nanobind target, owned array model, calculation vertical slice,
 value-only method/parameter introspection, and required Gemmi integration are implemented. The bindings
 are organized by the same domain boundaries as the native library. Calculation policy and report
-vocabulary use validated lowercase strings, while the Gemmi adapter retains focused nanobind-backed
-enums. No optional toolkit adapter is implemented yet. The
+vocabulary and Gemmi adapter policy use validated lowercase strings. No optional toolkit adapter is
+implemented yet. The
 native code already provides the foundations the binding should use rather than duplicate:
 
 - owned toolkit-neutral molecules and conformers;
@@ -166,8 +166,9 @@ Implemented on 2026-08-28:
   selection, alternate-location handling, conformer selection, bond strategies, and failures;
 - imported molecules preserve source record order and identity, atom names/IDs, model names/IDs,
   coordinates, formal charges, and supported bonds as ordinary owned Python values; and
-- native-backed enums expose record selection, bond strategy, and conformer selection without accepting
-  string shorthand.
+- record selection (`all`, `polymers-and-ligands`, or `polymers`), bond strategy (`none`, `explicit`,
+  `templates`, or `hybrid`), and conformer selection (`first` or `all`) use the same canonical lowercase
+  strings as the CLI.
 
 Validation performed:
 
@@ -232,10 +233,15 @@ compatibility promise. Type annotations and generated/native stubs are shipped w
 
 `py.typed` is intentionally empty: it is the PEP 561 marker for the complete typed package. The checked-in
 `python/chargefw/_chargefw/*.pyi` declarations describe the private nanobind extension and its native
-submodules. Whenever a binding registration, its argument/return types, or a native enum changes under
-`python/src/`, update the corresponding stub in the same change. Keep these stubs implementation-focused;
-the public type contract belongs in the ordinary Python modules. CMake copies the declarations into the
-build-tree package and installs them in wheels, while the import smoke test verifies their presence.
+submodules. The calculation boundary emits lowercase string vocabulary and accepts string policy values,
+so native enum classes do not leak into the Python layer even privately. Whenever a binding registration
+or its argument/return types change under `python/src/`, update the corresponding stub in the same change.
+Keep these stubs implementation-focused; the public type contract belongs in the ordinary Python modules.
+CMake copies the declarations into the build-tree package and installs them in wheels, while the import
+smoke test verifies their presence.
+The Clang ASan and UBSan presets build the extension and preload the matching Clang runtime for Python
+CTest processes, because the host interpreter itself is not sanitizer-linked. The clang-tidy preset also
+builds the extension so private binding sources are included in static analysis.
 
 ## Molecule contract
 

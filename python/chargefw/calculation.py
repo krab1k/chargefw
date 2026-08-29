@@ -249,9 +249,9 @@ def assess(
             for method_id, overrides in requested.options_by_method.items()
         },
         requested._permissive_types,
-        requested._execution_kind,
+        requested.execution,
         requested.radius,
-        requested._charge_correction_policy,
+        requested.charge_correction,
         requested.cutoff_threshold,
         requested.cover_threshold,
         requested.threads,

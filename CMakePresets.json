@@ -59,6 +59,7 @@
       "inherits": "clang-debug",
       "binaryDir": "${sourceDir}/build/clang-asan",
       "cacheVariables": {
+        "CHARGEFW_BUILD_PYTHON": "ON",
         "CHARGEFW_ENABLE_ASAN": "ON"
       }
     },
@@ -68,6 +69,7 @@
       "inherits": "clang-debug",
       "binaryDir": "${sourceDir}/build/clang-ubsan",
       "cacheVariables": {
+        "CHARGEFW_BUILD_PYTHON": "ON",
         "CHARGEFW_ENABLE_UBSAN": "ON"
       }
     },
@@ -77,6 +79,7 @@
       "inherits": "clang-debug",
       "binaryDir": "${sourceDir}/build/clang-tidy",
       "cacheVariables": {
+        "CHARGEFW_BUILD_PYTHON": "ON",
         "CHARGEFW_ENABLE_CLANG_TIDY": "ON"
       }
     }

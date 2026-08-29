@@ -2,8 +2,6 @@
 
 #include <chargefw/parameters/models/parameter_set.h>
 
-#include <cstddef>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -17,15 +15,6 @@ class NativeParameterCatalog {
     [[nodiscard]] auto parameter_sets() const noexcept
         -> const std::vector<parameters::ParameterSet>& {
         return parameter_sets_;
-    }
-
-    [[nodiscard]] auto descriptors() const -> std::vector<parameters::ParameterSetMetadata> {
-        std::vector<parameters::ParameterSetMetadata> result;
-        result.reserve(parameter_sets_.size());
-        for (const auto& parameter_set : parameter_sets_) {
-            result.push_back(parameter_set.metadata());
-        }
-        return result;
     }
 
   private:

@@ -8,6 +8,7 @@ import chargefw.adapters
 import chargefw.adapters.gemmi
 import chargefw.calculation
 import chargefw.core
+from chargefw import _chargefw
 
 expected_version = os.environ.get("CHARGEFW_EXPECTED_VERSION")
 
@@ -59,11 +60,7 @@ def test_import_surface() -> None:
     assert chargefw.calculate is chargefw.calculation.calculate
     assert chargefw.assess is chargefw.calculation.assess
     assert chargefw.adapters.read_pdb is chargefw.adapters.gemmi.read_pdb
-    assert chargefw.adapters.BondStrategy.__module__ == "chargefw.adapters.gemmi"
     assert chargefw.adapters.__all__ == [
-        "RecordSelection",
-        "BondStrategy",
-        "ConformerSelection",
         "read_pdb_string",
         "read_pdb",
         "read_mmcif_string",
@@ -71,6 +68,9 @@ def test_import_surface() -> None:
         "from_structure",
         "from_document",
     ]
+    assert not hasattr(_chargefw.calculation, "ExecutionMode")
+    assert not hasattr(_chargefw.methods, "MethodOptionType")
+    assert not hasattr(_chargefw.adapters, "BondStrategy")
     assert (Path(chargefw.__file__).parent / "_chargefw" / "__init__.pyi").is_file()
     assert (Path(chargefw.__file__).parent / "_chargefw" / "adapters.pyi").is_file()
     assert (Path(chargefw.__file__).parent / "py.typed").is_file()

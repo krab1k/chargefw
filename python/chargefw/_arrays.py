@@ -103,9 +103,7 @@ def as_names(value: Sequence[str] | None, count: int, field: str) -> tuple[str, 
     return result
 
 
-def as_ids(
-    value: Iterable[Hashable] | None, count: int, field: str
-) -> tuple[Hashable, ...]:
+def as_ids(value: Iterable[Hashable] | None, count: int, field: str) -> tuple[Hashable, ...]:
     if value is None:
         return tuple(range(count))
     if isinstance(value, (str, bytes)):

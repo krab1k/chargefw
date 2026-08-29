@@ -15,6 +15,7 @@
 #include <nanobind/stl/vector.h>
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -55,9 +56,17 @@ auto method_options(const nb::dict& values)
     return result;
 }
 
+auto charge_correction_selection(const std::optional<std::string>& value)
+    -> std::optional<calculation::ChargeCorrectionPolicy> {
+    if (!value.has_value()) {
+        return std::nullopt;
+    }
+    return calculation::charge_correction_policy_from_string(*value);
+}
+
 auto prerequisite_issue(const methods::PrerequisiteIssue& issue) -> nb::dict {
     auto result = nb::dict{};
-    result["kind"] = nb::cast(issue.kind);
+    result["kind"] = std::string{methods::to_string(issue.kind)};
     result["message"] = issue.message;
     result["molecule_index"] =
         issue.molecule_index.has_value() ? nb::cast(*issue.molecule_index) : nb::none();
@@ -70,7 +79,7 @@ auto prerequisite_issue(const methods::PrerequisiteIssue& issue) -> nb::dict {
 
 auto execution_issue(const methods::ExecutionIssue& issue) -> nb::dict {
     auto result = nb::dict{};
-    result["kind"] = nb::cast(issue.kind);
+    result["kind"] = std::string{methods::to_string(issue.kind)};
     result["message"] = issue.message;
     result["molecule_index"] =
         issue.molecule_index.has_value() ? nb::cast(*issue.molecule_index) : nb::none();
@@ -79,8 +88,8 @@ auto execution_issue(const methods::ExecutionIssue& issue) -> nb::dict {
 
 auto execution_assessment(const methods::ExecutionAssessment& assessment) -> nb::dict {
     auto result = nb::dict{};
-    result["mode"] = nb::cast(assessment.mode);
-    result["availability"] = nb::cast(assessment.availability);
+    result["mode"] = std::string{calculation::to_string(assessment.mode)};
+    result["availability"] = std::string{methods::to_string(assessment.availability)};
     auto issues = nb::list{};
     for (const auto& issue : assessment.issues) {
         issues.append(execution_issue(issue));
@@ -130,9 +139,9 @@ auto applicability_report(const calculation::ApplicabilityReport& report) -> nb:
 
 auto execution_policy(const calculation::ExecutionPolicy& policy) -> nb::dict {
     auto result = nb::dict{};
-    result["mode"] = nb::cast(policy.mode());
+    result["mode"] = std::string{calculation::to_string(policy.mode())};
     result["radius"] = policy.radius().has_value() ? nb::cast(*policy.radius()) : nb::none();
-    result["charge_correction"] = nb::cast(policy.charge_correction());
+    result["charge_correction"] = std::string{calculation::to_string(policy.charge_correction())};
     return result;
 }
 
@@ -166,14 +175,17 @@ auto effective_calculation(const calculation::EffectiveCalculation& effective) -
 
 auto numpy_charge_values(const std::span<const double> values)
     -> nb::ndarray<nb::numpy, const double, nb::shape<-1>> {
-    auto owner = nb::bytes{values.data(), values.size_bytes()};
-    const auto* data = reinterpret_cast<const double*>(owner.c_str());
-    return {data, {values.size()}, owner};
+    auto owned_values = std::make_unique<std::vector<double>>(values.begin(), values.end());
+    auto owner = nb::capsule{owned_values.get(), [](void* pointer) noexcept {
+                                 delete static_cast<std::vector<double>*>(pointer);
+                             }};
+    auto* released_values = owned_values.release();
+    return {released_values->data(), {released_values->size()}, owner};
 }
 
 auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {
     auto result = nb::dict{};
-    result["status"] = nb::cast(value.status);
+    result["status"] = std::string{calculation::to_string(value.status)};
     result["applicability"] = applicability_report(value.applicability);
     result["failure_message"] =
         value.failure_message.has_value() ? nb::cast(*value.failure_message) : nb::none();
@@ -257,10 +269,9 @@ class NativeAssessment {
 auto make_assessment(const nb::sequence& molecules, std::string molecule_collection_name,
                      const NativeParameterCatalog& catalog, std::optional<std::string> method_id,
                      std::optional<std::string> parameter_set_id, const nb::dict& options,
-                     const bool permissive_types,
-                     const calculation::ExecutionSelectionKind execution,
+                     const bool permissive_types, const std::string& execution,
                      const std::optional<double> radius,
-                     const std::optional<calculation::ChargeCorrectionPolicy> charge_correction,
+                     const std::optional<std::string>& charge_correction,
                      const std::optional<std::size_t> cutoff_threshold,
                      const std::optional<std::size_t> cover_threshold,
                      const std::size_t max_threads) -> NativeAssessment {
@@ -289,7 +300,9 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
         .method_options = std::move(native_method_options),
         .classification_options = {.permissive_types = permissive_types},
         .execution_selection =
-            calculation::ExecutionSelection{execution, radius, charge_correction},
+            calculation::ExecutionSelection{
+                calculation::execution_selection_kind_from_string(execution), radius,
+                charge_correction_selection(charge_correction)},
         .resource_policy = {.cutoff_atom_threshold = cutoff_threshold,
                             .cover_atom_threshold = cover_threshold,
                             .max_threads = max_threads},
@@ -300,25 +313,6 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
 } // namespace
 
 void bind_calculation(nb::module_& module) {
-    nb::enum_<calculation::ExecutionSelectionKind>(module, "ExecutionSelectionKind")
-        .value("AUTOMATIC", calculation::ExecutionSelectionKind::automatic)
-        .value("FULL", calculation::ExecutionSelectionKind::full)
-        .value("CUTOFF", calculation::ExecutionSelectionKind::cutoff)
-        .value("COVER", calculation::ExecutionSelectionKind::cover);
-    nb::enum_<calculation::ExecutionMode>(module, "ExecutionMode")
-        .value("FULL", calculation::ExecutionMode::full)
-        .value("CUTOFF", calculation::ExecutionMode::cutoff)
-        .value("COVER", calculation::ExecutionMode::cover);
-    nb::enum_<calculation::ChargeCorrectionPolicy>(module, "ChargeCorrectionPolicy")
-        .value("NONE", calculation::ChargeCorrectionPolicy::none)
-        .value("UNIFORM", calculation::ChargeCorrectionPolicy::uniform);
-    nb::enum_<calculation::ExecutionStatus>(module, "ExecutionStatus")
-        .value("SUCCESS", calculation::ExecutionStatus::success)
-        .value("INVALID_INPUT_OR_REQUEST", calculation::ExecutionStatus::invalid_input_or_request)
-        .value("NO_EXECUTABLE_PLAN", calculation::ExecutionStatus::no_executable_plan)
-        .value("NUMERICAL_FAILURE", calculation::ExecutionStatus::numerical_failure)
-        .value("CANCELLED", calculation::ExecutionStatus::cancelled);
-
     nb::class_<NativeAssessment>(module, "_NativeAssessment")
         .def("report", &NativeAssessment::report)
         .def("calculate", &NativeAssessment::calculate);

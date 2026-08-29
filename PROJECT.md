@@ -448,7 +448,8 @@ development packages and the private oneTBB runtime; private build-only dependen
 excluded. The optional Python package provides owned NumPy molecule values, typed assessment and
 calculation results, immutable ordered method/option/parameter mappings with direct ID lookup and method
 filtering, keyword-only functional assessment/calculation over bundled parameters, string-valued Python
-policy and report vocabulary over the nanobind-backed facade, and serialized integration with upstream
+policy and report vocabulary translated directly at the private nanobind boundary, and serialized
+integration with upstream
 Gemmi Python package. Repository CI workflows, a Conda recipe, a container image, optional toolkit
 adapters, and qualified release wheels do not exist yet.
 

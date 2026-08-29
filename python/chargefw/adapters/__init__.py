@@ -1,9 +1,6 @@
 """Toolkit adapters for ChargeFW molecule values."""
 
 from .gemmi import (
-    BondStrategy,
-    ConformerSelection,
-    RecordSelection,
     from_document,
     from_structure,
     read_mmcif,
@@ -13,9 +10,6 @@ from .gemmi import (
 )
 
 __all__ = [
-    "RecordSelection",
-    "BondStrategy",
-    "ConformerSelection",
     "read_pdb_string",
     "read_pdb",
     "read_mmcif_string",

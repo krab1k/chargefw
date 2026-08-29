@@ -1,41 +1,13 @@
 from collections.abc import Sequence
-from enum import Enum
 
 from .._payloads import AssessmentReportPayload, ExecutionResultPayload
+from .._types import ChargeCorrection, Execution
 from .core import _NativeMolecule
 from .parameters import _NativeParameterCatalog
 
-class ExecutionSelectionKind(Enum):
-    AUTOMATIC = ...
-    FULL = ...
-    CUTOFF = ...
-    COVER = ...
-
-
-class ExecutionMode(Enum):
-    FULL = ...
-    CUTOFF = ...
-    COVER = ...
-
-
-class ChargeCorrectionPolicy(Enum):
-    NONE = ...
-    UNIFORM = ...
-
-
-class ExecutionStatus(Enum):
-    SUCCESS = ...
-    INVALID_INPUT_OR_REQUEST = ...
-    NO_EXECUTABLE_PLAN = ...
-    NUMERICAL_FAILURE = ...
-    CANCELLED = ...
-
-
 class _NativeAssessment:
     def report(self) -> AssessmentReportPayload: ...
-
     def calculate(self) -> ExecutionResultPayload: ...
-
 
 def _make_assessment(
     molecules: Sequence[_NativeMolecule],
@@ -45,9 +17,9 @@ def _make_assessment(
     parameter_set_id: str | None,
     method_options: dict[str, dict[str, bool | int | float | str]],
     permissive_types: bool,
-    execution: ExecutionSelectionKind,
+    execution: Execution,
     radius: float | None,
-    charge_correction: ChargeCorrectionPolicy | None,
+    charge_correction: ChargeCorrection | None,
     cutoff_threshold: int | None,
     cover_threshold: int | None,
     max_threads: int,

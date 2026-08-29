@@ -10,6 +10,7 @@ from typing import Any, TypeVar, cast
 
 import chargefw
 import numpy as np
+from chargefw._chargefw import calculation as _native_calculation
 from chargefw._chargefw import core as _native_core
 
 T = TypeVar("T")
@@ -113,6 +114,7 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(assignment.values.dtype, np.dtype(np.float64))
         self.assertTrue(assignment.values.flags.c_contiguous)
         self.assertFalse(assignment.values.flags.writeable)
+        self.assertEqual(assignment.values.ctypes.data % assignment.values.dtype.alignment, 0)
         self.assertIsNotNone(assignment.values.base)
         with self.assertRaises(ValueError):
             assignment.values.setflags(write=True)
@@ -289,7 +291,7 @@ class CalculationTests(unittest.TestCase):
                 "gil-test",
             )
         )
-        self.assertEqual(molecule.atom_count, atom_count)
+        self.assertIsInstance(molecule, _native_core._NativeMolecule)
         self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
         self.assertTrue(progressed)
 
@@ -404,6 +406,31 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(result.assignments[0].source.record_id, "owned-record")
         self.assertEqual(result.assignments[0].atom_ids, ("O", "H1", "H2"))
         np.testing.assert_array_equal(result.assignments[0].values, [0.0, 0.0, 0.0])
+
+        values = result.assignments[0].values
+        del result
+        gc.collect()
+        np.testing.assert_array_equal(values, [0.0, 0.0, 0.0])
+        self.assertFalse(values.flags.writeable)
+
+    def test_private_binding_rejects_invalid_policy_strings(self) -> None:
+        molecule = water()
+        with self.assertRaises(ValueError):
+            _native_calculation._make_assessment(
+                [molecule._native],
+                "",
+                chargefw.calculation._default_parameter_catalog(),
+                None,
+                None,
+                {},
+                False,
+                cast(Any, "invalid"),
+                None,
+                None,
+                20_000,
+                80_000,
+                0,
+            )
 
     def test_invalid_options_are_rejected_early(self) -> None:
         invalid_options = (

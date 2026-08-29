@@ -7,7 +7,6 @@ from typing import Any, cast
 
 import gemmi
 import numpy as np
-
 from chargefw.adapters import gemmi as chargefw_gemmi
 
 PDB_TEXT = """HEADER    TEST PDB
@@ -103,7 +102,7 @@ class GemmiAdapterTests(unittest.TestCase):
         text_molecule = chargefw_gemmi.read_pdb_string(
             PDB_TEXT,
             source="water.pdb",
-            bond_strategy=chargefw_gemmi.BondStrategy.EXPLICIT_BONDS,
+            bonds="explicit",
         )
         self.assertEqual(text_molecule.atom_names, ("O", "H1"))
         self.assertEqual(text_molecule.atom_ids, ("O", "H1"))
@@ -115,15 +114,15 @@ class GemmiAdapterTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "water.pdb"
             path.write_text(PDB_TEXT, encoding="utf-8")
-            file_molecule = chargefw_gemmi.read_pdb(
-                path, bond_strategy=chargefw_gemmi.BondStrategy.EXPLICIT_BONDS
-            )
+            file_molecule = chargefw_gemmi.read_pdb(path, bonds="explicit")
         np.testing.assert_array_equal(file_molecule.atomic_numbers, text_molecule.atomic_numbers)
         np.testing.assert_array_equal(file_molecule.coordinates, text_molecule.coordinates)
 
         structure = gemmi.read_pdb_string(PDB_TEXT)
         structure_molecule = chargefw_gemmi.from_structure(structure, source="structure")
-        np.testing.assert_array_equal(structure_molecule.atomic_numbers, text_molecule.atomic_numbers)
+        np.testing.assert_array_equal(
+            structure_molecule.atomic_numbers, text_molecule.atomic_numbers
+        )
         np.testing.assert_array_equal(structure_molecule.coordinates, text_molecule.coordinates)
 
     def test_mmcif_text_file_and_document_preserve_records(self) -> None:
@@ -142,37 +141,37 @@ class GemmiAdapterTests(unittest.TestCase):
         document = gemmi.cif.read_string(MMCIF_TEXT)
         from_document = chargefw_gemmi.from_document(document, source="document")
         self.assertEqual([value.record_id for value in from_document], ["first", "second"])
-        np.testing.assert_array_equal(
-            from_document[0].coordinates, collection[0].coordinates
-        )
+        np.testing.assert_array_equal(from_document[0].coordinates, collection[0].coordinates)
 
     def test_selection_conformers_and_types_are_explicit(self) -> None:
         polymers = chargefw_gemmi.read_mmcif_string(
             MMCIF_TEXT,
-            selection=chargefw_gemmi.RecordSelection.POLYMERS,
-            conformers=chargefw_gemmi.ConformerSelection.FIRST,
+            selection="polymers",
+            conformers="first",
         )
         self.assertEqual(polymers[0].atom_names, ("CA",))
         self.assertEqual(polymers[0].conformer_count, 1)
 
         with self.assertRaises(TypeError):
             chargefw_gemmi.from_structure(cast(Any, object()))
+        with self.assertRaises(ValueError):
+            chargefw_gemmi.read_pdb_string(PDB_TEXT, selection=cast(Any, "invalid"))
+        with self.assertRaises(ValueError):
+            chargefw_gemmi.read_pdb_string(PDB_TEXT, selection=cast(Any, "polymers_and_ligands"))
         with self.assertRaises(TypeError):
-            chargefw_gemmi.read_pdb_string(
-                PDB_TEXT, selection=cast(Any, "all")
-            )
+            chargefw_gemmi.read_pdb_string(PDB_TEXT, selection=cast(Any, 1))
 
     def test_bond_strategies_match_native_adapter(self) -> None:
         expected_counts = {
-            chargefw_gemmi.BondStrategy.NONE: 0,
-            chargefw_gemmi.BondStrategy.TEMPLATES: 8,
-            chargefw_gemmi.BondStrategy.EXPLICIT_BONDS: 2,
-            chargefw_gemmi.BondStrategy.HYBRID: 10,
+            "none": 0,
+            "templates": 8,
+            "explicit": 2,
+            "hybrid": 10,
         }
         for strategy, expected_count in expected_counts.items():
             with self.subTest(strategy=strategy):
                 molecule = chargefw_gemmi.read_pdb_string(
-                    BOND_STRATEGY_PDB, bond_strategy=strategy
+                    BOND_STRATEGY_PDB, bonds=cast(Any, strategy)
                 )
                 self.assertEqual(molecule.bond_count, expected_count)
 

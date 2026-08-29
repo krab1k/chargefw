@@ -5,9 +5,22 @@ from typing import Any, cast
 
 import chargefw
 import numpy as np
+from chargefw._chargefw import core as _native_core
 
 
 class MoleculeTests(unittest.TestCase):
+    def test_private_binding_rejects_native_integer_overflow(self) -> None:
+        with self.assertRaises(ValueError):
+            _native_core._make_molecule(
+                np.array([2**40], dtype=np.int64),
+                np.zeros(1, dtype=np.int64),
+                np.empty((0, 3), dtype=np.int64),
+                np.empty((0, 1, 3), dtype=np.float64),
+                [""],
+                [],
+                "",
+            )
+
     def test_molecule_owns_normalized_input(self) -> None:
         atomic_source = np.array([8, 1, 1, 6], dtype=np.int8)
         formal = np.array([0, 0, 0, -1], dtype=np.int8)
@@ -44,11 +57,7 @@ class MoleculeTests(unittest.TestCase):
         self.assertEqual(molecule.source, chargefw.SourceIdentity("fixture.sdf", 3, "record-4"))
         self.assertEqual(molecule.atom_ids, tuple(atom_ids))
         self.assertEqual(molecule.conformer_ids, tuple(conformer_ids))
-        self.assertEqual(molecule._native.atom_count, 4)
         self.assertEqual(len(molecule), 4)
-        self.assertEqual(molecule._native.bond_count, 3)
-        self.assertEqual(molecule._native.conformer_count, 2)
-        self.assertEqual(molecule._native.name, "water-like")
 
         readonly = molecule.atomic_numbers
         self.assertIs(readonly, molecule.atomic_numbers)
@@ -94,9 +103,7 @@ class MoleculeTests(unittest.TestCase):
         self.assertEqual(one_conformer.conformer_count, 1)
 
     def test_integer_iterables_and_empty_bonds_are_normalized(self) -> None:
-        molecule = chargefw.Molecule(
-            (atomic_number for atomic_number in [8, 1, 1]), bonds=[]
-        )
+        molecule = chargefw.Molecule((atomic_number for atomic_number in [8, 1, 1]), bonds=[])
         np.testing.assert_array_equal(molecule.atomic_numbers, [8, 1, 1])
         self.assertEqual(molecule.bonds.shape, (0, 3))
 
@@ -127,14 +134,13 @@ class MoleculeTests(unittest.TestCase):
             (TypeError, lambda: chargefw.SourceIdentity(record_index=True)),
             (
                 TypeError,
-                lambda: chargefw.Molecule(
-                    [1], record_index=cast(Any, np.bool_(True))
-                ),
+                lambda: chargefw.Molecule([1], record_index=cast(Any, np.bool_(True))),
             ),
         )
         for error_type, operation in invalid_cases:
-            with self.subTest(error_type=error_type, operation=operation), self.assertRaises(
-                error_type
+            with (
+                self.subTest(error_type=error_type, operation=operation),
+                self.assertRaises(error_type),
             ):
                 operation()
 

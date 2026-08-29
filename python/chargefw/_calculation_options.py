@@ -11,7 +11,6 @@ from typing import Any
 
 import numpy as np
 
-from ._chargefw import calculation as _native_calculation
 from ._methods import Method
 from ._parameters import ParameterSet
 from ._types import (
@@ -22,16 +21,8 @@ from ._types import (
 )
 
 _MAX_NATIVE_THREADS = int(np.iinfo(np.int32).max)
-_EXECUTIONS = {
-    "auto": _native_calculation.ExecutionSelectionKind.AUTOMATIC,
-    "full": _native_calculation.ExecutionSelectionKind.FULL,
-    "cutoff": _native_calculation.ExecutionSelectionKind.CUTOFF,
-    "cover": _native_calculation.ExecutionSelectionKind.COVER,
-}
-_CHARGE_CORRECTIONS = {
-    "none": _native_calculation.ChargeCorrectionPolicy.NONE,
-    "uniform": _native_calculation.ChargeCorrectionPolicy.UNIFORM,
-}
+_EXECUTIONS = frozenset(("auto", "full", "cutoff", "cover"))
+_CHARGE_CORRECTIONS = frozenset(("none", "uniform"))
 
 
 def _normalized_nonnegative_integer(value: Any, name: str) -> int:
@@ -224,16 +215,6 @@ class RequestedCalculation:
         object.__setattr__(self, "cutoff_threshold", normalized_cutoff)
         object.__setattr__(self, "cover_threshold", normalized_cover)
         object.__setattr__(self, "threads", normalized_threads)
-
-    @property
-    def _execution_kind(self) -> _native_calculation.ExecutionSelectionKind:
-        return _EXECUTIONS[self.execution]
-
-    @property
-    def _charge_correction_policy(self) -> _native_calculation.ChargeCorrectionPolicy | None:
-        if self.charge_correction is None:
-            return None
-        return _CHARGE_CORRECTIONS[self.charge_correction]
 
     @property
     def _permissive_types(self) -> bool:

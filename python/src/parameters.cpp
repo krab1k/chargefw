@@ -21,7 +21,8 @@ auto make_parameter_catalog(const std::string& directory) -> NativeParameterCata
 
 auto parameter_set_descriptors(const NativeParameterCatalog& catalog) -> nb::list {
     auto result = nb::list{};
-    for (const auto& metadata : catalog.descriptors()) {
+    for (const auto& parameter_set : catalog.parameter_sets()) {
+        const auto& metadata = parameter_set.metadata();
         auto descriptor = nb::dict{};
         descriptor["id"] = metadata.id;
         descriptor["method_id"] = metadata.method_id;

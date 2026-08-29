@@ -7,13 +7,20 @@ from typing import TypedDict
 import numpy as np
 from numpy.typing import NDArray
 
-from ._chargefw import calculation as _native_calculation
-from ._chargefw import methods as _native_methods
-from ._types import MethodOptionValue
+from ._types import (
+    ChargeCorrection,
+    ExecutionAvailability,
+    ExecutionIssueKind,
+    ExecutionMode,
+    ExecutionStatus,
+    MethodOptionType,
+    MethodOptionValue,
+    PrerequisiteIssueKind,
+)
 
 
 class PrerequisiteIssuePayload(TypedDict):
-    kind: _native_methods.PrerequisiteIssueKind
+    kind: PrerequisiteIssueKind
     message: str
     molecule_index: int | None
     atom_index: int | None
@@ -22,14 +29,14 @@ class PrerequisiteIssuePayload(TypedDict):
 
 
 class ExecutionIssuePayload(TypedDict):
-    kind: _native_methods.ExecutionIssueKind
+    kind: ExecutionIssueKind
     message: str
     molecule_index: int | None
 
 
 class ExecutionAssessmentPayload(TypedDict):
-    mode: _native_calculation.ExecutionMode
-    availability: _native_methods.ExecutionAvailability
+    mode: ExecutionMode
+    availability: ExecutionAvailability
     issues: list[ExecutionIssuePayload]
 
 
@@ -52,9 +59,9 @@ class ApplicabilityReportPayload(TypedDict):
 
 
 class ExecutionPolicyPayload(TypedDict):
-    mode: _native_calculation.ExecutionMode
+    mode: ExecutionMode
     radius: float | None
-    charge_correction: _native_calculation.ChargeCorrectionPolicy
+    charge_correction: ChargeCorrection
 
 
 class EffectiveCalculationPayload(TypedDict):
@@ -83,7 +90,7 @@ class CalculationMetricsPayload(TypedDict):
 
 
 class ExecutionResultPayload(TypedDict):
-    status: _native_calculation.ExecutionStatus
+    status: ExecutionStatus
     applicability: ApplicabilityReportPayload
     failure_message: str | None
     metrics: CalculationMetricsPayload
@@ -102,7 +109,7 @@ class AssessmentReportPayload(TypedDict):
 class MethodOptionDescriptorPayload(TypedDict):
     id: str
     description: str
-    type: _native_methods.MethodOptionType
+    type: MethodOptionType
     default: MethodOptionValue
     choices: list[MethodOptionValue]
     minimum: MethodOptionValue | None

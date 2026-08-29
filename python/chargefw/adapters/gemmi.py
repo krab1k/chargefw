@@ -4,19 +4,16 @@ from __future__ import annotations
 
 from os import PathLike
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 import gemmi as _gemmi
 
 from .._chargefw import adapters as _native_adapters
 from ..core import Molecule, MoleculeCollection
 
-RecordSelection = _native_adapters.RecordSelection
-BondStrategy = _native_adapters.BondStrategy
-ConformerSelection = _native_adapters.ConformerSelection
-
-RecordSelection.__module__ = __name__
-BondStrategy.__module__ = __name__
-ConformerSelection.__module__ = __name__
+_RecordSelection: TypeAlias = Literal["all", "polymers-and-ligands", "polymers"]
+_BondStrategy: TypeAlias = Literal["none", "explicit", "templates", "hybrid"]
+_ConformerSelection: TypeAlias = Literal["first", "all"]
 
 
 def _molecule(payload: _native_adapters.MoleculePayload) -> Molecule:
@@ -46,15 +43,13 @@ def read_pdb_string(
     contents: str,
     *,
     source: str = "",
-    selection: _native_adapters.RecordSelection = RecordSelection.ALL,
-    bond_strategy: _native_adapters.BondStrategy = BondStrategy.NONE,
-    conformers: _native_adapters.ConformerSelection = ConformerSelection.ALL,
+    selection: _RecordSelection = "all",
+    bonds: _BondStrategy = "none",
+    conformers: _ConformerSelection = "all",
 ) -> Molecule:
     """Read one molecule from PDB text using the native Gemmi adapter."""
 
-    records = _native_adapters._read_pdb(
-        contents, source, selection, bond_strategy, conformers
-    )
+    records = _native_adapters._read_pdb(contents, source, selection, bonds, conformers)
     if len(records) != 1:
         raise RuntimeError("PDB input did not produce exactly one molecule")
     return _molecule(records[0])
@@ -63,9 +58,9 @@ def read_pdb_string(
 def read_pdb(
     path: str | PathLike[str],
     *,
-    selection: _native_adapters.RecordSelection = RecordSelection.ALL,
-    bond_strategy: _native_adapters.BondStrategy = BondStrategy.NONE,
-    conformers: _native_adapters.ConformerSelection = ConformerSelection.ALL,
+    selection: _RecordSelection = "all",
+    bonds: _BondStrategy = "none",
+    conformers: _ConformerSelection = "all",
 ) -> Molecule:
     """Read one molecule from a UTF-8 PDB file."""
 
@@ -74,7 +69,7 @@ def read_pdb(
         source_path.read_text(encoding="utf-8"),
         source=str(source_path),
         selection=selection,
-        bond_strategy=bond_strategy,
+        bonds=bonds,
         conformers=conformers,
     )
 
@@ -83,24 +78,22 @@ def read_mmcif_string(
     contents: str,
     *,
     source: str = "",
-    selection: _native_adapters.RecordSelection = RecordSelection.ALL,
-    bond_strategy: _native_adapters.BondStrategy = BondStrategy.NONE,
-    conformers: _native_adapters.ConformerSelection = ConformerSelection.ALL,
+    selection: _RecordSelection = "all",
+    bonds: _BondStrategy = "none",
+    conformers: _ConformerSelection = "all",
 ) -> MoleculeCollection:
     """Read source-ordered molecules from mmCIF text using the native Gemmi adapter."""
 
-    records = _native_adapters._read_mmcif(
-        contents, source, selection, bond_strategy, conformers
-    )
+    records = _native_adapters._read_mmcif(contents, source, selection, bonds, conformers)
     return MoleculeCollection((_molecule(record) for record in records), name=source)
 
 
 def read_mmcif(
     path: str | PathLike[str],
     *,
-    selection: _native_adapters.RecordSelection = RecordSelection.ALL,
-    bond_strategy: _native_adapters.BondStrategy = BondStrategy.NONE,
-    conformers: _native_adapters.ConformerSelection = ConformerSelection.ALL,
+    selection: _RecordSelection = "all",
+    bonds: _BondStrategy = "none",
+    conformers: _ConformerSelection = "all",
 ) -> MoleculeCollection:
     """Read source-ordered molecules from a UTF-8 mmCIF file."""
 
@@ -109,7 +102,7 @@ def read_mmcif(
         source_path.read_text(encoding="utf-8"),
         source=str(source_path),
         selection=selection,
-        bond_strategy=bond_strategy,
+        bonds=bonds,
         conformers=conformers,
     )
 
@@ -118,9 +111,9 @@ def from_structure(
     structure: _gemmi.Structure,
     *,
     source: str = "",
-    selection: _native_adapters.RecordSelection = RecordSelection.ALL,
-    bond_strategy: _native_adapters.BondStrategy = BondStrategy.NONE,
-    conformers: _native_adapters.ConformerSelection = ConformerSelection.ALL,
+    selection: _RecordSelection = "all",
+    bonds: _BondStrategy = "none",
+    conformers: _ConformerSelection = "all",
 ) -> Molecule:
     """Convert an upstream ``gemmi.Structure`` through mmCIF serialization."""
 
@@ -130,7 +123,7 @@ def from_structure(
         structure.make_mmcif_document().as_string(),
         source=source,
         selection=selection,
-        bond_strategy=bond_strategy,
+        bonds=bonds,
         conformers=conformers,
     )
     if len(collection) != 1:
@@ -142,9 +135,9 @@ def from_document(
     document: _gemmi.cif.Document,
     *,
     source: str = "",
-    selection: _native_adapters.RecordSelection = RecordSelection.ALL,
-    bond_strategy: _native_adapters.BondStrategy = BondStrategy.NONE,
-    conformers: _native_adapters.ConformerSelection = ConformerSelection.ALL,
+    selection: _RecordSelection = "all",
+    bonds: _BondStrategy = "none",
+    conformers: _ConformerSelection = "all",
 ) -> MoleculeCollection:
     """Convert an upstream ``gemmi.cif.Document`` through mmCIF serialization."""
 
@@ -154,15 +147,12 @@ def from_document(
         document.as_string(),
         source=source,
         selection=selection,
-        bond_strategy=bond_strategy,
+        bonds=bonds,
         conformers=conformers,
     )
 
 
 __all__ = [
-    "RecordSelection",
-    "BondStrategy",
-    "ConformerSelection",
     "read_pdb_string",
     "read_pdb",
     "read_mmcif_string",

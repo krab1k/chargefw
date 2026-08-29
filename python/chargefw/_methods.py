@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
 
 from ._catalog import _Catalog
 from ._chargefw import methods as _native_methods
@@ -110,7 +109,7 @@ def _method_descriptor(
                 MethodOption(
                     id=option["id"],
                     description=option["description"],
-                    type=cast(MethodOptionType, option["type"].name.lower()),
+                    type=option["type"],
                     default=option["default"],
                     choices=tuple(option["choices"]),
                     minimum=option["minimum"],

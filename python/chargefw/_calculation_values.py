@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import cast
 
 from ._calculation_options import RequestedCalculation
 from ._methods import (
@@ -27,12 +26,9 @@ from ._payloads import (
 )
 from ._types import (
     ChargeCorrection,
-    ExecutionAvailability,
-    ExecutionIssueKind,
     ExecutionMode,
     ExecutionStatus,
     MethodOptionValue,
-    PrerequisiteIssueKind,
 )
 from .charges import ChargeAssignment
 from .core import MoleculeCollection
@@ -95,7 +91,7 @@ class AssessmentReport:
 
 def _prerequisite_issue(value: PrerequisiteIssuePayload) -> PrerequisiteIssue:
     return PrerequisiteIssue(
-        kind=cast(PrerequisiteIssueKind, value["kind"].name.lower()),
+        kind=value["kind"],
         message=value["message"],
         molecule_index=value["molecule_index"],
         atom_index=value["atom_index"],
@@ -106,7 +102,7 @@ def _prerequisite_issue(value: PrerequisiteIssuePayload) -> PrerequisiteIssue:
 
 def _execution_issue(value: ExecutionIssuePayload) -> ExecutionIssue:
     return ExecutionIssue(
-        kind=cast(ExecutionIssueKind, value["kind"].name.lower()),
+        kind=value["kind"],
         message=value["message"],
         molecule_index=value["molecule_index"],
     )
@@ -114,8 +110,8 @@ def _execution_issue(value: ExecutionIssuePayload) -> ExecutionIssue:
 
 def _execution_support(value: ExecutionAssessmentPayload) -> ExecutionSupport:
     return ExecutionSupport(
-        mode=cast(ExecutionMode, value["mode"].name.lower()),
-        availability=cast(ExecutionAvailability, value["availability"].name.lower()),
+        mode=value["mode"],
+        availability=value["availability"],
         issues=tuple(_execution_issue(issue) for issue in value["issues"]),
     )
 
@@ -161,9 +157,9 @@ def _applicability_report(
 
 def _execution_policy(value: ExecutionPolicyPayload) -> ExecutionPolicy:
     return ExecutionPolicy(
-        mode=cast(ExecutionMode, value["mode"].name.lower()),
+        mode=value["mode"],
         radius=value["radius"],
-        charge_correction=cast(ChargeCorrection, value["charge_correction"].name.lower()),
+        charge_correction=value["charge_correction"],
     )
 
 
@@ -260,7 +256,7 @@ class CalculationResult:
                         conformer_id=conformer_id,
                     )
                 )
-        self._status = cast(ExecutionStatus, payload["status"].name.lower())
+        self._status = payload["status"]
         self._requested = requested
         self._assignments = tuple(assignments)
         self._applicability = _applicability_report(

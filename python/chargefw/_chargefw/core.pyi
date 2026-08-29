@@ -3,19 +3,7 @@ from collections.abc import Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-class _NativeMolecule:
-    @property
-    def name(self) -> str: ...
-
-    @property
-    def atom_count(self) -> int: ...
-
-    @property
-    def bond_count(self) -> int: ...
-
-    @property
-    def conformer_count(self) -> int: ...
-
+class _NativeMolecule: ...
 
 def _make_molecule(
     atomic_numbers: NDArray[np.int64],
