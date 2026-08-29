@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
 
+from ._catalog import _Catalog
 from ._chargefw import parameters as _native_parameters
 from ._payloads import ParameterSetDescriptorPayload
 
@@ -58,6 +59,22 @@ class ParameterSet:
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(id={self.id!r}, method_id={self.descriptor.method_id!r})"
+
+
+class ParameterSetCatalog(_Catalog[ParameterSetDescriptor]):
+    """Immutable ordered parameter-set descriptors with ID and method lookup."""
+
+    __slots__ = ()
+
+    def __init__(self, values: tuple[ParameterSetDescriptor, ...]) -> None:
+        super().__init__(values, "parameter-set")
+
+    def for_method(self, method: str) -> ParameterSetCatalog:
+        """Return parameter sets associated with one method ID."""
+
+        if not isinstance(method, str):
+            raise TypeError("method must be a string")
+        return ParameterSetCatalog(tuple(value for value in self if value.method_id == method))
 
 
 def _descriptor(value: ParameterSetDescriptorPayload) -> ParameterSetDescriptor:

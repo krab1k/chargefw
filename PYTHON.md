@@ -130,9 +130,10 @@ not contain a NumPy wheel, so installation used `--no-deps` in a system-site-pac
 
 Implemented on 2026-08-27:
 
-- `method_descriptors()` and `Calculator.methods` expose immutable value-only method IDs, names,
-  publications, priorities, coordinate requirements, cutoff/cover capabilities, and complete option
-  schemas, including native-backed option type enums;
+- `Calculator.methods`, each method's `options`, and `Calculator.parameter_sets` are immutable ordered
+  catalogs supporting iteration, integer indexing, and lookup by stable ID; calculator-bound methods
+  also expose their filtered parameter sets, while descriptors retain value-only metadata and
+  native-backed option type enums;
 - `ParameterSetDescriptor` exposes immutable parameter-set IDs, method IDs, names, publications, notes,
   and priorities;
 - `load_parameter_set()` and `load_parameter_sets()` load immutable external JSON parameter values through
@@ -305,7 +306,7 @@ charges = result.assignments[0].values
 
 `CalculationOptions` contains only application policy:
 
-- optional method and parameter-set IDs;
+- optional method and parameter-set IDs or descriptors from a calculator catalog;
 - method-scoped option overrides as
   `Mapping[str, Mapping[str, bool | int | float | str]]`;
 - permissive parameter typing;
@@ -324,6 +325,16 @@ It also accepts an explicit sequence returned by `load_parameter_set()` or
 catalog. Read-only method and parameter-set descriptors expose IDs, names, publications, priorities,
 option schemas, and supported execution capabilities; parameter matching tables and native method
 objects remain private.
+
+The calculator catalogs preserve deterministic order while providing direct lookup and filtering:
+
+```python
+calculator = chargefw.Calculator()
+eem = calculator.methods["eem"]
+iteration_option = calculator.methods["peoe"].options["iters"]
+eem_parameter_sets = calculator.parameter_sets.for_method("eem")
+same_parameter_sets = eem.parameter_sets
+```
 
 The following two paths share one implementation:
 

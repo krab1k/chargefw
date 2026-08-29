@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import cache
 
+from ._catalog import _Catalog
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import methods as _native_methods
 from ._payloads import MethodDescriptorPayload
+from .parameters import ParameterSetCatalog
 
 PrerequisiteIssueKind = _native_methods.PrerequisiteIssueKind
 ExecutionAvailability = _native_methods.ExecutionAvailability
@@ -60,6 +61,15 @@ class MethodOptionDescriptor:
     maximum_inclusive: bool
 
 
+class MethodOptionCatalog(_Catalog[MethodOptionDescriptor]):
+    """Immutable ordered method options with lookup by ID."""
+
+    __slots__ = ()
+
+    def __init__(self, values: tuple[MethodOptionDescriptor, ...]) -> None:
+        super().__init__(values, "method option")
+
+
 @dataclass(frozen=True, slots=True)
 class MethodDescriptor:
     id: str
@@ -70,10 +80,22 @@ class MethodDescriptor:
     requires_coordinates: bool
     supports_cutoff: bool
     supports_cover: bool
-    options: tuple[MethodOptionDescriptor, ...]
+    options: MethodOptionCatalog
+    parameter_sets: ParameterSetCatalog
 
 
-def _method_descriptor(value: MethodDescriptorPayload) -> MethodDescriptor:
+class MethodCatalog(_Catalog[MethodDescriptor]):
+    """Immutable ordered built-in methods with lookup by ID."""
+
+    __slots__ = ()
+
+    def __init__(self, values: tuple[MethodDescriptor, ...]) -> None:
+        super().__init__(values, "method")
+
+
+def _method_descriptor(
+    value: MethodDescriptorPayload, parameter_sets: ParameterSetCatalog
+) -> MethodDescriptor:
     return MethodDescriptor(
         id=value["id"],
         name=value["name"],
@@ -83,25 +105,32 @@ def _method_descriptor(value: MethodDescriptorPayload) -> MethodDescriptor:
         requires_coordinates=value["requires_coordinates"],
         supports_cutoff=value["supports_cutoff"],
         supports_cover=value["supports_cover"],
-        options=tuple(
-            MethodOptionDescriptor(
-                id=option["id"],
-                description=option["description"],
-                type=option["type"],
-                default=option["default"],
-                choices=tuple(option["choices"]),
-                minimum=option["minimum"],
-                minimum_inclusive=option["minimum_inclusive"],
-                maximum=option["maximum"],
-                maximum_inclusive=option["maximum_inclusive"],
+        options=MethodOptionCatalog(
+            tuple(
+                MethodOptionDescriptor(
+                    id=option["id"],
+                    description=option["description"],
+                    type=option["type"],
+                    default=option["default"],
+                    choices=tuple(option["choices"]),
+                    minimum=option["minimum"],
+                    minimum_inclusive=option["minimum_inclusive"],
+                    maximum=option["maximum"],
+                    maximum_inclusive=option["maximum_inclusive"],
+                )
+                for option in value["options"]
             )
-            for option in value["options"]
         ),
+        parameter_sets=parameter_sets.for_method(value["id"]),
     )
 
 
-@cache
-def method_descriptors() -> tuple[MethodDescriptor, ...]:
-    """Return value-only descriptors for all built-in methods."""
+def _method_catalog(parameter_sets: ParameterSetCatalog) -> MethodCatalog:
+    """Build calculator-bound method descriptors from the native registry."""
 
-    return tuple(_method_descriptor(value) for value in _native_methods._method_descriptors())
+    return MethodCatalog(
+        tuple(
+            _method_descriptor(value, parameter_sets)
+            for value in _native_methods._method_descriptors()
+        )
+    )

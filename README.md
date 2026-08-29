@@ -83,6 +83,20 @@ result.raise_for_status()
 charges = result.assignments[0].values
 ```
 
+Inspect methods, options, and bundled parameter sets through the calculator's immutable ordered
+catalogs:
+
+```python
+calculator = chargefw.Calculator()
+eem = calculator.methods["eem"]
+
+for method in calculator.methods:
+    print(method.id, method.name)
+
+for parameter_set in eem.parameter_sets:
+    print(parameter_set.id, parameter_set.name)
+```
+
 Convert structural data through the required upstream Gemmi package and the same native import policy
 used by the CLI:
 

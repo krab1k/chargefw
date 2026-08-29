@@ -13,6 +13,8 @@ import numpy as np
 
 from ._chargefw import calculation as _native_calculation
 from ._types import MethodOptionValue
+from .methods import MethodDescriptor
+from .parameters import ParameterSetDescriptor
 
 _MAX_NATIVE_THREADS = int(np.iinfo(np.int32).max)
 
@@ -85,8 +87,8 @@ def _frozen_method_options(
 class CalculationOptions:
     """Application policy for one synchronous calculation request."""
 
-    method: str | None = None
-    parameter_set_id: str | None = None
+    method: str | MethodDescriptor | None = None
+    parameter_set: str | ParameterSetDescriptor | None = None
     method_options: Mapping[str, Mapping[str, MethodOptionValue]] = field(default_factory=dict)
     permissive_types: bool = False
     execution: _native_calculation.ExecutionSelectionKind = (
@@ -98,11 +100,27 @@ class CalculationOptions:
     cover_atom_threshold: int | None = 80_000
     max_threads: int = 0
 
+    @property
+    def _method_id(self) -> str | None:
+        if isinstance(self.method, MethodDescriptor):
+            return self.method.id
+        return self.method
+
+    @property
+    def _parameter_set_id(self) -> str | None:
+        if isinstance(self.parameter_set, ParameterSetDescriptor):
+            return self.parameter_set.id
+        return self.parameter_set
+
     def __post_init__(self) -> None:
-        for field_name in ("method", "parameter_set_id"):
-            value = getattr(self, field_name)
-            if value is not None and not isinstance(value, str):
-                raise TypeError(f"{field_name} must be a string or None")
+        if self.method is not None and not isinstance(self.method, (str, MethodDescriptor)):
+            raise TypeError("method must be a string, MethodDescriptor, or None")
+        if self.parameter_set is not None and not isinstance(
+            self.parameter_set, (str, ParameterSetDescriptor)
+        ):
+            raise TypeError(
+                "parameter_set must be a string, ParameterSetDescriptor, or None"
+            )
         if not isinstance(self.permissive_types, (bool, np.bool_)):
             raise TypeError("permissive_types must be a boolean")
         if not isinstance(self.execution, _native_calculation.ExecutionSelectionKind):

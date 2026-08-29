@@ -425,7 +425,7 @@ class CalculationTests(unittest.TestCase):
                 ),
                 chargefw.CalculationOptions(
                     method="eem",
-                    parameter_set_id="singular-eem",
+                    parameter_set="singular-eem",
                     execution=chargefw.ExecutionSelectionKind.FULL,
                 ),
             )
@@ -443,7 +443,7 @@ class CalculationTests(unittest.TestCase):
     def test_invalid_selection_requests_raise_value_error(self) -> None:
         for options in (
             chargefw.CalculationOptions(method="not-a-method"),
-            chargefw.CalculationOptions(method="eem", parameter_set_id="not-a-parameter-set"),
+            chargefw.CalculationOptions(method="eem", parameter_set="not-a-parameter-set"),
         ):
             with self.subTest(options=options), self.assertRaises(ValueError):
                 self.calculator.assess(water(), options)
@@ -525,24 +525,39 @@ class CalculationTests(unittest.TestCase):
         other_calculator = chargefw.Calculator()
         self.assertIs(other_calculator._catalog, self.calculator._catalog)
         self.assertIs(other_calculator.parameter_sets, self.calculator.parameter_sets)
-        self.assertIs(chargefw.method_descriptors(), chargefw.method_descriptors())
+        self.assertFalse(hasattr(chargefw, "method_descriptors"))
 
         methods = self.calculator.methods
-        eem = next(method for method in methods if method.id == "eem")
+        self.assertIsInstance(methods, chargefw.MethodCatalog)
+        self.assertIn("eem", methods)
+        self.assertEqual(methods.get("eem"), methods["eem"])
+        self.assertIsNone(methods.get("not-a-method"))
+        self.assertEqual(methods.ids(), tuple(method.id for method in methods))
+        self.assertEqual(methods[:2], tuple(methods)[:2])
+        with self.assertRaisesRegex(KeyError, "unknown method ID"):
+            methods["not-a-method"]
+        with self.assertRaises(AttributeError):
+            cast(Any, methods)._values = ()
+
+        eem = methods["eem"]
         self.assertTrue(eem.requires_coordinates)
         self.assertTrue(eem.supports_cutoff)
         self.assertTrue(eem.supports_cover)
-        peoe = next(method for method in methods if method.id == "peoe")
+        self.assertEqual(
+            eem.parameter_sets.ids(),
+            self.calculator.parameter_sets.for_method("eem").ids(),
+        )
+        peoe = methods["peoe"]
         self.assertEqual(len(peoe.options), 1)
-        self.assertEqual(peoe.options[0].id, "iters")
-        self.assertIs(peoe.options[0].type, chargefw.MethodOptionType.INTEGER)
-        self.assertEqual(peoe.options[0].default, 6)
-        self.assertEqual(peoe.options[0].minimum, 1)
-        qeq = next(method for method in methods if method.id == "qeq")
-        overlap = next(option for option in qeq.options if option.id == "overlap_term")
+        self.assertIsInstance(peoe.options, chargefw.MethodOptionCatalog)
+        self.assertEqual(peoe.options["iters"].id, "iters")
+        self.assertIs(peoe.options["iters"].type, chargefw.MethodOptionType.INTEGER)
+        self.assertEqual(peoe.options["iters"].default, 6)
+        self.assertEqual(peoe.options["iters"].minimum, 1)
+        qeq = methods["qeq"]
+        overlap = qeq.options["overlap_term"]
         self.assertIs(overlap.type, chargefw.MethodOptionType.STRING)
         self.assertIn("Ohno", overlap.choices)
-        self.assertEqual(chargefw.method_descriptors(), methods)
 
         parameter_directory = Path(chargefw.__file__).parent / "_data" / "parameters"
         eem_path = next(parameter_directory.glob("EEM_Ouy2009.json"))
@@ -561,9 +576,22 @@ class CalculationTests(unittest.TestCase):
         self.assertIn(parameter_set.id, {value.id for value in loaded_sets})
 
         explicit_calculator = chargefw.Calculator([parameter_set])
-        self.assertEqual(explicit_calculator.parameter_sets, (parameter_set.descriptor,))
+        self.assertIsInstance(explicit_calculator.parameter_sets, chargefw.ParameterSetCatalog)
+        self.assertEqual(explicit_calculator.parameter_sets[0], parameter_set.descriptor)
+        self.assertEqual(explicit_calculator.parameter_sets[parameter_set.id], parameter_set.descriptor)
+        self.assertEqual(
+            explicit_calculator.methods["eem"].parameter_sets[parameter_set.id],
+            parameter_set.descriptor,
+        )
         self.assertEqual(repr(explicit_calculator), "Calculator(parameter_sets=1)")
-        result = explicit_calculator.calculate(water(), self.full_eem)
+        result = explicit_calculator.calculate(
+            water(),
+            chargefw.CalculationOptions(
+                method=explicit_calculator.methods["eem"],
+                parameter_set=explicit_calculator.parameter_sets[parameter_set.id],
+                execution=chargefw.ExecutionSelectionKind.FULL,
+            ),
+        )
         self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
         effective = result.effective
         if effective is None:

@@ -28,8 +28,8 @@ from ._chargefw import calculation as _native_calculation
 from ._chargefw import parameters as _native_parameters
 from ._resources import default_parameter_directory
 from .core import Molecule, MoleculeCollection
-from .methods import ExecutionIssue, MethodDescriptor, method_descriptors
-from .parameters import ParameterSet, ParameterSetDescriptor, _descriptor
+from .methods import ExecutionIssue, MethodCatalog, _method_catalog
+from .parameters import ParameterSet, ParameterSetCatalog, ParameterSetDescriptor, _descriptor
 
 __all__ = [
     "ApplicableCandidate",
@@ -85,7 +85,7 @@ for _value_type in (
     _value_type.__module__ = __name__
 
 _bundled_parameter_catalog: _native_parameters._NativeParameterCatalog | None = None
-_bundled_parameter_descriptors: tuple[ParameterSetDescriptor, ...] | None = None
+_bundled_parameter_descriptors: ParameterSetCatalog | None = None
 _bundled_parameter_catalog_lock = Lock()
 
 
@@ -101,14 +101,14 @@ def _default_parameter_catalog() -> _native_parameters._NativeParameterCatalog:
     return _bundled_parameter_catalog
 
 
-def _default_parameter_descriptors() -> tuple[ParameterSetDescriptor, ...]:
+def _default_parameter_descriptors() -> ParameterSetCatalog:
     global _bundled_parameter_descriptors
     catalog = _default_parameter_catalog()
     if _bundled_parameter_descriptors is None:
         with _bundled_parameter_catalog_lock:
             if _bundled_parameter_descriptors is None:
-                _bundled_parameter_descriptors = tuple(
-                    _descriptor(value) for value in catalog._descriptors()
+                _bundled_parameter_descriptors = ParameterSetCatalog(
+                    tuple(_descriptor(value) for value in catalog._descriptors())
                 )
     return _bundled_parameter_descriptors
 
@@ -178,12 +178,12 @@ class Assessment:
 class Calculator:
     """Synchronous calculator using bundled or explicit immutable parameter sets."""
 
-    __slots__ = ("_catalog", "_method_descriptors", "_parameter_set_descriptors")
+    __slots__ = ("_catalog", "_methods", "_parameter_sets")
 
     def __init__(self, parameter_sets: Iterable[ParameterSet] | None = None) -> None:
         if parameter_sets is None:
             self._catalog = _default_parameter_catalog()
-            parameter_set_descriptors = _default_parameter_descriptors()
+            parameter_sets_catalog = _default_parameter_descriptors()
         else:
             try:
                 values = tuple(parameter_sets)
@@ -201,23 +201,23 @@ class Calculator:
             self._catalog = _native_parameters._load_parameter_catalog_from_sets(
                 [value._native for value in values]
             )
-            parameter_set_descriptors = tuple(
-                _descriptor(value) for value in self._catalog._descriptors()
+            parameter_sets_catalog = ParameterSetCatalog(
+                tuple(_descriptor(value) for value in self._catalog._descriptors())
             )
-        self._method_descriptors = method_descriptors()
-        self._parameter_set_descriptors = parameter_set_descriptors
+        self._parameter_sets = parameter_sets_catalog
+        self._methods = _method_catalog(parameter_sets_catalog)
 
     @property
-    def methods(self) -> tuple[MethodDescriptor, ...]:
-        """Value-only descriptors for the built-in method registry."""
+    def methods(self) -> MethodCatalog:
+        """Built-in methods in deterministic order with lookup by ID."""
 
-        return self._method_descriptors
+        return self._methods
 
     @property
-    def parameter_sets(self) -> tuple[ParameterSetDescriptor, ...]:
-        """Value-only descriptors for this calculator's parameter catalog."""
+    def parameter_sets(self) -> ParameterSetCatalog:
+        """Parameter sets in deterministic order with ID and method lookup."""
 
-        return self._parameter_set_descriptors
+        return self._parameter_sets
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(parameter_sets={len(self.parameter_sets)})"
@@ -236,8 +236,8 @@ class Calculator:
             collection._native_molecules,
             collection.name,
             self._catalog,
-            options.method,
-            options.parameter_set_id,
+            options._method_id,
+            options._parameter_set_id,
             {
                 method_id: dict(overrides)
                 for method_id, overrides in options.method_options.items()
