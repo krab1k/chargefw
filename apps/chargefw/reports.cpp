@@ -40,13 +40,8 @@ void print_applicability(const calculation::AssessmentResult& assessment) {
         std::print("applicable method={} parameter_set={}", candidate.method_id,
                    candidate.parameter_set_id.value_or("-"));
         for (const auto& execution : candidate.execution_assessments) {
-            const auto mode = execution.mode == calculation::ExecutionMode::full     ? "full"
-                              : execution.mode == calculation::ExecutionMode::cutoff ? "cutoff"
-                                                                                     : "cover";
-            std::print(" {}={}", mode,
-                       execution.availability == methods::ExecutionAvailability::unsupported
-                           ? "unsupported"
-                           : "available");
+            std::print(" {}={}", calculation::to_string(execution.mode),
+                       methods::to_string(execution.availability));
         }
         std::println();
     }
@@ -68,10 +63,7 @@ void print_applicability(const calculation::AssessmentResult& assessment) {
     const auto& selected = report.applicable.at(*report.selected_candidate_index);
     std::println("selected method={} parameter_set={} execution={}", selected.method_id,
                  selected.parameter_set_id.value_or("-"),
-                 assessment.execution_policy()->mode() == calculation::ExecutionMode::full ? "full"
-                 : assessment.execution_policy()->mode() == calculation::ExecutionMode::cutoff
-                     ? "cutoff"
-                     : "cover");
+                 calculation::to_string(assessment.execution_policy()->mode()));
 }
 
 void print_methods() {

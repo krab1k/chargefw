@@ -48,6 +48,22 @@ class ComputationFinishedEmitter {
 
 } // namespace
 
+auto to_string(const ExecutionStatus value) -> std::string_view {
+    switch (value) {
+    case ExecutionStatus::success:
+        return "success";
+    case ExecutionStatus::invalid_input_or_request:
+        return "invalid_input_or_request";
+    case ExecutionStatus::no_executable_plan:
+        return "no_executable_plan";
+    case ExecutionStatus::numerical_failure:
+        return "numerical_failure";
+    case ExecutionStatus::cancelled:
+        return "cancelled";
+    }
+    throw std::invalid_argument{"unknown execution status"};
+}
+
 auto calculate(const CalculationRequest& request) -> CalculationResult {
     if (request.selected.method == nullptr) {
         throw std::invalid_argument{"calculation request has no selected method"};

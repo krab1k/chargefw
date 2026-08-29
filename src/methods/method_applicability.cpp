@@ -9,6 +9,29 @@
 #include <vector>
 
 namespace chargefw::methods {
+
+auto to_string(const ExecutionAvailability value) -> std::string_view {
+    switch (value) {
+    case ExecutionAvailability::available:
+        return "available";
+    case ExecutionAvailability::available_with_warning:
+        return "available_with_warning";
+    case ExecutionAvailability::unsupported:
+        return "unsupported";
+    }
+    throw std::invalid_argument{"unknown execution availability"};
+}
+
+auto to_string(const ExecutionIssueKind value) -> std::string_view {
+    switch (value) {
+    case ExecutionIssueKind::resource_threshold_exceeded:
+        return "resource_threshold_exceeded";
+    case ExecutionIssueKind::unsupported_execution_mode:
+        return "unsupported_execution_mode";
+    }
+    throw std::invalid_argument{"unknown execution issue kind"};
+}
+
 namespace {
 
 using calculation::ExecutionMode;

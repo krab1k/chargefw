@@ -1,3 +1,4 @@
+#include <chargefw/calculation/calculation.h>
 #include <chargefw/calculation/execution_policy.h>
 
 #include <limits>
@@ -40,6 +41,8 @@ TEST_CASE("execution policy and selection convert to strings", "[calculation][ex
     CHECK(calculation::to_string(calculation::ExecutionSelectionKind::full) == "full");
     CHECK(calculation::to_string(calculation::ExecutionMode::cutoff) == "cutoff");
     CHECK(calculation::to_string(calculation::ChargeCorrectionPolicy::uniform) == "uniform");
+    CHECK(calculation::to_string(calculation::ExecutionStatus::no_executable_plan) ==
+          "no_executable_plan");
 }
 
 TEST_CASE("execution policy validates mode, radius, and correction",

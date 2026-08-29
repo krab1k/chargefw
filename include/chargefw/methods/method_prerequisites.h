@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace chargefw::methods {
@@ -22,6 +23,8 @@ enum class PrerequisiteIssueKind : std::uint8_t {
     missing_parameters,
     parameter_classification_failed,
 };
+
+[[nodiscard]] auto to_string(PrerequisiteIssueKind value) -> std::string_view;
 
 struct PrerequisiteIssue {
     PrerequisiteIssueKind kind;

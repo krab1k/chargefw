@@ -7,9 +7,8 @@
 #include <vector>
 
 namespace chargefw::methods {
-namespace {
 
-[[nodiscard]] auto type_name(const MethodOptionType type) -> std::string_view {
+auto to_string(const MethodOptionType type) -> std::string_view {
     switch (type) {
     case MethodOptionType::boolean:
         return "boolean";
@@ -21,8 +20,10 @@ namespace {
         return "string";
     }
 
-    return "unknown";
+    throw std::invalid_argument{"unknown method option type"};
 }
+
+namespace {
 
 [[nodiscard]] auto value_type(const MethodOptionValue& value) -> MethodOptionType {
     if (std::holds_alternative<bool>(value)) {
@@ -129,8 +130,8 @@ auto validate_method_option_schema(std::span<const MethodOptionSpec> schema) -> 
         if (!value_matches_type(option.default_value, option.type)) {
             throw std::invalid_argument{
                 "default value for method option '" + std::string{option.id} + "' has type '" +
-                std::string{type_name(value_type(option.default_value))} + "', expected '" +
-                std::string{type_name(option.type)} + "'"};
+                std::string{to_string(value_type(option.default_value))} + "', expected '" +
+                std::string{to_string(option.type)} + "'"};
         }
 
         if ((option.minimum.has_value() || option.maximum.has_value()) &&
@@ -162,8 +163,8 @@ auto validate_method_option_schema(std::span<const MethodOptionSpec> schema) -> 
             if (!value_matches_type(choice, option.type)) {
                 throw std::invalid_argument{
                     "choice value for method option '" + std::string{option.id} + "' has type '" +
-                    std::string{type_name(value_type(choice))} + "', expected '" +
-                    std::string{type_name(option.type)} + "'"};
+                    std::string{to_string(value_type(choice))} + "', expected '" +
+                    std::string{to_string(option.type)} + "'"};
             }
             validate_bounds(option, choice);
         }
@@ -201,8 +202,8 @@ auto validate_method_options(std::span<const MethodOptionSpec> schema, const Met
 
         if (!value_matches_type(value, spec->type)) {
             throw std::invalid_argument{"method option '" + id + "' has type '" +
-                                        std::string{type_name(value_type(value))} +
-                                        "', expected '" + std::string{type_name(spec->type)} + "'"};
+                                        std::string{to_string(value_type(value))} +
+                                        "', expected '" + std::string{to_string(spec->type)} + "'"};
         }
 
         if (!spec->choices.empty() && !choices_contain(spec->choices, value)) {

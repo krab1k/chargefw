@@ -14,6 +14,8 @@ namespace chargefw::methods {
 
 enum class MethodOptionType : std::uint8_t { boolean, integer, floating_point, string };
 
+[[nodiscard]] auto to_string(MethodOptionType value) -> std::string_view;
+
 using MethodOptionValue = std::variant<bool, int, double, std::string>;
 
 struct MethodOptionSpec {

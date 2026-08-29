@@ -1,3 +1,5 @@
+#include <chargefw/adapters/conformer_selection.h>
+#include <chargefw/adapters/gemmi/input_options.h>
 #include <chargefw/adapters/gemmi/pdb_input.h>
 #include <chargefw/core/bond.h>
 #include <snitch/snitch.hpp>
@@ -8,6 +10,21 @@
 
 namespace gemmi_adapter = chargefw::adapters::gemmi;
 namespace pdb = gemmi_adapter::pdb_input;
+
+TEST_CASE("structural input options share stable string conversion", "[adapters][options]") {
+    CHECK(gemmi_adapter::record_selection_from_string("polymers-and-ligands") ==
+          gemmi_adapter::RecordSelection::polymers_and_ligands);
+    CHECK(gemmi_adapter::to_string(gemmi_adapter::RecordSelection::polymers_and_ligands) ==
+          "polymers-and-ligands");
+    CHECK(gemmi_adapter::bond_strategy_from_string("explicit") ==
+          gemmi_adapter::BondStrategy::explicit_bonds);
+    CHECK(gemmi_adapter::to_string(gemmi_adapter::BondStrategy::hybrid) == "hybrid");
+    CHECK(chargefw::adapters::conformer_selection_from_string("first") ==
+          chargefw::adapters::ConformerSelection::first);
+    CHECK(chargefw::adapters::to_string(chargefw::adapters::ConformerSelection::all) == "all");
+
+    CHECK_THROWS_AS(gemmi_adapter::record_selection_from_string("unknown"), std::invalid_argument);
+}
 
 TEST_CASE("PDB input preserves selected model identity and connectivity", "[adapters][pdb]") {
     std::istringstream input{R"pdb(HEADER    TEST PDB

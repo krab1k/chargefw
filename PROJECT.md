@@ -137,6 +137,9 @@ assignment per molecule.
 
 `ExecutionSelection` represents caller preference (`auto`, `full`, `cutoff`, or `cover`). Results use
 a concrete `ExecutionPolicy`; `auto` never survives as the effective mode.
+Domain-owned `*_from_string` and `to_string` functions define the canonical execution, method-report,
+and structural-input vocabulary shared by the CLI and Python binding; frontends do not duplicate enum
+switches or invent alternate spellings.
 
 - Full execution accepts no radius or charge correction.
 - Reduced radii must be finite and at least 8 Å.

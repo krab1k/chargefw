@@ -38,47 +38,6 @@ auto read_collection(Reader& reader, const std::string& input_path,
                               .export_context = {.records = std::move(records), .format = format}};
 }
 
-[[nodiscard]] auto parse_record_selection(const std::string& value)
-    -> adapters::gemmi::RecordSelection {
-    if (value == "all") {
-        return adapters::gemmi::RecordSelection::all;
-    }
-    if (value == "polymers-and-ligands") {
-        return adapters::gemmi::RecordSelection::polymers_and_ligands;
-    }
-    if (value == "polymers") {
-        return adapters::gemmi::RecordSelection::polymers;
-    }
-    throw std::runtime_error{"Unsupported structural record selection: " + value};
-}
-
-[[nodiscard]] auto parse_conformer_selection(const std::string& value)
-    -> adapters::ConformerSelection {
-    if (value == "first") {
-        return adapters::ConformerSelection::first;
-    }
-    if (value == "all") {
-        return adapters::ConformerSelection::all;
-    }
-    throw std::runtime_error{"Unsupported conformer selection: " + value};
-}
-
-[[nodiscard]] auto parse_bond_strategy(const std::string& value) -> adapters::gemmi::BondStrategy {
-    if (value == "none") {
-        return adapters::gemmi::BondStrategy::none;
-    }
-    if (value == "explicit") {
-        return adapters::gemmi::BondStrategy::explicit_bonds;
-    }
-    if (value == "templates") {
-        return adapters::gemmi::BondStrategy::templates;
-    }
-    if (value == "hybrid") {
-        return adapters::gemmi::BondStrategy::hybrid;
-    }
-    throw std::runtime_error{"Unsupported structural bond strategy: " + value};
-}
-
 [[nodiscard]] auto parse_atom_threshold(const std::string& value, const std::string_view name)
     -> std::optional<std::size_t> {
     if (value == "unlimited") {
@@ -263,9 +222,9 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
 
 auto import_input(const InputArguments& arguments) -> ImportedCollection {
     const auto options = adapters::gemmi::InputOptions{
-        .selection = parse_record_selection(arguments.structural_selection),
-        .bond_strategy = parse_bond_strategy(arguments.structural_bonds),
-        .conformers = parse_conformer_selection(arguments.conformer_selection)};
+        .selection = adapters::gemmi::record_selection_from_string(arguments.structural_selection),
+        .bond_strategy = adapters::gemmi::bond_strategy_from_string(arguments.structural_bonds),
+        .conformers = adapters::conformer_selection_from_string(arguments.conformer_selection)};
     auto imported = read_collection(arguments.path, options,
                                     arguments.structural_selection_option->count() > 0 ||
                                         arguments.structural_bonds_option->count() > 0);

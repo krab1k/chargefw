@@ -18,9 +18,16 @@
 #include <utility>
 #include <vector>
 
+namespace methods = chargefw::methods;
+
+TEST_CASE("prerequisite issue kinds convert to stable strings", "[methods][prerequisites]") {
+    CHECK(methods::to_string(methods::PrerequisiteIssueKind::invalid_options) == "invalid_options");
+    CHECK(methods::to_string(methods::PrerequisiteIssueKind::missing_parameters) ==
+          "missing_parameters");
+}
+
 namespace core = chargefw::core;
 namespace features = chargefw::features;
-namespace methods = chargefw::methods;
 
 namespace {
 

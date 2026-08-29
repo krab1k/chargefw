@@ -24,6 +24,24 @@ namespace {
 
 } // namespace
 
+auto to_string(const PrerequisiteIssueKind value) -> std::string_view {
+    switch (value) {
+    case PrerequisiteIssueKind::invalid_options:
+        return "invalid_options";
+    case PrerequisiteIssueKind::missing_feature:
+        return "missing_feature";
+    case PrerequisiteIssueKind::invalid_geometry:
+        return "invalid_geometry";
+    case PrerequisiteIssueKind::unsupported_molecule:
+        return "unsupported_molecule";
+    case PrerequisiteIssueKind::missing_parameters:
+        return "missing_parameters";
+    case PrerequisiteIssueKind::parameter_classification_failed:
+        return "parameter_classification_failed";
+    }
+    throw std::invalid_argument{"unknown prerequisite issue kind"};
+}
+
 auto PrerequisiteResult::ok() const noexcept -> bool {
     return issues_.empty();
 }

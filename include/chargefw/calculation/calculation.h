@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace chargefw::calculation {
@@ -51,6 +52,8 @@ enum class ExecutionStatus : std::uint8_t {
     numerical_failure,
     cancelled,
 };
+
+[[nodiscard]] auto to_string(ExecutionStatus value) -> std::string_view;
 
 // Result of the application-facing facade, which performs applicability and automatic selection.
 struct ExecutionResult {

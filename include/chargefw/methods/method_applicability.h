@@ -13,6 +13,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -37,10 +38,14 @@ enum class ExecutionAvailability : std::uint8_t {
     unsupported,
 };
 
+[[nodiscard]] auto to_string(ExecutionAvailability value) -> std::string_view;
+
 enum class ExecutionIssueKind : std::uint8_t {
     resource_threshold_exceeded,
     unsupported_execution_mode,
 };
+
+[[nodiscard]] auto to_string(ExecutionIssueKind value) -> std::string_view;
 
 struct ExecutionIssue {
     ExecutionIssueKind kind;
