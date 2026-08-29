@@ -8,7 +8,7 @@ from ._catalog import _Catalog
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import methods as _native_methods
 from ._payloads import MethodDescriptorPayload
-from .parameters import ParameterSetCatalog
+from ._parameters import ParameterSetCatalog
 
 PrerequisiteIssueKind = _native_methods.PrerequisiteIssueKind
 ExecutionAvailability = _native_methods.ExecutionAvailability
@@ -21,7 +21,7 @@ for _enum in (
     ExecutionIssueKind,
     MethodOptionType,
 ):
-    _enum.__module__ = __name__
+    _enum.__module__ = "chargefw"
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,7 +126,7 @@ def _method_descriptor(
 
 
 def _method_catalog(parameter_sets: ParameterSetCatalog) -> MethodCatalog:
-    """Build calculator-bound method descriptors from the native registry."""
+    """Build method descriptors linked to the bundled parameter catalog."""
 
     return MethodCatalog(
         tuple(
@@ -134,3 +134,15 @@ def _method_catalog(parameter_sets: ParameterSetCatalog) -> MethodCatalog:
             for value in _native_methods._method_descriptors()
         )
     )
+
+
+for _value_type in (
+    PrerequisiteIssue,
+    ExecutionIssue,
+    ExecutionAssessment,
+    MethodOptionDescriptor,
+    MethodOptionCatalog,
+    MethodDescriptor,
+    MethodCatalog,
+):
+    _value_type.__module__ = "chargefw"

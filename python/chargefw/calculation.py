@@ -26,10 +26,10 @@ from ._calculation_values import (
 )
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import parameters as _native_parameters
+from ._methods import ExecutionIssue, _method_catalog
+from ._parameters import ParameterSetCatalog, _descriptor
 from ._resources import default_parameter_directory
 from .core import Molecule, MoleculeCollection
-from .methods import ExecutionIssue, MethodCatalog, _method_catalog
-from .parameters import ParameterSet, ParameterSetCatalog, ParameterSetDescriptor, _descriptor
 
 __all__ = [
     "ApplicableCandidate",
@@ -40,7 +40,6 @@ __all__ = [
     "CalculationOptions",
     "CalculationResult",
     "CalculationTimings",
-    "Calculator",
     "ChargeCorrectionPolicy",
     "ChargeFWError",
     "EffectiveCalculation",
@@ -52,6 +51,10 @@ __all__ = [
     "NoExecutablePlanError",
     "NumericalFailureError",
     "RejectedCandidate",
+    "assess",
+    "calculate",
+    "methods",
+    "parameter_sets",
 ]
 
 ExecutionSelectionKind = _native_calculation.ExecutionSelectionKind
@@ -111,6 +114,10 @@ def _default_parameter_descriptors() -> ParameterSetCatalog:
                     tuple(_descriptor(value) for value in catalog._descriptors())
                 )
     return _bundled_parameter_descriptors
+
+
+parameter_sets = _default_parameter_descriptors()
+methods = _method_catalog(parameter_sets)
 
 
 def _as_collection(value: Molecule | MoleculeCollection | Iterable[Molecule]) -> MoleculeCollection:
@@ -175,90 +182,45 @@ class Assessment:
         return CalculationResult(self._native.calculate(), self._molecules, self._requested)
 
 
-class Calculator:
-    """Synchronous calculator using bundled or explicit immutable parameter sets."""
+def assess(
+    molecules: Molecule | MoleculeCollection | Iterable[Molecule],
+    options: CalculationOptions | None = None,
+) -> Assessment:
+    """Assess molecules and return a one-shot executable calculation plan."""
 
-    __slots__ = ("_catalog", "_methods", "_parameter_sets")
+    if options is None:
+        options = CalculationOptions()
+    if not isinstance(options, CalculationOptions):
+        raise TypeError("options must be a CalculationOptions value or None")
+    collection = _as_collection(molecules)
+    native = _native_calculation._make_assessment(
+        collection._native_molecules,
+        collection.name,
+        _default_parameter_catalog(),
+        options._method_id,
+        options._parameter_set_id,
+        {
+            method_id: dict(overrides)
+            for method_id, overrides in options.method_options.items()
+        },
+        options.permissive_types,
+        options.execution,
+        options.radius,
+        options.charge_correction,
+        options.cutoff_atom_threshold,
+        options.cover_atom_threshold,
+        options.max_threads,
+    )
+    return Assessment(native, collection, options)
 
-    def __init__(self, parameter_sets: Iterable[ParameterSet] | None = None) -> None:
-        if parameter_sets is None:
-            self._catalog = _default_parameter_catalog()
-            parameter_sets_catalog = _default_parameter_descriptors()
-        else:
-            try:
-                values = tuple(parameter_sets)
-            except TypeError as error:
-                raise TypeError(
-                    "parameter_sets must be an iterable of ParameterSet values or None"
-                ) from error
-            if not values:
-                raise ValueError("parameter_sets must not be empty")
-            if not all(isinstance(value, ParameterSet) for value in values):
-                raise TypeError("parameter_sets must contain only ParameterSet values")
-            ids = [value.id for value in values]
-            if len(ids) != len(set(ids)):
-                raise ValueError("parameter_sets must have unique IDs")
-            self._catalog = _native_parameters._load_parameter_catalog_from_sets(
-                [value._native for value in values]
-            )
-            parameter_sets_catalog = ParameterSetCatalog(
-                tuple(_descriptor(value) for value in self._catalog._descriptors())
-            )
-        self._parameter_sets = parameter_sets_catalog
-        self._methods = _method_catalog(parameter_sets_catalog)
 
-    @property
-    def methods(self) -> MethodCatalog:
-        """Built-in methods in deterministic order with lookup by ID."""
+def calculate(
+    molecules: Molecule | MoleculeCollection | Iterable[Molecule],
+    options: CalculationOptions | None = None,
+) -> CalculationResult:
+    """Assess and synchronously calculate charges for molecules."""
 
-        return self._methods
-
-    @property
-    def parameter_sets(self) -> ParameterSetCatalog:
-        """Parameter sets in deterministic order with ID and method lookup."""
-
-        return self._parameter_sets
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}(parameter_sets={len(self.parameter_sets)})"
-
-    def assess(
-        self,
-        molecules: Molecule | MoleculeCollection | Iterable[Molecule],
-        options: CalculationOptions | None = None,
-    ) -> Assessment:
-        if options is None:
-            options = CalculationOptions()
-        if not isinstance(options, CalculationOptions):
-            raise TypeError("options must be a CalculationOptions value or None")
-        collection = _as_collection(molecules)
-        native = _native_calculation._make_assessment(
-            collection._native_molecules,
-            collection.name,
-            self._catalog,
-            options._method_id,
-            options._parameter_set_id,
-            {
-                method_id: dict(overrides)
-                for method_id, overrides in options.method_options.items()
-            },
-            options.permissive_types,
-            options.execution,
-            options.radius,
-            options.charge_correction,
-            options.cutoff_atom_threshold,
-            options.cover_atom_threshold,
-            options.max_threads,
-        )
-        return Assessment(native, collection, options)
-
-    def calculate(
-        self,
-        molecules: Molecule | MoleculeCollection | Iterable[Molecule],
-        options: CalculationOptions | None = None,
-    ) -> CalculationResult:
-        return self.assess(molecules, options).calculate()
+    return assess(molecules, options).calculate()
 
 
 Assessment.__module__ = __name__
-Calculator.__module__ = __name__

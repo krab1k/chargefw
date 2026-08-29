@@ -14,10 +14,6 @@ class NativeParameterCatalog {
     explicit NativeParameterCatalog(std::vector<parameters::ParameterSet> parameter_sets)
         : parameter_sets_{std::move(parameter_sets)} {}
 
-    [[nodiscard]] auto size() const noexcept -> std::size_t {
-        return parameter_sets_.size();
-    }
-
     [[nodiscard]] auto parameter_sets() const noexcept
         -> const std::vector<parameters::ParameterSet>& {
         return parameter_sets_;

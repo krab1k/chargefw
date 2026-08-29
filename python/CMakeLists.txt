@@ -73,14 +73,14 @@ set(CHARGEFW_PYTHON_PACKAGE_SOURCES
     _catalog.py
     _calculation_options.py
     _calculation_values.py
+    _methods.py
+    _parameters.py
     _payloads.py
     _resources.py
     _types.py
     calculation.py
     charges.py
     core.py
-    methods.py
-    parameters.py
 )
 foreach(package_source IN LISTS CHARGEFW_PYTHON_PACKAGE_SOURCES)
     configure_file("chargefw/${package_source}"

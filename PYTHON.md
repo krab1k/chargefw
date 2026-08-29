@@ -89,9 +89,9 @@ passed. The next milestone can consume the private native objects through the ow
 Implemented on 2026-08-27:
 
 - `CalculationOptions` validates application policy and preserves method-scoped option overrides;
-- `Calculator` loads the bundled parameter catalog from package resources and accepts a molecule,
-  collection, or molecule iterable;
-- `Calculator.assess()` and `Calculator.calculate()` use the native owned assessment facade, with
+- package-level `assess()` and `calculate()` load the bundled parameter catalog from package resources
+  and accept a molecule, collection, or molecule iterable;
+- `assess()` and `calculate()` use the native owned assessment facade, with
   assessment preparation and native calculation running while the GIL is released;
 - `Assessment` exposes copied applicability, execution-policy, warning, and timing data and enforces
   one-shot calculation ownership;
@@ -126,20 +126,18 @@ The installed-wheel calculation smoke test ran from `/tmp` and succeeded. The of
 not contain a NumPy wheel, so installation used `--no-deps` in a system-site-packages environment;
 `pyproject.toml` now declares `numpy>=1.26` for normal online installation.
 
-### Milestone 4 — introspection and external parameters: complete
+### Milestone 4 — bundled catalog introspection: complete
 
 Implemented on 2026-08-27:
 
-- `Calculator.methods`, each method's `options`, and `Calculator.parameter_sets` are immutable ordered
-  catalogs supporting iteration, integer indexing, and lookup by stable ID; calculator-bound methods
-  also expose their filtered parameter sets, while descriptors retain value-only metadata and
+- package-level `methods`, each method's `options`, and package-level `parameter_sets` are immutable
+  ordered catalogs supporting iteration, integer indexing, and lookup by stable ID; methods also expose
+  their filtered bundled parameter sets, while descriptors retain value-only metadata and
   native-backed option type enums;
 - `ParameterSetDescriptor` exposes immutable parameter-set IDs, method IDs, names, publications, notes,
-  and priorities;
-- `load_parameter_set()` and `load_parameter_sets()` load immutable external JSON parameter values through
-  the native parser without exposing classifications, parameter tables, or native method objects; and
-- `Calculator(parameter_sets)` accepts an explicit non-empty, unique-ID sequence of loaded parameter sets
-  which replaces the bundled catalog, while `Calculator.parameter_sets` exposes its value-only catalog.
+  and priorities; and
+- the Python API deliberately exposes the installed bundled catalog only; arbitrary parameter tables,
+  classifications, native method objects, and custom parameter-catalog construction remain private.
 
 Validation performed:
 
@@ -214,8 +212,8 @@ chargefw/
   core.py                  Molecule ownership and source identity
   calculation.py           Policy, assessment, execution, reports, and failures
   charges.py               Source-mapped charge assignments
-  methods.py               Applicability and execution report values
-  parameters.py            Parameter loading and descriptors (milestone 4)
+  _methods.py              Private method descriptors and catalog implementation
+  _parameters.py           Private bundled parameter descriptor implementation
   _chargefw.*              Private nanobind extension
   _data/parameters/*.json  Bundled parameter resources
   adapters/
@@ -292,8 +290,7 @@ molecule = chargefw.Molecule(
     name="water",
 )
 
-calculator = chargefw.Calculator()
-result = calculator.calculate(
+result = chargefw.calculate(
     molecule,
     chargefw.CalculationOptions(
         method="eem",
@@ -306,7 +303,7 @@ charges = result.assignments[0].values
 
 `CalculationOptions` contains only application policy:
 
-- optional method and parameter-set IDs or descriptors from a calculator catalog;
+- optional method and parameter-set IDs or descriptors from the package catalogs;
 - method-scoped option overrides as
   `Mapping[str, Mapping[str, bool | int | float | str]]`;
 - permissive parameter typing;
@@ -319,27 +316,24 @@ Method options remain method-scoped even when a method was selected explicitly. 
 not add context-sensitive shorthand that could apply an option to a different method after automatic
 selection.
 
-`Calculator` owns an immutable parameter-set catalog. With no argument it loads package resources once.
-It also accepts an explicit sequence returned by `load_parameter_set()` or
-`load_parameter_sets()`. An explicit sequence replaces, rather than silently merges with, the bundled
-catalog. Read-only method and parameter-set descriptors expose IDs, names, publications, priorities,
-option schemas, and supported execution capabilities; parameter matching tables and native method
-objects remain private.
+The package loads its bundled parameter resources once and exposes immutable method and parameter-set
+catalogs. Read-only descriptors expose IDs, names, publications, priorities, option schemas, and
+supported execution capabilities; parameter matching tables and native method objects remain private.
+The initial Python API does not accept custom parameter catalogs.
 
 The calculator catalogs preserve deterministic order while providing direct lookup and filtering:
 
 ```python
-calculator = chargefw.Calculator()
-eem = calculator.methods["eem"]
-iteration_option = calculator.methods["peoe"].options["iters"]
-eem_parameter_sets = calculator.parameter_sets.for_method("eem")
+eem = chargefw.methods["eem"]
+iteration_option = chargefw.methods["peoe"].options["iters"]
+eem_parameter_sets = chargefw.parameter_sets.for_method("eem")
 same_parameter_sets = eem.parameter_sets
 ```
 
 The following two paths share one implementation:
 
-- `Calculator.calculate(molecules, options)` is the ordinary convenience path; and
-- `Calculator.assess(molecules, options)` returns a one-shot `Assessment` with a value-only report,
+- `calculate(molecules, options)` is the ordinary convenience path; and
+- `assess(molecules, options)` returns a one-shot `Assessment` with a value-only report,
   selected policy, and warnings. `Assessment.calculate()` consumes its native executable state without
   repeating work. The report remains readable after consumption; a second calculation raises
   `RuntimeError`.
@@ -377,9 +371,9 @@ prefer exception flow. Native exception text must retain molecule, conformer, an
 
 ## Adapter boundary
 
-Adapters return ordinary `Molecule` or `MoleculeCollection` values. `Calculator` never detects toolkit
-types or imports optional toolkits. This keeps calculation policy in one place and lets adapters evolve
-without changing the native facade.
+Adapters return ordinary `Molecule` or `MoleculeCollection` values. Calculation functions never detect
+toolkit types or import optional toolkits. This keeps calculation policy in one place and lets adapters
+evolve without changing the native facade.
 
 ### Gemmi
 
@@ -491,12 +485,12 @@ dependency tests run on them.
 - input ownership after original arrays are mutated or destroyed;
 - immutable molecule/collection ordering and source identity;
 - C++ exception translation and contextual messages;
-- bundled and explicit parameter catalogs, option schemas, and deterministic selection;
+- bundled parameter catalogs, option schemas, and deterministic selection;
 - applicability/no-plan reports and one-shot assessment ownership;
 - full/cutoff/cover policy validation and effective provenance;
 - geometry-independent and all-conformer assignment cardinality;
 - source molecule/atom/conformer mappings and Python-owned output arrays;
-- repeated and concurrent calculations with the GIL released, including shared-calculator execution and a
+- repeated and concurrent functional calculations with the GIL released, including a
   worker-thread progress check during native work; and
 - cancellation/progress callback safety when that API is introduced.
 
@@ -530,10 +524,10 @@ Each milestone should leave one usable vertical slice and update this status sec
    package, type marker, and focused import/version test; prove the native-only build is unchanged.
 2. **Complete — owned array model** — implement molecule/collection construction, strict validation,
    source metadata, ownership tests, and conversion to native `core` values.
-3. **Complete — calculation vertical slice** — bind `Calculator`, bundled parameter resources, options,
-   assess/calculate, NumPy assignments, reports, provenance, failures, and all-conformer mappings.
-4. **Complete — introspection and external parameters** — expose value-only method/parameter descriptors
-   and explicit immutable parameter loading needed by ACC III without exposing classification internals.
+3. **Complete — calculation vertical slice** — bind functional assess/calculate entry points, bundled
+   parameter resources, options, NumPy assignments, reports, provenance, failures, and mappings.
+4. **Complete — bundled catalog introspection** — expose value-only method/parameter descriptors and
+   immutable package catalogs without exposing classification internals.
 5. **Complete — Gemmi integration** — require the tested upstream Python package, implement serialized adapter
    entry points, and verify parity with native PDB/mmCIF import semantics.
 6. **Wheel qualification** — build the declared initial matrix and run clean-environment relocation,

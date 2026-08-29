@@ -10,7 +10,6 @@ from .calculation import (
     CalculationOptions,
     CalculationResult,
     CalculationTimings,
-    Calculator,
     ChargeCorrectionPolicy,
     ChargeFWError,
     EffectiveCalculation,
@@ -22,10 +21,14 @@ from .calculation import (
     NoExecutablePlanError,
     NumericalFailureError,
     RejectedCandidate,
+    assess,
+    calculate,
+    methods,
+    parameter_sets,
 )
 from .charges import ChargeAssignment
 from .core import Molecule, MoleculeCollection, SourceIdentity
-from .methods import (
+from ._methods import (
     ExecutionAssessment,
     ExecutionAvailability,
     ExecutionIssue,
@@ -38,12 +41,9 @@ from .methods import (
     PrerequisiteIssue,
     PrerequisiteIssueKind,
 )
-from .parameters import (
-    ParameterSet,
+from ._parameters import (
     ParameterSetCatalog,
     ParameterSetDescriptor,
-    load_parameter_set,
-    load_parameter_sets,
 )
 
 __version__ = _native_version()
@@ -57,7 +57,10 @@ __all__ = [
     "ChargeAssignment",
     "CalculationResult",
     "Assessment",
-    "Calculator",
+    "assess",
+    "calculate",
+    "methods",
+    "parameter_sets",
     "ChargeFWError",
     "InvalidInputError",
     "NoExecutablePlanError",
@@ -85,9 +88,6 @@ __all__ = [
     "MethodOptionDescriptor",
     "MethodCatalog",
     "MethodDescriptor",
-    "ParameterSet",
     "ParameterSetCatalog",
     "ParameterSetDescriptor",
-    "load_parameter_set",
-    "load_parameter_sets",
 ]

@@ -19,6 +19,17 @@ endif()
 if(NOT EXISTS "${CHARGEFW_INSTALL_PREFIX}/${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}/__init__.py")
     message(FATAL_ERROR "ChargeFW Python package was not installed into site-packages")
 endif()
+foreach(private_module IN ITEMS _methods.py _parameters.py)
+    if(NOT EXISTS
+       "${CHARGEFW_INSTALL_PREFIX}/${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}/${private_module}")
+        message(FATAL_ERROR "ChargeFW Python package is missing ${private_module}")
+    endif()
+endforeach()
+foreach(removed_module IN ITEMS methods.py parameters.py)
+    if(EXISTS "${CHARGEFW_INSTALL_PREFIX}/${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}/${removed_module}")
+        message(FATAL_ERROR "ChargeFW Python package unexpectedly includes ${removed_module}")
+    endif()
+endforeach()
 
 execute_process(
     COMMAND "${CMAKE_COMMAND}" -E env "PYTHONPATH=${CHARGEFW_INSTALL_PREFIX}/${CHARGEFW_PYTHON_SITEARCH}"

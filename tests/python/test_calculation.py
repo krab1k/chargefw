@@ -1,12 +1,9 @@
 """Focused calculation facade and result-model checks."""
 
 import gc
-import json
 import unittest
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from threading import Event, Thread
 from time import perf_counter, sleep
 from typing import Any, TypeVar, cast
@@ -82,13 +79,12 @@ def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, b
 
 class CalculationTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.calculator = chargefw.Calculator()
         self.full_eem = chargefw.CalculationOptions(
             method="eem", execution=chargefw.ExecutionSelectionKind.FULL
         )
 
     def test_assessment_and_full_calculation(self) -> None:
-        assessment = self.calculator.assess(water(), self.full_eem)
+        assessment = chargefw.assess(water(), self.full_eem)
         self.assertTrue(assessment.executable)
         self.assertEqual(
             assessment.execution_policy,
@@ -140,7 +136,7 @@ class CalculationTests(unittest.TestCase):
             assessment.calculate()
 
     def test_assignment_cardinality_and_mapping(self) -> None:
-        geometry_independent = self.calculator.calculate(
+        geometry_independent = chargefw.calculate(
             chargefw.Molecule([8, 1, 1]),
             chargefw.CalculationOptions(
                 method="formal", execution=chargefw.ExecutionSelectionKind.FULL
@@ -154,7 +150,7 @@ class CalculationTests(unittest.TestCase):
         options = chargefw.CalculationOptions(
             method="qeq", execution=chargefw.ExecutionSelectionKind.FULL
         )
-        multi_result = self.calculator.calculate(collection, options)
+        multi_result = chargefw.calculate(collection, options)
         self.assertIs(multi_result.status, chargefw.ExecutionStatus.SUCCESS)
         self.assertEqual(
             [item.conformer_index for item in multi_result.assignments], [0, 1]
@@ -163,7 +159,7 @@ class CalculationTests(unittest.TestCase):
             [item.conformer_id for item in multi_result.assignments],
             ["model-a", "model-b"],
         )
-        repeated_result = self.calculator.calculate(collection, options)
+        repeated_result = chargefw.calculate(collection, options)
         self.assertEqual(
             [item.values.tolist() for item in repeated_result.assignments],
             [item.values.tolist() for item in multi_result.assignments],
@@ -182,7 +178,7 @@ class CalculationTests(unittest.TestCase):
                 ),
             ]
         )
-        mapped_result = self.calculator.calculate(mapped_collection, formal_options())
+        mapped_result = chargefw.calculate(mapped_collection, formal_options())
         self.assertIs(mapped_result.status, chargefw.ExecutionStatus.SUCCESS)
         self.assertEqual(
             [assignment.molecule_index for assignment in mapped_result.assignments], [0, 1]
@@ -257,12 +253,12 @@ class CalculationTests(unittest.TestCase):
             ):
                 chargefw.ChargeAssignment(**(defaults | overrides))
 
-    def test_shared_calculator_supports_concurrent_calculations(self) -> None:
+    def test_functional_api_supports_concurrent_calculations(self) -> None:
         collection = chargefw.MoleculeCollection([chargefw.Molecule([8, 1, 1])])
         options = formal_options()
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [
-                executor.submit(self.calculator.calculate, collection, options) for _ in range(4)
+                executor.submit(chargefw.calculate, collection, options) for _ in range(4)
             ]
         results = [future.result() for future in futures]
         self.assertTrue(
@@ -274,10 +270,9 @@ class CalculationTests(unittest.TestCase):
         )
 
     def test_assessment_releases_the_gil(self) -> None:
-        calculator = chargefw.Calculator()
         molecule = chargefw.Molecule([1] * _GIL_TEST_ATOM_COUNT)
         assessment, progressed, operation_seconds = run_while_python_thread_progresses(
-            lambda: calculator.assess(molecule, formal_options())
+            lambda: chargefw.assess(molecule, formal_options())
         )
         self.assertTrue(assessment.executable)
         self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
@@ -306,8 +301,7 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(progressed)
 
     def test_execution_releases_the_gil(self) -> None:
-        calculator = chargefw.Calculator()
-        assessment = calculator.assess(
+        assessment = chargefw.assess(
             chargefw.Molecule([1] * _GIL_TEST_ATOM_COUNT), formal_options()
         )
         result, progressed, operation_seconds = run_while_python_thread_progresses(
@@ -318,7 +312,7 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(progressed)
 
     def test_reduced_execution_policies(self) -> None:
-        reduced = self.calculator.calculate(
+        reduced = chargefw.calculate(
             water(),
             chargefw.CalculationOptions(
                 method="eem",
@@ -340,7 +334,7 @@ class CalculationTests(unittest.TestCase):
             ),
         )
 
-        covered = self.calculator.calculate(
+        covered = chargefw.calculate(
             water(),
             chargefw.CalculationOptions(
                 method="eem", execution=chargefw.ExecutionSelectionKind.COVER, radius=8.0
@@ -353,7 +347,7 @@ class CalculationTests(unittest.TestCase):
         self.assertIs(covered_effective.execution_policy.mode, chargefw.ExecutionMode.COVER)
 
     def test_automatic_thresholds_and_explicit_full_warnings(self) -> None:
-        automatic = self.calculator.assess(
+        automatic = chargefw.assess(
             water(),
             chargefw.CalculationOptions(
                 method="eem",
@@ -367,7 +361,7 @@ class CalculationTests(unittest.TestCase):
         self.assertIs(automatic.execution_policy.mode, chargefw.ExecutionMode.CUTOFF)
         self.assertEqual(automatic.execution_policy.radius, 12.0)
 
-        explicit_full = self.calculator.assess(
+        explicit_full = chargefw.assess(
             water(),
             chargefw.CalculationOptions(
                 method="eem",
@@ -384,7 +378,7 @@ class CalculationTests(unittest.TestCase):
         )
 
     def test_no_plan_result_and_typed_exception(self) -> None:
-        result = self.calculator.assess(
+        result = chargefw.assess(
             chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]]),
             chargefw.CalculationOptions(
                 method="qeq", execution=chargefw.ExecutionSelectionKind.FULL
@@ -401,52 +395,13 @@ class CalculationTests(unittest.TestCase):
             result.raise_for_status()
         self.assertIs(context.exception.result, result)
 
-    def test_numerical_failure_result_and_typed_exception(self) -> None:
-        parameter_document = {
-            "metadata": {"name": "Singular EEM", "method": "eem"},
-            "common": {"names": ["kappa"], "values": [1.0]},
-            "atom": {
-                "names": ["A", "B"],
-                "data": [
-                    {"key": ["H", "plain", "*"], "value": [1.0, 1.0]},
-                    {"key": ["O", "plain", "*"], "value": [2.0, 1.0]},
-                ],
-            },
-        }
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "singular-eem.json"
-            path.write_text(json.dumps(parameter_document), encoding="utf-8")
-            calculator = chargefw.Calculator([chargefw.load_parameter_set(path)])
-            result = calculator.calculate(
-                chargefw.Molecule(
-                    [1, 8],
-                    coordinates=[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
-                    name="singular-eem",
-                ),
-                chargefw.CalculationOptions(
-                    method="eem",
-                    parameter_set="singular-eem",
-                    execution=chargefw.ExecutionSelectionKind.FULL,
-                ),
-            )
-        self.assertIs(result.status, chargefw.ExecutionStatus.NUMERICAL_FAILURE)
-        self.assertEqual(result.assignments, ())
-        self.assertIsNotNone(result.effective)
-        self.assertIn(
-            "method 'eem', molecule 1 ('singular-eem'), conformer 1",
-            result.failure_message or "",
-        )
-        with self.assertRaises(chargefw.NumericalFailureError) as context:
-            result.raise_for_status()
-        self.assertIs(context.exception.result, result)
-
     def test_invalid_selection_requests_raise_value_error(self) -> None:
         for options in (
             chargefw.CalculationOptions(method="not-a-method"),
             chargefw.CalculationOptions(method="eem", parameter_set="not-a-parameter-set"),
         ):
             with self.subTest(options=options), self.assertRaises(ValueError):
-                self.calculator.assess(water(), options)
+                chargefw.assess(water(), options)
 
     def test_results_outlive_calculation_inputs(self) -> None:
         def calculate_owned_result() -> tuple[
@@ -458,8 +413,7 @@ class CalculationTests(unittest.TestCase):
                 record_id="owned-record",
                 atom_ids=["O", "H1", "H2"],
             )
-            calculator = chargefw.Calculator()
-            assessment = calculator.assess(molecule, formal_options())
+            assessment = chargefw.assess(molecule, formal_options())
             report = assessment.report
             return assessment.calculate(), report
 
@@ -500,7 +454,7 @@ class CalculationTests(unittest.TestCase):
             method_options={"peoe": {"iters": 2}},
             execution=chargefw.ExecutionSelectionKind.FULL,
         )
-        result = self.calculator.calculate(molecule, options)
+        result = chargefw.calculate(molecule, options)
         self.assertIs(result.status, chargefw.ExecutionStatus.SUCCESS)
         if result.effective is None:
             self.fail("successful calculation must report effective provenance")
@@ -512,7 +466,7 @@ class CalculationTests(unittest.TestCase):
             {"qeq": {"overlap_term": "Ohno"}},
         ):
             with self.subTest(method_options=method_options), self.assertRaises(ValueError):
-                self.calculator.assess(
+                chargefw.assess(
                     molecule,
                     chargefw.CalculationOptions(
                         method="peoe",
@@ -522,12 +476,12 @@ class CalculationTests(unittest.TestCase):
                 )
 
     def test_catalogs_and_descriptors_are_immutable_values(self) -> None:
-        other_calculator = chargefw.Calculator()
-        self.assertIs(other_calculator._catalog, self.calculator._catalog)
-        self.assertIs(other_calculator.parameter_sets, self.calculator.parameter_sets)
+        self.assertFalse(hasattr(chargefw, "Calculator"))
+        self.assertFalse(hasattr(chargefw, "load_parameter_set"))
+        self.assertFalse(hasattr(chargefw, "load_parameter_sets"))
         self.assertFalse(hasattr(chargefw, "method_descriptors"))
 
-        methods = self.calculator.methods
+        methods = chargefw.methods
         self.assertIsInstance(methods, chargefw.MethodCatalog)
         self.assertIn("eem", methods)
         self.assertEqual(methods.get("eem"), methods["eem"])
@@ -545,7 +499,7 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(eem.supports_cover)
         self.assertEqual(
             eem.parameter_sets.ids(),
-            self.calculator.parameter_sets.for_method("eem").ids(),
+            chargefw.parameter_sets.for_method("eem").ids(),
         )
         peoe = methods["peoe"]
         self.assertEqual(len(peoe.options), 1)
@@ -559,36 +513,14 @@ class CalculationTests(unittest.TestCase):
         self.assertIs(overlap.type, chargefw.MethodOptionType.STRING)
         self.assertIn("Ohno", overlap.choices)
 
-        parameter_directory = Path(chargefw.__file__).parent / "_data" / "parameters"
-        eem_path = next(parameter_directory.glob("EEM_Ouy2009.json"))
-        parameter_set = chargefw.load_parameter_set(eem_path)
-        self.assertEqual(parameter_set.descriptor.method_id, "eem")
-        self.assertEqual(parameter_set.id, parameter_set.descriptor.id)
-        self.assertEqual(
-            repr(parameter_set),
-            f"ParameterSet(id={parameter_set.id!r}, method_id='eem')",
-        )
-        with self.assertRaises(TypeError):
-            chargefw.ParameterSet()
-        with self.assertRaises(AttributeError):
-            cast(Any, parameter_set)._native = None
-        loaded_sets = chargefw.load_parameter_sets(parameter_directory)
-        self.assertIn(parameter_set.id, {value.id for value in loaded_sets})
-
-        explicit_calculator = chargefw.Calculator([parameter_set])
-        self.assertIsInstance(explicit_calculator.parameter_sets, chargefw.ParameterSetCatalog)
-        self.assertEqual(explicit_calculator.parameter_sets[0], parameter_set.descriptor)
-        self.assertEqual(explicit_calculator.parameter_sets[parameter_set.id], parameter_set.descriptor)
-        self.assertEqual(
-            explicit_calculator.methods["eem"].parameter_sets[parameter_set.id],
-            parameter_set.descriptor,
-        )
-        self.assertEqual(repr(explicit_calculator), "Calculator(parameter_sets=1)")
-        result = explicit_calculator.calculate(
+        self.assertIsInstance(chargefw.parameter_sets, chargefw.ParameterSetCatalog)
+        parameter_set = eem.parameter_sets[0]
+        self.assertEqual(chargefw.parameter_sets[parameter_set.id], parameter_set)
+        result = chargefw.calculate(
             water(),
             chargefw.CalculationOptions(
-                method=explicit_calculator.methods["eem"],
-                parameter_set=explicit_calculator.parameter_sets[parameter_set.id],
+                method=eem,
+                parameter_set=parameter_set,
                 execution=chargefw.ExecutionSelectionKind.FULL,
             ),
         )
@@ -597,10 +529,6 @@ class CalculationTests(unittest.TestCase):
         if effective is None:
             self.fail("successful calculation must report effective provenance")
         self.assertEqual(effective.parameter_set_id, parameter_set.id)
-        with self.assertRaises(ValueError):
-            chargefw.Calculator([])
-        with self.assertRaises(ValueError):
-            chargefw.Calculator([parameter_set, parameter_set])
 
 
 if __name__ == "__main__":

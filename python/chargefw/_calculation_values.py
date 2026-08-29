@@ -20,7 +20,7 @@ from ._payloads import (
 from ._types import MethodOptionValue
 from .charges import ChargeAssignment
 from .core import MoleculeCollection
-from .methods import ExecutionAssessment, ExecutionIssue, PrerequisiteIssue
+from ._methods import ExecutionAssessment, ExecutionIssue, PrerequisiteIssue
 
 
 @dataclass(frozen=True, slots=True)

@@ -72,7 +72,7 @@ molecule = chargefw.Molecule(
     bonds=[[0, 1, 1], [0, 2, 1]],
     coordinates=[[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]],
 )
-result = chargefw.Calculator().calculate(
+result = chargefw.calculate(
     molecule,
     chargefw.CalculationOptions(
         method="eem",
@@ -83,14 +83,12 @@ result.raise_for_status()
 charges = result.assignments[0].values
 ```
 
-Inspect methods, options, and bundled parameter sets through the calculator's immutable ordered
-catalogs:
+Inspect methods, options, and bundled parameter sets through immutable ordered catalogs:
 
 ```python
-calculator = chargefw.Calculator()
-eem = calculator.methods["eem"]
+eem = chargefw.methods["eem"]
 
-for method in calculator.methods:
+for method in chargefw.methods:
     print(method.id, method.name)
 
 for parameter_set in eem.parameter_sets:

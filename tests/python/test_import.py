@@ -8,8 +8,6 @@ import chargefw.adapters
 import chargefw.adapters.gemmi
 import chargefw.calculation
 import chargefw.core
-import chargefw.methods
-import chargefw.parameters
 
 expected_version = os.environ.get("CHARGEFW_EXPECTED_VERSION")
 
@@ -27,7 +25,10 @@ def test_import_surface() -> None:
         "ChargeAssignment",
         "CalculationResult",
         "Assessment",
-        "Calculator",
+        "assess",
+        "calculate",
+        "methods",
+        "parameter_sets",
         "ChargeFWError",
         "InvalidInputError",
         "NoExecutablePlanError",
@@ -55,19 +56,18 @@ def test_import_surface() -> None:
         "MethodOptionDescriptor",
         "MethodCatalog",
         "MethodDescriptor",
-        "ParameterSet",
         "ParameterSetCatalog",
         "ParameterSetDescriptor",
-        "load_parameter_set",
-        "load_parameter_sets",
     ]
     assert chargefw.Molecule is chargefw.core.Molecule
     assert chargefw.CalculationOptions is chargefw.calculation.CalculationOptions
-    assert chargefw.ExecutionIssue is chargefw.methods.ExecutionIssue
+    assert isinstance(chargefw.methods, chargefw.MethodCatalog)
+    assert isinstance(chargefw.parameter_sets, chargefw.ParameterSetCatalog)
+    assert chargefw.calculate is chargefw.calculation.calculate
+    assert chargefw.assess is chargefw.calculation.assess
     assert chargefw.ExecutionMode.__module__ == "chargefw.calculation"
-    assert chargefw.PrerequisiteIssueKind.__module__ == "chargefw.methods"
-    assert chargefw.MethodOptionType.__module__ == "chargefw.methods"
-    assert chargefw.ParameterSet is chargefw.parameters.ParameterSet
+    assert chargefw.PrerequisiteIssueKind.__module__ == "chargefw"
+    assert chargefw.MethodOptionType.__module__ == "chargefw"
     assert chargefw.adapters.read_pdb is chargefw.adapters.gemmi.read_pdb
     assert chargefw.adapters.BondStrategy.__module__ == "chargefw.adapters.gemmi"
     assert chargefw.adapters.__all__ == [

@@ -13,8 +13,8 @@ import numpy as np
 
 from ._chargefw import calculation as _native_calculation
 from ._types import MethodOptionValue
-from .methods import MethodDescriptor
-from .parameters import ParameterSetDescriptor
+from ._methods import MethodDescriptor
+from ._parameters import ParameterSetDescriptor
 
 _MAX_NATIVE_THREADS = int(np.iinfo(np.int32).max)
 

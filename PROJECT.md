@@ -447,8 +447,8 @@ and an exported `chargefw::core` CMake target. Default installations include nlo
 development packages and the private oneTBB runtime; private build-only dependencies and test tooling are
 excluded. The optional Python package provides owned NumPy molecule values, typed assessment and
 calculation results, immutable ordered method/option/parameter catalogs with direct ID lookup and
-method filtering, explicit external parameter loading, a
-nanobind-backed calculation facade and enums, and serialized integration with the required upstream
+method filtering, functional assessment/calculation entry points over bundled parameters, a nanobind-backed
+calculation facade and enums, and serialized integration with the required upstream
 Gemmi Python package. Repository CI workflows, a Conda recipe, a container image, optional toolkit
 adapters, and qualified release wheels do not exist yet.
 
