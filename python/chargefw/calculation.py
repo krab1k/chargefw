@@ -110,7 +110,7 @@ def _as_collection(value: Molecule | MoleculeCollection | Iterable[Molecule]) ->
 class Assessment:
     """Priority-ordered runnable plans and rejected alternatives for immutable molecules."""
 
-    __slots__ = ("_native", "_molecules", "_requested", "_plans", "_rejections", "_seconds")
+    __slots__ = ("_native", "_requested", "_plans", "_rejections", "_seconds")
 
     def __init__(
         self,
@@ -120,7 +120,6 @@ class Assessment:
     ) -> None:
         payload = native.report()
         self._native = native
-        self._molecules = molecules
         self._requested = requested
         self._plans = tuple(
             Plan(plan, molecules, methods, parameter_sets, requested) for plan in native.plans()
