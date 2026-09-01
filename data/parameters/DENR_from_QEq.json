@@ -11,68 +11,68 @@
     "names" : ["electronegativity", "hardness"],
     "data": [
       {
-        "key": ["Li", "plain", "*"],
-        "value": [3.006, 4.772]
+        "key": {"element": "Li", "classifier": "plain", "type": "*"},
+        "values": [3.006, 4.772]
       },
       {
-        "key": ["C", "plain", "*"],
-        "value": [5.343, 10.126]
+        "key": {"element": "C", "classifier": "plain", "type": "*"},
+        "values": [5.343, 10.126]
       },
       {
-        "key": ["N", "plain", "*"],
-        "value": [6.899, 11.760]
+        "key": {"element": "N", "classifier": "plain", "type": "*"},
+        "values": [6.899, 11.760]
       },
       {
-        "key": ["O", "plain", "*"],
-        "value": [8.741, 13.364]
+        "key": {"element": "O", "classifier": "plain", "type": "*"},
+        "values": [8.741, 13.364]
       },
       {
-        "key": ["F", "plain", "*"],
-        "value": [10.874, 14.948]
+        "key": {"element": "F", "classifier": "plain", "type": "*"},
+        "values": [10.874, 14.948]
       },
       {
-        "key": ["Na", "plain", "*"],
-        "value": [2.843, 4.592]
+        "key": {"element": "Na", "classifier": "plain", "type": "*"},
+        "values": [2.843, 4.592]
       },
       {
-        "key": ["Si", "plain", "*"],
-        "value": [4.168, 6.974]
+        "key": {"element": "Si", "classifier": "plain", "type": "*"},
+        "values": [4.168, 6.974]
       },
       {
-        "key": ["P", "plain", "*"],
-        "value": [5.463, 8.000]
+        "key": {"element": "P", "classifier": "plain", "type": "*"},
+        "values": [5.463, 8.000]
       },
       {
-        "key": ["S", "plain", "*"],
-        "value": [6.928, 8.972]
+        "key": {"element": "S", "classifier": "plain", "type": "*"},
+        "values": [6.928, 8.972]
       },
       {
-        "key": ["Cl", "plain", "*"],
-        "value": [8.564, 9.892]
+        "key": {"element": "Cl", "classifier": "plain", "type": "*"},
+        "values": [8.564, 9.892]
       },
       {
-        "key": ["K", "plain", "*"],
-        "value": [2.421, 3.84]
+        "key": {"element": "K", "classifier": "plain", "type": "*"},
+        "values": [2.421, 3.84]
       },
       {
-        "key": ["Br", "plain", "*"],
-        "value": [7.790, 8.850]
+        "key": {"element": "Br", "classifier": "plain", "type": "*"},
+        "values": [7.790, 8.850]
       },
       {
-        "key": ["Rb", "plain", "*"],
-        "value": [2.331, 3.692]
+        "key": {"element": "Rb", "classifier": "plain", "type": "*"},
+        "values": [2.331, 3.692]
       },
       {
-        "key": ["I", "plain", "*"],
-        "value": [6.822, 7.524]
+        "key": {"element": "I", "classifier": "plain", "type": "*"},
+        "values": [6.822, 7.524]
       },
       {
-        "key": ["Cs", "plain", "*"],
-        "value": [ 2.183, 3.422]
+        "key": {"element": "Cs", "classifier": "plain", "type": "*"},
+        "values": [ 2.183, 3.422]
       },
       {
-        "key": ["H", "plain", "*"],
-        "value": [4.5280, 13.8904]
+        "key": {"element": "H", "classifier": "plain", "type": "*"},
+        "values": [4.5280, 13.8904]
       }
 
     ]

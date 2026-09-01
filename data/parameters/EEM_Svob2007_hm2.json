@@ -14,68 +14,68 @@
     "names": ["A", "B"],
     "data": [
       {
-        "key": ["Br", "hbo", "1"],
-        "value": [2.494, 1.315]
+        "key": {"element": "Br", "classifier": "hbo", "type": "1"},
+        "values": [2.494, 1.315]
       },
       {
-        "key": ["C", "hbo", "1"],
-        "value": [2.476, 0.772]
+        "key": {"element": "C", "classifier": "hbo", "type": "1"},
+        "values": [2.476, 0.772]
       },
       {
-        "key": ["C", "hbo", "2"],
-        "value": [2.495, 0.704]
+        "key": {"element": "C", "classifier": "hbo", "type": "2"},
+        "values": [2.495, 0.704]
       },
       {
-        "key": ["Cl", "hbo", "1"],
-        "value": [2.759, 2.092]
+        "key": {"element": "Cl", "classifier": "hbo", "type": "1"},
+        "values": [2.759, 2.092]
       },
       {
-        "key": ["F", "hbo", "1"],
-        "value": [2.032, 2.985]
+        "key": {"element": "F", "classifier": "hbo", "type": "1"},
+        "values": [2.032, 2.985]
       },
       {
-        "key": ["Fe", "hbo", "0"],
-        "value": [2.575, 0.087]
+        "key": {"element": "Fe", "classifier": "hbo", "type": "0"},
+        "values": [2.575, 0.087]
       },
       {
-        "key": ["Fe", "hbo", "1"],
-        "value": [2.575, 0.087]
+        "key": {"element": "Fe", "classifier": "hbo", "type": "1"},
+        "values": [2.575, 0.087]
       },
       {
-        "key": ["H", "hbo", "1"],
-        "value": [2.394, 1.212]
+        "key": {"element": "H", "classifier": "hbo", "type": "1"},
+        "values": [2.394, 1.212]
       },
       {
-        "key": ["I", "hbo", "1"],
-        "value": [2.454, 1.387]
+        "key": {"element": "I", "classifier": "hbo", "type": "1"},
+        "values": [2.454, 1.387]
       },
       {
-        "key": ["N", "hbo", "1"],
-        "value": [2.597, 0.835]
+        "key": {"element": "N", "classifier": "hbo", "type": "1"},
+        "values": [2.597, 0.835]
       },
       {
-        "key": ["N", "hbo", "2"],
-        "value": [2.6, 0.79]
+        "key": {"element": "N", "classifier": "hbo", "type": "2"},
+        "values": [2.6, 0.79]
       },
       {
-        "key": ["O", "hbo", "1"],
-        "value": [2.676, 1.077]
+        "key": {"element": "O", "classifier": "hbo", "type": "1"},
+        "values": [2.676, 1.077]
       },
       {
-        "key": ["O", "hbo", "2"],
-        "value": [2.622, 0.85]
+        "key": {"element": "O", "classifier": "hbo", "type": "2"},
+        "values": [2.622, 0.85]
       },
       {
-        "key": ["S", "hbo", "1"],
-        "value": [2.44, 0.665]
+        "key": {"element": "S", "classifier": "hbo", "type": "1"},
+        "values": [2.44, 0.665]
       },
       {
-        "key": ["Zn", "hbo", "0"],
-        "value": [2.422, 0.301]
+        "key": {"element": "Zn", "classifier": "hbo", "type": "0"},
+        "values": [2.422, 0.301]
       },
       {
-        "key": ["Zn", "hbo", "1"],
-        "value": [2.422, 0.301]
+        "key": {"element": "Zn", "classifier": "hbo", "type": "1"},
+        "values": [2.422, 0.301]
       }
     ]
   }

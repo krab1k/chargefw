@@ -12,28 +12,28 @@
     "data":
             [
               {
-                "key": ["H", "plain", "*"],
-                "value": [0.00]
+                "key": {"element": "H", "classifier": "plain", "type": "*"},
+                "values": [0.00]
               },
               {
-                "key": ["C", "plain", "*"],
-                "value": [0.07]
+                "key": {"element": "C", "classifier": "plain", "type": "*"},
+                "values": [0.07]
               },
               {
-                "key": ["N", "plain", "*"],
-                "value": [0.24]
+                "key": {"element": "N", "classifier": "plain", "type": "*"},
+                "values": [0.24]
               },
               {
-                "key": ["O", "plain", "*"],
-                "value": [0.40]
+                "key": {"element": "O", "classifier": "plain", "type": "*"},
+                "values": [0.40]
               },
               {
-                "key": ["F", "plain", "*"],
-                "value": [0.57]
+                "key": {"element": "F", "classifier": "plain", "type": "*"},
+                "values": [0.57]
               },
               {
-                "key": ["Cl", "plain", "*"],
-                "value": [0.35]
+                "key": {"element": "Cl", "classifier": "plain", "type": "*"},
+                "values": [0.35]
               }
             ]
   },
@@ -43,36 +43,84 @@
     "names": ["eps", "gammaA", "gammaB"],
     "data": [
       {
-        "key": ["C", "plain", "*", "H", "plain", "*", "plain", "*"],
-        "value": [1.00, 0.3, 0.4]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "plain", "type": "*"},
+            {"element": "H", "classifier": "plain", "type": "*"}
+          ],
+          "bond": {"classifier": "plain", "type": "*"}
+        },
+        "values": [1.00, 0.3, 0.4]
       },
       {
-        "key": ["C", "plain", "*", "C", "plain", "*", "plain", "*"],
-        "value": [1.00, 0.1, 0.1]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "plain", "type": "*"},
+            {"element": "C", "classifier": "plain", "type": "*"}
+          ],
+          "bond": {"classifier": "plain", "type": "*"}
+        },
+        "values": [1.00, 0.1, 0.1]
       },
       {
-        "key": ["C", "plain", "*", "N", "plain", "*", "plain", "*"],
-        "value": [1.00, 0.1, 0.1]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "plain", "type": "*"},
+            {"element": "N", "classifier": "plain", "type": "*"}
+          ],
+          "bond": {"classifier": "plain", "type": "*"}
+        },
+        "values": [1.00, 0.1, 0.1]
       },
       {
-        "key": ["C", "plain", "*", "O", "plain", "*", "plain", "*"],
-        "value": [0.95, 0.1, 0.1]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "plain", "type": "*"},
+            {"element": "O", "classifier": "plain", "type": "*"}
+          ],
+          "bond": {"classifier": "plain", "type": "*"}
+        },
+        "values": [0.95, 0.1, 0.1]
       },
       {
-        "key": ["C", "plain", "*", "F", "plain", "*", "plain", "*"],
-        "value": [0.85, 0.1, 0.1]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "plain", "type": "*"},
+            {"element": "F", "classifier": "plain", "type": "*"}
+          ],
+          "bond": {"classifier": "plain", "type": "*"}
+        },
+        "values": [0.85, 0.1, 0.1]
       },
       {
-        "key": ["N", "plain", "*", "H", "plain", "*", "plain", "*"],
-        "value": [0.45, 0.3, 0.4]
+        "key": {
+          "atoms": [
+            {"element": "N", "classifier": "plain", "type": "*"},
+            {"element": "H", "classifier": "plain", "type": "*"}
+          ],
+          "bond": {"classifier": "plain", "type": "*"}
+        },
+        "values": [0.45, 0.3, 0.4]
       },
       {
-        "key": ["O", "plain", "*", "H", "plain", "*", "plain", "*"],
-        "value": [0.45, 0.3, 0.4]
+        "key": {
+          "atoms": [
+            {"element": "O", "classifier": "plain", "type": "*"},
+            {"element": "H", "classifier": "plain", "type": "*"}
+          ],
+          "bond": {"classifier": "plain", "type": "*"}
+        },
+        "values": [0.45, 0.3, 0.4]
       },
       {
-        "key": ["C", "plain", "*", "Cl", "plain", "*", "plain", "*"],
-        "value": [0.65, 0.2, 0.4]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "plain", "type": "*"},
+            {"element": "Cl", "classifier": "plain", "type": "*"}
+          ],
+          "bond": {"classifier": "plain", "type": "*"}
+        },
+        "values": [0.65, 0.2, 0.4]
       }
     ]
   }

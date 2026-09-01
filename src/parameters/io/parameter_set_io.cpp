@@ -270,6 +270,12 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     return CommonParameters{make_named_parameters(names, values_json, values_context)};
 }
 
+[[nodiscard]] auto require_named_string(const Json& object, const std::string_view name,
+                                        const std::string& context) -> std::string {
+    const auto field_context = child_context(context, name);
+    return require_string(required_member(object, name, context), field_context);
+}
+
 [[nodiscard]] auto atomic_number_from_symbol(const std::string& symbol, const std::string& context)
     -> int {
     if (symbol == "*") {
@@ -294,82 +300,42 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
 
 [[nodiscard]] auto parse_atom_key(const Json& key_json, const std::string& context)
     -> AtomParameterKey {
-    ensure_array(key_json, context);
+    ensure_object(key_json, context);
 
-    if (key_json.size() != 3) {
-        throw_error(context, "atom key must have exactly 3 items: [symbol, classification, type]");
-    }
+    const auto element = require_named_string(key_json, "element", context);
+    const auto classifier = require_named_string(key_json, "classifier", context);
+    const auto type = require_named_string(key_json, "type", context);
+    const auto element_context = child_context(context, "element");
 
-    const auto symbol = require_string(key_json[0], array_context(context, 0));
-    const auto classification = require_string(key_json[1], array_context(context, 1));
-    const auto type = require_string(key_json[2], array_context(context, 2));
-
-    return make_atom_parameter_key(symbol, classification, type, array_context(context, 0));
+    return make_atom_parameter_key(element, classifier, type, element_context);
 }
 
 [[nodiscard]] auto parse_bond_type_key(const Json& key_json, const std::string& context)
     -> BondTypeKey {
-    ensure_array(key_json, context);
+    ensure_object(key_json, context);
 
-    if (key_json.size() != 2) {
-        throw_error(context, "bond type key must have exactly 2 items: [classification, type]");
-    }
+    const auto classifier = require_named_string(key_json, "classifier", context);
+    const auto type = require_named_string(key_json, "type", context);
 
-    const auto classification = require_string(key_json[0], array_context(context, 0));
-    const auto type = require_string(key_json[1], array_context(context, 1));
-
-    return BondTypeKey{.classification = bond_classification_kind_from_string(classification),
+    return BondTypeKey{.classification = bond_classification_kind_from_string(classifier),
                        .type = type};
-}
-
-[[nodiscard]] auto parse_flat_bond_key(const Json& key_json, const std::string& context)
-    -> BondParameterKey {
-    ensure_array(key_json, context);
-
-    if (key_json.size() != 8) {
-        throw_error(context, "flat bond key must have exactly 8 items: "
-                             "[first_symbol, first_classification, first_type, "
-                             "second_symbol, second_classification, second_type, "
-                             "bond_classification, bond_type]");
-    }
-
-    const auto first_symbol = require_string(key_json[0], array_context(context, 0));
-    const auto first_classification = require_string(key_json[1], array_context(context, 1));
-    const auto first_type = require_string(key_json[2], array_context(context, 2));
-
-    const auto second_symbol = require_string(key_json[3], array_context(context, 3));
-    const auto second_classification = require_string(key_json[4], array_context(context, 4));
-    const auto second_type = require_string(key_json[5], array_context(context, 5));
-
-    const auto bond_classification = require_string(key_json[6], array_context(context, 6));
-    const auto bond_type = require_string(key_json[7], array_context(context, 7));
-
-    return BondParameterKey{
-        .first_atom = make_atom_parameter_key(first_symbol, first_classification, first_type,
-                                              array_context(context, 0)),
-        .second_atom = make_atom_parameter_key(second_symbol, second_classification, second_type,
-                                               array_context(context, 3)),
-        .bond =
-            BondTypeKey{.classification = bond_classification_kind_from_string(bond_classification),
-                        .type = bond_type}};
 }
 
 [[nodiscard]] auto parse_bond_key(const Json& key_json, const std::string& context)
     -> BondParameterKey {
-    ensure_array(key_json, context);
+    const auto atoms_context = child_context(context, "atoms");
+    const auto& atoms_json = required_member(key_json, "atoms", context);
+    ensure_array(atoms_json, atoms_context);
 
-    if (key_json.size() == 8 && key_json[0].is_string()) {
-        return parse_flat_bond_key(key_json, context);
+    if (atoms_json.size() != 2) {
+        throw_error(atoms_context, "must have exactly 2 atom objects");
     }
 
-    if (key_json.size() != 3) {
-        throw_error(context, "bond key must either have nested form "
-                             "[first_atom, second_atom, bond] or flat ChargeFW2 form with 8 items");
-    }
-
-    return BondParameterKey{.first_atom = parse_atom_key(key_json[0], array_context(context, 0)),
-                            .second_atom = parse_atom_key(key_json[1], array_context(context, 1)),
-                            .bond = parse_bond_type_key(key_json[2], array_context(context, 2))};
+    const auto bond_context = child_context(context, "bond");
+    return BondParameterKey{
+        .first_atom = parse_atom_key(atoms_json[0], array_context(atoms_context, 0)),
+        .second_atom = parse_atom_key(atoms_json[1], array_context(atoms_context, 1)),
+        .bond = parse_bond_type_key(required_member(key_json, "bond", context), bond_context)};
 }
 
 [[nodiscard]] auto parse_atom_parameters(const Json& root, const std::string& context)
@@ -400,13 +366,13 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
         ensure_object(entry_json, entry_context);
 
         const auto key_context = child_context(entry_context, "key");
-        const auto value_context = child_context(entry_context, "value");
+        const auto values_context = child_context(entry_context, "values");
 
         const auto key =
             parse_atom_key(required_member(entry_json, "key", entry_context), key_context);
 
         auto parameters = make_named_parameters(
-            names, required_member(entry_json, "value", entry_context), value_context);
+            names, required_member(entry_json, "values", entry_context), values_context);
 
         entries.push_back(AtomParameterEntry{.key = key, .parameters = std::move(parameters)});
     }
@@ -442,13 +408,13 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
         ensure_object(entry_json, entry_context);
 
         const auto key_context = child_context(entry_context, "key");
-        const auto value_context = child_context(entry_context, "value");
+        const auto values_context = child_context(entry_context, "values");
 
         const auto key =
             parse_bond_key(required_member(entry_json, "key", entry_context), key_context);
 
         auto parameters = make_named_parameters(
-            names, required_member(entry_json, "value", entry_context), value_context);
+            names, required_member(entry_json, "values", entry_context), values_context);
 
         entries.push_back(BondParameterEntry{.key = key, .parameters = std::move(parameters)});
     }

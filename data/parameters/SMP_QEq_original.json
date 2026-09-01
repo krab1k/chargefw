@@ -11,36 +11,36 @@
     "names" : ["first", "second", "third", "fourth"],
     "data": [
       {
-        "key": ["Li", "plain", "*"],
-        "value": [3.0215, 3.2426, 0.9056, 0.0566]
+        "key": {"element": "Li", "classifier": "plain", "type": "*"},
+        "values": [3.0215, 3.2426, 0.9056, 0.0566]
       },
       {
-        "key": ["Na", "plain", "*"],
-        "value": [2.8815, 3.1339, 0.6762, -0.1326]
+        "key": {"element": "Na", "classifier": "plain", "type": "*"},
+        "values": [2.8815, 3.1339, 0.6762, -0.1326]
       },
       {
-        "key": ["K", "plain", "*"],
-        "value": [2.4419, 2.5684, 0.5326, -0.0996]
+        "key": {"element": "K", "classifier": "plain", "type": "*"},
+        "values": [2.4419, 2.5684, 0.5326, -0.0996]
       },
       {
-        "key": ["Rb", "plain", "*"],
-        "value": [2.3138, 2.4580, 0.5036, -0.1247]
+        "key": {"element": "Rb", "classifier": "plain", "type": "*"},
+        "values": [2.3138, 2.4580, 0.5036, -0.1247]
       },
       {
-        "key": ["Cu", "plain", "*"],
-        "value": [5.2775, 4.1921, 0.3808, 0.2151]
+        "key": {"element": "Cu", "classifier": "plain", "type": "*"},
+        "values": [5.2775, 4.1921, 0.3808, 0.2151]
       },
       {
-        "key": ["Ag", "plain", "*"],
-        "value": [5.1362, 4.2742, 0.4097, -0.0490]
+        "key": {"element": "Ag", "classifier": "plain", "type": "*"},
+        "values": [5.1362, 4.2742, 0.4097, -0.0490]
       },
       {
-        "key": ["Au", "plain", "*"],
-        "value": [6.3450, 4.0789, 0.1825, 0.1245]
+        "key": {"element": "Au", "classifier": "plain", "type": "*"},
+        "values": [6.3450, 4.0789, 0.1825, 0.1245]
       },
       {
-        "key": ["Al", "plain", "*"],
-        "value": [3.8002, 2.7974, 0.1283, 0.7036]
+        "key": {"element": "Al", "classifier": "plain", "type": "*"},
+        "values": [3.8002, 2.7974, 0.1283, 0.7036]
       }
     ]
   }

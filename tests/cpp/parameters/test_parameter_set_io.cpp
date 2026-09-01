@@ -34,8 +34,35 @@ auto bad_length_json() -> std::string {
     "names": ["A", "B", "C"],
     "data": [
       {
-        "key": ["H", "hbo", "1"],
-        "value": [7.17, 6.24]
+        "key": {"element": "H", "classifier": "hbo", "type": "1"},
+        "values": [7.17, 6.24]
+      }
+    ]
+  }
+}
+)json";
+}
+
+auto named_bond_key_json() -> std::string {
+    return R"json(
+{
+  "metadata": {
+    "id": "named-bond",
+    "name": "Named bond",
+    "method": "sqeqp"
+  },
+  "bond": {
+    "names": ["kappa"],
+    "data": [
+      {
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "bonded", "type": "CNO"},
+            {"element": "C", "classifier": "bonded", "type": "CCN"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [1.0]
       }
     ]
   }
@@ -55,8 +82,8 @@ auto unknown_element_json() -> std::string {
     "names": ["A"],
     "data": [
       {
-        "key": ["Xx", "hbo", "1"],
-        "value": [1.0]
+        "key": {"element": "Xx", "classifier": "hbo", "type": "1"},
+        "values": [1.0]
       }
     ]
   }
@@ -76,8 +103,8 @@ auto unknown_classification_json() -> std::string {
     "names": ["A"],
     "data": [
       {
-        "key": ["H", "unknown", "1"],
-        "value": [1.0]
+        "key": {"element": "H", "classifier": "unknown", "type": "1"},
+        "values": [1.0]
       }
     ]
   }
@@ -186,4 +213,12 @@ TEST_CASE("parameter set rejects malformed JSON", "[parameters][io]") {
         static_cast<void>(parameters::load_parameter_set_json(input));
     };
     CHECK_THROWS_AS(load_unknown_classification(), std::invalid_argument);
+}
+
+TEST_CASE("parameter set loads named unordered bond keys", "[parameters][io]") {
+    std::istringstream input{named_bond_key_json()};
+    const auto parameter_set = parameters::load_parameter_set_json(input);
+
+    REQUIRE(parameter_set.bond().size() == 1);
+    CHECK(parameter_set.bond().parameter(0, "kappa") == 1.0);
 }

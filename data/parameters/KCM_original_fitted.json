@@ -10,36 +10,36 @@
     "names": ["electronegativity", "hardness"],
     "data": [
       {
-        "key": ["O", "hbo", "1"],
-        "value": [33.34, 15.48]
+        "key": {"element": "O", "classifier": "hbo", "type": "1"},
+        "values": [33.34, 15.48]
       },
       {
-        "key": ["O", "hbo", "2"],
-        "value": [37.56, 5.17]
+        "key": {"element": "O", "classifier": "hbo", "type": "2"},
+        "values": [37.56, 5.17]
       },
       {
-        "key": ["H", "hbo", "1"],
-        "value": [26.90, 10.33]
+        "key": {"element": "H", "classifier": "hbo", "type": "1"},
+        "values": [26.90, 10.33]
       },
       {
-        "key": ["C", "hbo", "1"],
-        "value": [26.31, 9.50]
+        "key": {"element": "C", "classifier": "hbo", "type": "1"},
+        "values": [26.31, 9.50]
       },
       {
-        "key": ["C", "hbo", "2"],
-        "value": [29.43, 12.54]
+        "key": {"element": "C", "classifier": "hbo", "type": "2"},
+        "values": [29.43, 12.54]
       },
       {
-        "key": ["C", "hbo", "3"],
-        "value": [31.02, 9.30]
+        "key": {"element": "C", "classifier": "hbo", "type": "3"},
+        "values": [31.02, 9.30]
       },
       {
-        "key": ["N", "hbo", "1"],
-        "value": [31.44, 9.48]
+        "key": {"element": "N", "classifier": "hbo", "type": "1"},
+        "values": [31.44, 9.48]
       },
       {
-        "key": ["S", "hbo", "1"],
-        "value": [30.40, 7.92]
+        "key": {"element": "S", "classifier": "hbo", "type": "1"},
+        "values": [30.40, 7.92]
       }
     ]
   }

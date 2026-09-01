@@ -9,36 +9,36 @@
     "names": ["electronegativity", "hardness", "width"],
     "data": [
       {
-        "key": ["C", "hbo", "1"],
-        "value": [-2478.6966, 0.6893, 0.7581]
+        "key": {"element": "C", "classifier": "hbo", "type": "1"},
+        "values": [-2478.6966, 0.6893, 0.7581]
       },
       {
-        "key": ["C", "hbo", "2"],
-        "value": [-2478.0539, 1.0846, -0.4405]
+        "key": {"element": "C", "classifier": "hbo", "type": "2"},
+        "values": [-2478.0539, 1.0846, -0.4405]
       },
       {
-        "key": ["H", "hbo", "1"],
-        "value": [-2479.3667, 3860.2399, 1.3291]
+        "key": {"element": "H", "classifier": "hbo", "type": "1"},
+        "values": [-2479.3667, 3860.2399, 1.3291]
       },
       {
-        "key": ["N", "hbo", "1"],
-        "value": [1061.8018, 43.7907, 0.2197]
+        "key": {"element": "N", "classifier": "hbo", "type": "1"},
+        "values": [1061.8018, 43.7907, 0.2197]
       },
       {
-        "key": ["N", "hbo", "2"],
-        "value": [1065.7028, 55.0391, 0.6884]
+        "key": {"element": "N", "classifier": "hbo", "type": "2"},
+        "values": [1065.7028, 55.0391, 0.6884]
       },
       {
-        "key": ["O", "hbo", "1"],
-        "value": [986.4312, -187.2205, -0.0011]
+        "key": {"element": "O", "classifier": "hbo", "type": "1"},
+        "values": [986.4312, -187.2205, -0.0011]
       },
       {
-        "key": ["O", "hbo", "2"],
-        "value": [6486.13, 10651.5883, -0.002]
+        "key": {"element": "O", "classifier": "hbo", "type": "2"},
+        "values": [6486.13, 10651.5883, -0.002]
       },
       {
-        "key": ["S", "hbo", "1"],
-        "value": [-2479.1922, 0.2214, -22495.1759]
+        "key": {"element": "S", "classifier": "hbo", "type": "1"},
+        "values": [-2479.1922, 0.2214, -22495.1759]
       }
     ]
   },
@@ -46,128 +46,314 @@
     "names": ["kappa"],
     "data": [
       {
-        "key": ["C", "hbo", "1", "C", "hbo", "1", "bo", "1"],
-        "value": [21972.9586]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "1"},
+            {"element": "C", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [21972.9586]
       },
       {
-        "key": ["C", "hbo", "1", "C", "hbo", "2", "bo", "1"],
-        "value": [4596.6605]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "1"},
+            {"element": "C", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [4596.6605]
       },
       {
-        "key": ["C", "hbo", "1", "H", "hbo", "1", "bo", "1"],
-        "value": [-3856.8446]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "1"},
+            {"element": "H", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [-3856.8446]
       },
       {
-        "key": ["C", "hbo", "1", "N", "hbo", "1", "bo", "1"],
-        "value": [20318.6671]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "1"},
+            {"element": "N", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [20318.6671]
       },
       {
-        "key": ["C", "hbo", "1", "N", "hbo", "2", "bo", "1"],
-        "value": [13798.053]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "1"},
+            {"element": "N", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [13798.053]
       },
       {
-        "key": ["C", "hbo", "1", "O", "hbo", "1", "bo", "1"],
-        "value": [12266.3312]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "1"},
+            {"element": "O", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [12266.3312]
       },
       {
-        "key": ["C", "hbo", "1", "S", "hbo", "1", "bo", "1"],
-        "value": [2.5911]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "1"},
+            {"element": "S", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [2.5911]
       },
       {
-        "key": ["C", "hbo", "2", "C", "hbo", "2", "bo", "1"],
-        "value": [1.3208]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "2"},
+            {"element": "C", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [1.3208]
       },
       {
-        "key": ["C", "hbo", "2", "C", "hbo", "2", "bo", "2"],
-        "value": [0.7591]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "2"},
+            {"element": "C", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "2"}
+        },
+        "values": [0.7591]
       },
       {
-        "key": ["C", "hbo", "2", "H", "hbo", "1", "bo", "1"],
-        "value": [-3854.2417]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "2"},
+            {"element": "H", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [-3854.2417]
       },
       {
-        "key": ["C", "hbo", "2", "N", "hbo", "1", "bo", "1"],
-        "value": [34749.5927]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "2"},
+            {"element": "N", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [34749.5927]
       },
       {
-        "key": ["C", "hbo", "2", "N", "hbo", "2", "bo", "1"],
-        "value": [15594.3758]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "2"},
+            {"element": "N", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [15594.3758]
       },
       {
-        "key": ["C", "hbo", "2", "N", "hbo", "2", "bo", "2"],
-        "value": [13551.7859]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "2"},
+            {"element": "N", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "2"}
+        },
+        "values": [13551.7859]
       },
       {
-        "key": ["C", "hbo", "2", "O", "hbo", "1", "bo", "1"],
-        "value": [14452.4697]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "2"},
+            {"element": "O", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [14452.4697]
       },
       {
-        "key": ["C", "hbo", "2", "O", "hbo", "2", "bo", "2"],
-        "value": [5337.8424]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "2"},
+            {"element": "O", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "2"}
+        },
+        "values": [5337.8424]
       },
       {
-        "key": ["C", "hbo", "2", "S", "hbo", "1", "bo", "1"],
-        "value": [4.7992]
+        "key": {
+          "atoms": [
+            {"element": "C", "classifier": "hbo", "type": "2"},
+            {"element": "S", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [4.7992]
       },
       {
-        "key": ["H", "hbo", "1", "N", "hbo", "1", "bo", "1"],
-        "value": [6636.4456]
+        "key": {
+          "atoms": [
+            {"element": "H", "classifier": "hbo", "type": "1"},
+            {"element": "N", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [6636.4456]
       },
       {
-        "key": ["H", "hbo", "1", "N", "hbo", "2", "bo", "1"],
-        "value": [4451.6499]
+        "key": {
+          "atoms": [
+            {"element": "H", "classifier": "hbo", "type": "1"},
+            {"element": "N", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [4451.6499]
       },
       {
-        "key": ["H", "hbo", "1", "O", "hbo", "1", "bo", "1"],
-        "value": [4352.708]
+        "key": {
+          "atoms": [
+            {"element": "H", "classifier": "hbo", "type": "1"},
+            {"element": "O", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [4352.708]
       },
       {
-        "key": ["H", "hbo", "1", "S", "hbo", "1", "bo", "1"],
-        "value": [-3858.8538]
+        "key": {
+          "atoms": [
+            {"element": "H", "classifier": "hbo", "type": "1"},
+            {"element": "S", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [-3858.8538]
       },
       {
-        "key": ["N", "hbo", "1", "N", "hbo", "1", "bo", "1"],
-        "value": [5178.2216]
+        "key": {
+          "atoms": [
+            {"element": "N", "classifier": "hbo", "type": "1"},
+            {"element": "N", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [5178.2216]
       },
       {
-        "key": ["N", "hbo", "1", "N", "hbo", "2", "bo", "1"],
-        "value": [196.581]
+        "key": {
+          "atoms": [
+            {"element": "N", "classifier": "hbo", "type": "1"},
+            {"element": "N", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [196.581]
       },
       {
-        "key": ["N", "hbo", "1", "O", "hbo", "1", "bo", "1"],
-        "value": [149582.9023]
+        "key": {
+          "atoms": [
+            {"element": "N", "classifier": "hbo", "type": "1"},
+            {"element": "O", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [149582.9023]
       },
       {
-        "key": ["N", "hbo", "2", "N", "hbo", "2", "bo", "1"],
-        "value": [3434.4531]
+        "key": {
+          "atoms": [
+            {"element": "N", "classifier": "hbo", "type": "2"},
+            {"element": "N", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [3434.4531]
       },
       {
-        "key": ["N", "hbo", "2", "N", "hbo", "2", "bo", "2"],
-        "value": [13617.0684]
+        "key": {
+          "atoms": [
+            {"element": "N", "classifier": "hbo", "type": "2"},
+            {"element": "N", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "2"}
+        },
+        "values": [13617.0684]
       },
       {
-        "key": ["N", "hbo", "2", "O", "hbo", "1", "bo", "1"],
-        "value": [264.6374]
+        "key": {
+          "atoms": [
+            {"element": "N", "classifier": "hbo", "type": "2"},
+            {"element": "O", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [264.6374]
       },
       {
-        "key": ["N", "hbo", "2", "O", "hbo", "2", "bo", "2"],
-        "value": [5311.3053]
+        "key": {
+          "atoms": [
+            {"element": "N", "classifier": "hbo", "type": "2"},
+            {"element": "O", "classifier": "hbo", "type": "2"}
+          ],
+          "bond": {"classifier": "bo", "type": "2"}
+        },
+        "values": [5311.3053]
       },
       {
-        "key": ["N", "hbo", "2", "S", "hbo", "1", "bo", "1"],
-        "value": [8044.0302]
+        "key": {
+          "atoms": [
+            {"element": "N", "classifier": "hbo", "type": "2"},
+            {"element": "S", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [8044.0302]
       },
       {
-        "key": ["O", "hbo", "1", "O", "hbo", "1", "bo", "1"],
-        "value": [54757.3417]
+        "key": {
+          "atoms": [
+            {"element": "O", "classifier": "hbo", "type": "1"},
+            {"element": "O", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [54757.3417]
       },
       {
-        "key": ["O", "hbo", "1", "S", "hbo", "1", "bo", "1"],
-        "value": [9389.6523]
+        "key": {
+          "atoms": [
+            {"element": "O", "classifier": "hbo", "type": "1"},
+            {"element": "S", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [9389.6523]
       },
       {
-        "key": ["S", "hbo", "1", "S", "hbo", "1", "bo", "1"],
-        "value": [-1.6655]
+        "key": {
+          "atoms": [
+            {"element": "S", "classifier": "hbo", "type": "1"},
+            {"element": "S", "classifier": "hbo", "type": "1"}
+          ],
+          "bond": {"classifier": "bo", "type": "1"}
+        },
+        "values": [-1.6655]
       }
     ]
   }

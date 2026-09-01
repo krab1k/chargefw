@@ -14,24 +14,24 @@
     "names": ["A", "B"],
     "data": [
       {
-        "key": ["C", "plain", "*"],
-        "value": [0.19330136534, 0.661487562]
+        "key": {"element": "C", "classifier": "plain", "type": "*"},
+        "values": [0.19330136534, 0.661487562]
       },
       {
-        "key": ["F", "plain", "*"],
-        "value": [0.5512396350000001, 1.45306767786]
+        "key": {"element": "F", "classifier": "plain", "type": "*"},
+        "values": [0.5512396350000001, 1.45306767786]
       },
       {
-        "key": ["H", "plain", "*"],
-        "value": [0.036749309, 1.3193001931]
+        "key": {"element": "H", "classifier": "plain", "type": "*"},
+        "values": [0.036749309, 1.3193001931]
       },
       {
-        "key": ["N", "plain", "*"],
-        "value": [0.32339391920000005, 0.69015202302]
+        "key": {"element": "N", "classifier": "plain", "type": "*"},
+        "values": [0.32339391920000005, 0.69015202302]
       },
       {
-        "key": ["O", "plain", "*"],
-        "value": [0.5409498284800001, 1.05397018212]
+        "key": {"element": "O", "classifier": "plain", "type": "*"},
+        "values": [0.5409498284800001, 1.05397018212]
       }
     ]
   }
