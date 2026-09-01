@@ -14,10 +14,6 @@ namespace chargefw::charges {
 struct ChargeTarget {
     std::size_t molecule_index = 0;
     std::optional<std::size_t> conformer_index;
-
-    [[nodiscard]] auto is_conformer_specific() const noexcept -> bool {
-        return conformer_index.has_value();
-    }
 };
 
 struct ChargeAssignment {
@@ -45,22 +41,6 @@ class ChargeSet {
     std::string method_id_;
     std::optional<std::string> parameter_set_id_;
     std::vector<ChargeAssignment> assignments_;
-};
-
-class ChargeCollection {
-  public:
-    explicit ChargeCollection(std::vector<ChargeSet> charge_sets);
-
-    [[nodiscard]] auto charge_sets() const noexcept -> std::span<const ChargeSet>;
-
-    [[nodiscard]] auto size() const noexcept -> std::size_t;
-    [[nodiscard]] auto empty() const noexcept -> bool;
-
-    [[nodiscard]] auto operator[](std::size_t index) const noexcept -> const ChargeSet&;
-    [[nodiscard]] auto at(std::size_t index) const -> const ChargeSet&;
-
-  private:
-    std::vector<ChargeSet> charge_sets_;
 };
 
 } // namespace chargefw::charges

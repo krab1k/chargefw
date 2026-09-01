@@ -49,27 +49,4 @@ auto ChargeSet::empty() const noexcept -> bool {
     return assignments_.empty();
 }
 
-ChargeCollection::ChargeCollection(std::vector<ChargeSet> charge_sets)
-    : charge_sets_{std::move(charge_sets)} {}
-
-auto ChargeCollection::charge_sets() const noexcept -> std::span<const ChargeSet> {
-    return charge_sets_;
-}
-
-auto ChargeCollection::size() const noexcept -> std::size_t {
-    return charge_sets_.size();
-}
-
-auto ChargeCollection::empty() const noexcept -> bool {
-    return charge_sets_.empty();
-}
-
-auto ChargeCollection::operator[](std::size_t index) const noexcept -> const ChargeSet& {
-    return charge_sets_[index];
-}
-
-auto ChargeCollection::at(std::size_t index) const -> const ChargeSet& {
-    return charge_sets_.at(index);
-}
-
 } // namespace chargefw::charges
