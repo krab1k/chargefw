@@ -160,7 +160,7 @@ def assess(
     cover_threshold: int | None = 80_000,
     threads: int = 0,
 ) -> Assessment:
-    """Assess molecules and return a one-shot executable calculation plan."""
+    """Assess molecules and return reusable executable calculation plans."""
 
     requested = RequestedCalculation(
         method=method,
