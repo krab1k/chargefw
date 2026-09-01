@@ -182,10 +182,6 @@ auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {
 
     const auto& charges = *value.charges;
     auto charge_set = nb::dict{};
-    charge_set["method_id"] = std::string{charges.method_id()};
-    const auto parameter_set_id = charges.parameter_set_id();
-    charge_set["parameter_set_id"] =
-        parameter_set_id.has_value() ? nb::cast(std::string{*parameter_set_id}) : nb::none();
     auto assignments = nb::list{};
     for (const auto& assignment : charges.assignments()) {
         auto item = nb::dict{};

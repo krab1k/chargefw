@@ -70,8 +70,6 @@ class ChargeAssignmentPayload(TypedDict):
 
 
 class ChargeSetPayload(TypedDict):
-    method_id: str
-    parameter_set_id: str | None
     assignments: list[ChargeAssignmentPayload]
 
 
