@@ -12,6 +12,9 @@
 #include <vector>
 
 namespace chargefw::calculation {
+
+class PlanIdentity {};
+
 namespace {
 
 [[nodiscard]] auto parameter_priority_of(const methods::ApplicableMethod& candidate) noexcept
@@ -63,15 +66,6 @@ namespace {
         return ranks_before(*first, *second);
     });
     return candidates;
-}
-
-[[nodiscard]] auto plan_for(const methods::ApplicableMethod& candidate, const ExecutionMode mode,
-                            const std::optional<double> radius,
-                            const ChargeCorrectionPolicy charge_correction,
-                            const methods::ExecutionAssessment& assessment) -> ExecutionPlan {
-    return ExecutionPlan{.selected = &candidate,
-                         .policy = ExecutionPolicy{mode, radius, charge_correction},
-                         .issues = assessment.issues};
 }
 
 [[nodiscard]] auto assessment_methods(const AssessmentRequest& request)
@@ -162,10 +156,29 @@ auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
 AssessmentResult::AssessmentResult(core::MoleculeCollection molecules,
                                    std::vector<parameters::ParameterSet> supplied_parameter_sets)
     : parameter_sets_{std::move(supplied_parameter_sets)},
+      plan_identity_{std::make_shared<PlanIdentity>()},
       molecules_{std::make_unique<core::MoleculeCollection>(std::move(molecules))},
       prepared_molecules_{std::make_unique<features::PreparedMoleculeCollection>(*molecules_)} {}
 
 AssessmentResult::~AssessmentResult() = default;
+
+ExecutionPlan::ExecutionPlan(std::shared_ptr<const PlanIdentity> identity,
+                             const methods::ApplicableMethod& candidate, ExecutionPolicy policy,
+                             std::vector<methods::ExecutionIssue> warnings)
+    : identity_{std::move(identity)}, candidate_{&candidate}, policy_{policy},
+      warnings_{std::move(warnings)} {}
+
+auto ExecutionPlan::candidate() const noexcept -> const methods::ApplicableMethod& {
+    return *candidate_;
+}
+
+auto ExecutionPlan::policy() const noexcept -> const ExecutionPolicy& {
+    return policy_;
+}
+
+auto ExecutionPlan::warnings() const noexcept -> std::span<const methods::ExecutionIssue> {
+    return warnings_;
+}
 
 auto AssessmentResult::assess_prepared(
     const std::span<const methods::Method* const> selected_methods,
@@ -180,42 +193,87 @@ auto AssessmentResult::assess_prepared(
                                           .classification_options = classification_options,
                                           .resource_policy = resource_policy,
                                           .method_options = method_options});
-    const auto plan = select_execution_plan(applicability_, execution_selection);
-    if (plan.has_value()) {
-        const auto selected = std::ranges::find_if(
-            applicability_.applicable, [&plan](const methods::ApplicableMethod& candidate) {
-                return &candidate == plan->selected;
-            });
-        if (selected == applicability_.applicable.end()) {
-            throw std::logic_error{
-                "execution plan selected a candidate outside its applicability result"};
-        }
-        selected_candidate_index_ =
-            static_cast<std::size_t>(std::distance(applicability_.applicable.begin(), selected));
-        execution_policy_ = plan->policy;
-        execution_issues_ = plan->issues;
-    }
-
-    applicability_report_.applicable.reserve(applicability_.applicable.size());
-    for (const auto& candidate : applicability_.applicable) {
-        applicability_report_.applicable.push_back(ApplicableCandidateReport{
-            .method_id = std::string{candidate.method->id()},
-            .parameter_set_id = candidate.parameter_set == nullptr
-                                    ? std::nullopt
-                                    : std::optional{std::string{candidate.parameter_set->id()}},
-            .execution_assessments = candidate.execution_assessments});
-    }
-    applicability_report_.rejected.reserve(applicability_.rejected.size());
+    rejections_.reserve(applicability_.rejected.size());
     for (const auto& candidate : applicability_.rejected) {
-        applicability_report_.rejected.push_back(RejectedCandidateReport{
+        auto issues = std::vector<RejectionIssue>{};
+        issues.reserve(candidate.issues.size());
+        for (const auto& issue : candidate.issues) {
+            issues.emplace_back(issue);
+        }
+        rejections_.push_back(Rejection{
             .method_id = std::string{selected_methods[candidate.method_index]->id()},
             .parameter_set_id = candidate.parameter_set_index.has_value()
                                     ? std::optional{std::string{
                                           parameter_sets_[*candidate.parameter_set_index].id()}}
                                     : std::nullopt,
-            .issues = candidate.issues});
+            .policy = std::nullopt,
+            .issues = std::move(issues),
+        });
     }
-    applicability_report_.selected_candidate_index = selected_candidate_index_;
+    const auto candidates = ranked_candidates(applicability_);
+    const auto policy_for = [&execution_selection](const ExecutionMode mode) {
+        const auto radius = mode == ExecutionMode::full
+                                ? std::optional<double>{}
+                                : std::optional{execution_selection.radius().value_or(
+                                      default_automatic_reduced_radius)};
+        const auto correction =
+            mode == ExecutionMode::full
+                ? ChargeCorrectionPolicy::none
+                : execution_selection.charge_correction().value_or(ChargeCorrectionPolicy::uniform);
+        return ExecutionPolicy{mode, radius, correction};
+    };
+    const auto append_rejection =
+        [this, &policy_for](const methods::ApplicableMethod& candidate, const ExecutionMode mode,
+                            const methods::ExecutionAssessment& assessment) {
+            auto issues = std::vector<RejectionIssue>{};
+            issues.reserve(assessment.issues.size());
+            for (const auto& issue : assessment.issues) {
+                issues.emplace_back(issue);
+            }
+            rejections_.push_back(Rejection{
+                .method_id = std::string{candidate.method->id()},
+                .parameter_set_id = candidate.parameter_set == nullptr
+                                        ? std::nullopt
+                                        : std::optional{std::string{candidate.parameter_set->id()}},
+                .policy = policy_for(mode),
+                .issues = std::move(issues),
+            });
+        };
+    const auto consider_mode = [this, &policy_for, &append_rejection](
+                                   const methods::ApplicableMethod& candidate,
+                                   const ExecutionMode mode, const bool permit_warnings) {
+        const auto* assessment = assessment_for(candidate, mode);
+        if (assessment == nullptr) {
+            return;
+        }
+        if (assessment->availability == methods::ExecutionAvailability::unsupported ||
+            (!permit_warnings &&
+             assessment->availability == methods::ExecutionAvailability::available_with_warning)) {
+            append_rejection(candidate, mode, *assessment);
+            return;
+        }
+        plans_.push_back(
+            ExecutionPlan{plan_identity_, candidate, policy_for(mode), assessment->issues});
+    };
+
+    for (const auto* candidate : candidates) {
+        switch (execution_selection.kind()) {
+        case ExecutionSelectionKind::automatic:
+            consider_mode(*candidate, ExecutionMode::full, false);
+            consider_mode(*candidate, ExecutionMode::cutoff, false);
+            consider_mode(*candidate, ExecutionMode::cover, false);
+            break;
+        case ExecutionSelectionKind::full:
+            consider_mode(*candidate, ExecutionMode::full, true);
+            break;
+        case ExecutionSelectionKind::cutoff:
+            consider_mode(*candidate, ExecutionMode::cutoff, true);
+            break;
+        case ExecutionSelectionKind::cover:
+            consider_mode(*candidate, ExecutionMode::cover, true);
+            break;
+        }
+    }
 }
 
 auto AssessmentResult::prepared_molecules() const noexcept
@@ -223,21 +281,20 @@ auto AssessmentResult::prepared_molecules() const noexcept
     return *prepared_molecules_;
 }
 
-auto AssessmentResult::applicability() const noexcept -> const ApplicabilityReport& {
-    return applicability_report_;
-}
-
-auto AssessmentResult::execution_policy() const noexcept -> const std::optional<ExecutionPolicy>& {
-    return execution_policy_;
-}
-
-auto AssessmentResult::execution_issues() const noexcept
-    -> const std::vector<methods::ExecutionIssue>& {
-    return execution_issues_;
-}
-
 auto AssessmentResult::applicability_seconds() const noexcept -> double {
     return applicability_seconds_;
+}
+
+auto AssessmentResult::plans() const noexcept -> std::span<const ExecutionPlan> {
+    return plans_;
+}
+
+auto AssessmentResult::rejections() const noexcept -> std::span<const Rejection> {
+    return rejections_;
+}
+
+auto AssessmentResult::default_plan() const noexcept -> const ExecutionPlan* {
+    return plans_.empty() ? nullptr : &plans_.front();
 }
 
 auto select_applicable_method(const methods::ApplicabilityResult& applicability)
@@ -245,65 +302,6 @@ auto select_applicable_method(const methods::ApplicabilityResult& applicability)
     return applicability.empty()
                ? nullptr
                : &*std::ranges::min_element(applicability.applicable, ranks_before);
-}
-
-auto select_execution_plan(const methods::ApplicabilityResult& applicability,
-                           const ExecutionSelection& selection) -> std::optional<ExecutionPlan> {
-    const auto candidates = ranked_candidates(applicability);
-    const auto select_mode = [&candidates, &selection](const ExecutionMode mode,
-                                                       const bool allow_warnings) {
-        for (const auto* candidate : candidates) {
-            const auto* assessment = assessment_for(*candidate, mode);
-            if (assessment == nullptr ||
-                assessment->availability == methods::ExecutionAvailability::unsupported ||
-                (!allow_warnings && assessment->availability ==
-                                        methods::ExecutionAvailability::available_with_warning)) {
-                continue;
-            }
-            const auto radius =
-                mode == ExecutionMode::full ? std::optional<double>{} : selection.radius();
-            const auto correction =
-                mode == ExecutionMode::full
-                    ? ChargeCorrectionPolicy::none
-                    : selection.charge_correction().value_or(ChargeCorrectionPolicy::uniform);
-            return std::optional{plan_for(*candidate, mode, radius, correction, *assessment)};
-        }
-        return std::optional<ExecutionPlan>{};
-    };
-
-    switch (selection.kind()) {
-    case ExecutionSelectionKind::automatic: {
-        const auto radius = selection.radius().value_or(default_automatic_reduced_radius);
-        for (const auto* candidate : candidates) {
-            const auto* full = assessment_for(*candidate, ExecutionMode::full);
-            if (full != nullptr &&
-                full->availability == methods::ExecutionAvailability::available) {
-                return plan_for(*candidate, ExecutionMode::full, std::nullopt,
-                                ChargeCorrectionPolicy::none, *full);
-            }
-            const auto* cutoff = assessment_for(*candidate, ExecutionMode::cutoff);
-            if (cutoff != nullptr &&
-                cutoff->availability == methods::ExecutionAvailability::available) {
-                return plan_for(*candidate, ExecutionMode::cutoff, radius,
-                                ChargeCorrectionPolicy::uniform, *cutoff);
-            }
-            const auto* cover = assessment_for(*candidate, ExecutionMode::cover);
-            if (cover != nullptr &&
-                cover->availability != methods::ExecutionAvailability::unsupported) {
-                return plan_for(*candidate, ExecutionMode::cover, radius,
-                                ChargeCorrectionPolicy::uniform, *cover);
-            }
-        }
-        return std::nullopt;
-    }
-    case ExecutionSelectionKind::full:
-        return select_mode(ExecutionMode::full, true);
-    case ExecutionSelectionKind::cutoff:
-        return select_mode(ExecutionMode::cutoff, true);
-    case ExecutionSelectionKind::cover:
-        return select_mode(ExecutionMode::cover, false);
-    }
-    throw std::invalid_argument{"unknown execution selection"};
 }
 
 auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResult {

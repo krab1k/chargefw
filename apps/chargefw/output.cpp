@@ -18,6 +18,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <sys/resource.h>
+#include <variant>
 
 namespace chargefw::cli {
 namespace {
@@ -275,25 +276,41 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
             append_unique(record_diagnostics, *diagnostic);
         }
         if (result.status == calculation::ExecutionStatus::no_executable_plan) {
-            for (const auto& rejected : result.applicability.rejected) {
-                for (const auto& issue : rejected.issues) {
-                    if (issue.molecule_index.has_value() &&
-                        *issue.molecule_index != molecule_index) {
-                        continue;
-                    }
+            for (const auto& rejected : result.rejections) {
+                for (const auto& issue_value : rejected.issues) {
                     auto candidate = "method '" + rejected.method_id + "'";
                     if (rejected.parameter_set_id.has_value()) {
                         candidate += ", parameter set '" + *rejected.parameter_set_id + "'";
                     }
-                    append_unique(record_diagnostics,
-                                  adapters::ResultDiagnostic{
-                                      .severity = adapters::DiagnosticSeverity::error,
-                                      .code = std::string{prerequisite_code(issue.kind)},
-                                      .message = candidate + ": " + issue.message,
-                                      .molecule_index = issue.molecule_index,
-                                      .atom_index = issue.atom_index,
-                                      .bond_index = issue.bond_index,
-                                      .conformer_index = issue.conformer_index});
+                    if (const auto* issue = std::get_if<methods::PrerequisiteIssue>(&issue_value)) {
+                        if (issue->molecule_index.has_value() &&
+                            *issue->molecule_index != molecule_index) {
+                            continue;
+                        }
+                        append_unique(record_diagnostics,
+                                      adapters::ResultDiagnostic{
+                                          .severity = adapters::DiagnosticSeverity::error,
+                                          .code = std::string{prerequisite_code(issue->kind)},
+                                          .message = candidate + ": " + issue->message,
+                                          .molecule_index = issue->molecule_index,
+                                          .atom_index = issue->atom_index,
+                                          .bond_index = issue->bond_index,
+                                          .conformer_index = issue->conformer_index});
+                    } else {
+                        const auto& execution_issue =
+                            std::get<methods::ExecutionIssue>(issue_value);
+                        if (execution_issue.molecule_index.has_value() &&
+                            *execution_issue.molecule_index != molecule_index) {
+                            continue;
+                        }
+                        append_unique(
+                            record_diagnostics,
+                            adapters::ResultDiagnostic{
+                                .severity = adapters::DiagnosticSeverity::error,
+                                .code = std::string{methods::to_string(execution_issue.kind)},
+                                .message = candidate + ": " + execution_issue.message,
+                                .molecule_index = execution_issue.molecule_index});
+                    }
                 }
             }
         }

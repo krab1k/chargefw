@@ -97,33 +97,22 @@ auto calculate(const CalculationRequest& request) -> CalculationResult {
     throw std::invalid_argument{"unknown execution policy"};
 }
 
-auto calculate(AssessmentResult assessment, const std::size_t max_threads,
-               const CalculationObserver& observer) -> ExecutionResult {
-    if (!assessment.executable()) {
-        return ExecutionResult{
-            .status = ExecutionStatus::no_executable_plan,
-            .charges = std::nullopt,
-            .applicability = std::move(assessment.applicability_report_),
-            .effective = std::nullopt,
-            .failure_message = std::nullopt,
-            .metrics = {.applicability_seconds = assessment.applicability_seconds_}};
+auto calculate(const AssessmentResult& assessment, const ExecutionPlan& plan,
+               const std::size_t max_threads, const CalculationObserver& observer)
+    -> ExecutionResult {
+    if (plan.identity_ != assessment.plan_identity_) {
+        throw std::invalid_argument{"execution plan belongs to a different assessment"};
     }
 
-    if (!assessment.selected_candidate_index_.has_value() ||
-        !assessment.execution_policy_.has_value()) {
-        throw std::logic_error{"executable calculation assessment has no selected execution plan"};
-    }
-
-    const auto& selected =
-        assessment.applicability_.applicable.at(*assessment.selected_candidate_index_);
+    const auto& selected = plan.candidate();
     const auto effective = EffectiveCalculation{
         .method_id = std::string{selected.method->id()},
         .parameter_set_id = selected.parameter_set == nullptr
                                 ? std::nullopt
                                 : std::optional{std::string{selected.parameter_set->id()}},
         .method_options = selected.method_options,
-        .execution_policy = *assessment.execution_policy_,
-        .execution_issues = assessment.execution_issues_};
+        .execution_policy = plan.policy(),
+        .execution_issues = {plan.warnings().begin(), plan.warnings().end()}};
 
     const auto computation_started = std::chrono::steady_clock::now();
     auto status = ExecutionStatus::success;
@@ -131,12 +120,11 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
     auto failure_message = std::optional<std::string>{};
 
     try {
-        auto result =
-            calculate(CalculationRequest{.molecules = assessment.prepared_molecules(),
-                                         .selected = selected,
-                                         .execution_policy = *assessment.execution_policy_,
-                                         .max_threads = max_threads,
-                                         .observer = observer});
+        auto result = calculate(CalculationRequest{.molecules = assessment.prepared_molecules(),
+                                                   .selected = selected,
+                                                   .execution_policy = plan.policy(),
+                                                   .max_threads = max_threads,
+                                                   .observer = observer});
         calculated_charges.emplace(std::move(result.charges));
     } catch (const CalculationCancelled&) {
         status = ExecutionStatus::cancelled;
@@ -150,13 +138,29 @@ auto calculate(AssessmentResult assessment, const std::size_t max_threads,
     const auto computation_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - computation_started}
             .count();
-    return ExecutionResult{.status = status,
-                           .charges = std::move(calculated_charges),
-                           .applicability = std::move(assessment.applicability_report_),
-                           .effective = std::move(effective),
-                           .failure_message = std::move(failure_message),
-                           .metrics = {.applicability_seconds = assessment.applicability_seconds_,
-                                       .computation_seconds = computation_seconds}};
+    return ExecutionResult{
+        .status = status,
+        .charges = std::move(calculated_charges),
+        .rejections = {assessment.rejections_.begin(), assessment.rejections_.end()},
+        .effective = effective,
+        .failure_message = std::move(failure_message),
+        .metrics = {.applicability_seconds = assessment.applicability_seconds_,
+                    .computation_seconds = computation_seconds}};
+}
+
+auto calculate(const AssessmentResult& assessment, const std::size_t max_threads,
+               const CalculationObserver& observer) -> ExecutionResult {
+    const auto* plan = assessment.default_plan();
+    if (plan == nullptr) {
+        return ExecutionResult{
+            .status = ExecutionStatus::no_executable_plan,
+            .charges = std::nullopt,
+            .rejections = {assessment.rejections_.begin(), assessment.rejections_.end()},
+            .effective = std::nullopt,
+            .failure_message = std::nullopt,
+            .metrics = {.applicability_seconds = assessment.applicability_seconds_}};
+    }
+    return calculate(assessment, *plan, max_threads, observer);
 }
 
 } // namespace chargefw::calculation

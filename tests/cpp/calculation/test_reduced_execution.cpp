@@ -42,7 +42,7 @@ namespace {
     -> calculation::ExecutionResult {
     const auto max_threads = request.resource_policy.max_threads;
     auto assessment = calculation::assess(std::move(request));
-    return calculation::calculate(std::move(assessment), max_threads);
+    return calculation::calculate(assessment, max_threads);
 }
 
 class ZeroFragmentMethod final : public methods::Method {

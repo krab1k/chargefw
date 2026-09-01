@@ -34,36 +34,36 @@ void print_inspection(const ImportedCollection& imported) {
 }
 
 void print_applicability(const calculation::AssessmentResult& assessment) {
-    const auto& report = assessment.applicability();
-    std::println("applicable candidates: {}", report.applicable.size());
-    for (const auto& candidate : report.applicable) {
-        std::print("applicable method={} parameter_set={}", candidate.method_id,
-                   candidate.parameter_set_id.value_or("-"));
-        for (const auto& execution : candidate.execution_assessments) {
-            std::print(" {}={}", calculation::to_string(execution.mode),
-                       methods::to_string(execution.availability));
-        }
-        std::println();
+    std::println("runnable plans: {}", assessment.plans().size());
+    for (const auto& plan : assessment.plans()) {
+        const auto& candidate = plan.candidate();
+        std::println("plan method={} parameter_set={} execution={}", candidate.method->id(),
+                     candidate.parameter_set == nullptr ? "-" : candidate.parameter_set->id(),
+                     calculation::to_string(plan.policy().mode()));
     }
-    std::println("rejected candidates: {}", report.rejected.size());
-    for (const auto& rejected : report.rejected) {
+    std::println("rejected alternatives: {}", assessment.rejections().size());
+    for (const auto& rejected : assessment.rejections()) {
         std::print("rejected method={}", rejected.method_id);
         if (rejected.parameter_set_id.has_value()) {
             std::print(" parameter_set={}", *rejected.parameter_set_id);
         }
+        if (rejected.policy.has_value()) {
+            std::print(" execution={}", calculation::to_string(rejected.policy->mode()));
+        }
         for (const auto& issue : rejected.issues) {
-            std::print("; {}", issue.message);
+            std::visit([](const auto& value) { std::print("; {}", value.message); }, issue);
         }
         std::println();
     }
-    if (!report.selected_candidate_index.has_value()) {
+    const auto* plan = assessment.default_plan();
+    if (plan == nullptr) {
         std::println("selected execution: none");
         return;
     }
-    const auto& selected = report.applicable.at(*report.selected_candidate_index);
-    std::println("selected method={} parameter_set={} execution={}", selected.method_id,
-                 selected.parameter_set_id.value_or("-"),
-                 calculation::to_string(assessment.execution_policy()->mode()));
+    const auto& selected = plan->candidate();
+    std::println("selected method={} parameter_set={} execution={}", selected.method->id(),
+                 selected.parameter_set == nullptr ? "-" : selected.parameter_set->id(),
+                 calculation::to_string(plan->policy().mode()));
 }
 
 void print_methods() {

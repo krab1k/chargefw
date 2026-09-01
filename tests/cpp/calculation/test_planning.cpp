@@ -175,7 +175,7 @@ auto calculate_automatically(
 
 } // namespace
 
-TEST_CASE("planning selects the highest-priority full execution plan", "[calculation][planning]") {
+TEST_CASE("planning selects the highest-priority applicable candidate", "[calculation][planning]") {
     const auto prepared = make_prepared_water();
     const FixedChargeMethod higher_priority{"higher", 10, 10.0};
     const FixedChargeMethod lower_priority{"lower", 1, 1.0};
@@ -186,12 +186,7 @@ TEST_CASE("planning selects the highest-priority full execution plan", "[calcula
         {.molecules = prepared, .methods = methods, .parameter_sets = parameters});
     const auto* selected = calculation::select_applicable_method(applicability);
     REQUIRE(selected != nullptr);
-    const auto plan =
-        calculation::select_execution_plan(applicability, calculation::ExecutionSelection{});
-    REQUIRE(plan.has_value());
-    CHECK(plan->selected == selected);
-    CHECK(plan->policy.mode() == calculation::ExecutionMode::full);
-    CHECK(plan->issues.empty());
+    CHECK(selected->method->id() == "higher");
     CHECK(applicability.applicable.size() == 2);
 }
 
@@ -251,22 +246,15 @@ TEST_CASE("explicit unsupported execution has no selected plan or fallback",
         .execution_selection = calculation::ExecutionSelection{
             calculation::ExecutionSelectionKind::cover, calculation::minimum_reduced_radius}});
 
-    CHECK_FALSE(assessment.executable());
-    CHECK_FALSE(assessment.applicability().selected_candidate_index.has_value());
-    CHECK_FALSE(assessment.execution_policy().has_value());
-    CHECK(assessment.execution_issues().empty());
-    REQUIRE(assessment.applicability().applicable.size() == 1);
+    CHECK(assessment.plans().empty());
+    REQUIRE(assessment.rejections().size() == 1);
+    REQUIRE(assessment.rejections()[0].policy.has_value());
+    CHECK(assessment.rejections()[0].policy->mode() == calculation::ExecutionMode::cover);
+    REQUIRE(assessment.rejections()[0].issues.size() == 1);
+    CHECK(std::get<methods::ExecutionIssue>(assessment.rejections()[0].issues[0]).kind ==
+          methods::ExecutionIssueKind::unsupported_execution_mode);
 
-    const auto& cover_assessment = assessment.applicability().applicable[0].execution_assessments;
-    const auto cover = std::ranges::find_if(cover_assessment, [](const auto& value) {
-        return value.mode == calculation::ExecutionMode::cover;
-    });
-    REQUIRE(cover != cover_assessment.end());
-    CHECK(cover->availability == methods::ExecutionAvailability::unsupported);
-    REQUIRE(cover->issues.size() == 1);
-    CHECK(cover->issues[0].kind == methods::ExecutionIssueKind::unsupported_execution_mode);
-
-    const auto result = calculation::calculate(std::move(assessment));
+    const auto result = calculation::calculate(assessment);
     CHECK(result.status == calculation::ExecutionStatus::no_executable_plan);
     CHECK_FALSE(result.calculated());
 }
@@ -277,16 +265,13 @@ TEST_CASE("explicit no-plan assessment reports rejected scientific prerequisites
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .method_id = "smpqeq"});
 
-    CHECK_FALSE(assessment.executable());
-    CHECK_FALSE(assessment.applicability().selected_candidate_index.has_value());
-    CHECK_FALSE(assessment.execution_policy().has_value());
-    CHECK(assessment.execution_issues().empty());
-    CHECK(assessment.applicability().applicable.empty());
-    REQUIRE(assessment.applicability().rejected.size() == 1);
-    CHECK(assessment.applicability().rejected[0].method_id == "smpqeq");
-    CHECK_FALSE(assessment.applicability().rejected[0].issues.empty());
+    CHECK(assessment.plans().empty());
+    REQUIRE(assessment.rejections().size() == 1);
+    CHECK_FALSE(assessment.rejections()[0].policy.has_value());
+    CHECK(assessment.rejections()[0].method_id == "smpqeq");
+    CHECK_FALSE(assessment.rejections()[0].issues.empty());
 
-    const auto result = calculation::calculate(std::move(assessment));
+    const auto result = calculation::calculate(assessment);
     CHECK(result.status == calculation::ExecutionStatus::no_executable_plan);
     CHECK_FALSE(result.calculated());
 }

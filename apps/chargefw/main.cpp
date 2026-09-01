@@ -141,10 +141,14 @@ auto run(std::span<char*> arguments) -> int {
     auto result = [&]() -> chargefw::calculation::ExecutionResult {
         try {
             auto assessment = chargefw::calculation::assess(std::move(request));
-            for (const auto& warning : assessment.execution_issues()) {
+            const auto* plan = assessment.default_plan();
+            if (plan == nullptr) {
+                return chargefw::calculation::calculate(assessment, max_threads, observer);
+            }
+            for (const auto& warning : plan->warnings()) {
                 std::println(std::cerr, "Warning: {}", warning.message);
             }
-            return chargefw::calculation::calculate(std::move(assessment), max_threads, observer);
+            return chargefw::calculation::calculate(assessment, *plan, max_threads, observer);
         } catch (const std::invalid_argument& error) {
             return {.status = chargefw::calculation::ExecutionStatus::invalid_input_or_request,
                     .charges = std::nullopt,

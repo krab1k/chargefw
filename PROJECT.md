@@ -100,7 +100,7 @@ PreparedMoleculeCollection
 candidate and prepared collection are non-owning low-level views.
 
 `select_applicable_method()` remains available when a caller only needs priority-based scientific
-candidate selection. `select_execution_plan()` additionally resolves a concrete execution mode.
+candidate selection. The owned assessment expands applicable candidates into concrete execution plans.
 
 ### Owned application workflow
 
@@ -111,15 +111,14 @@ duplicate IDs are rejected before parameter filtering and applicability assessme
 
 - `assess(request)` copies an lvalue request's molecule and parameter inputs; `assess(std::move(request))`
   snapshots its selection configuration, then transfers its execution inputs. Callers must not inspect a
-  request after it is consumed. Both forms prepare molecules, find applicable candidates, and select a
-  concrete plan without calculating. Their result keeps the executable parameter/classification state
-  private and exposes a const value-only applicability report.
-- `calculate(std::move(assessment), max_threads, observer)` executes an assessment without repeating
-  preparation or classification. Its result retains the owned value-only report, so applicability
-  diagnostics remain valid after the assessment and its parameter data are destroyed. When a plan was
-  selected, `ExecutionResult::effective` records the method, optional parameter set, complete validated
-  method options, concrete execution policy, and execution issues. Thread limits and observation are
-  execution-only inputs.
+  request after it is consumed. Both forms prepare molecules, find applicable candidates, and produce
+  priority-ordered concrete plans plus rejected policy alternatives without calculating. Their result
+  keeps prepared features, classifications, methods, and parameter lifetimes private.
+- `calculate(assessment, plan, max_threads, observer)` executes an exact target-bound plan without
+  repeating preparation or classification. Assessments and plans remain reusable, including for
+  independent concurrent executions. The default-plan convenience overload returns a no-plan result when
+  no plan exists. `ExecutionResult::effective` records detached method, parameter-set, validated-option,
+  concrete-policy, and warning provenance. Thread limits and observation are execution-only inputs.
 - Rejected application-facing candidates retain the method identity from the selected applicability
   method list, including explicitly requested methods, rather than using registry ordering.
 - Omitted IDs use deterministic ranking: method priority, parameter-set priority, method ID, then
@@ -190,10 +189,9 @@ Three event tiers exist:
   one terminal `count/count` snapshot; empty targets have none. Parallel callbacks for different
   targets may run concurrently, so global callback arrival order does not establish completion order.
 
-Selected-plan warnings, including explicit-full execution above the resource threshold, are available
-through `AssessmentResult::execution_issues()` before execution begins. Callers may report them
-before calling `calculate(std::move(assessment), ...)`; they are also retained in
-`ExecutionResult::execution_issues` for result provenance.
+Per-plan warnings, including explicit-full execution above the resource threshold, are available through
+`ExecutionPlan::warnings()` before execution begins. Callers may report them before calling
+`calculate(assessment, plan, ...)`; they are also retained in detached effective result provenance.
 
 Cooperative cancellation: `cancelled()` is polled at each target and fragment iteration boundary,
 including immediately after `target_started`. When it returns true, `CalculationCancelled` is thrown

@@ -331,7 +331,7 @@ execute_process(
         RESULT_VARIABLE applicability_result
         OUTPUT_VARIABLE applicability_output
 )
-if(NOT applicability_result EQUAL 0 OR NOT applicability_output MATCHES "applicable method=formal")
+if(NOT applicability_result EQUAL 0 OR NOT applicability_output MATCHES "plan method=formal")
     message(FATAL_ERROR "applicability output is incomplete: ${applicability_output}")
 endif()
 

@@ -13,12 +13,14 @@
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 namespace chargefw::calculation {
 
 class AssessmentResult;
 class CalculationObserver;
+class PlanIdentity;
 struct AssessmentRequest;
 struct ExecutionResult;
 // Copies the owned molecule and parameter inputs into the assessment result.
@@ -27,12 +29,39 @@ struct ExecutionResult;
 // Callers must not inspect the request after passing it to this consuming overload.
 [[nodiscard]] auto assess(AssessmentRequest&& request) -> AssessmentResult;
 
-// Non-owning concrete execution choice produced from an applicability result. The selected
-// candidate and its classifications remain owned by the ApplicabilityResult.
-struct ExecutionPlan {
-    const methods::ApplicableMethod* selected = nullptr;
-    ExecutionPolicy policy{};
-    std::vector<methods::ExecutionIssue> issues;
+// Immutable concrete execution choice owned by an AssessmentResult. Copies remain tied to the same
+// assessment and must not be executed with another assessment's prepared molecules.
+class ExecutionPlan {
+  public:
+    [[nodiscard]] auto candidate() const noexcept -> const methods::ApplicableMethod&;
+    [[nodiscard]] auto policy() const noexcept -> const ExecutionPolicy&;
+    [[nodiscard]] auto warnings() const noexcept -> std::span<const methods::ExecutionIssue>;
+
+  private:
+    ExecutionPlan(std::shared_ptr<const PlanIdentity> identity,
+                  const methods::ApplicableMethod& candidate, ExecutionPolicy policy,
+                  std::vector<methods::ExecutionIssue> warnings);
+
+    friend class AssessmentResult;
+    friend auto calculate(const AssessmentResult& assessment, const ExecutionPlan& plan,
+                          std::size_t max_threads, const CalculationObserver& observer)
+        -> ExecutionResult;
+
+    std::shared_ptr<const PlanIdentity> identity_;
+    const methods::ApplicableMethod* candidate_ = nullptr;
+    ExecutionPolicy policy_{};
+    std::vector<methods::ExecutionIssue> warnings_;
+};
+
+using RejectionIssue = std::variant<methods::PrerequisiteIssue, methods::ExecutionIssue>;
+
+// A scientific candidate or concrete execution policy excluded during assessment. A missing policy
+// means the candidate failed before a runnable plan could be formed.
+struct Rejection {
+    std::string method_id;
+    std::optional<std::string> parameter_set_id;
+    std::optional<ExecutionPolicy> policy;
+    std::vector<RejectionIssue> issues;
 };
 
 // Owns application assessment inputs so adapters and bindings do not need to manage native method
@@ -49,28 +78,7 @@ struct AssessmentRequest {
     ResourcePolicy resource_policy{};
 };
 
-// Value-only applicability data for application callers. It deliberately contains no registry or
-// parameter-set pointers, so it remains valid after an assessment is consumed by calculate().
-struct ApplicableCandidateReport {
-    std::string method_id;
-    std::optional<std::string> parameter_set_id;
-    std::vector<methods::ExecutionAssessment> execution_assessments;
-};
-
-struct RejectedCandidateReport {
-    std::string method_id;
-    std::optional<std::string> parameter_set_id;
-    std::vector<methods::PrerequisiteIssue> issues;
-};
-
-struct ApplicabilityReport {
-    std::vector<ApplicableCandidateReport> applicable;
-    std::vector<RejectedCandidateReport> rejected;
-    std::optional<std::size_t> selected_candidate_index;
-};
-
-// Owns prepared application inputs and their applicability/execution-plan assessment. Move this
-// result into calculate() to execute without repeating preparation or classification.
+// Owns prepared application inputs and reusable concrete execution plans.
 class AssessmentResult {
   public:
     AssessmentResult(const AssessmentResult&) = delete;
@@ -81,15 +89,11 @@ class AssessmentResult {
     auto operator=(AssessmentResult&&) noexcept -> AssessmentResult& = delete;
     ~AssessmentResult();
 
-    [[nodiscard]] auto applicability() const noexcept -> const ApplicabilityReport&;
-    [[nodiscard]] auto execution_policy() const noexcept -> const std::optional<ExecutionPolicy>&;
-    [[nodiscard]] auto execution_issues() const noexcept
-        -> const std::vector<methods::ExecutionIssue>&;
     [[nodiscard]] auto applicability_seconds() const noexcept -> double;
 
-    [[nodiscard]] auto executable() const noexcept -> bool {
-        return execution_policy_.has_value();
-    }
+    [[nodiscard]] auto plans() const noexcept -> std::span<const ExecutionPlan>;
+    [[nodiscard]] auto rejections() const noexcept -> std::span<const Rejection>;
+    [[nodiscard]] auto default_plan() const noexcept -> const ExecutionPlan*;
 
   private:
     AssessmentResult(core::MoleculeCollection molecules,
@@ -109,15 +113,17 @@ class AssessmentResult {
 
     friend auto assess(const AssessmentRequest& request) -> AssessmentResult;
     friend auto assess(AssessmentRequest&& request) -> AssessmentResult;
-    friend auto calculate(AssessmentResult assessment, std::size_t max_threads,
+    friend auto calculate(const AssessmentResult& assessment, std::size_t max_threads,
                           const CalculationObserver& observer) -> ExecutionResult;
+    friend auto calculate(const AssessmentResult& assessment, const ExecutionPlan& plan,
+                          std::size_t max_threads, const CalculationObserver& observer)
+        -> ExecutionResult;
 
     std::vector<parameters::ParameterSet> parameter_sets_;
     methods::ApplicabilityResult applicability_;
-    ApplicabilityReport applicability_report_;
-    std::optional<std::size_t> selected_candidate_index_;
-    std::optional<ExecutionPolicy> execution_policy_;
-    std::vector<methods::ExecutionIssue> execution_issues_;
+    std::shared_ptr<const PlanIdentity> plan_identity_;
+    std::vector<ExecutionPlan> plans_;
+    std::vector<Rejection> rejections_;
     double applicability_seconds_ = 0.0;
     std::unique_ptr<core::MoleculeCollection> molecules_;
     std::unique_ptr<features::PreparedMoleculeCollection> prepared_molecules_;
@@ -128,10 +134,5 @@ class AssessmentResult {
 // order. Returns nullptr if no candidate is applicable.
 [[nodiscard]] auto select_applicable_method(const methods::ApplicabilityResult& applicability)
     -> const methods::ApplicableMethod*;
-
-// Selects a concrete execution plan from scientifically applicable candidates.
-[[nodiscard]] auto select_execution_plan(const methods::ApplicabilityResult& applicability,
-                                         const ExecutionSelection& selection)
-    -> std::optional<ExecutionPlan>;
 
 } // namespace chargefw::calculation

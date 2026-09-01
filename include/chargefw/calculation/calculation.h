@@ -59,7 +59,7 @@ enum class ExecutionStatus : std::uint8_t {
 struct ExecutionResult {
     ExecutionStatus status = ExecutionStatus::success;
     std::optional<charges::ChargeSet> charges;
-    ApplicabilityReport applicability;
+    std::vector<Rejection> rejections;
     std::optional<EffectiveCalculation> effective;
     std::optional<std::string> failure_message;
     CalculationMetrics metrics;
@@ -79,12 +79,18 @@ struct ExecutionResult {
 // propagate to the caller after computation_finished.
 [[nodiscard]] auto calculate(const CalculationRequest& request) -> CalculationResult;
 
+// Executes one concrete plan from an assessment without repeating preparation, classification, or
+// applicability checks. The plan must originate from the supplied assessment. Both objects remain
+// reusable after calculation and independent plans may be executed repeatedly.
+[[nodiscard]] auto calculate(const AssessmentResult& assessment, const ExecutionPlan& plan,
+                             std::size_t max_threads = 0,
+                             const CalculationObserver& observer = default_calculation_observer())
+    -> ExecutionResult;
+
 // Executes a plan returned by assess() without repeating preparation or applicability assessment.
-// The assessment is consumed because the result owns its classifications and parameter data. It
-// delegates computation observation to the low-level overload and converts no-plan, cancellation,
-// and calculation failures to result values. Invalid request arguments still propagate to the
-// caller.
-[[nodiscard]] auto calculate(AssessmentResult assessment, std::size_t max_threads = 0,
+// This convenience overload executes the default plan. It delegates computation observation to the
+// reusable plan overload and converts a missing plan to a no_executable_plan result.
+[[nodiscard]] auto calculate(const AssessmentResult& assessment, std::size_t max_threads = 0,
                              const CalculationObserver& observer = default_calculation_observer())
     -> ExecutionResult;
 

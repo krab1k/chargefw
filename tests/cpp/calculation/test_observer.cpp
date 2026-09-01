@@ -37,7 +37,7 @@ namespace {
     -> calculation::ExecutionResult {
     const auto max_threads = request.resource_policy.max_threads;
     auto assessment = calculation::assess(request);
-    return calculation::calculate(std::move(assessment), max_threads, observer);
+    return calculation::calculate(assessment, max_threads, observer);
 }
 
 struct RecordedProgress {
@@ -403,7 +403,7 @@ TEST_CASE("assessment remains outside calculation observation", "[calculation][o
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        CHECK(assessment.executable());
+        CHECK(assessment.default_plan() != nullptr);
         CHECK(observer.events().empty());
     }
 }
@@ -420,12 +420,13 @@ TEST_CASE("resource threshold warnings remain assessment data before computation
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
             .resource_policy = {.cutoff_atom_threshold = 2}});
 
-        REQUIRE(assessment.execution_issues().size() == 1);
-        CHECK(assessment.execution_issues()[0].kind ==
+        REQUIRE(assessment.default_plan() != nullptr);
+        REQUIRE(assessment.default_plan()->warnings().size() == 1);
+        CHECK(assessment.default_plan()->warnings()[0].kind ==
               methods::ExecutionIssueKind::resource_threshold_exceeded);
         CHECK(observer.events().empty());
 
-        const auto result = calculation::calculate(std::move(assessment), 1, observer);
+        const auto result = calculation::calculate(assessment, 1, observer);
         REQUIRE(result.calculated());
         CHECK(!result.cancelled());
         const auto events = observer.events();
@@ -502,7 +503,7 @@ TEST_CASE("solver failures finish observation with a numerical result", "[calcul
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
 
-        const auto result = calculation::calculate(std::move(assessment), 1, observer);
+        const auto result = calculation::calculate(assessment, 1, observer);
         CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
         CHECK_FALSE(result.calculated());
         REQUIRE(result.failure_message.has_value());
@@ -735,8 +736,8 @@ TEST_CASE("no-plan failures occur before calculation observation begins",
             .method_id = "formal",
             .execution_selection = calculation::ExecutionSelection{
                 calculation::ExecutionSelectionKind::cover, calculation::minimum_reduced_radius}});
-        CHECK(!assessment.executable());
-        const auto result = calculation::calculate(std::move(assessment), 1, observer);
+        CHECK(assessment.plans().empty());
+        const auto result = calculation::calculate(assessment, 1, observer);
         CHECK(result.status == calculation::ExecutionStatus::no_executable_plan);
         CHECK_FALSE(result.calculated());
         CHECK(observer.events().empty());
@@ -757,7 +758,7 @@ TEST_CASE("reduced fragment failures finish observation with a numerical result"
                 calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
             .resource_policy = {.max_threads = 1}});
 
-        const auto result = calculation::calculate(std::move(assessment), 1, observer);
+        const auto result = calculation::calculate(assessment, 1, observer);
         CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
         CHECK_FALSE(result.calculated());
         REQUIRE(result.failure_message.has_value());
