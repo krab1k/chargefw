@@ -5,16 +5,14 @@
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule_collection.h>
-#include <chargefw/features/prepared_molecule_collection.h>
-#include <chargefw/methods/method_applicability.h>
 #include <chargefw/methods/method_options.h>
-#include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/models/parameter_set.h>
 
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -27,26 +25,21 @@ namespace chargefw::test {
 calculate_method(core::Molecule molecule, std::string_view method_id,
                  std::vector<parameters::ParameterSet> parameter_sets = {},
                  const methods::MethodOptions* method_options = nullptr) -> charges::ChargeSet {
-    const core::MoleculeCollection collection{std::vector{std::move(molecule)}, "test"};
-    const features::PreparedMoleculeCollection prepared{collection};
-    const auto* method = methods::method_registry().find(method_id);
-
-    REQUIRE(method != nullptr);
-
-    const std::vector<const methods::Method*> candidates{method};
-    auto applicability = methods::find_applicable_methods(
-        {.molecules = prepared, .methods = candidates, .parameter_sets = parameter_sets});
-
-    REQUIRE(applicability.applicable.size() == 1);
-    REQUIRE(applicability.rejected.empty());
+    auto request = calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{std::move(molecule)}, "test"},
+        .parameter_sets = std::move(parameter_sets),
+        .method_id = std::string{method_id}};
 
     if (method_options != nullptr) {
-        applicability.applicable.front().method_options = *method_options;
+        request.method_options.emplace(method_id, *method_options);
     }
 
-    return calculation::calculate(
-               {.molecules = prepared, .selected = applicability.applicable.front()})
-        .charges;
+    auto assessment = calculation::assess(std::move(request));
+    REQUIRE(assessment.default_plan() != nullptr);
+
+    auto result = calculation::calculate(assessment);
+    REQUIRE(result.calculated());
+    return std::move(*result.charges);
 }
 
 [[nodiscard]] inline auto
