@@ -5,7 +5,6 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -134,47 +133,8 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     return require_string(*value, child_context(context, name));
 }
 
-[[nodiscard]] auto slugify(const std::string& value) -> std::string {
-    std::string result;
-    result.reserve(value.size());
-
-    auto previous_was_separator = false;
-
-    for (const auto character : value) {
-        const auto unsigned_character = static_cast<unsigned char>(character);
-
-        if (std::isalnum(unsigned_character) != 0) {
-            result.push_back(static_cast<char>(std::tolower(unsigned_character)));
-            previous_was_separator = false;
-            continue;
-        }
-
-        if (!previous_was_separator && !result.empty()) {
-            result.push_back('-');
-            previous_was_separator = true;
-        }
-    }
-
-    while (!result.empty() && result.back() == '-') {
-        result.pop_back();
-    }
-
-    return result;
-}
-
-[[nodiscard]] auto generated_id_from_metadata(const std::string& method_id, const std::string& name)
-    -> std::string {
-    auto id = slugify(method_id + "-" + name);
-
-    if (!id.empty()) {
-        return id;
-    }
-
-    return slugify(method_id);
-}
-
-[[nodiscard]] auto parse_metadata(const Json& root, const std::string& fallback_id,
-                                  const std::string& context) -> ParameterSetMetadata {
+[[nodiscard]] auto parse_metadata(const Json& root, const std::string& context)
+    -> ParameterSetMetadata {
     const auto metadata_context = child_context(context, "metadata");
     const auto& metadata_json = required_member(root, "metadata", context);
 
@@ -182,10 +142,11 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
 
     auto metadata = ParameterSetMetadata{};
 
-    metadata.id = optional_string_member(metadata_json, "id", metadata_context);
+    metadata.id = require_string(required_member(metadata_json, "id", metadata_context),
+                                 child_context(metadata_context, "id"));
 
-    if (metadata.id.empty() && !fallback_id.empty()) {
-        metadata.id = fallback_id;
+    if (metadata.id.empty()) {
+        throw_error(child_context(metadata_context, "id"), "must not be empty");
     }
 
     if (const auto* method_id = optional_member(metadata_json, "method_id")) {
@@ -203,10 +164,6 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
 
     if (const auto* priority = optional_member(metadata_json, "priority")) {
         metadata.priority = require_uint16(*priority, child_context(metadata_context, "priority"));
-    }
-
-    if (metadata.id.empty()) {
-        metadata.id = generated_id_from_metadata(metadata.method_id, metadata.name);
     }
 
     return metadata;
@@ -422,21 +379,19 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     return BondParameters{std::move(entries)};
 }
 
-[[nodiscard]] auto parse_parameter_set(const Json& root, const std::string& fallback_id,
-                                       const std::string& context) -> ParameterSet {
+[[nodiscard]] auto parse_parameter_set(const Json& root, const std::string& context)
+    -> ParameterSet {
     ensure_object(root, context);
 
-    return ParameterSet{parse_metadata(root, fallback_id, context),
-                        parse_common_parameters(root, context),
+    return ParameterSet{parse_metadata(root, context), parse_common_parameters(root, context),
                         parse_atom_parameters(root, context), parse_bond_parameters(root, context)};
 }
 
-[[nodiscard]] auto load_parameter_set_json_document(std::istream& input,
-                                                    const std::string& fallback_id,
-                                                    const std::string& context) -> ParameterSet {
+[[nodiscard]] auto load_parameter_set_json_document(std::istream& input, const std::string& context)
+    -> ParameterSet {
     try {
         const auto root = Json::parse(input);
-        return parse_parameter_set(root, fallback_id, context);
+        return parse_parameter_set(root, context);
     } catch (const nlohmann::json::exception& error) {
         throw_error(context, error.what());
     }
@@ -505,7 +460,7 @@ auto append_parameter_sets_from_directory_if_present(std::vector<ParameterSet>& 
 } // namespace
 
 auto load_parameter_set_json(std::istream& input) -> ParameterSet {
-    return load_parameter_set_json_document(input, {}, "parameter JSON");
+    return load_parameter_set_json_document(input, "parameter JSON");
 }
 
 auto load_parameter_set_json_file(const std::filesystem::path& path) -> ParameterSet {
@@ -515,8 +470,7 @@ auto load_parameter_set_json_file(const std::filesystem::path& path) -> Paramete
         throw std::invalid_argument{"failed to open parameter file '" + path.string() + "'"};
     }
 
-    return load_parameter_set_json_document(input, path.stem().string(),
-                                            "parameter file '" + path.string() + "'");
+    return load_parameter_set_json_document(input, "parameter file '" + path.string() + "'");
 }
 
 auto load_parameter_sets_json_directory(const std::filesystem::path& directory)

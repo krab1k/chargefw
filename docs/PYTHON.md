@@ -90,7 +90,8 @@ print(iterations.default, iterations.minimum)
 
 Method descriptors expose names, publication metadata, priority, coordinate requirements, reduced-mode
 capabilities, options, and associated bundled parameter sets. The Python API does not expose native
-method objects, parameter classifications, or custom parameter-catalog construction.
+method objects, parameter classifications, or custom parameter-catalog construction. The native
+[parameter-set JSON reference](PARAMETERS.md) defines classifier behavior, including permissive matching.
 
 ## Assessment and calculation policy
 

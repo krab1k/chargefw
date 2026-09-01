@@ -43,6 +43,17 @@ auto bad_length_json() -> std::string {
 )json";
 }
 
+auto missing_id_json() -> std::string {
+    return R"json(
+{
+  "metadata": {
+    "name": "No ID",
+    "method": "peoe"
+  }
+}
+)json";
+}
+
 auto named_bond_key_json() -> std::string {
     return R"json(
 {
@@ -152,6 +163,17 @@ TEST_CASE("parameter set directory loads all JSON files", "[parameters][io]") {
     CHECK_FALSE(parameter_sets.empty());
 }
 
+TEST_CASE("bundled parameter-set IDs match their filenames", "[parameters][io]") {
+    for (const auto& entry : std::filesystem::directory_iterator{CHARGEFW_TEST_PARAMETER_DIR}) {
+        if (!entry.is_regular_file() || entry.path().extension() != ".json") {
+            continue;
+        }
+
+        const auto parameter_set = parameters::load_parameter_set_json_file(entry.path());
+        CHECK(parameter_set.id() == entry.path().stem().string());
+    }
+}
+
 TEST_CASE("bundled parameter sets identify registered methods and satisfy their requirements",
           "[parameters][io]") {
     const auto parameter_sets =
@@ -196,6 +218,12 @@ TEST_CASE("bundled parameter sets identify registered methods and satisfy their 
 }
 
 TEST_CASE("parameter set rejects malformed JSON", "[parameters][io]") {
+    const auto load_missing_id = [] {
+        std::istringstream input{missing_id_json()};
+        static_cast<void>(parameters::load_parameter_set_json(input));
+    };
+    CHECK_THROWS_AS(load_missing_id(), std::invalid_argument);
+
     const auto load_bad_length = [] {
         std::istringstream input{bad_length_json()};
         static_cast<void>(parameters::load_parameter_set_json(input));

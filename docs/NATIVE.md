@@ -114,7 +114,8 @@ concrete `ExecutionPolicy`, and warnings. Plans are tied to the assessment that 
 Use `methods::method_registry()` to inspect built-in method metadata and option schemas. Use
 `parameters::load_parameter_set_json*()` to load custom native parameter data, or
 `load_default_parameter_sets()` for the installed catalog. Parameter-set IDs in one assessment request
-must be unique.
+must be unique. The [parameter-set JSON reference](PARAMETERS.md) defines the custom-data schema and
+classifier semantics.
 
 ## Execution policy
 

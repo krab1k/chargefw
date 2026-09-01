@@ -56,6 +56,7 @@ The Python package is pre-release and does not yet have a qualified binary wheel
 - [Command-line interface](docs/CLI.md)
 - [Native C++ library](docs/NATIVE.md)
 - [Python package](docs/PYTHON.md)
+- [Parameter-set JSON format](docs/PARAMETERS.md)
 - [Unfinished work](TODO.md)
 - [Repository contribution rules](AGENTS.md)
 

@@ -76,7 +76,7 @@ partial-charge columns are ignored with an import warning.
 | --- | --- |
 | `--method ID` | Restrict assessment to one method |
 | `--parameter-set ID` | Restrict assessment to one bundled parameter set |
-| `--permissive-types` | Allow permissive parameter classification |
+| `--permissive-types` | Allow [permissive parameter classification](PARAMETERS.md#strict-and-permissive-matching) |
 | `--method-option METHOD.OPTION=VALUE` | Override a method option; repeatable |
 | `--execution auto|full|cutoff|cover` | Select execution policy; default `auto` |
 | `--radius ANGSTROM` | Radius for cutoff/cover; explicit reduced modes require at least 8 Å |
