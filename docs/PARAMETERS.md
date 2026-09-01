@@ -53,9 +53,8 @@ every relevant atom and bond against the keys below.
 ```
 
 `metadata.id` and `metadata.method` are required. The non-empty ID is the parameter set's stable identity
-and must be unique within a loaded catalog; it does not depend on the source filename. `metadata.method_id`
-is accepted as an alias for `metadata.method`. `name`, `publication`, `notes`, and `priority` are optional.
-`priority` is an unsigned 16-bit integer.
+and must be unique within a loaded catalog; it does not depend on the source filename. `name`,
+`publication`, `notes`, and `priority` are optional. `priority` is an unsigned 16-bit integer.
 
 `common`, `atom`, and `bond` are optional. Each section has a `names` array. Its names define the order of
 that section's numeric `values`; every values array must contain exactly one finite number per name.

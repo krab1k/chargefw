@@ -149,14 +149,8 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
         throw_error(child_context(metadata_context, "id"), "must not be empty");
     }
 
-    if (const auto* method_id = optional_member(metadata_json, "method_id")) {
-        metadata.method_id =
-            require_string(*method_id, child_context(metadata_context, "method_id"));
-    } else {
-        metadata.method_id =
-            require_string(required_member(metadata_json, "method", metadata_context),
-                           child_context(metadata_context, "method"));
-    }
+    metadata.method_id = require_string(required_member(metadata_json, "method", metadata_context),
+                                        child_context(metadata_context, "method"));
 
     metadata.name = optional_string_member(metadata_json, "name", metadata_context);
     metadata.publication = optional_string_member(metadata_json, "publication", metadata_context);
