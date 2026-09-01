@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace chargefw::methods {
@@ -55,18 +56,6 @@ auto MethodRegistry::find(const std::string_view id) const noexcept -> const Met
 
 auto MethodRegistry::methods() const noexcept -> std::span<const std::unique_ptr<Method>> {
     return methods_;
-}
-
-auto MethodRegistry::names() const -> std::vector<std::string> {
-    std::vector<std::string> result;
-    result.reserve(methods_.size());
-
-    for (const auto& method : methods_) {
-        result.emplace_back(method->id());
-    }
-
-    std::ranges::sort(result);
-    return result;
 }
 
 auto method_registry() -> const MethodRegistry& {

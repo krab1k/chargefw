@@ -38,7 +38,6 @@ struct PrerequisiteIssue {
 
 class PrerequisiteResult {
   public:
-    [[nodiscard]] auto ok() const noexcept -> bool;
     [[nodiscard]] explicit operator bool() const noexcept;
 
     [[nodiscard]] auto issues() const noexcept -> std::span<const PrerequisiteIssue>;

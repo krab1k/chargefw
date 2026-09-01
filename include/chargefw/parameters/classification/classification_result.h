@@ -31,7 +31,6 @@ class ClassificationResult {
     explicit ClassificationResult(ParameterClassification classification);
     explicit ClassificationResult(std::vector<ClassificationIssue> issues);
 
-    [[nodiscard]] auto ok() const noexcept -> bool;
     [[nodiscard]] explicit operator bool() const noexcept;
 
     [[nodiscard]] auto classification() const -> const ParameterClassification&;

@@ -42,12 +42,8 @@ auto to_string(const PrerequisiteIssueKind value) -> std::string_view {
     throw std::invalid_argument{"unknown prerequisite issue kind"};
 }
 
-auto PrerequisiteResult::ok() const noexcept -> bool {
-    return issues_.empty();
-}
-
 PrerequisiteResult::operator bool() const noexcept {
-    return ok();
+    return issues_.empty();
 }
 
 auto PrerequisiteResult::issues() const noexcept -> std::span<const PrerequisiteIssue> {

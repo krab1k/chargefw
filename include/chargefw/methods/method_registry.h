@@ -4,7 +4,6 @@
 
 #include <memory>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -17,8 +16,6 @@ class MethodRegistry {
     [[nodiscard]] auto find(std::string_view id) const noexcept -> const Method*;
 
     [[nodiscard]] auto methods() const noexcept -> std::span<const std::unique_ptr<Method>>;
-
-    [[nodiscard]] auto names() const -> std::vector<std::string>;
 
   private:
     std::vector<std::unique_ptr<Method>> methods_;

@@ -26,12 +26,8 @@ struct ParameterPrerequisiteResult {
     std::vector<PrerequisiteIssue> issues;
     std::optional<parameters::ParameterClassification> classification;
 
-    [[nodiscard]] auto ok() const noexcept -> bool {
-        return issues.empty();
-    }
-
     [[nodiscard]] explicit operator bool() const noexcept {
-        return ok();
+        return issues.empty();
     }
 };
 
@@ -39,12 +35,8 @@ struct CollectionParameterPrerequisiteResult {
     std::vector<PrerequisiteIssue> issues;
     std::vector<parameters::ParameterClassification> classifications;
 
-    [[nodiscard]] auto ok() const noexcept -> bool {
-        return issues.empty();
-    }
-
     [[nodiscard]] explicit operator bool() const noexcept {
-        return ok();
+        return issues.empty();
     }
 };
 

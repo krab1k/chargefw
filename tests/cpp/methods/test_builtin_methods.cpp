@@ -158,9 +158,8 @@ auto make_smpqeq_water_parameters() -> parameters::ParameterSet {
 TEST_CASE("built-in method registry matches the conformance manifest",
           "[methods][builtin-methods]") {
     const auto& registry = methods::method_registry();
-    const auto method_names = registry.names();
 
-    REQUIRE(method_names.size() == method_manifest.size());
+    REQUIRE(registry.methods().size() == method_manifest.size());
 
     for (const auto& expected : method_manifest) {
         const auto* method = registry.find(expected.id);

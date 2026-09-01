@@ -11,16 +11,12 @@ ClassificationResult::ClassificationResult(ParameterClassification classificatio
 ClassificationResult::ClassificationResult(std::vector<ClassificationIssue> issues)
     : issues_{std::move(issues)} {}
 
-auto ClassificationResult::ok() const noexcept -> bool {
+ClassificationResult::operator bool() const noexcept {
     return issues_.empty();
 }
 
-ClassificationResult::operator bool() const noexcept {
-    return ok();
-}
-
 auto ClassificationResult::classification() const -> const ParameterClassification& {
-    if (!ok()) {
+    if (!issues_.empty()) {
         throw std::logic_error{"classification is not available for a failed result"};
     }
 

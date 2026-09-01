@@ -59,7 +59,8 @@ TEST_CASE("method registry stores, finds, and rejects invalid methods",
     CHECK(registry.find("alpha") != nullptr);
     CHECK(registry.find("zeta") != nullptr);
     CHECK(registry.find("missing") == nullptr);
-    CHECK((registry.names() == std::vector<std::string>{"alpha", "zeta"}));
+    CHECK(registry.methods()[0]->id() == "zeta");
+    CHECK(registry.methods()[1]->id() == "alpha");
 
     const auto null_method = [] {
         auto invalid_methods = std::vector<std::unique_ptr<methods::Method>>{};
