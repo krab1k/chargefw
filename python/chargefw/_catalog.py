@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
+from types import MappingProxyType
 from typing import Generic, Protocol, TypeVar
 
 
@@ -19,7 +20,7 @@ class _Catalog(Mapping[str, T], Generic[T]):
 
     __slots__ = ("_by_id", "_kind", "_values")
 
-    _by_id: dict[str, T]
+    _by_id: Mapping[str, T]
     _kind: str
     _values: tuple[T, ...]
 
@@ -29,7 +30,7 @@ class _Catalog(Mapping[str, T], Generic[T]):
         if len(by_id) != len(ordered):
             raise ValueError(f"{kind} IDs must be unique")
         object.__setattr__(self, "_values", ordered)
-        object.__setattr__(self, "_by_id", by_id)
+        object.__setattr__(self, "_by_id", MappingProxyType(by_id))
         object.__setattr__(self, "_kind", kind)
 
     def __setattr__(self, name: str, value: object) -> None:

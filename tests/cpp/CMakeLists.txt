@@ -109,6 +109,7 @@ add_test(
         NAME test_chargefw_cmake_consumer
         COMMAND ${CMAKE_COMMAND}
                 -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
+                -DCHARGEFW_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cmake_consumer.cmake
 )
 add_test(

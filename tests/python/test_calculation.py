@@ -136,6 +136,9 @@ class CalculationTests(unittest.TestCase):
         repeated = chargefw.calculate(molecule, plan)
         np.testing.assert_allclose(repeated.assignments[0].values, assignment.values)
 
+        overridden_threads = chargefw.calculate(molecule, plan, threads=1)
+        self.assertEqual(overridden_threads.requested.threads, 1)
+
     def test_plan_keeps_prepared_state_alive(self) -> None:
         molecule = water()
         plan = chargefw.assess(molecule, method="eem", execution="full").default_plan
@@ -563,6 +566,8 @@ class CalculationTests(unittest.TestCase):
             methods["not-a-method"]
         with self.assertRaises(AttributeError):
             cast(Any, methods)._values = ()
+        with self.assertRaises(TypeError):
+            cast(Any, methods)._by_id["unexpected"] = methods["eem"]
 
         eem = methods["eem"]
         self.assertTrue(eem.requires_coordinates)

@@ -164,8 +164,9 @@ Implemented on 2026-08-28:
   `gemmi.cif.Document` values through serialization rather than cross-extension C++ object sharing;
 - all serialized input is parsed by the existing native PDB/mmCIF readers, preserving native record
   selection, alternate-location handling, conformer selection, bond strategies, and failures;
-- imported molecules preserve source record order and identity, atom names/IDs, model names/IDs,
-  coordinates, formal charges, and supported bonds as ordinary owned Python values; and
+- imported molecules preserve source record order and identity, atom names, model names/IDs,
+  coordinates, formal charges, and supported bonds as ordinary owned Python values; atom IDs default
+  to unambiguous source-order indices; and
 - record selection (`all`, `polymers-and-ligands`, or `polymers`), bond strategy (`none`, `explicit`,
   `templates`, or `hybrid`), and conformer selection (`first` or `all`) use the same canonical lowercase
   strings as the CLI.

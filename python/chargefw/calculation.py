@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import replace
 from threading import Lock
 from typing import cast
 
@@ -271,10 +272,15 @@ def calculate(
     if not plan._matches(collection):
         raise ValueError("plan was assessed for a different molecule collection")
     normalized_threads = None if threads is None else RequestedCalculation(threads=threads).threads
+    requested = (
+        plan._requested
+        if normalized_threads is None
+        else replace(plan._requested, threads=normalized_threads)
+    )
     result = CalculationResult(
         plan._calculate(normalized_threads),
         collection,
-        plan._requested,
+        requested,
         methods,
         parameter_sets,
     )

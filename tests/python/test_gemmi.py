@@ -105,7 +105,7 @@ class GemmiAdapterTests(unittest.TestCase):
             bonds="explicit",
         )
         self.assertEqual(text_molecule.atom_names, ("O", "H1"))
-        self.assertEqual(text_molecule.atom_ids, ("O", "H1"))
+        self.assertEqual(text_molecule.atom_ids, (0, 1))
         self.assertEqual(text_molecule.conformer_ids, ("1", "2"))
         self.assertEqual(text_molecule.source_name, "water.pdb")
         self.assertEqual(text_molecule.bonds.tolist(), [[0, 1, 1]])
@@ -174,6 +174,15 @@ class GemmiAdapterTests(unittest.TestCase):
                     BOND_STRATEGY_PDB, bonds=cast(Any, strategy)
                 )
                 self.assertEqual(molecule.bond_count, expected_count)
+
+    def test_source_atom_ids_distinguish_repeated_atom_names(self) -> None:
+        molecule = chargefw_gemmi.read_pdb_string(
+            "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  \n"
+            "ATOM      2  CA  GLY A   2       1.000   0.000   0.000  1.00 20.00           C  \n"
+            "END\n"
+        )
+        self.assertEqual(molecule.atom_names, ("CA", "CA"))
+        self.assertEqual(molecule.atom_ids, (0, 1))
 
 
 if __name__ == "__main__":
