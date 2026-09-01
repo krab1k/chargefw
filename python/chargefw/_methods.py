@@ -1,4 +1,4 @@
-"""Method applicability and execution report values."""
+"""Method catalog and calculation issue values."""
 
 from __future__ import annotations
 
