@@ -4,31 +4,32 @@
 
 Read this file before changing the repository. Then read only the relevant sections of:
 
-- [PROJECT.md](PROJECT.md): implemented architecture, capabilities, compatibility state, and product
-  direction;
-- [TODO.md](TODO.md): unfinished deliverables and their acceptance criteria;
-- [PYTHON.md](PYTHON.md): Python API contract, package scope, implementation plan, and delivery status;
-- [README.md](README.md): supported build, test, installation, and CLI usage.
+- [docs/PROJECT.md](docs/PROJECT.md): implemented architecture, philosophy, capabilities, and limits;
+- [docs/CLI.md](docs/CLI.md): implemented command-line behavior;
+- [docs/NATIVE.md](docs/NATIVE.md): implemented public C++ API and installation;
+- [docs/PYTHON.md](docs/PYTHON.md): implemented Python API and package behavior;
+- [TODO.md](TODO.md): unfinished product work; and
+- [README.md](README.md): concise project entry point.
 
-Keep ownership clear. Update the owning document when a change makes it stale; do not copy the same
-status or instructions into several files. Completed work belongs in `PROJECT.md`, not as checked
-history in `TODO.md`. `README.md` should remain a concise user entry point.
+Keep ownership clear. The files under `docs/` are user documentation and must describe implemented
+behavior, not development plans or milestone history. Unfinished work belongs in `TODO.md`; remove it
+when complete rather than retaining checked history. `README.md` should remain a concise user entry
+point.
 
 ## Repository map
 
 ```text
-include/chargefw/  Public C++ API
-src/core/          Toolkit-neutral molecular graph and conformers
-src/features/      Derived topology, geometry, and spatial fragments
-src/parameters/    Parameter models, JSON loading, and classification
-src/methods/       Method interface, registry, applicability, and built-ins
-src/calculation/   Selection, execution policy, full/cutoff dispatch, facade
-src/charges/       Charge result types and validation
-src/adapters/      Native and Gemmi-backed import/export adapters
-apps/chargefw/     Command-line application
-tests/cpp/         CTest executables and test support
-cmake/             Dependencies, warnings, sanitizers, and install rules
-old/               Archived ChargeFW2 compatibility reference
+include/chargefw/   Public C++ API
+src/                Native library implementation, organized by public domain
+apps/chargefw/      Command-line application
+python/chargefw/    Public Python package and private extension stubs
+python/src/         Nanobind extension implementation
+data/parameters/    Bundled parameter sets
+tests/cpp/          Native tests and downstream CMake consumer
+tests/python/       Python package and adapter tests
+tests/fixtures/     Molecular and parameter test data
+cmake/              Dependencies, diagnostics, and installation rules
+docs/               Implemented user documentation
 ```
 
 `include/chargefw/adapters/{native,gemmi}/all.h` are application convenience headers. Library code
@@ -56,16 +57,9 @@ should include only the individual adapter headers it uses.
   duplicate applicability, selection, or scientific policy.
 - Avoid global mutable state. The library must remain suitable for concurrent and embedded use.
 
-## ChargeFW2 compatibility
-
-`old/` is read-only research material unless a task explicitly requests a compatibility fixture or
-reference correction. Compare migrated behavior using identical graphs, formal charges, coordinates,
-options, and parameter data. Record tolerances and intentional deviations in tests or `PROJECT.md`.
-Do not merge prototype or archived behavior wholesale.
-
 ## Change discipline
 
-1. Inspect the relevant public headers, implementation, tests, and `PROJECT.md` section first.
+1. Inspect the relevant public headers, implementation, tests, and user documentation section first.
 2. Make the smallest coherent change and run clang-format each time on modified files.
 3. Add focused tests for behavior changes, especially numerical, mapping, applicability, and policy
    cases.
@@ -73,8 +67,8 @@ Do not merge prototype or archived behavior wholesale.
    do not make the full compiler/sanitizer matrix part of every edit cycle.
 5. Stop for approval before heavyweight dependencies, broad rewrites, destructive commands, automatic
    chemistry policy, or public API changes beyond the requested scope.
-6. Remove a TODO only when its full deliverable and validation are complete. Put durable implemented
-   state in `PROJECT.md`.
+6. Remove a TODO only when its full deliverable and validation are complete. Update the owning user
+   document with durable implemented behavior.
 
 ### Validation cadence
 
