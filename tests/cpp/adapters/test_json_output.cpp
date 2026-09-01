@@ -11,6 +11,7 @@
 #include <vector>
 
 namespace adapters = chargefw::adapters;
+namespace calculation = chargefw::calculation;
 namespace charges = chargefw::charges;
 namespace json_output = chargefw::adapters::native::json_output;
 
@@ -26,7 +27,7 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
                                                                                  0.43827}}}}}},
              {.identity = {.source = "water.sdf", .record_index = 3, .record_id = "unavailable"},
               .charges = std::nullopt,
-              .status = adapters::ResultStatus::no_executable_plan,
+              .status = calculation::ExecutionStatus::no_executable_plan,
               .diagnostics = {{.severity = adapters::DiagnosticSeverity::error,
                                .code = "no_executable_plan",
                                .message = "No executable plan.",
@@ -132,11 +133,11 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
     const auto document = adapters::ChargeResultDocument{
         .generator_name = "ChargeFW",
         .generator_version = "test",
-        .status = adapters::ResultStatus::cancelled,
+        .status = calculation::ExecutionStatus::cancelled,
         .diagnostics = {diagnostic},
         .records = {{.identity = {.source = "water.sdf", .record_index = 0},
                      .charges = std::nullopt,
-                     .status = adapters::ResultStatus::cancelled,
+                     .status = calculation::ExecutionStatus::cancelled,
                      .diagnostics = {diagnostic}}}};
 
     auto output = std::ostringstream{};

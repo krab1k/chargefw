@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chargefw/adapters/molecule_record.h>
+#include <chargefw/calculation/calculation.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/methods/method_options.h>
 
@@ -12,14 +13,6 @@
 #include <vector>
 
 namespace chargefw::adapters {
-
-enum class ResultStatus : std::uint8_t {
-    success,
-    invalid_input_or_request,
-    no_executable_plan,
-    numerical_failure,
-    cancelled,
-};
 
 enum class DiagnosticSeverity : std::uint8_t { info, warning, error };
 
@@ -88,14 +81,14 @@ struct CalculationProvenance {
 struct ChargeResultRecord {
     MoleculeRecordIdentity identity;
     std::optional<charges::ChargeSet> charges;
-    ResultStatus status = ResultStatus::success;
+    calculation::ExecutionStatus status = calculation::ExecutionStatus::success;
     std::vector<ResultDiagnostic> diagnostics;
 };
 
 struct ChargeResultDocument {
     std::string generator_name;
     std::string generator_version;
-    ResultStatus status = ResultStatus::success;
+    calculation::ExecutionStatus status = calculation::ExecutionStatus::success;
     std::vector<ResultDiagnostic> diagnostics;
     std::vector<ChargeResultRecord> records;
     std::optional<CalculationProvenance> calculation_provenance;

@@ -191,21 +191,7 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
                                    const calculation::ExecutionResult& result,
                                    const adapters::ExecutionMetrics& metrics)
     -> adapters::ChargeResultDocument {
-    const auto status = [&result] {
-        switch (result.status) {
-        case calculation::ExecutionStatus::success:
-            return adapters::ResultStatus::success;
-        case calculation::ExecutionStatus::invalid_input_or_request:
-            return adapters::ResultStatus::invalid_input_or_request;
-        case calculation::ExecutionStatus::no_executable_plan:
-            return adapters::ResultStatus::no_executable_plan;
-        case calculation::ExecutionStatus::numerical_failure:
-            return adapters::ResultStatus::numerical_failure;
-        case calculation::ExecutionStatus::cancelled:
-            return adapters::ResultStatus::cancelled;
-        }
-        throw std::logic_error{"unknown execution result status"};
-    }();
+    const auto status = result.status;
     const auto diagnostic = [&result] -> std::optional<adapters::ResultDiagnostic> {
         switch (result.status) {
         case calculation::ExecutionStatus::success:

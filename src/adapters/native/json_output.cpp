@@ -18,22 +18,6 @@ using Json = nlohmann::json;
 constexpr auto charge_scale = 10000.0;
 constexpr auto metric_scale = 1000.0;
 
-[[nodiscard]] auto status_name(const ResultStatus status) -> const char* {
-    switch (status) {
-    case ResultStatus::success:
-        return "success";
-    case ResultStatus::invalid_input_or_request:
-        return "invalid_input_or_request";
-    case ResultStatus::no_executable_plan:
-        return "no_executable_plan";
-    case ResultStatus::numerical_failure:
-        return "numerical_failure";
-    case ResultStatus::cancelled:
-        return "cancelled";
-    }
-    throw std::invalid_argument{"unknown result status"};
-}
-
 [[nodiscard]] auto diagnostics_json(const std::span<const ResultDiagnostic> diagnostics) -> Json {
     const auto severity_name = [](const DiagnosticSeverity severity) -> const char* {
         switch (severity) {
@@ -86,7 +70,7 @@ constexpr auto metric_scale = 1000.0;
         input["record_id"] = record.identity.record_id;
     }
 
-    Json result{{"input", std::move(input)}, {"status", status_name(record.status)}};
+    Json result{{"input", std::move(input)}, {"status", calculation::to_string(record.status)}};
     if (!record.charges.has_value()) {
         result["diagnostics"] = diagnostics_json(record.diagnostics);
         return result;
@@ -209,7 +193,7 @@ auto JsonWriter::write(const ChargeResultDocument& document) const -> void {
     Json result{
         {"schema_version", "1.0"},
         {"generator", {{"name", document.generator_name}, {"version", document.generator_version}}},
-        {"status", status_name(document.status)},
+        {"status", calculation::to_string(document.status)},
         {"diagnostics", diagnostics_json(document.diagnostics)},
         {"results", std::move(records)}};
     if (document.calculation_provenance.has_value()) {
