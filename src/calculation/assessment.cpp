@@ -297,13 +297,6 @@ auto AssessmentResult::default_plan() const noexcept -> const ExecutionPlan* {
     return plans_.empty() ? nullptr : &plans_.front();
 }
 
-auto select_applicable_method(const methods::ApplicabilityResult& applicability)
-    -> const methods::ApplicableMethod* {
-    return applicability.empty()
-               ? nullptr
-               : &*std::ranges::min_element(applicability.applicable, ranks_before);
-}
-
 auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResult {
     const auto started = std::chrono::steady_clock::now();
     validate_assessment_method_options(request);

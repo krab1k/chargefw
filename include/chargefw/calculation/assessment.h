@@ -129,10 +129,4 @@ class AssessmentResult {
     std::unique_ptr<features::PreparedMoleculeCollection> prepared_molecules_;
 };
 
-// Selects the applicable candidate with the highest method priority, then the highest parameter-set
-// priority. Equal priorities are resolved by method ID, then parameter-set ID, in lexicographic
-// order. Returns nullptr if no candidate is applicable.
-[[nodiscard]] auto select_applicable_method(const methods::ApplicabilityResult& applicability)
-    -> const methods::ApplicableMethod*;
-
 } // namespace chargefw::calculation

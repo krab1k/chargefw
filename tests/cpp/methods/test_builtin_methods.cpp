@@ -229,11 +229,11 @@ TEST_CASE("every built-in completes its declared full workflow", "[methods][buil
             methods::find_applicable_methods({.molecules = prepared,
                                               .methods = candidates,
                                               .parameter_sets = candidate_parameter_sets});
-        const auto* selected = chargefw::calculation::select_applicable_method(applicability);
-        REQUIRE(selected != nullptr);
+        REQUIRE_FALSE(applicability.applicable.empty());
+        const auto& selected = applicability.applicable.front();
 
         const auto result =
-            chargefw::calculation::calculate({.molecules = prepared, .selected = *selected});
+            chargefw::calculation::calculate({.molecules = prepared, .selected = selected});
         CHECK(result.charges.method_id() == expected.id);
         CHECK(result.charges.parameter_set_id().has_value() == method->requires_parameters());
         CHECK(result.charges.size() == (expected.coordinates ? molecule.conformer_count() : 1));
@@ -256,12 +256,11 @@ TEST_CASE("every built-in completes its declared full workflow", "[methods][buil
                 methods::find_applicable_methods({.molecules = graph_prepared,
                                                   .methods = candidates,
                                                   .parameter_sets = candidate_parameter_sets});
-            const auto* graph_selected =
-                chargefw::calculation::select_applicable_method(graph_applicability);
-            REQUIRE(graph_selected != nullptr);
+            REQUIRE_FALSE(graph_applicability.applicable.empty());
+            const auto& graph_selected = graph_applicability.applicable.front();
 
             const auto graph_result = chargefw::calculation::calculate(
-                {.molecules = graph_prepared, .selected = *graph_selected});
+                {.molecules = graph_prepared, .selected = graph_selected});
             REQUIRE(graph_result.charges.size() == 1);
             chargefw::test::assert_same_charges(graph_result.charges.assignment(0).charges,
                                                 result.charges.assignment(0).charges, 1.0e-10);
@@ -276,21 +275,20 @@ TEST_CASE("every built-in completes its declared full workflow", "[methods][buil
                 methods::find_applicable_methods({.molecules = water_prepared,
                                                   .methods = candidates,
                                                   .parameter_sets = candidate_parameter_sets});
-            const auto* water_selected =
-                chargefw::calculation::select_applicable_method(water_applicability);
-            REQUIRE(water_selected != nullptr);
+            REQUIRE_FALSE(water_applicability.applicable.empty());
+            const auto& water_selected = water_applicability.applicable.front();
 
             const auto water_result = chargefw::calculation::calculate(
-                {.molecules = water_prepared, .selected = *water_selected});
+                {.molecules = water_prepared, .selected = water_selected});
             REQUIRE(water_result.charges.size() == 1);
             chargefw::test::assert_neutral_water_charges(water_result.charges.assignment(0).charges,
                                                          1.0e-10);
         }
 
         const std::vector<parameters::ParameterSet> selected_parameter_sets =
-            selected->parameter_set == nullptr
+            selected.parameter_set == nullptr
                 ? std::vector<parameters::ParameterSet>{}
-                : std::vector<parameters::ParameterSet>{*selected->parameter_set};
+                : std::vector<parameters::ParameterSet>{*selected.parameter_set};
         chargefw::test::assert_water_charges_labeling_invariant(expected.id,
                                                                 selected_parameter_sets);
     }
