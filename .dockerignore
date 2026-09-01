@@ -1,0 +1,4 @@
+build/
+_release_install/
+**/__pycache__/
+.git/

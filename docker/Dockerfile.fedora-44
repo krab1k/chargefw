@@ -1,0 +1,24 @@
+FROM fedora:44
+
+RUN dnf install --assumeyes \
+    ca-certificates \
+    cmake \
+    gcc-c++ \
+    ninja-build \
+    python3 \
+    python3-devel \
+    && dnf clean all
+
+RUN python3 -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir \
+        'gemmi==0.7.4' \
+        'mypy' \
+        'nanobind>=2.11' \
+        'numpy>=1.26'
+
+WORKDIR /source
+COPY . .
+
+RUN cmake --preset gcc-release -DCHARGEFW_PYTHON_EXECUTABLE=/opt/venv/bin/python \
+    && cmake --build --preset gcc-release --parallel \
+    && ctest --preset gcc-release

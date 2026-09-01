@@ -108,17 +108,19 @@ endif()
 add_test(
         NAME test_chargefw_cmake_consumer
         COMMAND ${CMAKE_COMMAND}
-                -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
-                -DCHARGEFW_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cmake_consumer.cmake
+                 -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
+                 -DCHARGEFW_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                 -DCHARGEFW_USE_SYSTEM_DEPENDENCIES=${CHARGEFW_USE_SYSTEM_DEPENDENCIES}
+                 -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cmake_consumer.cmake
 )
 add_test(
         NAME test_chargefw_custom_install_layout
         COMMAND ${CMAKE_COMMAND}
                 -DCHARGEFW_SOURCE_DIR=${PROJECT_SOURCE_DIR}
-                -DCHARGEFW_BINARY_DIR=${PROJECT_BINARY_DIR}
-                -DCHARGEFW_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_custom_install_layout.cmake
+                 -DCHARGEFW_BINARY_DIR=${PROJECT_BINARY_DIR}
+                 -DCHARGEFW_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                 -DCHARGEFW_USE_SYSTEM_DEPENDENCIES=${CHARGEFW_USE_SYSTEM_DEPENDENCIES}
+                 -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_custom_install_layout.cmake
 )
 
 add_subdirectory(core)

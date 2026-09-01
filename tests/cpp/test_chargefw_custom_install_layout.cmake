@@ -9,6 +9,12 @@ set(source_prefix "${test_root}/source-prefix")
 set(moved_prefix "${test_root}/moved-prefix")
 file(REMOVE_RECURSE "${test_root}")
 
+set(gemmi_source_argument)
+if(EXISTS "${CHARGEFW_BINARY_DIR}/_deps/gemmi-src")
+    set(gemmi_source_argument
+        -DFETCHCONTENT_SOURCE_DIR_GEMMI=${CHARGEFW_BINARY_DIR}/_deps/gemmi-src)
+endif()
+
 execute_process(
         COMMAND "${CMAKE_COMMAND}"
                 -S "${CHARGEFW_SOURCE_DIR}"
@@ -18,14 +24,15 @@ execute_process(
                 -DCMAKE_CXX_COMPILER=${CHARGEFW_CXX_COMPILER}
                 -DCMAKE_INSTALL_LIBDIR=lib/chargefw
                 -DCMAKE_INSTALL_DATADIR=resources
-                -DCHARGEFW_BUILD_TESTS=OFF
-                -DCHARGEFW_BUILD_CLI=ON
-                -DFETCHCONTENT_SOURCE_DIR_CLI11=${CHARGEFW_BINARY_DIR}/_deps/cli11-src
+                 -DCHARGEFW_BUILD_TESTS=OFF
+                 -DCHARGEFW_BUILD_CLI=ON
+                 -DCHARGEFW_USE_SYSTEM_DEPENDENCIES=${CHARGEFW_USE_SYSTEM_DEPENDENCIES}
+                 -DFETCHCONTENT_SOURCE_DIR_CLI11=${CHARGEFW_BINARY_DIR}/_deps/cli11-src
                 -DFETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON=${CHARGEFW_BINARY_DIR}/_deps/nlohmann_json-src
                 -DFETCHCONTENT_SOURCE_DIR_EIGEN=${CHARGEFW_BINARY_DIR}/_deps/eigen-src
-                -DFETCHCONTENT_SOURCE_DIR_NANOFLANN=${CHARGEFW_BINARY_DIR}/_deps/nanoflann-src
-                -DFETCHCONTENT_SOURCE_DIR_ONETBB=${CHARGEFW_BINARY_DIR}/_deps/onetbb-src
-                -DFETCHCONTENT_SOURCE_DIR_GEMMI=${CHARGEFW_BINARY_DIR}/_deps/gemmi-src
+                 -DFETCHCONTENT_SOURCE_DIR_NANOFLANN=${CHARGEFW_BINARY_DIR}/_deps/nanoflann-src
+                 -DFETCHCONTENT_SOURCE_DIR_ONETBB=${CHARGEFW_BINARY_DIR}/_deps/onetbb-src
+                 ${gemmi_source_argument}
         RESULT_VARIABLE configure_result
         ERROR_VARIABLE configure_error
 )

@@ -30,6 +30,8 @@ tests/python/       Python package and adapter tests
 tests/fixtures/     Molecular and parameter test data
 cmake/              Dependencies, diagnostics, and installation rules
 docs/               Implemented user documentation
+Dockerfile           User-facing CLI container image
+docker/              Developer compatibility containers
 ```
 
 `include/chargefw/adapters/{native,gemmi}/all.h` are application convenience headers. Library code
@@ -88,6 +90,16 @@ should include only the individual adapter headers it uses.
   it is static analysis, not a replacement for compiler or runtime tests.
 - Before a substantial merge or milestone, run the full debug, release, sanitizer, and clang-tidy
   matrix. CI may distribute those configurations across independent jobs.
+
+### Container validation
+
+The root `Dockerfile` builds the user-facing Ubuntu 26.04 CLI image. It performs an optimized native
+release build without tests, Python bindings, or host-specific `-march=native` instructions.
+
+`docker/Dockerfile.ubuntu-26.04`, `docker/Dockerfile.debian-13`, and `docker/Dockerfile.fedora-44` are
+developer compatibility containers. Each builds and tests the `gcc-release` configuration; run them one
+at a time because template-heavy builds consume substantial memory. Fedora is pinned to release 44; update
+that release intentionally before it reaches end of life.
 
 ## C++ conventions
 

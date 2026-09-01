@@ -17,11 +17,12 @@ get_filename_component(nlohmann_json_directory "${nlohmann_configuration}" DIREC
 file(GLOB_RECURSE gemmi_configurations
      "${CHARGEFW_INSTALL_PREFIX}/*gemmi*Config.cmake"
      "${CHARGEFW_INSTALL_PREFIX}/*gemmi*-config.cmake")
-if(NOT gemmi_configurations)
-    message(FATAL_ERROR "The installed SDK does not contain the Gemmi CMake package")
+set(gemmi_arguments)
+if(gemmi_configurations)
+    list(GET gemmi_configurations 0 gemmi_configuration)
+    get_filename_component(gemmi_directory "${gemmi_configuration}" DIRECTORY)
+    list(APPEND gemmi_arguments -Dgemmi_DIR=${gemmi_directory})
 endif()
-list(GET gemmi_configurations 0 gemmi_configuration)
-get_filename_component(gemmi_directory "${gemmi_configuration}" DIRECTORY)
 
 set(consumer_build_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cmake_consumer_build")
 file(REMOVE_RECURSE "${consumer_build_directory}")
@@ -31,10 +32,10 @@ execute_process(
                 -S "${CMAKE_CURRENT_LIST_DIR}/consumer"
                 -B "${consumer_build_directory}"
                 -DCMAKE_BUILD_TYPE=Debug
-                -DCMAKE_CXX_COMPILER=${CHARGEFW_CXX_COMPILER}
-                -DCMAKE_PREFIX_PATH=${CHARGEFW_INSTALL_PREFIX}
-                -Dnlohmann_json_DIR=${nlohmann_json_directory}
-                -Dgemmi_DIR=${gemmi_directory}
+                 -DCMAKE_CXX_COMPILER=${CHARGEFW_CXX_COMPILER}
+                 -DCMAKE_PREFIX_PATH=${CHARGEFW_INSTALL_PREFIX}
+                 -Dnlohmann_json_DIR=${nlohmann_json_directory}
+                 ${gemmi_arguments}
         RESULT_VARIABLE configure_result
         ERROR_VARIABLE configure_error
 )
