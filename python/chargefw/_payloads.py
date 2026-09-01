@@ -9,7 +9,6 @@ from numpy.typing import NDArray
 
 from ._types import (
     ChargeCorrection,
-    ExecutionAvailability,
     ExecutionIssueKind,
     ExecutionMode,
     ExecutionStatus,
@@ -34,30 +33,6 @@ class ExecutionIssuePayload(TypedDict):
     molecule_index: int | None
 
 
-class ExecutionAssessmentPayload(TypedDict):
-    mode: ExecutionMode
-    availability: ExecutionAvailability
-    issues: list[ExecutionIssuePayload]
-
-
-class ApplicableCandidatePayload(TypedDict):
-    method_id: str
-    parameter_set_id: str | None
-    execution_assessments: list[ExecutionAssessmentPayload]
-
-
-class RejectedCandidatePayload(TypedDict):
-    method_id: str
-    parameter_set_id: str | None
-    issues: list[PrerequisiteIssuePayload]
-
-
-class ApplicabilityReportPayload(TypedDict):
-    applicable: list[ApplicableCandidatePayload]
-    rejected: list[RejectedCandidatePayload]
-    selected_candidate_index: int | None
-
-
 class ExecutionPolicyPayload(TypedDict):
     mode: ExecutionMode
     radius: float | None
@@ -69,6 +44,22 @@ class EffectiveCalculationPayload(TypedDict):
     parameter_set_id: str | None
     method_options: dict[str, MethodOptionValue]
     execution_policy: ExecutionPolicyPayload
+    execution_issues: list[ExecutionIssuePayload]
+
+
+class ExecutionPlanPayload(TypedDict):
+    method_id: str
+    parameter_set_id: str | None
+    method_options: dict[str, MethodOptionValue]
+    execution_policy: ExecutionPolicyPayload
+    warnings: list[ExecutionIssuePayload]
+
+
+class RejectionPayload(TypedDict):
+    method_id: str
+    parameter_set_id: str | None
+    execution_policy: ExecutionPolicyPayload | None
+    prerequisite_issues: list[PrerequisiteIssuePayload]
     execution_issues: list[ExecutionIssuePayload]
 
 
@@ -91,7 +82,7 @@ class CalculationMetricsPayload(TypedDict):
 
 class ExecutionResultPayload(TypedDict):
     status: ExecutionStatus
-    applicability: ApplicabilityReportPayload
+    rejections: list[RejectionPayload]
     failure_message: str | None
     metrics: CalculationMetricsPayload
     effective: EffectiveCalculationPayload | None
@@ -99,11 +90,8 @@ class ExecutionResultPayload(TypedDict):
 
 
 class AssessmentReportPayload(TypedDict):
-    applicability: ApplicabilityReportPayload
-    execution_policy: ExecutionPolicyPayload | None
-    execution_issues: list[ExecutionIssuePayload]
+    rejections: list[RejectionPayload]
     applicability_seconds: float
-    executable: bool
 
 
 class MethodOptionDescriptorPayload(TypedDict):

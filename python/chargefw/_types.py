@@ -7,7 +7,6 @@ Execution: TypeAlias = Literal["auto", "full", "cutoff", "cover"]
 ChargeCorrection: TypeAlias = Literal["none", "uniform"]
 ParameterMatching: TypeAlias = Literal["strict", "permissive"]
 ExecutionMode: TypeAlias = Literal["full", "cutoff", "cover"]
-ExecutionAvailability: TypeAlias = Literal["available", "available_with_warning", "unsupported"]
 ExecutionIssueKind: TypeAlias = Literal["resource_threshold_exceeded", "unsupported_execution_mode"]
 PrerequisiteIssueKind: TypeAlias = Literal[
     "invalid_options",

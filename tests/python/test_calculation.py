@@ -82,27 +82,27 @@ class CalculationTests(unittest.TestCase):
     def test_default_calculation_selects_a_supported_plan(self) -> None:
         result = chargefw.calculate(water())
         self.assertEqual(result.status, "success")
-        self.assertIsNotNone(result.selected)
-        self.assertIsNotNone(result.effective)
+        self.assertIsNotNone(result.plan)
 
     def test_assessment_and_full_calculation(self) -> None:
-        assessment = chargefw.assess(water(), method="eem", execution="full")
-        self.assertTrue(assessment.executable)
+        molecule = water()
+        assessment = chargefw.assess(molecule, method="eem", execution="full")
+        self.assertTrue(assessment.plans)
+        self.assertTrue(all(plan.policy.mode == "full" for plan in assessment.plans))
+        plan = assessment.default_plan
+        if plan is None:
+            self.fail("assessment must produce a default plan")
         self.assertEqual(
-            assessment.execution,
+            plan.policy,
             chargefw.ExecutionPolicy(
                 mode="full",
                 radius=None,
                 charge_correction="none",
             ),
         )
-        selected_candidate = assessment.selected
-        if selected_candidate is None:
-            self.fail("executable assessment must select a method")
-        self.assertEqual(selected_candidate.method.id, "eem")
-        self.assertEqual(selected_candidate.executions[0].mode, "full")
+        self.assertEqual(plan.method.id, "eem")
 
-        result = assessment.calculate()
+        result = chargefw.calculate(molecule, plan)
         self.assertEqual(result.status, "success")
         self.assertEqual(len(result.assignments), 1)
         assignment = result.assignments[0]
@@ -123,24 +123,66 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(np.asarray(assignment, dtype=np.float32).dtype, np.dtype(np.float32))
         self.assertEqual(result.requested.method, "eem")
         self.assertEqual(result.requested.execution, "full")
-        effective = result.effective
-        if effective is None:
-            self.fail("successful calculation must report effective provenance")
-        self.assertEqual(effective.method.id, "eem")
-        self.assertEqual(effective.parameter_set, selected_candidate.parameter_set)
-        self.assertEqual(effective.execution.mode, "full")
+        executed = result.plan
+        if executed is None:
+            self.fail("successful calculation must report plan provenance")
+        self.assertEqual(executed.method.id, "eem")
+        self.assertEqual(executed.parameter_set, plan.parameter_set)
+        self.assertEqual(executed.policy.mode, "full")
         self.assertGreaterEqual(result.timings.applicability_seconds, 0.0)
         self.assertGreaterEqual(result.timings.computation_seconds, 0.0)
         with self.assertRaises(TypeError):
             cast(Any, result.requested.options_by_method)["eem"] = {"unexpected": True}
-        with self.assertRaises(RuntimeError):
-            assessment.calculate()
+        repeated = chargefw.calculate(molecule, plan)
+        np.testing.assert_allclose(repeated.assignments[0].values, assignment.values)
 
-    def test_assessment_context_manager_releases_prepared_state(self) -> None:
-        with chargefw.assess(water(), method="eem", execution="full") as assessment:
-            self.assertTrue(assessment.executable)
-        with self.assertRaisesRegex(RuntimeError, "closed"):
-            assessment.calculate()
+    def test_plan_keeps_prepared_state_alive(self) -> None:
+        molecule = water()
+        plan = chargefw.assess(molecule, method="eem", execution="full").default_plan
+        if plan is None:
+            self.fail("assessment must produce a default plan")
+        gc.collect()
+        self.assertEqual(chargefw.calculate(molecule, plan).status, "success")
+
+    def test_plans_are_filtered_reusable_and_target_bound(self) -> None:
+        molecule = water()
+        assessment = chargefw.assess(molecule, method="eqeq")
+        self.assertEqual(
+            {candidate_plan.policy.mode for candidate_plan in assessment.plans},
+            {"full", "cutoff", "cover"},
+        )
+        for candidate_plan in assessment.plans:
+            self.assertEqual(
+                chargefw.calculate(molecule, candidate_plan, threads=1).status, "success"
+            )
+
+        cutoff = chargefw.assess(
+            molecule,
+            method="eqeq",
+            execution="cutoff",
+            radius=8.0,
+        )
+        self.assertTrue(cutoff.plans)
+        self.assertTrue(all(plan.policy.mode == "cutoff" for plan in cutoff.plans))
+
+        default_plan = assessment.default_plan
+        if default_plan is None:
+            self.fail("assessment must produce a default plan")
+        with self.assertRaisesRegex(ValueError, "different molecule collection"):
+            chargefw.calculate(water(), default_plan)
+        with self.assertRaisesRegex(TypeError, "omit it"):
+            chargefw.calculate(molecule, cast(Any, None))
+        with self.assertRaisesRegex(TypeError, "cannot be combined"):
+            chargefw.calculate(molecule, default_plan, method="eqeq")
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            results = list(
+                executor.map(
+                    lambda _: chargefw.calculate(molecule, default_plan, threads=1),
+                    range(3),
+                )
+            )
+        self.assertTrue(all(result.status == "success" for result in results))
 
     def test_assignment_cardinality_and_mapping(self) -> None:
         geometry_independent = chargefw.calculate(
@@ -269,7 +311,7 @@ class CalculationTests(unittest.TestCase):
         assessment, progressed, operation_seconds = run_while_python_thread_progresses(
             lambda: assess_formal(molecule)
         )
-        self.assertTrue(assessment.executable)
+        self.assertTrue(assessment.plans)
         self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
         self.assertTrue(progressed)
 
@@ -296,9 +338,13 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(progressed)
 
     def test_execution_releases_the_gil(self) -> None:
-        assessment = assess_formal(chargefw.Molecule([1] * _GIL_TEST_ATOM_COUNT))
+        molecule = chargefw.Molecule([1] * _GIL_TEST_ATOM_COUNT)
+        assessment = assess_formal(molecule)
+        plan = assessment.default_plan
+        if plan is None:
+            self.fail("assessment must produce a default plan")
         result, progressed, operation_seconds = run_while_python_thread_progresses(
-            assessment.calculate
+            lambda: chargefw.calculate(molecule, plan)
         )
         self.assertEqual(result.status, "success")
         self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
@@ -313,11 +359,11 @@ class CalculationTests(unittest.TestCase):
             charge_correction="none",
         )
         self.assertEqual(reduced.status, "success")
-        reduced_effective = reduced.effective
+        reduced_effective = reduced.plan
         if reduced_effective is None:
-            self.fail("successful calculation must report effective provenance")
+            self.fail("successful calculation must report plan provenance")
         self.assertEqual(
-            reduced_effective.execution,
+            reduced_effective.policy,
             chargefw.ExecutionPolicy(
                 mode="cutoff",
                 radius=8.0,
@@ -332,10 +378,10 @@ class CalculationTests(unittest.TestCase):
             radius=8.0,
         )
         self.assertEqual(covered.status, "success")
-        covered_effective = covered.effective
+        covered_effective = covered.plan
         if covered_effective is None:
             self.fail("successful calculation must report effective provenance")
-        self.assertEqual(covered_effective.execution.mode, "cover")
+        self.assertEqual(covered_effective.policy.mode, "cover")
 
     def test_automatic_thresholds_and_explicit_full_warnings(self) -> None:
         automatic = chargefw.assess(
@@ -344,11 +390,17 @@ class CalculationTests(unittest.TestCase):
             cutoff_threshold=1,
             cover_threshold=100,
         )
-        self.assertTrue(automatic.executable)
-        if automatic.execution is None:
-            self.fail("executable assessment must report an execution policy")
-        self.assertEqual(automatic.execution.mode, "cutoff")
-        self.assertEqual(automatic.execution.radius, 12.0)
+        if automatic.default_plan is None:
+            self.fail("assessment must produce a default plan")
+        self.assertEqual(automatic.default_plan.policy.mode, "cutoff")
+        self.assertEqual(automatic.default_plan.policy.radius, 12.0)
+        self.assertTrue(all(plan.policy.mode != "full" for plan in automatic.plans))
+        self.assertTrue(
+            any(
+                rejection.policy is not None and rejection.policy.mode == "full"
+                for rejection in automatic.rejections
+            )
+        )
 
         explicit_full = chargefw.assess(
             water(),
@@ -357,24 +409,27 @@ class CalculationTests(unittest.TestCase):
             cutoff_threshold=1,
             cover_threshold=100,
         )
-        self.assertTrue(explicit_full.executable)
-        self.assertTrue(explicit_full.warnings)
-        self.assertEqual(explicit_full.warnings[0].kind, "resource_threshold_exceeded")
+        if explicit_full.default_plan is None:
+            self.fail("explicit full assessment must produce a plan")
+        self.assertTrue(all(plan.policy.mode == "full" for plan in explicit_full.plans))
+        self.assertTrue(explicit_full.default_plan.warnings)
+        self.assertEqual(explicit_full.default_plan.warnings[0].kind, "resource_threshold_exceeded")
 
     def test_no_plan_result_and_typed_exception(self) -> None:
+        molecule = chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]])
         assessment = chargefw.assess(
-            chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]]),
+            molecule,
             method="qeq",
             execution="full",
         )
-        self.assertFalse(assessment.executable)
+        self.assertFalse(assessment.plans)
         with self.assertRaises(chargefw.NoExecutablePlanError) as context:
-            assessment.calculate()
+            chargefw.calculate(molecule, method="qeq", execution="full")
         result = context.exception.result
         self.assertEqual(result.status, "no_executable_plan")
         self.assertEqual(result.assignments, ())
-        self.assertTrue(result.rejected)
-        self.assertEqual(result.rejected[0].issues[0].kind, "missing_feature")
+        self.assertTrue(result.rejections)
+        self.assertEqual(result.rejections[0].issues[0].kind, "missing_feature")
 
     def test_invalid_selection_requests_raise_value_error(self) -> None:
         invalid_requests: tuple[dict[str, Any], ...] = (
@@ -386,9 +441,7 @@ class CalculationTests(unittest.TestCase):
                 chargefw.assess(water(), **arguments)
 
     def test_results_outlive_calculation_inputs(self) -> None:
-        def calculate_owned_result() -> tuple[
-            chargefw.CalculationResult, chargefw.AssessmentReport
-        ]:
+        def calculate_owned_result() -> tuple[chargefw.CalculationResult, chargefw.Plan]:
             molecule = chargefw.Molecule(
                 [8, 1, 1],
                 source_name="owned",
@@ -396,12 +449,14 @@ class CalculationTests(unittest.TestCase):
                 atom_ids=["O", "H1", "H2"],
             )
             assessment = assess_formal(molecule)
-            report = assessment.report
-            return assessment.calculate(), report
+            plan = assessment.default_plan
+            if plan is None:
+                self.fail("assessment must produce a default plan")
+            return chargefw.calculate(molecule, plan), plan
 
-        result, report = calculate_owned_result()
+        result, plan = calculate_owned_result()
         gc.collect()
-        self.assertTrue(report.executable)
+        self.assertEqual(plan.policy.mode, "full")
         self.assertEqual(result.status, "success")
         self.assertEqual(result.assignments[0].source.record_id, "owned-record")
         self.assertEqual(result.assignments[0].atom_ids, ("O", "H1", "H2"))
@@ -468,9 +523,9 @@ class CalculationTests(unittest.TestCase):
             execution="full",
         )
         self.assertEqual(result.status, "success")
-        if result.effective is None:
-            self.fail("successful calculation must report effective provenance")
-        self.assertEqual(dict(result.effective.options), {"iters": 2})
+        if result.plan is None:
+            self.fail("successful calculation must report plan provenance")
+        self.assertEqual(dict(result.plan.options), {"iters": 2})
 
         for options in (
             {"iters": 0},
@@ -539,10 +594,10 @@ class CalculationTests(unittest.TestCase):
             execution="full",
         )
         self.assertEqual(result.status, "success")
-        effective = result.effective
-        if effective is None:
-            self.fail("successful calculation must report effective provenance")
-        self.assertEqual(effective.parameter_set, parameter_set)
+        executed = result.plan
+        if executed is None:
+            self.fail("successful calculation must report plan provenance")
+        self.assertEqual(executed.parameter_set, parameter_set)
 
 
 if __name__ == "__main__":

@@ -4,49 +4,44 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from threading import Lock
+from typing import cast
 
 from ._calculation_options import RequestedCalculation
 from ._calculation_values import (
-    ApplicabilityReport,
-    ApplicableMethod,
-    AssessmentReport,
     CalculationCancelledError,
     CalculationResult,
     CalculationTimings,
     ChargeFWError,
-    EffectiveCalculation,
+    ExecutedPlan,
     ExecutionPolicy,
     InvalidInputError,
     NoExecutablePlanError,
     NumericalFailureError,
-    RejectedMethod,
-    _applicability_report,
-    _execution_issue,
-    _execution_policy,
+    Plan,
+    Rejection,
+    _rejections,
 )
 from ._chargefw import calculation as _native_calculation
 from ._chargefw import parameters as _native_parameters
-from ._methods import ExecutionIssue, Method, _method_catalog
+from ._methods import Method, _method_catalog
 from ._parameters import ParameterSet, ParameterSetCatalog, _parameter_set
 from ._resources import default_parameter_directory
 from ._types import ChargeCorrection, Execution, MethodOptionValue, ParameterMatching
 from .core import Molecule, MoleculeCollection
 
 __all__ = [
-    "ApplicableMethod",
-    "ApplicabilityReport",
     "Assessment",
-    "AssessmentReport",
     "CalculationCancelledError",
     "CalculationResult",
     "CalculationTimings",
     "ChargeFWError",
-    "EffectiveCalculation",
+    "ExecutedPlan",
     "ExecutionPolicy",
     "InvalidInputError",
     "NoExecutablePlanError",
     "NumericalFailureError",
-    "RejectedMethod",
+    "Plan",
+    "Rejection",
     "RequestedCalculation",
     "assess",
     "calculate",
@@ -57,18 +52,16 @@ __all__ = [
 for _value_type in (
     RequestedCalculation,
     ExecutionPolicy,
-    ApplicableMethod,
-    RejectedMethod,
-    ApplicabilityReport,
-    EffectiveCalculation,
+    ExecutedPlan,
     CalculationTimings,
-    AssessmentReport,
     ChargeFWError,
     InvalidInputError,
     NoExecutablePlanError,
     NumericalFailureError,
     CalculationCancelledError,
     CalculationResult,
+    Plan,
+    Rejection,
 ):
     _value_type.__module__ = __name__
 
@@ -114,11 +107,9 @@ def _as_collection(value: Molecule | MoleculeCollection | Iterable[Molecule]) ->
 
 
 class Assessment:
-    """One-shot applicability assessment and executable calculation plan."""
+    """Priority-ordered runnable plans and rejected alternatives for immutable molecules."""
 
-    __slots__ = ("_native", "_molecules", "_requested", "_report", "_consumed")
-
-    _native: _native_calculation._NativeAssessment | None
+    __slots__ = ("_native", "_molecules", "_requested", "_plans", "_rejections", "_seconds")
 
     def __init__(
         self,
@@ -127,84 +118,30 @@ class Assessment:
         requested: RequestedCalculation,
     ) -> None:
         payload = native.report()
-        policy = payload["execution_policy"]
         self._native = native
         self._molecules = molecules
         self._requested = requested
-        self._report = AssessmentReport(
-            applicability=_applicability_report(payload["applicability"], methods, parameter_sets),
-            execution_policy=_execution_policy(policy) if policy is not None else None,
-            execution_issues=tuple(
-                _execution_issue(issue) for issue in payload["execution_issues"]
-            ),
-            applicability_seconds=payload["applicability_seconds"],
-            executable=payload["executable"],
+        self._plans = tuple(
+            Plan(plan, molecules, methods, parameter_sets, requested) for plan in native.plans()
         )
-        self._consumed = False
+        self._rejections = _rejections(payload["rejections"], methods, parameter_sets)
+        self._seconds = payload["applicability_seconds"]
 
     @property
-    def report(self) -> AssessmentReport:
-        return self._report
+    def plans(self) -> tuple[Plan, ...]:
+        return self._plans
 
     @property
-    def applicable(self) -> tuple[ApplicableMethod, ...]:
-        return self._report.applicability.applicable
+    def rejections(self) -> tuple[Rejection, ...]:
+        return self._rejections
 
     @property
-    def rejected(self) -> tuple[RejectedMethod, ...]:
-        return self._report.applicability.rejected
-
-    @property
-    def selected(self) -> ApplicableMethod | None:
-        index = self._report.applicability.selected_candidate_index
-        return None if index is None else self.applicable[index]
-
-    @property
-    def execution(self) -> ExecutionPolicy | None:
-        return self._report.execution_policy
-
-    @property
-    def warnings(self) -> tuple[ExecutionIssue, ...]:
-        return self._report.execution_issues
+    def default_plan(self) -> Plan | None:
+        return None if not self._plans else self._plans[0]
 
     @property
     def seconds(self) -> float:
-        return self._report.applicability_seconds
-
-    @property
-    def executable(self) -> bool:
-        return self._report.executable
-
-    def __enter__(self) -> Assessment:
-        if self._native is None:
-            raise RuntimeError("assessment is closed")
-        return self
-
-    def __exit__(self, *exception: object) -> None:
-        self.close()
-
-    def close(self) -> None:
-        """Release prepared native calculation state without executing it."""
-
-        self._native = None
-
-    def calculate(self) -> CalculationResult:
-        if self._consumed:
-            raise RuntimeError("assessment can only be calculated once")
-        if self._native is None:
-            raise RuntimeError("assessment is closed")
-        self._consumed = True
-        native = self._native
-        self._native = None
-        result = CalculationResult(
-            native.calculate(),
-            self._molecules,
-            self._requested,
-            methods,
-            parameter_sets,
-        )
-        result._raise_for_status()
-        return result
+        return self._seconds
 
 
 def assess(
@@ -259,8 +196,17 @@ def assess(
     return Assessment(native, collection, requested)
 
 
+class _OmittedPlan:
+    def __repr__(self) -> str:
+        return "<automatic>"
+
+
+_OMITTED_PLAN = _OmittedPlan()
+
+
 def calculate(
     molecules: Molecule | MoleculeCollection | Iterable[Molecule],
+    plan: Plan = cast(Plan, _OMITTED_PLAN),
     *,
     method: str | Method | None = None,
     parameter_set: str | ParameterSet | None = None,
@@ -272,24 +218,68 @@ def calculate(
     charge_correction: ChargeCorrection | None = None,
     cutoff_threshold: int | None = 20_000,
     cover_threshold: int | None = 80_000,
-    threads: int = 0,
+    threads: int | None = None,
 ) -> CalculationResult:
-    """Assess and synchronously calculate charges for molecules."""
+    """Calculate molecules with an assessed plan, or assess and use the default plan."""
 
-    return assess(
-        molecules,
-        method=method,
-        parameter_set=parameter_set,
-        options=options,
-        options_by_method=options_by_method,
-        parameter_matching=parameter_matching,
-        execution=execution,
-        radius=radius,
-        charge_correction=charge_correction,
-        cutoff_threshold=cutoff_threshold,
-        cover_threshold=cover_threshold,
-        threads=threads,
-    ).calculate()
+    collection = _as_collection(molecules)
+    if isinstance(plan, _OmittedPlan):
+        assessment = assess(
+            collection,
+            method=method,
+            parameter_set=parameter_set,
+            options=options,
+            options_by_method=options_by_method,
+            parameter_matching=parameter_matching,
+            execution=execution,
+            radius=radius,
+            charge_correction=charge_correction,
+            cutoff_threshold=cutoff_threshold,
+            cover_threshold=cover_threshold,
+            threads=0 if threads is None else threads,
+        )
+        if assessment.default_plan is None:
+            result = CalculationResult(
+                assessment._native.calculate_default(),
+                collection,
+                assessment._requested,
+                methods,
+                parameter_sets,
+                assessment.rejections,
+            )
+            result._raise_for_status()
+            return result
+        return calculate(collection, assessment.default_plan, threads=threads)
+
+    if plan is None or not isinstance(plan, Plan):
+        raise TypeError("plan must be a Plan; omit it to use automatic assessment")
+    if any(
+        (
+            method is not None,
+            parameter_set is not None,
+            options is not None,
+            options_by_method is not None,
+            parameter_matching != "strict",
+            execution != "auto",
+            radius is not None,
+            charge_correction is not None,
+            cutoff_threshold != 20_000,
+            cover_threshold != 80_000,
+        )
+    ):
+        raise TypeError("selection arguments cannot be combined with an assessed plan")
+    if not plan._matches(collection):
+        raise ValueError("plan was assessed for a different molecule collection")
+    normalized_threads = None if threads is None else RequestedCalculation(threads=threads).threads
+    result = CalculationResult(
+        plan._calculate(normalized_threads),
+        collection,
+        plan._requested,
+        methods,
+        parameter_sets,
+    )
+    result._raise_for_status()
+    return result
 
 
 Assessment.__module__ = __name__

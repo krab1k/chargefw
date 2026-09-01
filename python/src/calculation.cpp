@@ -5,6 +5,7 @@
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/calculation/execution_policy.h>
 #include <chargefw/core/molecule_collection.h>
+#include <chargefw/methods/method.h>
 #include <chargefw/methods/method_applicability.h>
 #include <chargefw/methods/method_options.h>
 
@@ -22,6 +23,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace nb = nanobind;
@@ -86,57 +88,6 @@ auto execution_issue(const methods::ExecutionIssue& issue) -> nb::dict {
     return result;
 }
 
-auto execution_assessment(const methods::ExecutionAssessment& assessment) -> nb::dict {
-    auto result = nb::dict{};
-    result["mode"] = std::string{calculation::to_string(assessment.mode)};
-    result["availability"] = std::string{methods::to_string(assessment.availability)};
-    auto issues = nb::list{};
-    for (const auto& issue : assessment.issues) {
-        issues.append(execution_issue(issue));
-    }
-    result["issues"] = std::move(issues);
-    return result;
-}
-
-auto applicability_report(const calculation::ApplicabilityReport& report) -> nb::dict {
-    auto result = nb::dict{};
-    auto applicable = nb::list{};
-    for (const auto& candidate : report.applicable) {
-        auto value = nb::dict{};
-        value["method_id"] = candidate.method_id;
-        value["parameter_set_id"] = candidate.parameter_set_id.has_value()
-                                        ? nb::cast(std::string{*candidate.parameter_set_id})
-                                        : nb::none();
-        auto assessments = nb::list{};
-        for (const auto& assessment : candidate.execution_assessments) {
-            assessments.append(execution_assessment(assessment));
-        }
-        value["execution_assessments"] = std::move(assessments);
-        applicable.append(std::move(value));
-    }
-    result["applicable"] = std::move(applicable);
-
-    auto rejected = nb::list{};
-    for (const auto& candidate : report.rejected) {
-        auto value = nb::dict{};
-        value["method_id"] = candidate.method_id;
-        value["parameter_set_id"] = candidate.parameter_set_id.has_value()
-                                        ? nb::cast(std::string{*candidate.parameter_set_id})
-                                        : nb::none();
-        auto issues = nb::list{};
-        for (const auto& issue : candidate.issues) {
-            issues.append(prerequisite_issue(issue));
-        }
-        value["issues"] = std::move(issues);
-        rejected.append(std::move(value));
-    }
-    result["rejected"] = std::move(rejected);
-    result["selected_candidate_index"] = report.selected_candidate_index.has_value()
-                                             ? nb::cast(*report.selected_candidate_index)
-                                             : nb::none();
-    return result;
-}
-
 auto execution_policy(const calculation::ExecutionPolicy& policy) -> nb::dict {
     auto result = nb::dict{};
     result["mode"] = std::string{calculation::to_string(policy.mode())};
@@ -183,10 +134,35 @@ auto numpy_charge_values(const std::span<const double> values)
     return {released_values->data(), {released_values->size()}, owner};
 }
 
+auto rejection(const calculation::Rejection& rejected) -> nb::dict {
+    auto result = nb::dict{};
+    result["method_id"] = rejected.method_id;
+    result["parameter_set_id"] =
+        rejected.parameter_set_id.has_value() ? nb::cast(*rejected.parameter_set_id) : nb::none();
+    result["execution_policy"] =
+        rejected.policy.has_value() ? nb::cast(execution_policy(*rejected.policy)) : nb::none();
+    auto prerequisite_issues = nb::list{};
+    auto execution_issues = nb::list{};
+    for (const auto& issue : rejected.issues) {
+        if (const auto* prerequisite = std::get_if<methods::PrerequisiteIssue>(&issue)) {
+            prerequisite_issues.append(prerequisite_issue(*prerequisite));
+        } else {
+            execution_issues.append(execution_issue(std::get<methods::ExecutionIssue>(issue)));
+        }
+    }
+    result["prerequisite_issues"] = std::move(prerequisite_issues);
+    result["execution_issues"] = std::move(execution_issues);
+    return result;
+}
+
 auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {
     auto result = nb::dict{};
     result["status"] = std::string{calculation::to_string(value.status)};
-    result["applicability"] = applicability_report(value.applicability);
+    auto rejections = nb::list{};
+    for (const auto& rejected : value.rejections) {
+        rejections.append(rejection(rejected));
+    }
+    result["rejections"] = std::move(rejections);
     result["failure_message"] =
         value.failure_message.has_value() ? nb::cast(*value.failure_message) : nb::none();
     auto metrics = nb::dict{};
@@ -225,45 +201,89 @@ auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {
     return result;
 }
 
-class NativeAssessment {
+class NativeAssessmentState {
   public:
-    NativeAssessment(calculation::AssessmentResult assessment, const std::size_t max_threads)
+    NativeAssessmentState(calculation::AssessmentResult assessment, const std::size_t max_threads)
         : assessment_{std::move(assessment)}, max_threads_{max_threads} {}
 
+    calculation::AssessmentResult assessment_;
+    std::size_t max_threads_ = 0;
+};
+
+auto execution_plan(const calculation::ExecutionPlan& plan) -> nb::dict {
+    const auto& candidate = plan.candidate();
+    auto result = nb::dict{};
+    result["method_id"] = std::string{candidate.method->id()};
+    result["parameter_set_id"] = candidate.parameter_set == nullptr
+                                     ? nb::none()
+                                     : nb::cast(std::string{candidate.parameter_set->id()});
+    result["method_options"] = method_options(candidate.method_options);
+    result["execution_policy"] = execution_policy(plan.policy());
+    auto warnings = nb::list{};
+    for (const auto& warning : plan.warnings()) {
+        warnings.append(execution_issue(warning));
+    }
+    result["warnings"] = std::move(warnings);
+    return result;
+}
+
+class NativePlan {
+  public:
+    NativePlan(std::shared_ptr<NativeAssessmentState> state, const std::size_t index)
+        : state_{std::move(state)}, index_{index} {}
+
     [[nodiscard]] auto report() const -> nb::dict {
-        auto result = nb::dict{};
-        result["applicability"] = applicability_report(assessment_.applicability());
-        if (assessment_.execution_policy().has_value()) {
-            result["execution_policy"] = execution_policy(*assessment_.execution_policy());
-        } else {
-            result["execution_policy"] = nb::none();
-        }
-        auto issues = nb::list{};
-        for (const auto& issue : assessment_.execution_issues()) {
-            issues.append(execution_issue(issue));
-        }
-        result["execution_issues"] = std::move(issues);
-        result["applicability_seconds"] = assessment_.applicability_seconds();
-        result["executable"] = assessment_.executable();
-        return result;
+        return execution_plan(state_->assessment_.plans()[index_]);
     }
 
-    auto calculate() -> nb::dict {
-        if (consumed_) {
-            throw std::runtime_error{"assessment can only be calculated once"};
-        }
-        consumed_ = true;
+    [[nodiscard]] auto calculate(const std::optional<std::size_t> max_threads) const -> nb::dict {
         const auto result = [&] {
             nb::gil_scoped_release release;
-            return calculation::calculate(std::move(assessment_), max_threads_);
+            return calculation::calculate(state_->assessment_, state_->assessment_.plans()[index_],
+                                          max_threads.value_or(state_->max_threads_));
         }();
         return execution_result(result);
     }
 
   private:
-    calculation::AssessmentResult assessment_;
-    std::size_t max_threads_ = 0;
-    bool consumed_ = false;
+    std::shared_ptr<NativeAssessmentState> state_;
+    std::size_t index_ = 0;
+};
+
+class NativeAssessment {
+  public:
+    NativeAssessment(calculation::AssessmentResult assessment, const std::size_t max_threads)
+        : state_{std::make_shared<NativeAssessmentState>(std::move(assessment), max_threads)} {}
+
+    [[nodiscard]] auto report() const -> nb::dict {
+        auto result = nb::dict{};
+        auto rejections = nb::list{};
+        for (const auto& rejected : state_->assessment_.rejections()) {
+            rejections.append(rejection(rejected));
+        }
+        result["rejections"] = std::move(rejections);
+        result["applicability_seconds"] = state_->assessment_.applicability_seconds();
+        return result;
+    }
+
+    [[nodiscard]] auto plans() const -> nb::list {
+        auto result = nb::list{};
+        for (std::size_t index = 0; index < state_->assessment_.plans().size(); ++index) {
+            result.append(NativePlan{state_, index});
+        }
+        return result;
+    }
+
+    [[nodiscard]] auto calculate_default() const -> nb::dict {
+        const auto result = [&] {
+            nb::gil_scoped_release release;
+            return calculation::calculate(state_->assessment_, state_->max_threads_);
+        }();
+        return execution_result(result);
+    }
+
+  private:
+    std::shared_ptr<NativeAssessmentState> state_;
 };
 
 auto make_assessment(const nb::sequence& molecules, std::string molecule_collection_name,
@@ -313,9 +333,13 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
 } // namespace
 
 void bind_calculation(nb::module_& module) {
+    nb::class_<NativePlan>(module, "_NativePlan")
+        .def("report", &NativePlan::report)
+        .def("calculate", &NativePlan::calculate, nb::arg("max_threads") = nb::none());
     nb::class_<NativeAssessment>(module, "_NativeAssessment")
         .def("report", &NativeAssessment::report)
-        .def("calculate", &NativeAssessment::calculate);
+        .def("plans", &NativeAssessment::plans)
+        .def("calculate_default", &NativeAssessment::calculate_default);
 
     module.def("_make_assessment", &make_assessment, nb::arg("molecules"),
                nb::arg("molecule_collection_name"), nb::arg("catalog"), nb::arg("method_id"),

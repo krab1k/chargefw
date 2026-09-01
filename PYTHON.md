@@ -95,10 +95,10 @@ Implemented on 2026-08-27:
   and accept a molecule, collection, or molecule iterable;
 - `assess()` and `calculate()` use the native owned assessment facade, with
   assessment preparation and native calculation running while the GIL is released;
-- `Assessment` exposes copied applicability, execution-policy, warning, and timing data and enforces
-  one-shot calculation ownership;
-- `CalculationResult` exposes status, source-mapped owned `float64` C-contiguous assignments, reports,
-  requested/effective provenance, execution issues, failure text, and timings; and
+- `Assessment` exposes priority-ordered reusable plans, rejected scientific/policy alternatives, a
+  default plan, and timing data while plans retain shared prepared native state;
+- `CalculationResult` exposes status, source-mapped owned `float64` C-contiguous assignments, detached
+  executed-plan provenance, execution issues, failure text, and timings; and
 - no-plan, numerical-failure, cancellation, and invalid-request boundaries raise typed Python
   exceptions that retain their complete result;
 - the native binding is split into `core`, `methods`, `parameters`, and `calculation` registration units,
@@ -106,9 +106,9 @@ Implemented on 2026-08-27:
 - execution selection and charge correction use validated Python strings; effective modes, statuses,
   availability, option types, and issue kinds are normalized to documented lowercase strings.
 
-Public report and provenance values are immutable Python dataclasses containing tuples and read-only
-mappings. They remain valid after native assessment ownership is consumed and
-do not expose prepared features, classifications, registry pointers, or other native internals.
+Public plan, rejection, and provenance values use immutable tuples and read-only mappings. Plans retain
+private shared prepared state so they remain independently executable after an `Assessment` is released;
+prepared features, classifications, registry pointers, and other native internals are not exposed.
 
 Validation added for this milestone:
 
@@ -335,15 +335,19 @@ for method_id, method in chargefw.methods.items():
     print(method_id, method.name)
 ```
 
-The following two paths share one implementation:
+The following paths share one planning and execution implementation:
 
-- `calculate(molecules, **policy)` is the ordinary convenience path; and
-- `assess(molecules, **policy)` returns a one-shot `Assessment` with flattened applicable/rejected
-  methods,
-  selected policy, and warnings. `Assessment.calculate()` consumes its native executable state without
-  repeating work. The report remains readable after consumption; a second calculation raises
-  `RuntimeError`. Assessments support `with` and `close()` for deterministic release of large prepared
-  native state that will not be executed.
+- `calculate(molecules, **policy)` assesses and executes the default plan;
+- `assess(molecules, **policy)` returns priority-ordered runnable `plans`, `rejections`, and
+  `default_plan`; and
+- `calculate(molecules, plan)` executes that exact target-bound plan without repeating preparation,
+  classification, or applicability checks. Plans are reusable and may be executed concurrently.
+
+Explicit `full`, `cutoff`, or `cover` selection filters plans to that mode. Automatic selection exposes
+all resource-policy-permitted modes and orders the preferred plan first. Plans excluded by automatic
+resource limits remain visible as rejections; explicitly requested over-limit execution remains runnable
+with a warning. A supplied plan cannot be combined with selection arguments and is rejected when passed
+with a different molecule collection.
 
 The extension releases the GIL during preparation and calculation. A later progress/cancellation
 callback API may acquire the GIL for each callback, but it is not required for the first usable slice.
@@ -358,8 +362,8 @@ typed Python values rather than nested dictionaries. It exposes:
 - lowercase status (`success`, `invalid_input_or_request`, `no_executable_plan`, `numerical_failure`, or
   `cancelled`);
 - source-ordered assignments;
-- applicable and rejected candidate reports with structured issue kinds and indices;
-- requested and effective method/options/execution provenance;
+- rejected alternatives with structured issue kinds and indices;
+- requested policy and detached executed-plan method/options/execution provenance;
 - execution warnings and failure text; and
 - applicability and computation timings.
 
@@ -493,8 +497,8 @@ dependency tests run on them.
 - immutable molecule/collection ordering and source identity;
 - C++ exception translation and contextual messages;
 - bundled parameter mappings, option schemas, and deterministic selection;
-- applicability/no-plan reports and one-shot assessment ownership;
-- full/cutoff/cover policy validation and effective provenance;
+- priority-ordered reusable plans, rejected alternatives, and no-plan results;
+- full/cutoff/cover policy validation and detached executed-plan provenance;
 - geometry-independent and all-conformer assignment cardinality;
 - source molecule/atom/conformer mappings and Python-owned output arrays;
 - repeated and concurrent functional calculations with the GIL released, including a

@@ -9,9 +9,7 @@ from ._chargefw import methods as _native_methods
 from ._parameters import ParameterSetCatalog
 from ._payloads import MethodDescriptorPayload
 from ._types import (
-    ExecutionAvailability,
     ExecutionIssueKind,
-    ExecutionMode,
     MethodOptionType,
     PrerequisiteIssueKind,
 )
@@ -32,13 +30,6 @@ class ExecutionIssue:
     kind: ExecutionIssueKind
     message: str
     molecule_index: int | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class ExecutionSupport:
-    mode: ExecutionMode
-    availability: ExecutionAvailability
-    issues: tuple[ExecutionIssue, ...] = ()
 
 
 @dataclass(frozen=True, slots=True, repr=False)
@@ -138,7 +129,6 @@ def _method_catalog(parameter_sets: ParameterSetCatalog) -> MethodCatalog:
 for _value_type in (
     PrerequisiteIssue,
     ExecutionIssue,
-    ExecutionSupport,
     MethodOption,
     MethodOptionCatalog,
     Method,

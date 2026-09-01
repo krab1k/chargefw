@@ -80,6 +80,20 @@ result = chargefw.calculate(
 charges = result.assignments[0].values
 ```
 
+Assess once to inspect and run every scientifically applicable, resource-permitted plan without
+repeating molecule preparation or parameter classification:
+
+```python
+assessment = chargefw.assess(molecule, execution="auto")
+
+for plan in assessment.plans:
+    result = chargefw.calculate(molecule, plan)
+    print(plan.method.id, plan.policy.mode, result.assignments[0].values)
+```
+
+`assessment.default_plan` is the first plan in deterministic selection order. Explicit
+`execution="cutoff"`, `"cover"`, or `"full"` filters plans to that mode.
+
 Inspect methods, options, and bundled parameter sets through immutable ordered catalogs:
 
 ```python
@@ -88,7 +102,7 @@ eem = chargefw.methods["eem"]
 for method in chargefw.methods.values():
     print(method.id, method.name)
 
-for parameter_set in eem.parameter_sets:
+for parameter_set in eem.parameter_sets.values():
     print(parameter_set.id, parameter_set.name)
 ```
 
