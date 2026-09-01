@@ -1,10 +1,5 @@
 from typing import Literal, TypedDict
 
-class DiagnosticPayload(TypedDict):
-    code: str
-    message: str
-    line: int | None
-
 class MoleculePayload(TypedDict):
     atomic_numbers: list[int]
     formal_charges: list[int]
@@ -16,7 +11,6 @@ class MoleculePayload(TypedDict):
     source: str
     record_index: int
     record_id: str
-    diagnostics: list[DiagnosticPayload]
 
 def _read_pdb(
     contents: str,

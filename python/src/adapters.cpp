@@ -32,7 +32,6 @@ struct MoleculePayload {
     std::vector<std::string> atom_names;
     std::vector<std::string> conformer_names;
     adapters::MoleculeRecordIdentity identity;
-    std::vector<adapters::MoleculeRecordDiagnostic> diagnostics;
 };
 
 auto make_payload(adapters::ImportedMoleculeRecord record) -> MoleculePayload {
@@ -67,7 +66,6 @@ auto make_payload(adapters::ImportedMoleculeRecord record) -> MoleculePayload {
 
     result.name = molecule.name();
     result.identity = std::move(record.identity);
-    result.diagnostics = std::move(record.diagnostics);
     return result;
 }
 
@@ -83,15 +81,6 @@ auto as_python(const MoleculePayload& payload) -> nb::dict {
     result["source"] = payload.identity.source;
     result["record_index"] = payload.identity.record_index;
     result["record_id"] = payload.identity.record_id;
-    nb::list diagnostics;
-    for (const auto& diagnostic : payload.diagnostics) {
-        nb::dict value;
-        value["code"] = diagnostic.code;
-        value["message"] = diagnostic.message;
-        value["line"] = diagnostic.line ? nb::cast(*diagnostic.line) : nb::none();
-        diagnostics.append(std::move(value));
-    }
-    result["diagnostics"] = std::move(diagnostics);
     return result;
 }
 
