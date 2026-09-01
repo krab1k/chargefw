@@ -81,10 +81,6 @@ struct RejectedCandidate {
 struct ApplicabilityResult {
     std::vector<ApplicableMethod> applicable;
     std::vector<RejectedCandidate> rejected;
-
-    [[nodiscard]] auto empty() const noexcept -> bool {
-        return applicable.empty();
-    }
 };
 
 [[nodiscard]] auto find_applicable_methods(const ApplicabilityRequest& request)

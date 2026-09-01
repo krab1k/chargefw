@@ -220,7 +220,7 @@ TEST_CASE("applicability rejects invalid method options", "[methods][method-appl
          .methods = gdac_methods,
          .parameter_sets = {},
          .method_options = {{"gdac", std::move(invalid_gdac_options)}}});
-    CHECK(invalid_gdac_result.empty());
+    CHECK(invalid_gdac_result.applicable.empty());
     REQUIRE(invalid_gdac_result.rejected.size() == 1);
     REQUIRE(!invalid_gdac_result.rejected[0].issues.empty());
     CHECK(invalid_gdac_result.rejected[0].issues[0].kind ==
@@ -245,7 +245,7 @@ TEST_CASE("applicability pairs methods with compatible parameter sets",
                                                           .methods = candidate_methods,
                                                           .parameter_sets = parameter_sets});
 
-    CHECK(!result.empty());
+    CHECK(!result.applicable.empty());
     REQUIRE(result.applicable.size() == 2);
 
     const auto& dummy_applicable = result.applicable[0];
@@ -313,7 +313,7 @@ TEST_CASE("applicability honors permissive parameter classification",
         methods::find_applicable_methods({.molecules = double_bonded_prepared,
                                           .methods = permissive_methods,
                                           .parameter_sets = permissive_only_parameters});
-    CHECK(strict_result.empty());
+    CHECK(strict_result.applicable.empty());
     REQUIRE(strict_result.rejected.size() == 1);
     REQUIRE(!strict_result.rejected[0].issues.empty());
     CHECK(strict_result.rejected[0].issues[0].kind ==
