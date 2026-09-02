@@ -3,7 +3,6 @@
 #include <chargefw/core/molecule.h>
 
 #include <charconv>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -48,11 +47,21 @@ auto parse_trimmed_int(const std::string_view value, const std::string_view fiel
 }
 
 auto parse_double(const std::string_view value, const std::string_view field) -> double {
-    std::istringstream input{std::string{value}};
-    double result = 0.0;
-    char remaining = '\0';
+    auto token = trim(value);
 
-    if (!(input >> result) || (input >> remaining)) {
+    if (token.starts_with('+')) {
+        token.remove_prefix(1);
+    }
+
+    if (token.empty()) {
+        throw std::runtime_error{"invalid " + std::string{field}};
+    }
+
+    double result = 0.0;
+    const auto [end, error] = std::from_chars(token.data(), token.data() + token.size(), result,
+                                              std::chars_format::general);
+
+    if (error != std::errc{} || end != token.data() + token.size()) {
         throw std::runtime_error{"invalid " + std::string{field}};
     }
 

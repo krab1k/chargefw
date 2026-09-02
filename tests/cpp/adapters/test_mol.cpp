@@ -5,9 +5,13 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <locale>
 #include <optional>
 #include <snitch/snitch.hpp>
+#include <sstream>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace adapters = chargefw::adapters;
 namespace mol = chargefw::adapters::native::mol_input;
@@ -20,7 +24,82 @@ namespace {
     return std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "tests" / "fixtures" / name;
 }
 
+[[nodiscard]] auto v3000_with_coordinates(const std::string_view coordinates) -> std::string {
+    return std::string{"coordinates\nchargefw\n\n"
+                       "  0  0  0  0  0  0  0  0  0  0999 V3000\n"
+                       "M  V30 BEGIN CTAB\n"
+                       "M  V30 COUNTS 1 0 0 0 0\n"
+                       "M  V30 BEGIN ATOM\n"
+                       "M  V30 1 C "} +
+           std::string{coordinates} +
+           " 0\n"
+           "M  V30 END ATOM\n"
+           "M  V30 BEGIN BOND\n"
+           "M  V30 END BOND\n"
+           "M  V30 END CTAB\n"
+           "M  END\n";
+}
+
+class DecimalCommaNumpunct final : public std::numpunct<char> {
+  protected:
+    [[nodiscard]] auto do_decimal_point() const -> char override {
+        return ',';
+    }
+};
+
+class ScopedGlobalLocale final {
+  public:
+    explicit ScopedGlobalLocale(const std::locale& replacement) {
+        std::locale::global(replacement);
+    }
+
+    ScopedGlobalLocale(const ScopedGlobalLocale&) = delete;
+    auto operator=(const ScopedGlobalLocale&) -> ScopedGlobalLocale& = delete;
+    ScopedGlobalLocale(ScopedGlobalLocale&&) = delete;
+    auto operator=(ScopedGlobalLocale&&) -> ScopedGlobalLocale& = delete;
+
+    ~ScopedGlobalLocale() {
+        std::locale::global(previous_);
+    }
+
+  private:
+    std::locale previous_{};
+};
+
 } // namespace
+
+TEST_CASE("native numeric parsing is complete and locale independent", "[adapters][native]") {
+    {
+        std::istringstream input{v3000_with_coordinates("+1.25 -2.5e1 3.125E-2")};
+        const auto record = mol::parse_mol(input, {});
+        const auto& position = record.molecule.conformer(0)[0];
+        CHECK(position.x == 1.25);
+        CHECK(position.y == -25.0);
+        CHECK(position.z == 0.03125);
+    }
+
+    {
+        std::istringstream input{v3000_with_coordinates("1.25suffix 0 0")};
+
+        try {
+            [[maybe_unused]] const auto record = mol::parse_mol(input, {});
+            CHECK(false);
+        } catch (const std::runtime_error& error) {
+            CHECK(std::string_view{error.what()} == "invalid V3000 x coordinate");
+        }
+    }
+
+    {
+        const auto comma_locale = std::locale{std::locale::classic(), new DecimalCommaNumpunct{}};
+        const auto locale_guard = ScopedGlobalLocale{comma_locale};
+        std::istringstream input{v3000_with_coordinates("1.25 2.5e1 -3.125E-2")};
+        const auto record = mol::parse_mol(input, {});
+        const auto& position = record.molecule.conformer(0)[0];
+        CHECK(position.x == 1.25);
+        CHECK(position.y == 25.0);
+        CHECK(position.z == -0.03125);
+    }
+}
 
 TEST_CASE("native readers preserve molecular mapping and reject malformed records",
           "[adapters][native]") {
