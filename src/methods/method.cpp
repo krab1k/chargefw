@@ -24,7 +24,7 @@ auto add_coordinate_prerequisite_issues(const Method& method, const core::Molecu
         if (const auto nonfinite_atom = geometry.first_nonfinite_atom_index()) {
             result.add(PrerequisiteIssue{
                 .kind = PrerequisiteIssueKind::invalid_geometry,
-                .message = "method '" + std::string{method.id()} + ", conformer " +
+                .message = "method '" + std::string{method.id()} + "', conformer " +
                            std::to_string(conformer_index + 1) + ": " +
                            core::detail::atom_description(molecule, *nonfinite_atom) +
                            " has non-finite coordinates",

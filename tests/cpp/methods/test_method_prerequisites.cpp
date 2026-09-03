@@ -12,6 +12,7 @@
 #include <chargefw/methods/method_prerequisites.h>
 #include <chargefw/methods/method_registry.h>
 
+#include <limits>
 #include <optional>
 #include <snitch/snitch.hpp>
 #include <span>
@@ -159,6 +160,24 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
     CHECK(coincident_atoms_result.issues()[1].atom_index == 1);
     CHECK(coincident_atoms_result.issues()[1].conformer_index == 1);
     CHECK(coincident_atoms_result.issues()[1].message.contains("conformer 2"));
+
+    const core::Molecule nonfinite_atom{
+        std::vector{core::Atom{1}},
+        {},
+        std::vector{core::Conformer{{core::Position{.x = std::numeric_limits<double>::quiet_NaN()}},
+                                    "nonfinite"}}};
+    const features::PreparedMolecule prepared_nonfinite_atom{nonfinite_atom};
+    const auto nonfinite_atom_result = coordinates_method.check_method_prerequisites(
+        {.prepared_molecule = prepared_nonfinite_atom, .method_options = empty_options});
+    CHECK(!nonfinite_atom_result);
+    REQUIRE(nonfinite_atom_result.issues().size() == 1);
+    CHECK(nonfinite_atom_result.issues()[0].kind ==
+          methods::PrerequisiteIssueKind::invalid_geometry);
+    CHECK(nonfinite_atom_result.issues()[0].atom_index == 0);
+    CHECK(nonfinite_atom_result.issues()[0].conformer_index == 0);
+    CHECK(nonfinite_atom_result.issues()[0].message ==
+          "method 'coordinates-test', conformer 1: atom 1 (H, formal charge 0) has non-finite "
+          "coordinates");
 
     const DenseMethod dense_method;
 
