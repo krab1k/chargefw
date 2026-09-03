@@ -53,6 +53,9 @@ Input format is selected from the file extension.
 | `.pdb` | Gemmi-backed PDB reader |
 | `.cif`, `.mmcif` | Gemmi-backed mmCIF reader |
 
+The [molecular format reference](FORMATS.md) describes the supported subsets, imported molecular data,
+record mapping, warnings, and errors.
+
 `--conformers first|all` selects the first conformer/model or all conformers/models. The default is
 `all`.
 
@@ -62,13 +65,9 @@ PDB and mmCIF input additionally accepts:
 - `--structural-bonds none|explicit|templates|hybrid` (CLI default `hybrid`).
 
 Structural options are rejected for other input formats. Alternate locations prefer blank, then `A`,
-then the first available location. `templates` uses the built-in residue templates and polymer-link rules;
-`hybrid` combines template and explicit connectivity. No distance-based bond perception is performed.
+then the first available location.
 
 The CLI reads the imported collection before calculation and stops at the first malformed record.
-The MOL/SDF reader supports the implemented V2000 and V3000 atom/bond subsets. MOL2 accepts standard
-element-prefixed atom types and numeric bonds; aromatic bonds are imported as single bonds and existing
-partial-charge columns are ignored with an import warning.
 
 ### Method and execution options
 
@@ -127,9 +126,10 @@ On a successful nonstructural calculation, ChargeFW writes:
 ```
 
 PDB and mmCIF input writes JSON and mmCIF only. SDF and MOL2 output preserves source content when the
-input has the same format; output generated from another format contains the imported molecule data and
-calculated charges. JSON input with multiple conformers cannot be represented in SDF or MOL2 output; use
-`--conformers first` when those files are required.
+input has the same format. JSON input with multiple conformers cannot be represented in SDF or MOL2
+output; use `--conformers first` when those files are required. The
+[molecular format reference](FORMATS.md#charge-output) describes preservation, generated structures,
+charge fields, precision, and mapping checks.
 
 Generated SDF and MOL2 use source conformer zero and therefore require source coordinates even when the
 selected method is geometry-independent. With `--conformers first`, preservation-oriented structural
@@ -145,18 +145,9 @@ exits with status 5. This does not interrupt import, request construction, or ou
 
 ### JSON result
 
-ChargeFW JSON schema `1.0` records:
-
-- document and source-record status;
-- diagnostics with stable codes and optional source indices;
-- source identity and source-ordered assignments;
-- requested selection, classification, input, execution, and resource policy;
-- effective method, parameter set, complete method options, execution policy, and warnings;
-- parsing, applicability, computation, output-writing, and total timings; and
-- UTC start/end timestamps and peak resident memory.
-
-JSON charge values are rounded to at most four decimal places. Internal calculations and the native and
-Python result objects retain native precision.
+ChargeFW writes result JSON schema `1.0`; this is distinct from molecule input JSON schema `1.0`. See the
+[result JSON format](FORMATS.md#chargefw-result-json-10) for its records, diagnostics, assignments,
+provenance, metrics, and numeric precision.
 
 ## Inspection and discovery
 

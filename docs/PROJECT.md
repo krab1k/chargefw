@@ -134,9 +134,10 @@ requested policy, diagnostics, timings, timestamps, and peak resident memory in 
 
 ## Molecular data scope
 
-The native adapters support MOL/SDF, MOL2, ChargeFW JSON 1.0, PDB, and mmCIF input. PDB and mmCIF use
-Gemmi and support explicit structural record, connectivity, and conformer selection. Output adapters
-write ChargeFW JSON, SDF, MOL2, and mmCIF charge data.
+The native adapters support MOL/SDF, MOL2, ChargeFW molecule JSON 1.0, PDB, and mmCIF input and write
+ChargeFW result JSON 1.0, SDF, MOL2, and mmCIF charge data. The language-independent
+[molecular format reference](FORMATS.md) defines exactly what each reader imports and how each writer
+preserves or generates molecular data.
 
 ChargeFW is not a general chemistry-preparation toolkit. It does not provide SMILES parsing, arbitrary
 bond perception, sanitization, protonation, hydrogen addition or removal, conformer generation, or

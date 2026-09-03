@@ -5,6 +5,7 @@
 Read this file before changing the repository. Then read only the relevant sections of:
 
 - [docs/PROJECT.md](docs/PROJECT.md): implemented architecture, philosophy, capabilities, and limits;
+- [docs/FORMATS.md](docs/FORMATS.md): language-independent molecular input and charge output behavior;
 - [docs/CLI.md](docs/CLI.md): implemented command-line behavior;
 - [docs/NATIVE.md](docs/NATIVE.md): implemented public C++ API and installation;
 - [docs/PYTHON.md](docs/PYTHON.md): implemented Python API and package behavior;

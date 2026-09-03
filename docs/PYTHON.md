@@ -204,7 +204,8 @@ objects between extension modules.
 
 Adapter defaults are `selection="all"`, `bonds="none"`, and `conformers="all"`. Bond choices are
 `"none"`, `"explicit"`, `"templates"`, and `"hybrid"`; selection choices are `"all"`,
-`"polymers-and-ligands"`, and `"polymers"`.
+`"polymers-and-ligands"`, and `"polymers"`. Their language-independent import semantics are defined in
+the [PDB and mmCIF format reference](FORMATS.md#pdb-and-mmcif-input).
 
 The Python package currently has no RDKit or Biopython adapter, chemistry preparation API, asynchronous
 job API, or progress/cancellation callback. Current distribution and integration work is tracked in the

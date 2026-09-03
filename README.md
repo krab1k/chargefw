@@ -53,6 +53,7 @@ The Python package is pre-release and does not yet have a qualified binary wheel
 ## Documentation
 
 - [Project design and scientific scope](docs/PROJECT.md)
+- [Molecular input and charge output formats](docs/FORMATS.md)
 - [Command-line interface](docs/CLI.md)
 - [Native C++ library](docs/NATIVE.md)
 - [Python package](docs/PYTHON.md)

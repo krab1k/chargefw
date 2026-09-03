@@ -173,17 +173,6 @@ Individual public headers are provided under `chargefw/adapters/native` and
 - The Gemmi writer emits preservation-oriented or generated mmCIF charge data.
 
 Readers return `ImportedMoleculeRecord`, which keeps the molecule together with source identity and import
-diagnostics. SDF and MOL2 readers consume one record at a time; the CLI currently materializes the full
-collection before assessment.
-
-The MOL/SDF reader imports concrete elements, formal charges, coordinates, and single, double, or triple
-covalent bonds from its supported V2000 and V3000 subsets. V3000 aromatic bond order 4 is represented as
-a single bond. Trailing V3000 bond attributes such as `CFG=` and `TOPO=` are accepted but are not used by
-charge calculations. Coordinate bond order 9 and hydrogen-bond order 10 are omitted because the core
-molecular graph does not represent them; the imported record contains a warning diagnostic for each
-omitted order.
-
-V2000 `M  CHG` records provide formal charges. Other `M  ` properties are not interpreted and do not
-prevent import; each ignored property code produces a warning diagnostic. Repeated warnings for the same
-property or omitted bond order are coalesced within a molecule record and retain the first occurrence's
-record-relative line number.
+diagnostics. The [molecular format reference](FORMATS.md) documents supported subsets, reader policy,
+source preservation, generated output, charge fields, and mapping requirements independently of the C++
+API.
