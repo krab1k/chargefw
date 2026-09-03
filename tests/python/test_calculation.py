@@ -194,11 +194,21 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(geometry_independent.status, "success")
         self.assertEqual(len(geometry_independent.assignments), 1)
         self.assertIsNone(geometry_independent.assignments[0].conformer_index)
+        self.assertIs(
+            geometry_independent.assignment(molecule=0), geometry_independent.assignments[0]
+        )
+        with self.assertRaisesRegex(ValueError, "no conformer-specific"):
+            geometry_independent.assignment(molecule=0, conformer=0)
 
         collection = chargefw.MoleculeCollection([water(2)])
         multi_result = chargefw.calculate(collection, method="qeq", execution="full")
         self.assertEqual(multi_result.status, "success")
         self.assertEqual([item.conformer_index for item in multi_result.assignments], [0, 1])
+        self.assertEqual(multi_result.assignments_by_molecule, (multi_result.assignments,))
+        self.assertIs(multi_result.assignment(molecule=0, conformer=0), multi_result.assignments[0])
+        self.assertIs(multi_result.assignment(molecule=0, conformer=1), multi_result.assignments[1])
+        with self.assertRaisesRegex(ValueError, "conformer is required"):
+            multi_result.assignment(molecule=0)
         repeated_result = chargefw.calculate(collection, method="qeq", execution="full")
         self.assertEqual(
             [item.values.tolist() for item in repeated_result.assignments],
@@ -228,6 +238,10 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(
             [assignment.atom_ids for assignment in mapped_result.assignments],
             [("A",), ("B", "C")],
+        )
+        self.assertEqual(
+            mapped_result.assignments_by_molecule,
+            ((mapped_result.assignments[0],), (mapped_result.assignments[1],)),
         )
 
     def test_public_charge_assignment_is_validated_and_comparable(self) -> None:

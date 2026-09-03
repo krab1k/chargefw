@@ -48,6 +48,27 @@ print(result.assignments[0].values)
 
 `calculate()` also accepts a `MoleculeCollection` or any iterable of `Molecule` values.
 
+For a collection, `assignments_by_molecule` groups the source-ordered assignments for each input molecule.
+Use it with the original collection for ordinary molecule-by-molecule iteration:
+
+```python
+molecules = chargefw.MoleculeCollection([first_molecule, second_molecule])
+result = chargefw.calculate(molecules, method="qeq", execution="full")
+
+for molecule, assignments in zip(molecules, result.assignments_by_molecule, strict=True):
+    for assignment in assignments:
+        print(molecule.name, assignment.conformer_index, assignment.values)
+```
+
+Geometry-dependent methods produce one assignment for each conformer; geometry-independent methods
+produce one assignment with `conformer_index` set to `None`.
+
+Retrieve one assignment directly by its source indices:
+
+```python
+second_conformer_charges = result.assignment(molecule=0, conformer=1).values
+```
+
 ## Molecules and ownership
 
 `Molecule` accepts:
@@ -151,6 +172,7 @@ be used by independent concurrent calculations.
 
 - `status`;
 - immutable `assignments`;
+- immutable `assignments_by_molecule`, aligned with the calculation input collection;
 - requested policy in `requested`;
 - detached executed provenance in `plan`;
 - rejected alternatives and warnings;

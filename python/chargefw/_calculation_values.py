@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from operator import index as as_index
 from types import MappingProxyType
 
 from ._calculation_options import RequestedCalculation
@@ -242,6 +243,7 @@ class CalculationResult:
         "_status",
         "_requested",
         "_assignments",
+        "_assignments_by_molecule",
         "_rejections",
         "_plan",
         "_failure_message",
@@ -251,6 +253,7 @@ class CalculationResult:
     _status: ExecutionStatus
     _requested: RequestedCalculation
     _assignments: tuple[ChargeAssignment, ...]
+    _assignments_by_molecule: tuple[tuple[ChargeAssignment, ...], ...]
     _rejections: tuple[Rejection, ...]
     _plan: ExecutedPlan | None
     _failure_message: str | None
@@ -266,26 +269,26 @@ class CalculationResult:
         rejections: tuple[Rejection, ...] = (),
     ) -> None:
         assignments: list[ChargeAssignment] = []
+        assignments_by_molecule: list[list[ChargeAssignment]] = [[] for _ in molecules]
         charges = payload["charges"]
         if charges is not None:
             for item in charges["assignments"]:
                 molecule_index = int(item["molecule_index"])
                 conformer_index = item["conformer_index"]
                 molecule = molecules[molecule_index]
-                assignments.append(
-                    ChargeAssignment._from_native_values(
-                        item["values"],
-                        molecule_index=molecule_index,
-                        conformer_index=(
-                            int(conformer_index) if conformer_index is not None else None
-                        ),
-                        source=molecule.source,
-                        atom_ids=molecule.atom_ids,
-                    )
+                assignment = ChargeAssignment._from_native_values(
+                    item["values"],
+                    molecule_index=molecule_index,
+                    conformer_index=(int(conformer_index) if conformer_index is not None else None),
+                    source=molecule.source,
+                    atom_ids=molecule.atom_ids,
                 )
+                assignments.append(assignment)
+                assignments_by_molecule[molecule_index].append(assignment)
         self._status = payload["status"]
         self._requested = requested
         self._assignments = tuple(assignments)
+        self._assignments_by_molecule = tuple(tuple(group) for group in assignments_by_molecule)
         self._rejections = rejections or _rejections(payload["rejections"], methods, parameter_sets)
         self._plan = _executed_plan(payload["effective"], methods, parameter_sets)
         self._failure_message = payload["failure_message"]
@@ -301,6 +304,48 @@ class CalculationResult:
     @property
     def assignments(self) -> tuple[ChargeAssignment, ...]:
         return self._assignments
+
+    @property
+    def assignments_by_molecule(self) -> tuple[tuple[ChargeAssignment, ...], ...]:
+        """Return source-ordered assignment groups aligned with the input molecule collection."""
+
+        return self._assignments_by_molecule
+
+    def assignment(self, *, molecule: int, conformer: int | None = None) -> ChargeAssignment:
+        """Return charges for one source molecule and, when applicable, one conformer."""
+
+        if isinstance(molecule, bool):
+            raise TypeError("molecule must be an integer")
+        try:
+            molecule_index = as_index(molecule)
+        except TypeError as error:
+            raise TypeError("molecule must be an integer") from error
+        if molecule_index < 0 or molecule_index >= len(self._assignments_by_molecule):
+            raise IndexError("molecule index is outside the calculation input collection")
+
+        assignments = self._assignments_by_molecule[molecule_index]
+        if conformer is None:
+            matches = tuple(item for item in assignments if item.conformer_index is None)
+            if len(matches) == 1:
+                return matches[0]
+            if assignments:
+                raise ValueError("conformer is required for conformer-specific assignments")
+            raise IndexError("molecule has no charge assignment")
+
+        if isinstance(conformer, bool):
+            raise TypeError("conformer must be an integer or None")
+        try:
+            conformer_index = as_index(conformer)
+        except TypeError as error:
+            raise TypeError("conformer must be an integer or None") from error
+        if conformer_index < 0:
+            raise IndexError("conformer index must be non-negative")
+        matches = tuple(item for item in assignments if item.conformer_index == conformer_index)
+        if len(matches) == 1:
+            return matches[0]
+        if any(item.conformer_index is None for item in assignments):
+            raise ValueError("molecule has no conformer-specific assignments")
+        raise IndexError("conformer has no charge assignment")
 
     @property
     def rejections(self) -> tuple[Rejection, ...]:
