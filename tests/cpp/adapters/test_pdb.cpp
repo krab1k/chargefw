@@ -195,13 +195,28 @@ TEST_CASE("PDB template links respect chains and insertion codes", "[adapters][p
     };
 
     CHECK(read_bond_count(
-              R"pdb(ATOM      1  C   ALA A   1       0.000   0.000   0.000  1.00 20.00           C
-ATOM      2  N   GLY B   2       1.000   0.000   0.000  1.00 20.00           N
+              R"pdb(ATOM      1  C   ALA A  82       0.000   0.000   0.000  1.00 20.00           C
+ATOM      2  N   GLY A  82A      1.000   0.000   0.000  1.00 20.00           N
+ATOM      3  C   GLY A  82A      2.000   0.000   0.000  1.00 20.00           C
+ATOM      4  N   SER A  82B      3.000   0.000   0.000  1.00 20.00           N
+END
+)pdb") == 2);
+
+    CHECK(read_bond_count(
+              R"pdb(ATOM      1  C   ALA A  82A      0.000   0.000   0.000  1.00 20.00           C
+ATOM      2  N   GLY B  82B      1.000   0.000   0.000  1.00 20.00           N
 END
 )pdb") == 0);
+
     CHECK(read_bond_count(
-              R"pdb(ATOM      1  C   ALA A   1       0.000   0.000   0.000  1.00 20.00           C
-ATOM      2  N   GLY A   1A      1.000   0.000   0.000  1.00 20.00           N
+              R"pdb(ATOM      1  C   ALA A  81       0.000   0.000   0.000  1.00 20.00           C
+ATOM      2  N   GLY A  83       1.000   0.000   0.000  1.00 20.00           N
 END
-)pdb") == 1);
+)pdb") == 0);
+
+    CHECK(read_bond_count(
+              R"pdb(ATOM      1  C   ALA A  82A      0.000   0.000   0.000  1.00 20.00           C
+ATOM      2  N   GLY A  82C      1.000   0.000   0.000  1.00 20.00           N
+END
+)pdb") == 0);
 }

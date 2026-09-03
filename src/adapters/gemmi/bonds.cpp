@@ -118,10 +118,15 @@ void add_sequential_bonds(BondAccumulator& bonds,
         if (previous.seqid.num.value + 1 == current.seqid.num.value) {
             return true;
         }
-        // An insertion code keeps the parent sequence number: the base residue has a blank
-        // insertion code and the first inserted residue reuses the parent number with a code.
-        return previous.seqid.num.value == current.seqid.num.value && previous.seqid.icode == ' ' &&
-               current.seqid.icode != ' ';
+        // An insertion-code chain keeps the parent sequence number and progresses from the
+        // unmarked base residue through consecutive codes (for example, 82, 82A, 82B).
+        if (previous.seqid.num.value != current.seqid.num.value) {
+            return false;
+        }
+        if (previous.seqid.icode == ' ') {
+            return current.seqid.icode == 'A';
+        }
+        return current.seqid.icode == static_cast<char>(previous.seqid.icode + 1);
     };
 
     for (std::size_t index = 1; index < residues.size(); ++index) {
