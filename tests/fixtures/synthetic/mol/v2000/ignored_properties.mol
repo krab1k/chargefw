@@ -1,0 +1,12 @@
+ignored-properties-v2000
+  ChargeFW
+
+  2  1  0  0  0  0  0  0  0  0999 V2000
+    0.0000    0.0000    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    1.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  1  0  0  0  0
+M  ISO  1   1  15
+M  XYZ arbitrary unsupported payload
+M  ISO  1   2  18
+M  CHG  2   1   1   2  -1
+M  END

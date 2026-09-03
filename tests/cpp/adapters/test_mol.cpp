@@ -132,6 +132,42 @@ TEST_CASE("native readers preserve molecular mapping and reject malformed record
     }
 
     {
+        std::ifstream input{fixture("synthetic/mol/v2000/ignored_properties.mol")};
+        const auto result = mol::parse_mol(input, {});
+        CHECK(result.molecule.atom_count() == 2);
+        CHECK(result.molecule.bond_count() == 1);
+        CHECK(result.molecule.atom(0).formal_charge() == 1);
+        CHECK(result.molecule.atom(1).formal_charge() == -1);
+        REQUIRE(result.diagnostics.size() == 2);
+        CHECK(result.diagnostics[0].code == "v2000_property_ignored");
+        CHECK(result.diagnostics[0].message.contains("'ISO'"));
+        CHECK(result.diagnostics[0].line == 8);
+        CHECK(result.diagnostics[1].code == "v2000_property_ignored");
+        CHECK(result.diagnostics[1].message.contains("'XYZ'"));
+        CHECK(result.diagnostics[1].line == 9);
+    }
+
+    {
+        std::ifstream input{fixture("synthetic/mol/v3000/bond_attributes_and_ignored_orders.mol")};
+        const auto result = mol::parse_mol(input, {});
+        CHECK(result.molecule.atom_count() == 4);
+        REQUIRE(result.molecule.bond_count() == 2);
+        CHECK(result.molecule.bond(0).first_atom_index() == 0);
+        CHECK(result.molecule.bond(0).second_atom_index() == 1);
+        CHECK(result.molecule.bond(0).order() == chargefw::core::BondOrder::SINGLE);
+        CHECK(result.molecule.bond(1).first_atom_index() == 1);
+        CHECK(result.molecule.bond(1).second_atom_index() == 3);
+        CHECK(result.molecule.bond(1).order() == chargefw::core::BondOrder::DOUBLE);
+        REQUIRE(result.diagnostics.size() == 2);
+        CHECK(result.diagnostics[0].code == "v3000_bond_order_ignored");
+        CHECK(result.diagnostics[0].message.contains("order 9"));
+        CHECK(result.diagnostics[0].line == 15);
+        CHECK(result.diagnostics[1].code == "v3000_bond_order_ignored");
+        CHECK(result.diagnostics[1].message.contains("order 10"));
+        CHECK(result.diagnostics[1].line == 17);
+    }
+
+    {
         std::ifstream input{fixture("synthetic/mol2/aromatic.mol2")};
         auto reader = mol2::Mol2Reader{input, "charged_aromatic.mol2"};
         const auto result = reader.next();
@@ -248,6 +284,28 @@ TEST_CASE("native readers preserve molecular mapping and reject malformed record
         CHECK(rejected);
     }
 
+    for (const auto malformed : {
+             std::string_view{
+                 "bad-v2000-property\nchargefw\n\n  1  0  0  0  0  0  0  0  0  0999 V2000\n"
+                 "    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n"
+                 "M  X\nM  END\n"},
+             std::string_view{
+                 "bad-v3000-bond\nchargefw\n\n  0  0  0  0  0  0  0  0  0  0999 V3000\n"
+                 "M  V30 BEGIN CTAB\nM  V30 COUNTS 2 1 0 0 0\nM  V30 BEGIN ATOM\n"
+                 "M  V30 1 C 0 0 0 0\nM  V30 2 O 1 0 0 0\nM  V30 END ATOM\n"
+                 "M  V30 BEGIN BOND\nM  V30 invalid 1 1 2\nM  V30 END BOND\n"
+                 "M  V30 END CTAB\nM  END\n"},
+             std::string_view{
+                 "short-v3000-bond\nchargefw\n\n  0  0  0  0  0  0  0  0  0  0999 V3000\n"
+                 "M  V30 BEGIN CTAB\nM  V30 COUNTS 2 1 0 0 0\nM  V30 BEGIN ATOM\n"
+                 "M  V30 1 C 0 0 0 0\nM  V30 2 O 1 0 0 0\nM  V30 END ATOM\n"
+                 "M  V30 BEGIN BOND\nM  V30 1 1 1\nM  V30 END BOND\n"
+                 "M  V30 END CTAB\nM  END\n"},
+         }) {
+        std::istringstream input{std::string{malformed}};
+        CHECK_THROWS_AS(mol::parse_mol(input, {}), std::runtime_error);
+    }
+
     {
         std::ifstream input{fixture("corpus/sdf/heme/ideal.sdf")};
         auto reader = sdf::SdfReader{input, "HEM_ideal.sdf"};
@@ -256,7 +314,9 @@ TEST_CASE("native readers preserve molecular mapping and reject malformed record
         const auto& hem_record = *result;
         CHECK(hem_record.molecule.atom_count() == 75);
         CHECK(hem_record.molecule.bond_count() == 80);
-        CHECK(hem_record.diagnostics.empty());
+        REQUIRE(hem_record.diagnostics.size() == 1);
+        CHECK(hem_record.diagnostics[0].code == "v3000_bond_order_ignored");
+        CHECK(hem_record.diagnostics[0].line == 164);
         CHECK_FALSE(reader.next().has_value());
     }
 }

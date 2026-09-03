@@ -18,6 +18,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -63,6 +64,7 @@ auto parse_v2000(std::istream& input, const std::string_view counts, std::size_t
     result.atoms.reserve(static_cast<std::size_t>(atom_count));
     result.positions.reserve(static_cast<std::size_t>(atom_count));
     result.bonds.reserve(static_cast<std::size_t>(bond_count));
+    auto ignored_property_codes = std::unordered_set<std::string>{};
 
     for (int index = 0; index < atom_count; ++index) {
         const auto atom_line = common::read_line(input, line, "MOL");
@@ -102,13 +104,25 @@ auto parse_v2000(std::istream& input, const std::string_view counts, std::size_t
             return result;
         }
 
-        if (!property_line.starts_with("M  ")) {
+        if (!property_line.starts_with("M  ") || property_line.size() < 6 ||
+            !std::ranges::all_of(
+                std::string_view{property_line}.substr(3, 3), [](const char value) {
+                    const auto character = static_cast<unsigned char>(value);
+                    return std::isupper(character) != 0 || std::isdigit(character) != 0;
+                })) {
             throw std::runtime_error{"unexpected V2000 property line"};
         }
 
         if (!property_line.starts_with("M  CHG")) {
-            throw std::runtime_error{"unsupported V2000 property '" + property_line.substr(0, 6) +
-                                     "'"};
+            auto property_code = property_line.substr(3, 3);
+            if (ignored_property_codes.emplace(property_code).second) {
+                result.diagnostics.push_back(MoleculeRecordDiagnostic{
+                    .code = "v2000_property_ignored",
+                    .message = "V2000 property '" + property_code +
+                               "' was ignored because it is not used for charge calculation.",
+                    .line = line});
+            }
+            continue;
         }
 
         const auto count = common::parse_trimmed_int(
@@ -206,6 +220,8 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
     result.positions.reserve(static_cast<std::size_t>(atom_count));
     result.bonds.reserve(static_cast<std::size_t>(bond_count));
     std::unordered_map<int, std::size_t> atom_indices;
+    std::unordered_set<int> bond_ids;
+    std::unordered_set<int> ignored_bond_orders;
 
     for (int index = 0; index < atom_count; ++index) {
         const auto atom = v30_tokens(read_v30_line(input, line));
@@ -245,10 +261,16 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
     }
 
     for (int index = 0; index < bond_count; ++index) {
+        const auto bond_line = line + 1;
         const auto bond = v30_tokens(read_v30_line(input, line));
 
-        if (bond.size() != 4) {
-            throw std::runtime_error{"unsupported V3000 bond attributes"};
+        if (bond.size() < 4) {
+            throw std::runtime_error{"invalid V3000 bond record"};
+        }
+
+        const auto source_id = common::parse_int(bond[0], "V3000 bond id");
+        if (source_id <= 0 || !bond_ids.emplace(source_id).second) {
+            throw std::runtime_error{"duplicate or invalid V3000 bond id"};
         }
 
         const auto first_source_id = common::parse_int(bond[2], "V3000 bond atom");
@@ -262,6 +284,14 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
 
         const auto order = common::parse_int(bond[1], "V3000 bond order");
         if (order == 9 || order == 10) {
+            if (ignored_bond_orders.emplace(order).second) {
+                result.diagnostics.push_back(MoleculeRecordDiagnostic{
+                    .code = "v3000_bond_order_ignored",
+                    .message = "V3000 bond order " + std::to_string(order) +
+                               " was ignored because it is not represented in charge calculations; "
+                               "the imported graph omits this bond.",
+                    .line = bond_line});
+            }
             continue;
         }
 
