@@ -94,11 +94,9 @@ calculate_target(const methods::ApplicableMethod& selected,
                         "cover fragment did not include every owned source atom"};
                 }
             } catch (const std::exception& error) {
-                throw std::runtime_error{
-                    "cover calculation failed for method '" + std::string{selected.method->id()} +
-                    "', molecule '" + std::string{source_molecule.name()} + "', conformer " +
-                    std::to_string(conformer_index) + ", pivot atom " +
-                    std::to_string(pivot_source_atom_index) + ": " + error.what()};
+                throw std::runtime_error{"cover fragment around source atom " +
+                                         std::to_string(pivot_source_atom_index + 1) +
+                                         " failed: " + error.what()};
             }
         });
 

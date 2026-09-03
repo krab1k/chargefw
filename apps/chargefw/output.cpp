@@ -93,7 +93,7 @@ void report_diagnostics(const adapters::ChargeResultDocument& document) {
                                  });
         if (found == charge_set.assignments().end()) {
             throw std::runtime_error{"No charge assignment for molecule " +
-                                     std::to_string(molecule_index)};
+                                     std::to_string(molecule_index + 1)};
         }
         const auto remaining = charge_set.assignments().subspan(
             static_cast<std::size_t>(std::distance(charge_set.assignments().begin(), found)) + 1);

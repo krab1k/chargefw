@@ -41,11 +41,9 @@ calculate_target(const methods::ApplicableMethod& selected,
                 values[center_source_atom_index] =
                     fragment_charges[fragment.center_local_atom_index()];
             } catch (const std::exception& error) {
-                throw std::runtime_error{
-                    "cutoff calculation failed for method '" + std::string{selected.method->id()} +
-                    "', molecule '" + std::string{source_molecule.name()} + "', conformer " +
-                    std::to_string(conformer_index) + ", center atom " +
-                    std::to_string(center_source_atom_index) + ": " + error.what()};
+                throw std::runtime_error{"cutoff fragment around source atom " +
+                                         std::to_string(center_source_atom_index + 1) +
+                                         " failed: " + error.what()};
             }
         });
 

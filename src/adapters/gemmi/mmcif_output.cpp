@@ -339,7 +339,7 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
     }
     if (result.empty()) {
         throw std::runtime_error{"no charge assignments for mmCIF output molecule " +
-                                 std::to_string(molecule_index)};
+                                 std::to_string(molecule_index + 1)};
     }
     return result;
 }

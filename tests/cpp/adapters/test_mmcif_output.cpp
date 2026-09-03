@@ -13,6 +13,8 @@
 #include <gemmi/read_cif.hpp>
 
 #include <sstream>
+#include <stdexcept>
+#include <string_view>
 #include <vector>
 
 namespace adapters = chargefw::adapters;
@@ -103,6 +105,15 @@ TEST_CASE("mmCIF generated output preserves charge mapping", "[adapters][mmcif]"
     CHECK(first->molecule.bond(0).order() == core::BondOrder::DOUBLE);
     CHECK(first->molecule.atom(1).formal_charge() == -1);
     CHECK(second->molecule.conformer(0)[0].x == 2.0);
+
+    try {
+        std::ostringstream incomplete_output;
+        mmcif_output::MmcifWriter{incomplete_output}.write_generated(records, charge_set(1));
+        CHECK(false);
+    } catch (const std::runtime_error& error) {
+        CHECK(std::string_view{error.what()} ==
+              "no charge assignments for mmCIF output molecule 2");
+    }
 }
 
 TEST_CASE("mmCIF output preserves source categories and charge assignments", "[adapters][mmcif]") {

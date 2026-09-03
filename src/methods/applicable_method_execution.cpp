@@ -49,7 +49,7 @@ auto validate_coordinate_targets(const ApplicableMethod& selected,
         if (molecules[molecule_index].molecule().conformer_count() == 0) {
             throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
                                         "' requires coordinates, but molecule " +
-                                        std::to_string(molecule_index) + " has no conformers"};
+                                        std::to_string(molecule_index + 1) + " has no conformers"};
         }
     }
 }

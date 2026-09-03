@@ -259,8 +259,8 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
         CHECK_THROWS_AS(calculate_with_invalid_classification(), std::invalid_argument);
     }
 
-    const auto no_conformer_collection = core::MoleculeCollection{
-        std::vector{core::Molecule{std::vector{core::Atom{1}}, {}, {}, "no-conformer"}}};
+    const auto no_conformer_collection = core::MoleculeCollection{std::vector{
+        charged_molecule, core::Molecule{std::vector{core::Atom{1}}, {}, {}, "no-conformer"}}};
     const features::PreparedMoleculeCollection no_conformer_prepared{no_conformer_collection};
     for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
                             calculation::ExecutionMode::cover}) {
@@ -272,7 +272,14 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
         const auto calculate_without_conformer = [&request] -> void {
             static_cast<void>(calculation::calculate(request));
         };
-        CHECK_THROWS_AS(calculate_without_conformer(), std::invalid_argument);
+        try {
+            calculate_without_conformer();
+            CHECK(false);
+        } catch (const std::invalid_argument& error) {
+            CHECK(std::string_view{error.what()} ==
+                  "selected method 'zero-fragment' requires coordinates, but molecule 2 has no "
+                  "conformers");
+        }
     }
 
     const auto corrected = calculation::calculate(
@@ -390,9 +397,12 @@ TEST_CASE("reduced solver failures retain method and target context",
         CHECK_FALSE(result.calculated());
         REQUIRE(result.failure_message.has_value());
         const auto message = std::string_view{*result.failure_message};
-        CHECK(message.contains(mode == calculation::ExecutionSelectionKind::cutoff ? "center atom"
-                                                                                   : "pivot atom"));
-        CHECK(message.contains("method 'qeq', molecule 1 ('water'), conformer 1"));
+        CHECK(message.contains("method 'qeq', molecule 1 ('water'), conformer 1 failed:"));
+        CHECK(message.contains(mode == calculation::ExecutionSelectionKind::cutoff
+                                   ? "cutoff fragment around source atom 1 failed:"
+                                   : "cover fragment around source atom 1 failed:"));
+        CHECK_FALSE(message.contains("center atom"));
+        CHECK_FALSE(message.contains("pivot atom"));
     }
 }
 
