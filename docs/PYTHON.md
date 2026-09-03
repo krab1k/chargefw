@@ -64,8 +64,10 @@ Inputs are validated, normalized to C-contiguous `int64` or `float64` arrays, an
 are read-only, so later mutation or destruction of the caller's arrays cannot change the molecule.
 Coordinates are always exposed with shape `(C, N, 3)`; `None` and `(0, N, 3)` both mean no conformers.
 
-Only bond orders 1, 2, and 3 are accepted. Self bonds, duplicate bonds, invalid indices, non-integral
-integer input, unsupported atomic numbers, mismatched shapes, and non-finite coordinates are rejected.
+Atomic numbers 1–100 are accepted because they are represented by the bundled periodic table; individual
+methods and parameter sets may support a smaller subset. Only bond orders 1, 2, and 3 are accepted. Self
+bonds, duplicate bonds, invalid indices, non-integral integer input, unsupported atomic numbers,
+mismatched shapes, and non-finite coordinates are rejected.
 
 `MoleculeCollection` is an immutable source-ordered sequence with an optional name. Omitted atom and
 conformer IDs default to source-order integers.

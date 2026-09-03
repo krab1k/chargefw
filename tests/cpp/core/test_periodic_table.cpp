@@ -14,6 +14,8 @@ TEST_CASE("periodic table looks up known elements", "[core][periodic-table]") {
     CHECK(table.contains(1));
     CHECK(table.contains("H"));
     CHECK_FALSE(table.contains(0));
+    CHECK(table.contains(100));
+    CHECK_FALSE(table.contains(101));
     CHECK_FALSE(table.contains("Xx"));
     CHECK(table.element(1).symbol == std::string_view{"H"});
     CHECK(table.element("C").atomic_number == 6);
@@ -38,5 +40,7 @@ TEST_CASE("periodic table rejects unknown elements", "[core][periodic-table]") {
     const auto& table = core::periodic_table();
 
     CHECK_THROWS_AS(table.element(0), std::out_of_range);
+    CHECK(table.element(100).symbol == std::string_view{"Fm"});
+    CHECK_THROWS_AS(table.element(101), std::out_of_range);
     CHECK_THROWS_AS(table.element("Xx"), std::out_of_range);
 }

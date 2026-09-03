@@ -92,8 +92,8 @@ class Molecule:
         if name is not None and not isinstance(name, str):
             raise TypeError("name must be a string or None")
         atomic = as_integer_array(atomic_numbers, "atomic_numbers", 1)
-        if np.any((atomic < 1) | (atomic > 118)):
-            raise ValueError("atomic_numbers must contain values in range 1..118")
+        if np.any((atomic < 1) | (atomic > 100)):
+            raise ValueError("atomic_numbers must contain values in range 1..100")
         atom_count = len(atomic)
 
         if formal_charges is None:

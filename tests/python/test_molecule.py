@@ -113,6 +113,15 @@ class MoleculeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             chargefw.Molecule(np.array([2**100], dtype=object))
 
+    def test_supported_atomic_number_boundaries(self) -> None:
+        self.assertEqual(chargefw.Molecule([100]).atomic_numbers[0], 100)
+        for atomic_number in (101, 118, 119):
+            with (
+                self.subTest(atomic_number=atomic_number),
+                self.assertRaisesRegex(ValueError, r"range 1\.\.100"),
+            ):
+                chargefw.Molecule([atomic_number])
+
     def test_invalid_inputs_are_rejected(self) -> None:
         invalid_cases = (
             (TypeError, lambda: chargefw.Molecule([1.0])),

@@ -7,8 +7,8 @@ namespace chargefw::core {
 namespace {
 
 auto validate_atomic_number(int atomic_number) -> void {
-    if (atomic_number < 1 || atomic_number > 118) {
-        throw std::invalid_argument{"atomic number must be in range 1..118"};
+    if (atomic_number < 1 || atomic_number > 100) {
+        throw std::invalid_argument{"atomic number must be in range 1..100"};
     }
 }
 

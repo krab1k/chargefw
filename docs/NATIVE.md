@@ -92,9 +92,11 @@ and plans needed for execution.
 - zero or more `Conformer` values, each containing one position per atom; and
 - an optional molecule name.
 
-`MoleculeCollection` owns source-ordered molecules and an optional collection name. Constructors validate
-atomic numbers, bond endpoints and duplicates, conformer cardinality, and finite coordinates. Methods that
-require geometry are inapplicable to molecules without conformers.
+`MoleculeCollection` owns source-ordered molecules and an optional collection name. Molecules accept the
+atomic numbers 1–100 represented by the bundled periodic table; individual methods and parameter sets may
+support a smaller subset. Constructors validate atomic numbers, bond endpoints and duplicates, conformer
+cardinality, and finite coordinates. Methods that require geometry are inapplicable to molecules without
+conformers.
 
 ## Assessment
 
