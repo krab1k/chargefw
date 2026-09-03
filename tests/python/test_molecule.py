@@ -131,7 +131,6 @@ class MoleculeTests(unittest.TestCase):
                 ValueError,
                 lambda: chargefw.Molecule([1, 1], bonds=[[0, 1, 1], [1, 0, 1]]),
             ),
-            (ValueError, lambda: chargefw.Molecule([1], coordinates=[[np.nan, 0, 0]])),
             (
                 ValueError,
                 lambda: chargefw.Molecule([1], coordinates=np.empty((0, 1, 2))),

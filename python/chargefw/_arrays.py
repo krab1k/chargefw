@@ -82,8 +82,6 @@ def as_coordinates(value: Any, atom_count: int) -> np.ndarray:
         canonical = np.array(array, dtype=np.float64, order="C", copy=True).reshape(canonical_shape)
     except (OverflowError, ValueError) as error:
         raise ValueError("coordinates contain values outside the supported range") from error
-    if not np.all(np.isfinite(canonical)):
-        raise ValueError("coordinates must contain only finite values")
     return canonical
 
 

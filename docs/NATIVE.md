@@ -95,8 +95,8 @@ and plans needed for execution.
 `MoleculeCollection` owns source-ordered molecules and an optional collection name. Molecules accept the
 atomic numbers 1–100 represented by the bundled periodic table; individual methods and parameter sets may
 support a smaller subset. Constructors validate atomic numbers, bond endpoints and duplicates, conformer
-cardinality, and finite coordinates. Methods that require geometry are inapplicable to molecules without
-conformers.
+cardinality. Non-finite coordinates are retained, but methods that require geometry are inapplicable when
+coordinates are missing or non-finite.
 
 ## Assessment
 

@@ -434,6 +434,39 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(result.rejections)
         self.assertEqual(result.rejections[0].issues[0].kind, "missing_feature")
 
+    def test_nonfinite_coordinates_are_assessed_per_method(self) -> None:
+        molecule = chargefw.Molecule(
+            [8, 1, 1],
+            bonds=[[0, 1, 1], [0, 2, 1]],
+            coordinates=[[0.0, 0.0, 0.0], [np.nan, 0.0, 0.0], [-0.24, 0.93, 0.0]],
+        )
+        self.assertTrue(np.isnan(molecule.coordinates[0, 1, 0]))
+
+        formal_result = chargefw.calculate(molecule, method="formal", execution="full")
+        self.assertEqual(formal_result.status, "success")
+
+        assessment = chargefw.assess(
+            molecule,
+            method="qeq",
+            parameter_set="QEq_original",
+            execution="full",
+        )
+        self.assertFalse(assessment.plans)
+        invalid_geometry = [
+            issue
+            for rejection in assessment.rejections
+            for issue in rejection.issues
+            if issue.kind == "invalid_geometry"
+        ]
+        self.assertEqual(len(invalid_geometry), 1)
+        self.assertEqual(invalid_geometry[0].atom_index, 1)
+        self.assertEqual(invalid_geometry[0].conformer_index, 0)
+        self.assertEqual(
+            invalid_geometry[0].message,
+            "molecule 1: method 'qeq', conformer 1: atom 2 (H, formal charge 0) has non-finite "
+            "coordinates",
+        )
+
     def test_invalid_selection_requests_raise_value_error(self) -> None:
         invalid_requests: tuple[dict[str, Any], ...] = (
             {"method": "not-a-method"},
