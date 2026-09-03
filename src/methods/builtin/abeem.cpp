@@ -196,7 +196,7 @@ auto ABEEMMethod::calculate(const CalculationInput& input) const -> charges::Ato
     matrix(n + m, n + m) = 0.0;
     rhs(n + m) = input.target_charge();
 
-    Eigen::VectorXd q = matrix.partialPivLu().solve(rhs).head(system_size);
+    Eigen::VectorXd q = matrix.partialPivLu().solve(rhs);
 
     auto values = std::vector<double>(atom_count);
 
