@@ -1,3 +1,5 @@
+#include "features/topology_helpers.h"
+
 #include <algorithm>
 #include <optional>
 #include <queue>
