@@ -2,7 +2,17 @@
 
 #include <chargefw/methods/method.h>
 
+#include <span>
+#include <vector>
+
 namespace chargefw::methods::builtin {
+
+namespace sqe_core {
+
+[[nodiscard]] auto calculate(const CalculationInput& input,
+                             std::span<const double> initial_charges = {}) -> std::vector<double>;
+
+} // namespace sqe_core
 
 class SQEMethod final : public Method {
   public:
