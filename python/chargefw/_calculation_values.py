@@ -159,9 +159,9 @@ def _execution_issue(value: ExecutionIssuePayload) -> ExecutionIssue:
 
 
 def _resolved_parameter_set(
-    id: str | None, parameter_sets: ParameterSetCatalog
+    parameter_set_id: str | None, parameter_sets: ParameterSetCatalog
 ) -> ParameterSet | None:
-    return None if id is None else parameter_sets[id]
+    return None if parameter_set_id is None else parameter_sets[parameter_set_id]
 
 
 def _rejections(
