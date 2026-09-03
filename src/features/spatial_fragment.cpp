@@ -212,8 +212,8 @@ auto SpatialFragmentBuilder::build(const std::size_t center_atom_index, const do
 
     std::vector<core::Bond> bonds;
     std::vector<std::size_t> local_to_source_bond_indices;
-    bonds.reserve(molecule.bond_count());
-    local_to_source_bond_indices.reserve(molecule.bond_count());
+    bonds.reserve(selected_source_atom_indices.size());
+    local_to_source_bond_indices.reserve(selected_source_atom_indices.size());
 
     for (std::size_t source_bond_index = 0; source_bond_index < molecule.bond_count();
          ++source_bond_index) {
