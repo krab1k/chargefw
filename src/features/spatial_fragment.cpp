@@ -185,8 +185,6 @@ auto SpatialFragmentBuilder::build(const std::size_t center_atom_index, const do
 
     auto selected_source_atom_indices =
         spatial_index_->neighbor_indices_within(geometry.position(center_atom_index), radius);
-    std::erase(selected_source_atom_indices, center_atom_index);
-    selected_source_atom_indices.push_back(center_atom_index);
     std::ranges::sort(selected_source_atom_indices);
 
     std::vector<std::size_t> source_to_local_atom_indices(molecule.atom_count(), no_local_index);
