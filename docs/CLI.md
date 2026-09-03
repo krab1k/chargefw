@@ -139,6 +139,10 @@ Once import and request construction succeed, normal calculation outcomes write 
 Molecular charge files are written only on success. Import, request-construction, filesystem, and output
 compatibility failures are reported on standard error and can occur before a result document is written.
 
+During calculation, press `Ctrl+C` once to request cooperative cancellation. ChargeFW stops at its next
+cancellation check point, writes `<basename>.json` with status `cancelled` and no charge assignments, and
+exits with status 5. This does not interrupt import, request construction, or output writing.
+
 ### JSON result
 
 ChargeFW JSON schema `1.0` records:

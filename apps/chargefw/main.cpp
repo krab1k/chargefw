@@ -1,10 +1,13 @@
 #include "cli_support.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <cstddef>
 #include <exception>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <print>
@@ -15,6 +18,53 @@
 #include <utility>
 
 namespace {
+
+std::atomic_flag interruption_requested;
+
+extern "C" void request_interruption(int /*signal*/) {
+    interruption_requested.test_and_set(std::memory_order_relaxed);
+}
+
+class InterruptibleCalculationObserver final : public chargefw::calculation::CalculationObserver {
+  public:
+    explicit InterruptibleCalculationObserver(
+        const chargefw::calculation::CalculationObserver* observer)
+        : observer_{observer} {}
+
+    void on_progress(const chargefw::calculation::CalculationProgress& progress) const override {
+        if (observer_ != nullptr) {
+            observer_->on_progress(progress);
+        }
+    }
+
+    [[nodiscard]] auto cancelled() const noexcept -> bool override {
+        return interruption_requested.test(std::memory_order_relaxed) ||
+               (observer_ != nullptr && observer_->cancelled());
+    }
+
+  private:
+    const chargefw::calculation::CalculationObserver* observer_;
+};
+
+class ScopedInterruptHandler final {
+  public:
+    ScopedInterruptHandler() {
+        interruption_requested.clear(std::memory_order_relaxed);
+        previous_handler_ = std::signal(SIGINT, request_interruption);
+    }
+
+    ScopedInterruptHandler(const ScopedInterruptHandler&) = delete;
+    auto operator=(const ScopedInterruptHandler&) -> ScopedInterruptHandler& = delete;
+
+    ~ScopedInterruptHandler() {
+        std::signal(SIGINT, previous_handler_);
+    }
+
+  private:
+    using SignalHandler = void (*)(int);
+
+    SignalHandler previous_handler_ = SIG_DFL;
+};
 
 class TerminalProgressObserver final : public chargefw::calculation::CalculationObserver {
   public:
@@ -135,20 +185,22 @@ auto run(std::span<char*> arguments) -> int {
         chargefw::cli::make_requested_provenance(export_context, request);
     const auto max_threads = request.resource_policy.max_threads;
     const auto progress_observer = TerminalProgressObserver{};
-    const auto& observer =
-        progress ? static_cast<const chargefw::calculation::CalculationObserver&>(progress_observer)
-                 : chargefw::calculation::default_calculation_observer();
+    const auto interrupt_handler = ScopedInterruptHandler{};
+    const auto interruptible_observer =
+        InterruptibleCalculationObserver{progress ? std::addressof(progress_observer) : nullptr};
     auto result = [&]() -> chargefw::calculation::ExecutionResult {
         try {
             auto assessment = chargefw::calculation::assess(std::move(request));
             const auto* plan = assessment.default_plan();
             if (plan == nullptr) {
-                return chargefw::calculation::calculate(assessment, max_threads, observer);
+                return chargefw::calculation::calculate(assessment, max_threads,
+                                                        interruptible_observer);
             }
             for (const auto& warning : plan->warnings()) {
                 std::println(std::cerr, "Warning: {}", warning.message);
             }
-            return chargefw::calculation::calculate(assessment, *plan, max_threads, observer);
+            return chargefw::calculation::calculate(assessment, *plan, max_threads,
+                                                    interruptible_observer);
         } catch (const std::invalid_argument& error) {
             return {.status = chargefw::calculation::ExecutionStatus::invalid_input_or_request,
                     .charges = std::nullopt,
