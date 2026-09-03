@@ -58,7 +58,7 @@ print(result.assignments[0].values)
 - `coordinates`: `(N, 3)` for one conformer or `(C, N, 3)` for multiple conformers;
 - optional molecule, atom, and conformer names;
 - a `SourceIdentity` or its `source_name`, `record_index`, and `record_id` fields; and
-- optional hashable `atom_ids` and `conformer_ids` for round-trip mapping.
+- optional hashable `atom_ids` for round-trip mapping.
 
 Inputs are validated, normalized to C-contiguous `int64` or `float64` arrays, and copied. Public arrays
 are read-only, so later mutation or destruction of the caller's arrays cannot change the molecule.
@@ -70,8 +70,8 @@ bonds, duplicate bonds, invalid indices, non-integral integer input, unsupported
 mismatched shapes are rejected. Non-finite coordinates are retained, but methods that require geometry
 are inapplicable when coordinates are missing or non-finite.
 
-`MoleculeCollection` is an immutable source-ordered sequence with an optional name. Omitted atom and
-conformer IDs default to source-order integers.
+`MoleculeCollection` is an immutable source-ordered sequence with an optional name. Omitted atom IDs
+default to source-order integers.
 
 ## Methods and parameter sets
 
@@ -158,7 +158,7 @@ be used by independent concurrent calculations.
 - applicability and computation `timings`.
 
 Each `ChargeAssignment` contains a newly owned, read-only, C-contiguous `float64` vector together with its
-molecule index, optional conformer index, `SourceIdentity`, atom IDs, and optional conformer ID.
+molecule index, optional conformer index, `SourceIdentity`, and atom IDs.
 `numpy.asarray(assignment)` returns the charge vector.
 
 Geometry-dependent methods return one assignment per conformer. Geometry-independent methods return one

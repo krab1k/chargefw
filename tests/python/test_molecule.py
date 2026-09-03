@@ -27,7 +27,6 @@ class MoleculeTests(unittest.TestCase):
         bonds = np.array([[0, 1, 1], [0, 2, 1], [0, 3, 2]], dtype=np.int32)
         coordinates_source = np.arange(24, dtype=np.float32).reshape(2, 4, 3)
         atom_ids = ["O", 17, ("C", 1), "H"]
-        conformer_ids = ["model-a", "model-b"]
 
         molecule = chargefw.Molecule(
             atomic_source,
@@ -41,7 +40,6 @@ class MoleculeTests(unittest.TestCase):
             record_index=3,
             record_id="record-4",
             atom_ids=atom_ids,
-            conformer_ids=conformer_ids,
         )
 
         atomic_source[:] = 1
@@ -56,7 +54,6 @@ class MoleculeTests(unittest.TestCase):
         self.assertEqual(molecule.coordinates[0, 0].tolist(), [2.0, 1.0, 0.0])
         self.assertEqual(molecule.source, chargefw.SourceIdentity("fixture.sdf", 3, "record-4"))
         self.assertEqual(molecule.atom_ids, tuple(atom_ids))
-        self.assertEqual(molecule.conformer_ids, tuple(conformer_ids))
         self.assertEqual(len(molecule), 4)
 
         readonly = molecule.atomic_numbers

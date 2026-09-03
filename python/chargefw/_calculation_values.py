@@ -272,11 +272,6 @@ class CalculationResult:
                 molecule_index = int(item["molecule_index"])
                 conformer_index = item["conformer_index"]
                 molecule = molecules[molecule_index]
-                conformer_id = (
-                    molecule.conformer_ids[int(conformer_index)]
-                    if conformer_index is not None
-                    else None
-                )
                 assignments.append(
                     ChargeAssignment._from_native_values(
                         item["values"],
@@ -286,7 +281,6 @@ class CalculationResult:
                         ),
                         source=molecule.source,
                         atom_ids=molecule.atom_ids,
-                        conformer_id=conformer_id,
                     )
                 )
         self._status = payload["status"]

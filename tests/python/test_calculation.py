@@ -33,7 +33,6 @@ def water(conformers: int = 1) -> chargefw.Molecule:
         record_index=2,
         record_id="water-record",
         atom_ids=["O", "H1", "H2"],
-        conformer_ids=["model-a"] if conformers == 1 else ["model-a", "model-b"],
     )
 
 
@@ -110,7 +109,6 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(assignment.conformer_index, 0)
         self.assertEqual(assignment.source.record_id, "water-record")
         self.assertEqual(assignment.atom_ids, ("O", "H1", "H2"))
-        self.assertEqual(assignment.conformer_id, "model-a")
         self.assertEqual(assignment.values.dtype, np.dtype(np.float64))
         self.assertTrue(assignment.values.flags.c_contiguous)
         self.assertFalse(assignment.values.flags.writeable)
@@ -201,10 +199,6 @@ class CalculationTests(unittest.TestCase):
         multi_result = chargefw.calculate(collection, method="qeq", execution="full")
         self.assertEqual(multi_result.status, "success")
         self.assertEqual([item.conformer_index for item in multi_result.assignments], [0, 1])
-        self.assertEqual(
-            [item.conformer_id for item in multi_result.assignments],
-            ["model-a", "model-b"],
-        )
         repeated_result = chargefw.calculate(collection, method="qeq", execution="full")
         self.assertEqual(
             [item.values.tolist() for item in repeated_result.assignments],
@@ -244,7 +238,6 @@ class CalculationTests(unittest.TestCase):
             conformer_index=0,
             source=source,
             atom_ids=("A", "B"),
-            conformer_id="model",
         )
         same = chargefw.ChargeAssignment(
             values=np.array([0.25, -0.25]),
@@ -252,7 +245,6 @@ class CalculationTests(unittest.TestCase):
             conformer_index=0,
             source=source,
             atom_ids=("A", "B"),
-            conformer_id="model",
         )
         different = chargefw.ChargeAssignment(
             values=np.array([0.5, -0.5]),
@@ -260,7 +252,6 @@ class CalculationTests(unittest.TestCase):
             conformer_index=0,
             source=source,
             atom_ids=("A", "B"),
-            conformer_id="model",
         )
         self.assertEqual(assignment, same)
         self.assertNotEqual(assignment, different)
@@ -277,10 +268,6 @@ class CalculationTests(unittest.TestCase):
                 {"values": [0.0], "atom_ids": ("A",), "molecule_index": -1},
             ),
             (
-                ValueError,
-                {"values": [0.0], "atom_ids": ("A",), "conformer_id": "model"},
-            ),
-            (
                 TypeError,
                 {"values": [0.0], "atom_ids": ("A",), "source": "fixture"},
             ),
@@ -289,7 +276,6 @@ class CalculationTests(unittest.TestCase):
             "molecule_index": 0,
             "conformer_index": None,
             "source": source,
-            "conformer_id": None,
         }
         for error_type, overrides in invalid_assignments:
             with (

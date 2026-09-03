@@ -60,15 +60,6 @@ def _hashable_ids(values: Iterable[Hashable], count: int) -> tuple[Hashable, ...
     return result
 
 
-def _validate_hashable(value: Hashable | None, name: str) -> None:
-    if value is None:
-        return
-    try:
-        hash(value)
-    except TypeError as error:
-        raise ValueError(f"{name} must be hashable") from error
-
-
 @dataclass(frozen=True, slots=True, eq=False)
 class ChargeAssignment:
     """Source-mapped, owned charges for one molecule or conformer."""
@@ -78,7 +69,6 @@ class ChargeAssignment:
     conformer_index: int | None
     source: SourceIdentity
     atom_ids: tuple[Hashable, ...]
-    conformer_id: Hashable | None
 
     def __post_init__(self) -> None:
         values = _charge_values(self.values)
@@ -91,9 +81,6 @@ class ChargeAssignment:
         if not isinstance(self.source, SourceIdentity):
             raise TypeError("source must be a SourceIdentity")
         atom_ids = _hashable_ids(self.atom_ids, len(values))
-        _validate_hashable(self.conformer_id, "conformer_id")
-        if conformer_index is None and self.conformer_id is not None:
-            raise ValueError("conformer_id requires a conformer_index")
 
         object.__setattr__(self, "values", values)
         object.__setattr__(self, "molecule_index", molecule_index)
@@ -109,7 +96,6 @@ class ChargeAssignment:
             and self.conformer_index == other.conformer_index
             and self.source == other.source
             and self.atom_ids == other.atom_ids
-            and self.conformer_id == other.conformer_id
         )
 
     def __array__(self, dtype: np.dtype[Any] | None = None, copy: bool | None = None) -> np.ndarray:
@@ -129,7 +115,6 @@ class ChargeAssignment:
         conformer_index: int | None,
         source: SourceIdentity,
         atom_ids: tuple[Hashable, ...],
-        conformer_id: Hashable | None,
     ) -> ChargeAssignment:
         """Build an assignment from an extension-owned, one-dimensional NumPy array."""
         if values.dtype != np.float64 or values.ndim != 1 or not values.flags.c_contiguous:
@@ -146,5 +131,4 @@ class ChargeAssignment:
         object.__setattr__(result, "conformer_index", conformer_index)
         object.__setattr__(result, "source", source)
         object.__setattr__(result, "atom_ids", atom_ids)
-        object.__setattr__(result, "conformer_id", conformer_id)
         return result

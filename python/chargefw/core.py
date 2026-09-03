@@ -57,7 +57,6 @@ class Molecule:
         "_conformer_names",
         "_source",
         "_atom_ids",
-        "_conformer_ids",
         "_native",
     )
 
@@ -70,7 +69,6 @@ class Molecule:
     _conformer_names: tuple[str, ...]
     _source: SourceIdentity
     _atom_ids: tuple[Hashable, ...]
-    _conformer_ids: tuple[Hashable, ...]
     _native: _native_core._NativeMolecule
 
     def __init__(
@@ -87,7 +85,6 @@ class Molecule:
         record_index: int = 0,
         record_id: Hashable | None = None,
         atom_ids: Iterable[Hashable] | None = None,
-        conformer_ids: Iterable[Hashable] | None = None,
     ) -> None:
         if name is not None and not isinstance(name, str):
             raise TypeError("name must be a string or None")
@@ -138,7 +135,6 @@ class Molecule:
             source_identity = SourceIdentity(source_name or "", record_index, record_id)
 
         atom_id_values = as_ids(atom_ids, atom_count, "atom_ids")
-        conformer_id_values = as_ids(conformer_ids, conformer_count, "conformer_ids")
 
         atomic = immutable_array(atomic)
         formal = immutable_array(formal)
@@ -154,7 +150,6 @@ class Molecule:
         object.__setattr__(self, "_conformer_names", conformer_name_values)
         object.__setattr__(self, "_source", source_identity)
         object.__setattr__(self, "_atom_ids", atom_id_values)
-        object.__setattr__(self, "_conformer_ids", conformer_id_values)
         object.__setattr__(
             self,
             "_native",
@@ -219,10 +214,6 @@ class Molecule:
     @property
     def atom_ids(self) -> tuple[Hashable, ...]:
         return self._atom_ids
-
-    @property
-    def conformer_ids(self) -> tuple[Hashable, ...]:
-        return self._conformer_ids
 
     @property
     def atom_count(self) -> int:

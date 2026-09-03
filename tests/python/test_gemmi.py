@@ -106,7 +106,7 @@ class GemmiAdapterTests(unittest.TestCase):
         )
         self.assertEqual(text_molecule.atom_names, ("O", "H1"))
         self.assertEqual(text_molecule.atom_ids, (0, 1))
-        self.assertEqual(text_molecule.conformer_ids, ("1", "2"))
+        self.assertEqual(text_molecule.conformer_names, ("1", "2"))
         self.assertEqual(text_molecule.source_name, "water.pdb")
         self.assertEqual(text_molecule.bonds.tolist(), [[0, 1, 1]])
         np.testing.assert_allclose(text_molecule.coordinates[:, 0, 0], [0.0, 0.1])
@@ -130,7 +130,7 @@ class GemmiAdapterTests(unittest.TestCase):
         self.assertEqual(len(collection), 2)
         self.assertEqual([value.record_index for value in collection], [0, 1])
         self.assertEqual([value.record_id for value in collection], ["first", "second"])
-        self.assertEqual(collection[0].conformer_ids, ("1", "2"))
+        self.assertEqual(collection[0].conformer_names, ("1", "2"))
 
         with TemporaryDirectory() as directory:
             path = Path(directory) / "models.cif"
