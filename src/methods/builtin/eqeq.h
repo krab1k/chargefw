@@ -2,7 +2,17 @@
 
 #include <chargefw/methods/method.h>
 
+#include <string_view>
+#include <vector>
+
 namespace chargefw::methods::builtin {
+
+namespace eqeq_core {
+
+[[nodiscard]] auto calculate(const CalculationInput& input, std::string_view method_name)
+    -> std::vector<double>;
+
+} // namespace eqeq_core
 
 class EQeqMethod final : public Method {
   public:

@@ -29,10 +29,6 @@ constexpr auto hydrogen_electron_affinity = -2.0;
 
 [[nodiscard]] auto interaction(const double distance, const double hardness_i,
                                const double hardness_j) -> double {
-    if (hardness_i <= 0.0 || hardness_j <= 0.0) {
-        throw std::logic_error{"EQeq hardness must be positive"};
-    }
-
     const auto a = std::sqrt(hardness_i * hardness_j) / k;
     const auto overlap =
         std::exp(-a * a * distance * distance) * (2.0 * a - a * a * distance - 1.0 / distance);
@@ -42,14 +38,15 @@ constexpr auto hydrogen_electron_affinity = -2.0;
 
 } // namespace
 
-auto EQeqMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
+auto eqeq_core::calculate(const CalculationInput& input, const std::string_view method_name)
+    -> std::vector<double> {
     const auto& molecule = input.molecule();
     const auto& geometry = input.geometry();
 
     const auto atom_count = molecule.atom_count();
 
     if (atom_count == 0) {
-        return charges::AtomicCharges{std::vector<double>{}};
+        return {};
     }
 
     const auto& table = core::periodic_table();
@@ -68,6 +65,10 @@ auto EQeqMethod::calculate(const CalculationInput& input) const -> charges::Atom
 
         electronegativity(i) = (element.first_ionization_potential + electron_affinity) / 2.0;
         hardness(i) = element.first_ionization_potential - electron_affinity;
+    }
+
+    if ((hardness.array() <= 0.0).any()) {
+        throw std::logic_error{std::string{method_name} + " hardness must be positive"};
     }
 
     for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
@@ -94,7 +95,11 @@ auto EQeqMethod::calculate(const CalculationInput& input) const -> charges::Atom
 
     const Eigen::VectorXd q = matrix.partialPivLu().solve(rhs).head(n);
 
-    return charges::AtomicCharges{std::vector<double>{q.data(), q.data() + q.size()}};
+    return {q.data(), q.data() + q.size()};
+}
+
+auto EQeqMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
+    return charges::AtomicCharges{eqeq_core::calculate(input, "EQeq")};
 }
 
 } // namespace chargefw::methods::builtin
