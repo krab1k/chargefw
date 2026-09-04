@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from threading import Lock
 from typing import cast
 
@@ -26,12 +26,22 @@ from ._chargefw import calculation as _native_calculation
 from ._chargefw import parameters as _native_parameters
 from ._methods import Method, _method_catalog
 from ._parameters import ParameterSet, ParameterSetCatalog, _parameter_set
+from ._payloads import CalculationProgressPayload
 from ._resources import default_parameter_directory
-from ._types import ChargeCorrection, Execution, MethodOptionValue, ParameterMatching
+from ._types import (
+    CalculationPhase,
+    ChargeCorrection,
+    Execution,
+    ExecutionMode,
+    MethodOptionValue,
+    ParameterMatching,
+)
 from .core import Molecule, MoleculeCollection
 
 __all__ = [
     "Assessment",
+    "CalculationObserver",
+    "CalculationProgress",
     "CalculationCancelledError",
     "CalculationResult",
     "CalculationTimings",
@@ -49,6 +59,55 @@ __all__ = [
     "methods",
     "parameter_sets",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class CalculationProgress:
+    """Owned snapshot of one native calculation progress event."""
+
+    phase: CalculationPhase
+    mode: ExecutionMode
+    method_id: str
+    target_index: int
+    target_count: int
+    completed_fragment_count: int
+    fragment_count: int
+    molecule_index: int
+    conformer_index: int | None
+    elapsed_seconds: float
+
+
+class CalculationObserver:
+    """Receives progress events and optionally requests cooperative cancellation."""
+
+    def on_progress(self, progress: CalculationProgress) -> None:
+        """Handle a progress snapshot. Implementations must be thread-safe."""
+
+    def cancelled(self) -> bool:
+        """Return whether the running calculation should stop."""
+
+        return False
+
+
+class _NativeObserverAdapter:
+    __slots__ = ("_observer",)
+
+    def __init__(self, observer: CalculationObserver) -> None:
+        self._observer = observer
+
+    def on_progress(self, progress: CalculationProgressPayload) -> None:
+        self._observer.on_progress(CalculationProgress(**progress))
+
+    def cancelled(self) -> bool:
+        return self._observer.cancelled()
+
+
+def _observer_adapter(observer: CalculationObserver | None) -> _NativeObserverAdapter | None:
+    if observer is None:
+        return None
+    if not isinstance(observer, CalculationObserver):
+        raise TypeError("observer must be a CalculationObserver or None")
+    return _NativeObserverAdapter(observer)
 
 for _value_type in (
     RequestedCalculation,
@@ -219,10 +278,12 @@ def calculate(
     cutoff_threshold: int | None = 20_000,
     cover_threshold: int | None = 80_000,
     threads: int | None = None,
+    observer: CalculationObserver | None = None,
 ) -> CalculationResult:
     """Calculate molecules with an assessed plan, or assess and use the default plan."""
 
     collection = _as_collection(molecules)
+    native_observer = _observer_adapter(observer)
     if isinstance(plan, _OmittedPlan):
         assessment = assess(
             collection,
@@ -240,7 +301,7 @@ def calculate(
         )
         if assessment.default_plan is None:
             result = CalculationResult(
-                assessment._native.calculate_default(),
+                assessment._native.calculate_default(native_observer),
                 collection,
                 assessment._requested,
                 methods,
@@ -249,7 +310,7 @@ def calculate(
             )
             result._raise_for_status()
             return result
-        return calculate(collection, assessment.default_plan, threads=threads)
+        return calculate(collection, assessment.default_plan, threads=threads, observer=observer)
 
     if plan is None or not isinstance(plan, Plan):
         raise TypeError("plan must be a Plan; omit it to use automatic assessment")
@@ -277,7 +338,7 @@ def calculate(
         else replace(plan._requested, threads=normalized_threads)
     )
     result = CalculationResult(
-        plan._calculate(normalized_threads),
+        plan._calculate(normalized_threads, native_observer),
         collection,
         requested,
         methods,

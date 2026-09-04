@@ -4,6 +4,7 @@
 #include <chargefw/calculation/assessment.h>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/calculation/execution_policy.h>
+#include <chargefw/calculation/observer.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_applicability.h>
@@ -21,6 +22,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -197,6 +199,66 @@ auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {
     return result;
 }
 
+auto calculation_phase(const calculation::CalculationPhase phase) -> std::string_view {
+    switch (phase) {
+    case calculation::CalculationPhase::computation_started:
+        return "computation_started";
+    case calculation::CalculationPhase::computation_finished:
+        return "computation_finished";
+    case calculation::CalculationPhase::target_started:
+        return "target_started";
+    case calculation::CalculationPhase::target_finished:
+        return "target_finished";
+    case calculation::CalculationPhase::fragment_progress:
+        return "fragment_progress";
+    }
+    throw std::invalid_argument{"unknown calculation phase"};
+}
+
+auto calculation_progress(const calculation::CalculationProgress& progress) -> nb::dict {
+    auto result = nb::dict{};
+    result["phase"] = std::string{calculation_phase(progress.phase)};
+    result["mode"] = std::string{calculation::to_string(progress.mode)};
+    result["method_id"] = std::string{progress.method_id};
+    result["target_index"] = progress.target_index;
+    result["target_count"] = progress.target_count;
+    result["completed_fragment_count"] = progress.completed_fragment_count;
+    result["fragment_count"] = progress.fragment_count;
+    result["molecule_index"] = progress.molecule_index;
+    result["conformer_index"] =
+        progress.conformer_index.has_value() ? nb::cast(*progress.conformer_index) : nb::none();
+    result["elapsed_seconds"] = progress.elapsed_seconds;
+    return result;
+}
+
+class PythonCalculationObserver final : public calculation::CalculationObserver {
+  public:
+    explicit PythonCalculationObserver(nb::object observer) : observer_{std::move(observer)} {}
+
+    void on_progress(const calculation::CalculationProgress& progress) const override {
+        const auto acquire = nb::gil_scoped_acquire{};
+        try {
+            observer_.attr("on_progress")(calculation_progress(progress));
+        } catch (nb::python_error& error) {
+            error.discard_as_unraisable(observer_);
+        }
+    }
+
+    [[nodiscard]] auto cancelled() const noexcept -> bool override {
+        const auto acquire = nb::gil_scoped_acquire{};
+        try {
+            return nb::cast<bool>(observer_.attr("cancelled")());
+        } catch (nb::python_error& error) {
+            error.discard_as_unraisable(observer_);
+        } catch (...) { // NOLINT(bugprone-empty-catch): cancellation callbacks cannot throw.
+        }
+        return false;
+    }
+
+  private:
+    nb::object observer_;
+};
+
 class NativeAssessmentState {
   public:
     NativeAssessmentState(calculation::AssessmentResult assessment, const std::size_t max_threads)
@@ -232,11 +294,19 @@ class NativePlan {
         return execution_plan(state_->assessment_.plans()[index_]);
     }
 
-    [[nodiscard]] auto calculate(const std::optional<std::size_t> max_threads) const -> nb::dict {
+    [[nodiscard]] auto calculate(const std::optional<std::size_t> max_threads,
+                                 nb::object observer) const -> nb::dict {
+        auto python_observer = std::optional<PythonCalculationObserver>{};
+        const auto* native_observer = std::addressof(calculation::default_calculation_observer());
+        if (!observer.is_none()) {
+            python_observer.emplace(std::move(observer));
+            native_observer = std::addressof(*python_observer);
+        }
         const auto result = [&] {
             nb::gil_scoped_release release;
             return calculation::calculate(state_->assessment_, state_->assessment_.plans()[index_],
-                                          max_threads.value_or(state_->max_threads_));
+                                          max_threads.value_or(state_->max_threads_),
+                                          *native_observer);
         }();
         return execution_result(result);
     }
@@ -270,10 +340,17 @@ class NativeAssessment {
         return result;
     }
 
-    [[nodiscard]] auto calculate_default() const -> nb::dict {
+    [[nodiscard]] auto calculate_default(nb::object observer) const -> nb::dict {
+        auto python_observer = std::optional<PythonCalculationObserver>{};
+        const auto* native_observer = std::addressof(calculation::default_calculation_observer());
+        if (!observer.is_none()) {
+            python_observer.emplace(std::move(observer));
+            native_observer = std::addressof(*python_observer);
+        }
         const auto result = [&] {
             nb::gil_scoped_release release;
-            return calculation::calculate(state_->assessment_, state_->max_threads_);
+            return calculation::calculate(state_->assessment_, state_->max_threads_,
+                                          *native_observer);
         }();
         return execution_result(result);
     }
@@ -331,11 +408,13 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
 void bind_calculation(nb::module_& module) {
     nb::class_<NativePlan>(module, "_NativePlan")
         .def("report", &NativePlan::report)
-        .def("calculate", &NativePlan::calculate, nb::arg("max_threads") = nb::none());
+        .def("calculate", &NativePlan::calculate, nb::arg("max_threads") = nb::none(),
+             nb::arg("observer") = nb::none());
     nb::class_<NativeAssessment>(module, "_NativeAssessment")
         .def("report", &NativeAssessment::report)
         .def("plans", &NativeAssessment::plans)
-        .def("calculate_default", &NativeAssessment::calculate_default);
+        .def("calculate_default", &NativeAssessment::calculate_default,
+             nb::arg("observer") = nb::none());
 
     module.def("_make_assessment", &make_assessment, nb::arg("molecules"),
                nb::arg("molecule_collection_name"), nb::arg("catalog"), nb::arg("method_id"),

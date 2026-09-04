@@ -26,6 +26,8 @@ def test_import_surface() -> None:
         "ChargeAssignment",
         "CalculationResult",
         "Assessment",
+        "CalculationObserver",
+        "CalculationProgress",
         "assess",
         "calculate",
         "methods",
@@ -52,6 +54,8 @@ def test_import_surface() -> None:
     ]
     assert chargefw.Molecule is chargefw.core.Molecule
     assert chargefw.RequestedCalculation is chargefw.calculation.RequestedCalculation
+    assert chargefw.CalculationObserver is chargefw.calculation.CalculationObserver
+    assert chargefw.CalculationProgress is chargefw.calculation.CalculationProgress
     assert isinstance(chargefw.methods, chargefw.MethodCatalog)
     assert isinstance(chargefw.parameter_sets, chargefw.ParameterSetCatalog)
     assert chargefw.calculate is chargefw.calculation.calculate

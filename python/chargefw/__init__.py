@@ -13,6 +13,8 @@ from ._parameters import ParameterSet, ParameterSetCatalog
 from .calculation import (
     Assessment,
     CalculationCancelledError,
+    CalculationObserver,
+    CalculationProgress,
     CalculationResult,
     CalculationTimings,
     ChargeFWError,
@@ -42,6 +44,8 @@ __all__ = [
     "ChargeAssignment",
     "CalculationResult",
     "Assessment",
+    "CalculationObserver",
+    "CalculationProgress",
     "assess",
     "calculate",
     "methods",

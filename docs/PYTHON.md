@@ -5,7 +5,8 @@ catalogs, reusable assessment plans, calculation results, and Gemmi conversion o
 engine.
 
 The package is synchronous and in-process. Native molecule construction, assessment, and calculation
-release the GIL, and independent calculations can run concurrently.
+release the GIL, and independent calculations can run concurrently. Calculations can report structured
+progress and support cooperative cancellation through a per-request observer.
 
 ## Installation status
 
@@ -166,6 +167,53 @@ Plans are bound to the exact molecule objects and collection name used during as
 arguments cannot be supplied with a plan. A plan is reusable after its `Assessment` is released and can
 be used by independent concurrent calculations.
 
+## Progress and cancellation
+
+Subclass `CalculationObserver` and pass it to `calculate()` with the keyword-only `observer` argument:
+
+```python
+from threading import Event, Lock
+
+import chargefw
+
+
+class RecordingObserver(chargefw.CalculationObserver):
+    def __init__(self) -> None:
+        self.events: list[chargefw.CalculationProgress] = []
+        self.cancellation = Event()
+        self.lock = Lock()
+
+    def on_progress(self, progress: chargefw.CalculationProgress) -> None:
+        with self.lock:
+            self.events.append(progress)
+
+    def cancelled(self) -> bool:
+        return self.cancellation.is_set()
+
+
+observer = RecordingObserver()
+result = chargefw.calculate(molecule, method="eem", observer=observer)
+```
+
+Progress phases are `"computation_started"`, `"computation_finished"`, `"target_started"`,
+`"target_finished"`, and `"fragment_progress"`. A target is one molecule/conformer pair for a
+geometry-dependent method and one molecule for a geometry-independent method. Fragment events are
+throttled and are emitted only by cutoff and cover execution.
+
+Each immutable `CalculationProgress` snapshot contains the phase, effective execution mode, method ID,
+target indices and count, fragment completion and count, molecule and optional conformer indices, and
+elapsed computation seconds. Fields unrelated to the current phase retain their default zero or `None`
+value.
+
+Callbacks may originate on oneTBB worker threads. The Python GIL is held during each callback, but
+observers that update compound state should still use synchronization and must not rely on callback
+arrival order during parallel execution. Callback exceptions are reported through Python's unraisable
+exception hook and do not alter calculation control flow.
+
+Returning true from `cancelled()` requests termination at the next cancellation checkpoint. The call
+then raises `CalculationCancelledError`; its `result` has status `"cancelled"` and contains no partial
+charge assignments. Assessment itself is not observed.
+
 ## Results and failures
 
 `CalculationResult` exposes:
@@ -229,6 +277,6 @@ Adapter defaults are `selection="all"`, `bonds="none"`, and `conformers="all"`. 
 `"polymers-and-ligands"`, and `"polymers"`. Their language-independent import semantics are defined in
 the [PDB and mmCIF format reference](FORMATS.md#pdb-and-mmcif-input).
 
-The Python package currently has no RDKit or Biopython adapter, chemistry preparation API, asynchronous
-job API, or progress/cancellation callback. Current distribution and integration work is tracked in the
-root [TODO](../TODO.md).
+The Python package currently has no RDKit or Biopython adapter, chemistry preparation API, or
+asynchronous job API. Current distribution and integration work is tracked in the root
+[TODO](../TODO.md).

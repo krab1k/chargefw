@@ -8,6 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ._types import (
+    CalculationPhase,
     ChargeCorrection,
     ExecutionIssueKind,
     ExecutionMode,
@@ -16,6 +17,19 @@ from ._types import (
     MethodOptionValue,
     PrerequisiteIssueKind,
 )
+
+
+class CalculationProgressPayload(TypedDict):
+    phase: CalculationPhase
+    mode: ExecutionMode
+    method_id: str
+    target_index: int
+    target_count: int
+    completed_fragment_count: int
+    fragment_count: int
+    molecule_index: int
+    conformer_index: int | None
+    elapsed_seconds: float
 
 
 class PrerequisiteIssuePayload(TypedDict):

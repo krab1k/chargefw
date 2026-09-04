@@ -103,8 +103,8 @@ class Plan:
             )
         )
 
-    def _calculate(self, threads: int | None) -> ExecutionResultPayload:
-        return self._native.calculate(threads)
+    def _calculate(self, threads: int | None, observer: object | None) -> ExecutionResultPayload:
+        return self._native.calculate(threads, observer)
 
     def __repr__(self) -> str:
         parameter_set = self.parameter_set.id if self.parameter_set is not None else None

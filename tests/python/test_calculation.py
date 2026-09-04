@@ -4,9 +4,10 @@ import gc
 import unittest
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from threading import Event, Thread
+from threading import Event, Lock, Thread
 from time import perf_counter, sleep
 from typing import Any, TypeVar, cast
+from unittest.mock import patch
 
 import chargefw
 import numpy as np
@@ -78,6 +79,149 @@ def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, b
 
 
 class CalculationTests(unittest.TestCase):
+    def test_observer_receives_owned_execution_progress(self) -> None:
+        class RecordingObserver(chargefw.CalculationObserver):
+            def __init__(self) -> None:
+                self.events: list[chargefw.CalculationProgress] = []
+
+            def on_progress(self, progress: chargefw.CalculationProgress) -> None:
+                self.events.append(progress)
+
+        observer = RecordingObserver()
+        collection = chargefw.MoleculeCollection(
+            [chargefw.Molecule([1]), chargefw.Molecule([8, 1])]
+        )
+        result = chargefw.calculate(
+            collection,
+            method="formal",
+            execution="full",
+            threads=1,
+            observer=observer,
+        )
+
+        self.assertEqual(result.status, "success")
+        self.assertEqual(
+            [event.phase for event in observer.events],
+            [
+                "computation_started",
+                "target_started",
+                "target_finished",
+                "target_started",
+                "target_finished",
+                "computation_finished",
+            ],
+        )
+        started = observer.events[0]
+        self.assertEqual(started.method_id, "formal")
+        self.assertEqual(started.mode, "full")
+        targets = [event for event in observer.events if event.phase == "target_started"]
+        self.assertEqual([event.target_index for event in targets], [0, 1])
+        self.assertEqual([event.target_count for event in targets], [2, 2])
+        self.assertEqual([event.molecule_index for event in targets], [0, 1])
+        self.assertEqual([event.conformer_index for event in targets], [None, None])
+        self.assertTrue(all(event.elapsed_seconds >= 0.0 for event in observer.events))
+
+    def test_observer_receives_reduced_fragment_progress(self) -> None:
+        class RecordingObserver(chargefw.CalculationObserver):
+            def __init__(self) -> None:
+                self.events: list[chargefw.CalculationProgress] = []
+
+            def on_progress(self, progress: chargefw.CalculationProgress) -> None:
+                self.events.append(progress)
+
+        observer = RecordingObserver()
+        result = chargefw.calculate(
+            water(),
+            method="eem",
+            execution="cutoff",
+            radius=8.0,
+            threads=1,
+            observer=observer,
+        )
+
+        self.assertEqual(result.status, "success")
+        fragments = [event for event in observer.events if event.phase == "fragment_progress"]
+        self.assertTrue(fragments)
+        self.assertEqual(fragments[-1].completed_fragment_count, fragments[-1].fragment_count)
+        self.assertEqual(fragments[-1].target_index, 0)
+        self.assertEqual(fragments[-1].target_count, 1)
+
+    def test_observer_receives_parallel_target_progress(self) -> None:
+        class CountingObserver(chargefw.CalculationObserver):
+            def __init__(self) -> None:
+                self.lock = Lock()
+                self.completed = 0
+
+            def on_progress(self, progress: chargefw.CalculationProgress) -> None:
+                if progress.phase == "target_finished":
+                    with self.lock:
+                        self.completed += 1
+
+        molecule_count = 64
+        observer = CountingObserver()
+        result = chargefw.calculate(
+            chargefw.MoleculeCollection(
+                chargefw.Molecule([1]) for _ in range(molecule_count)
+            ),
+            method="formal",
+            execution="full",
+            threads=2,
+            observer=observer,
+        )
+
+        self.assertEqual(result.status, "success")
+        self.assertEqual(observer.completed, molecule_count)
+
+    def test_observer_can_cancel_a_reusable_plan(self) -> None:
+        class CancellingObserver(chargefw.CalculationObserver):
+            def __init__(self) -> None:
+                self.cancel_requested = False
+                self.phases: list[str] = []
+
+            def on_progress(self, progress: chargefw.CalculationProgress) -> None:
+                self.phases.append(progress.phase)
+                if progress.phase == "target_started":
+                    self.cancel_requested = True
+
+            def cancelled(self) -> bool:
+                return self.cancel_requested
+
+        molecule = water()
+        plan = chargefw.assess(molecule, method="eem", execution="full").default_plan
+        if plan is None:
+            self.fail("assessment must produce a default plan")
+        observer = CancellingObserver()
+
+        with self.assertRaises(chargefw.CalculationCancelledError) as raised:
+            chargefw.calculate(molecule, plan, threads=1, observer=observer)
+
+        self.assertEqual(raised.exception.result.status, "cancelled")
+        self.assertEqual(raised.exception.result.assignments, ())
+        self.assertEqual(observer.phases[0], "computation_started")
+        self.assertIn("target_started", observer.phases)
+        self.assertEqual(observer.phases[-1], "computation_finished")
+
+    def test_observer_must_use_public_base_class(self) -> None:
+        with self.assertRaisesRegex(TypeError, "CalculationObserver"):
+            chargefw.calculate(water(), observer=cast(Any, object()))
+
+    def test_observer_callback_failure_does_not_change_calculation(self) -> None:
+        class FailingObserver(chargefw.CalculationObserver):
+            def on_progress(self, progress: chargefw.CalculationProgress) -> None:
+                raise RuntimeError(f"failed during {progress.phase}")
+
+        with patch("sys.unraisablehook") as unraisable:
+            result = chargefw.calculate(
+                water(),
+                method="formal",
+                execution="full",
+                threads=1,
+                observer=FailingObserver(),
+            )
+
+        self.assertEqual(result.status, "success")
+        self.assertTrue(unraisable.called)
+
     def test_default_calculation_selects_a_supported_plan(self) -> None:
         result = chargefw.calculate(water())
         self.assertEqual(result.status, "success")
