@@ -33,9 +33,10 @@ find_package(nanobind CONFIG REQUIRED)
 
 set(CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY "${PROJECT_BINARY_DIR}/python/chargefw")
 file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}")
-set(CHARGEFW_PYTHON_ADAPTER_DIRECTORY
-    "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/adapters")
-file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_ADAPTER_DIRECTORY}")
+file(REMOVE_RECURSE "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/adapters")
+set(CHARGEFW_PYTHON_IO_DIRECTORY
+    "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/io")
+file(MAKE_DIRECTORY "${CHARGEFW_PYTHON_IO_DIRECTORY}")
 set(CHARGEFW_PYTHON_STUB_DIRECTORY "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_chargefw")
 set(CHARGEFW_PYTHON_PARAMETER_DIRECTORY
     "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/_data/parameters")
@@ -86,13 +87,13 @@ foreach(package_source IN LISTS CHARGEFW_PYTHON_PACKAGE_SOURCES)
     configure_file("chargefw/${package_source}"
                    "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/${package_source}" COPYONLY)
 endforeach()
-set(CHARGEFW_PYTHON_ADAPTER_SOURCES
+set(CHARGEFW_PYTHON_IO_SOURCES
     __init__.py
     gemmi.py
 )
-foreach(adapter_source IN LISTS CHARGEFW_PYTHON_ADAPTER_SOURCES)
-    configure_file("chargefw/adapters/${adapter_source}"
-                   "${CHARGEFW_PYTHON_ADAPTER_DIRECTORY}/${adapter_source}" COPYONLY)
+foreach(io_source IN LISTS CHARGEFW_PYTHON_IO_SOURCES)
+    configure_file("chargefw/io/${io_source}"
+                   "${CHARGEFW_PYTHON_IO_DIRECTORY}/${io_source}" COPYONLY)
 endforeach()
 configure_file(chargefw/py.typed "${CHARGEFW_PYTHON_BUILD_PACKAGE_DIRECTORY}/py.typed" COPYONLY)
 
@@ -136,9 +137,9 @@ foreach(package_source IN LISTS CHARGEFW_PYTHON_PACKAGE_SOURCES)
     install(FILES "chargefw/${package_source}"
             DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY} COMPONENT python)
 endforeach()
-foreach(adapter_source IN LISTS CHARGEFW_PYTHON_ADAPTER_SOURCES)
-    install(FILES "chargefw/adapters/${adapter_source}"
-            DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}/adapters
+foreach(io_source IN LISTS CHARGEFW_PYTHON_IO_SOURCES)
+    install(FILES "chargefw/io/${io_source}"
+            DESTINATION ${CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY}/io
             COMPONENT python)
 endforeach()
 install(FILES chargefw/py.typed

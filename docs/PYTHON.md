@@ -245,15 +245,15 @@ a typed `ChargeFWError` subclass:
 Each exception retains the complete result as `exception.result`, including status, rejections, failure
 text, and timings.
 
-## Gemmi adapter
+## Molecular input
 
-The base package depends on the upstream `gemmi` Python package. Importing `chargefw` itself does not
-import Gemmi; use the adapter module explicitly:
+Serialized molecular formats are read through `chargefw.io`. Parsing functions accept text, while
+corresponding `read_*()` functions accept string or path-like filesystem paths:
 
 ```python
-from chargefw.adapters import gemmi as chargefw_gemmi
+import chargefw
 
-molecule = chargefw_gemmi.read_pdb(
+molecule = chargefw.io.read_pdb(
     "structure.pdb",
     selection="all",
     bonds="hybrid",
@@ -261,22 +261,38 @@ molecule = chargefw_gemmi.read_pdb(
 )
 ```
 
-Available functions are:
+Available format functions are:
 
-- `read_pdb_string()` and `read_pdb()`, returning one `Molecule`;
-- `read_mmcif_string()` and `read_mmcif()`, returning a `MoleculeCollection`;
-- `from_structure()` for `gemmi.Structure`; and
-- `from_document()` for `gemmi.cif.Document`.
+- `parse_mol()` and `read_mol()`, returning one `Molecule`;
+- `parse_sdf()` and `read_sdf()`, returning a `MoleculeCollection`;
+- `parse_mol2()` and `read_mol2()`, returning a `MoleculeCollection`;
+- `parse_molecule_json()` and `read_molecule_json()`, returning a `MoleculeCollection`;
+- `parse_pdb()` and `read_pdb()`, returning one `Molecule`; and
+- `parse_mmcif()` and `read_mmcif()`, returning a `MoleculeCollection`.
 
-The adapter serializes upstream Gemmi objects through PDB/mmCIF text and then uses ChargeFW's native
-reader. This keeps selection and bond behavior aligned with the native implementation without sharing C++
-objects between extension modules.
+MOL, SDF, and MOL2 always import their format-defined single conformer. Molecule JSON accepts
+`conformers="first"` or `"all"`. PDB and mmCIF additionally accept the structural selection and bond
+options described below.
 
-Adapter defaults are `selection="all"`, `bonds="none"`, and `conformers="all"`. Bond choices are
+The base package depends on the upstream `gemmi` Python package. Importing `chargefw` does not import
+Gemmi; import the object-conversion module explicitly:
+
+```python
+from chargefw.io import gemmi as chargefw_gemmi
+
+molecule = chargefw_gemmi.from_structure(structure, bonds="hybrid")
+collection = chargefw_gemmi.from_document(document)
+```
+
+The Gemmi integration serializes upstream objects through mmCIF text and then uses ChargeFW's compiled
+reader. This keeps selection and bond behavior aligned with serialized input without sharing C++ objects
+between extension modules.
+
+Structural input defaults are `selection="all"`, `bonds="none"`, and `conformers="all"`. Bond choices are
 `"none"`, `"explicit"`, `"templates"`, and `"hybrid"`; selection choices are `"all"`,
 `"polymers-and-ligands"`, and `"polymers"`. Their language-independent import semantics are defined in
 the [PDB and mmCIF format reference](FORMATS.md#pdb-and-mmcif-input).
 
-The Python package currently has no RDKit or Biopython adapter, chemistry preparation API, or
-asynchronous job API. Current distribution and integration work is tracked in the root
+The Python package currently has no molecular output API, RDKit or Biopython integration, chemistry
+preparation API, or asynchronous job API. Current distribution and integration work is tracked in the root
 [TODO](../TODO.md).

@@ -4,10 +4,10 @@ import os
 from pathlib import Path
 
 import chargefw
-import chargefw.adapters
-import chargefw.adapters.gemmi
 import chargefw.calculation
 import chargefw.core
+import chargefw.io
+import chargefw.io.gemmi
 from chargefw import _chargefw
 
 expected_version = os.environ.get("CHARGEFW_EXPECTED_VERSION")
@@ -51,6 +51,7 @@ def test_import_surface() -> None:
         "Method",
         "ParameterSetCatalog",
         "ParameterSet",
+        "io",
     ]
     assert chargefw.Molecule is chargefw.core.Molecule
     assert chargefw.RequestedCalculation is chargefw.calculation.RequestedCalculation
@@ -60,15 +61,25 @@ def test_import_surface() -> None:
     assert isinstance(chargefw.parameter_sets, chargefw.ParameterSetCatalog)
     assert chargefw.calculate is chargefw.calculation.calculate
     assert chargefw.assess is chargefw.calculation.assess
-    assert chargefw.adapters.read_pdb is chargefw.adapters.gemmi.read_pdb
-    assert chargefw.adapters.__all__ == [
-        "read_pdb_string",
+    assert chargefw.io is chargefw.io
+    assert chargefw.io.__all__ == [
+        "RecordSelection",
+        "BondStrategy",
+        "ConformerSelection",
+        "parse_mol",
+        "read_mol",
+        "parse_sdf",
+        "read_sdf",
+        "parse_mol2",
+        "read_mol2",
+        "parse_molecule_json",
+        "read_molecule_json",
+        "parse_pdb",
         "read_pdb",
-        "read_mmcif_string",
+        "parse_mmcif",
         "read_mmcif",
-        "from_structure",
-        "from_document",
     ]
+    assert chargefw.io.gemmi.__all__ == ["from_structure", "from_document"]
     assert not hasattr(_chargefw.calculation, "ExecutionMode")
     assert not hasattr(_chargefw.methods, "MethodOptionType")
     assert not hasattr(_chargefw.adapters, "BondStrategy")

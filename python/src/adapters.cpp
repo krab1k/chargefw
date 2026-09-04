@@ -5,6 +5,10 @@
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 #include <chargefw/adapters/gemmi/pdb_input.h>
 #include <chargefw/adapters/molecule_record.h>
+#include <chargefw/adapters/native/json_input.h>
+#include <chargefw/adapters/native/mol2_input.h>
+#include <chargefw/adapters/native/mol_input.h>
+#include <chargefw/adapters/native/sdf_input.h>
 #include <chargefw/core/bond.h>
 
 #include <nanobind/stl/array.h>
@@ -92,8 +96,63 @@ auto as_python(const std::vector<MoleculePayload>& payloads) -> nb::list {
     return result;
 }
 
-auto read_pdb(std::string contents, std::string source, const std::string& selection,
-              const std::string& bonds, const std::string& conformers) -> nb::list {
+template <typename Reader> auto read_all(Reader& reader) -> std::vector<MoleculePayload> {
+    auto payloads = std::vector<MoleculePayload>{};
+    while (auto record = reader.next()) {
+        payloads.push_back(make_payload(std::move(*record)));
+    }
+    return payloads;
+}
+
+auto parse_mol(std::string contents, std::string source) -> nb::list {
+    auto payloads = std::vector<MoleculePayload>{};
+    {
+        nb::gil_scoped_release release;
+        std::istringstream input{std::move(contents)};
+        auto reader = adapters::native::mol_input::MolReader{input, std::move(source)};
+        payloads = read_all(reader);
+    }
+    return as_python(payloads);
+}
+
+auto parse_sdf(std::string contents, std::string source) -> nb::list {
+    auto payloads = std::vector<MoleculePayload>{};
+    {
+        nb::gil_scoped_release release;
+        std::istringstream input{std::move(contents)};
+        auto reader = adapters::native::sdf_input::SdfReader{input, std::move(source)};
+        payloads = read_all(reader);
+    }
+    return as_python(payloads);
+}
+
+auto parse_mol2(std::string contents, std::string source) -> nb::list {
+    auto payloads = std::vector<MoleculePayload>{};
+    {
+        nb::gil_scoped_release release;
+        std::istringstream input{std::move(contents)};
+        auto reader = adapters::native::mol2_input::Mol2Reader{input, std::move(source)};
+        payloads = read_all(reader);
+    }
+    return as_python(payloads);
+}
+
+auto parse_molecule_json(std::string contents, std::string source, const std::string& conformers)
+    -> nb::list {
+    const auto native_conformers = adapters::conformer_selection_from_string(conformers);
+    auto payloads = std::vector<MoleculePayload>{};
+    {
+        nb::gil_scoped_release release;
+        std::istringstream input{std::move(contents)};
+        auto reader =
+            adapters::native::json_input::JsonReader{input, std::move(source), native_conformers};
+        payloads = read_all(reader);
+    }
+    return as_python(payloads);
+}
+
+auto parse_pdb(std::string contents, std::string source, const std::string& selection,
+               const std::string& bonds, const std::string& conformers) -> nb::list {
     const auto native_selection = adapters::gemmi::record_selection_from_string(selection);
     const auto native_bonds = adapters::gemmi::bond_strategy_from_string(bonds);
     const auto native_conformers = adapters::conformer_selection_from_string(conformers);
@@ -113,8 +172,8 @@ auto read_pdb(std::string contents, std::string source, const std::string& selec
     return as_python(payloads);
 }
 
-auto read_mmcif(std::string contents, std::string source, const std::string& selection,
-                const std::string& bonds, const std::string& conformers) -> nb::list {
+auto parse_mmcif(std::string contents, std::string source, const std::string& selection,
+                 const std::string& bonds, const std::string& conformers) -> nb::list {
     const auto native_selection = adapters::gemmi::record_selection_from_string(selection);
     const auto native_bonds = adapters::gemmi::bond_strategy_from_string(bonds);
     const auto native_conformers = adapters::conformer_selection_from_string(conformers);
@@ -137,9 +196,14 @@ auto read_mmcif(std::string contents, std::string source, const std::string& sel
 } // namespace
 
 void bind_adapters(nb::module_& module) {
-    module.def("_read_pdb", &read_pdb, nb::arg("contents"), nb::arg("source"), nb::arg("selection"),
-               nb::arg("bonds"), nb::arg("conformers"));
-    module.def("_read_mmcif", &read_mmcif, nb::arg("contents"), nb::arg("source"),
+    module.def("_parse_mol", &parse_mol, nb::arg("contents"), nb::arg("source"));
+    module.def("_parse_sdf", &parse_sdf, nb::arg("contents"), nb::arg("source"));
+    module.def("_parse_mol2", &parse_mol2, nb::arg("contents"), nb::arg("source"));
+    module.def("_parse_molecule_json", &parse_molecule_json, nb::arg("contents"), nb::arg("source"),
+               nb::arg("conformers"));
+    module.def("_parse_pdb", &parse_pdb, nb::arg("contents"), nb::arg("source"),
+               nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
+    module.def("_parse_mmcif", &parse_mmcif, nb::arg("contents"), nb::arg("source"),
                nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
 }
 

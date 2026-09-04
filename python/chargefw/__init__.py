@@ -33,6 +33,7 @@ from .calculation import (
 )
 from .charges import ChargeAssignment
 from .core import Molecule, MoleculeCollection, SourceIdentity
+from . import io as io
 
 __version__ = _native_version()
 
@@ -69,4 +70,5 @@ __all__ = [
     "Method",
     "ParameterSetCatalog",
     "ParameterSet",
+    "io",
 ]
