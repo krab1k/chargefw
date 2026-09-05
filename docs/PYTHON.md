@@ -266,6 +266,9 @@ Result JSON preserves non-fatal reader diagnostics and the conformer and structu
 collections returned by `parse()` or `read()`. Collections constructed directly have no import policy,
 so those provenance fields are omitted.
 
+Result JSON requires source record IDs to be strings or `None`. In-memory identities may use other
+hashable values; generated SDF, MOL2, and mmCIF output omit such IDs rather than rejecting the result.
+
 SDF and MOL2 contain one geometry per molecule. When several conformer-specific assignments or several
 coordinate conformers are available, select one with `conformer=`. SDF defaults to V3000; request V2000
 with `sdf_version="v2000"`. Generated mmCIF contains all conformers and applies geometry-independent

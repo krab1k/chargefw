@@ -176,9 +176,11 @@ def dumps(
         raise ValueError("sdf_version must be 'v2000', 'v3000', or None")
     identities: list[tuple[str, int, str]] = []
     for molecule in result.molecules:
-        if molecule.record_id is not None and not isinstance(molecule.record_id, str):
-            raise TypeError("serialized molecule record IDs must be strings or None")
-        identities.append((molecule.source_name, molecule.record_index, molecule.record_id or ""))
+        record_id = molecule.record_id
+        if format == "result-json" and record_id is not None and not isinstance(record_id, str):
+            raise TypeError("result JSON record IDs must be strings or None")
+        serialized_id = record_id if isinstance(record_id, str) else ""
+        identities.append((molecule.source_name, molecule.record_index, serialized_id))
     metadata = (
         result.molecules._input_metadata
         if isinstance(result.molecules, _ImportedMoleculeCollection)

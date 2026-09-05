@@ -156,6 +156,18 @@ class GeneratedOutputTests(unittest.TestCase):
         self.assertNotIn("input", requested)
         self.assertNotIn("structural_input", requested)
 
+    def test_non_string_record_ids_do_not_block_molecular_output(self) -> None:
+        molecule = chargefw.Molecule(
+            [1], coordinates=[[0, 0, 0]], name="hydrogen", record_id=7
+        )
+        result = chargefw.calculate(molecule, method="formal")
+
+        self.assertIn("V3000", chargefw.io.dumps(result, format="sdf"))
+        self.assertIn("@<TRIPOS>MOLECULE", chargefw.io.dumps(result, format="mol2"))
+        self.assertIn("data_hydrogen", chargefw.io.dumps(result, format="mmcif"))
+        with self.assertRaisesRegex(TypeError, "result JSON record IDs must be strings"):
+            chargefw.io.dumps(result, format="result-json")
+
 
 if __name__ == "__main__":
     unittest.main()
