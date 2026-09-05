@@ -18,6 +18,7 @@
 #include <array>
 #include <cstddef>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -104,90 +105,42 @@ template <typename Reader> auto read_all(Reader& reader) -> std::vector<Molecule
     return payloads;
 }
 
-auto parse_mol(std::string contents, std::string source) -> nb::list {
-    auto payloads = std::vector<MoleculePayload>{};
-    {
-        nb::gil_scoped_release release;
-        std::istringstream input{std::move(contents)};
-        auto reader = adapters::native::mol_input::MolReader{input, std::move(source)};
-        payloads = read_all(reader);
-    }
-    return as_python(payloads);
-}
-
-auto parse_sdf(std::string contents, std::string source) -> nb::list {
-    auto payloads = std::vector<MoleculePayload>{};
-    {
-        nb::gil_scoped_release release;
-        std::istringstream input{std::move(contents)};
-        auto reader = adapters::native::sdf_input::SdfReader{input, std::move(source)};
-        payloads = read_all(reader);
-    }
-    return as_python(payloads);
-}
-
-auto parse_mol2(std::string contents, std::string source) -> nb::list {
-    auto payloads = std::vector<MoleculePayload>{};
-    {
-        nb::gil_scoped_release release;
-        std::istringstream input{std::move(contents)};
-        auto reader = adapters::native::mol2_input::Mol2Reader{input, std::move(source)};
-        payloads = read_all(reader);
-    }
-    return as_python(payloads);
-}
-
-auto parse_molecule_json(std::string contents, std::string source, const std::string& conformers)
+auto parse(std::string contents, std::string source, const std::string& format,
+           const std::string& selection, const std::string& bonds, const std::string& conformers)
     -> nb::list {
-    const auto native_conformers = adapters::conformer_selection_from_string(conformers);
     auto payloads = std::vector<MoleculePayload>{};
     {
         nb::gil_scoped_release release;
         std::istringstream input{std::move(contents)};
-        auto reader =
-            adapters::native::json_input::JsonReader{input, std::move(source), native_conformers};
-        payloads = read_all(reader);
-    }
-    return as_python(payloads);
-}
-
-auto parse_pdb(std::string contents, std::string source, const std::string& selection,
-               const std::string& bonds, const std::string& conformers) -> nb::list {
-    const auto native_selection = adapters::gemmi::record_selection_from_string(selection);
-    const auto native_bonds = adapters::gemmi::bond_strategy_from_string(bonds);
-    const auto native_conformers = adapters::conformer_selection_from_string(conformers);
-    auto payloads = std::vector<MoleculePayload>{};
-    {
-        nb::gil_scoped_release release;
-        std::istringstream input{std::move(contents)};
-        auto reader = adapters::gemmi::pdb_input::PdbReader{input,
-                                                            std::move(source),
-                                                            {.selection = native_selection,
-                                                             .bond_strategy = native_bonds,
-                                                             .conformers = native_conformers}};
-        if (auto record = reader.next()) {
-            payloads.push_back(make_payload(std::move(*record)));
-        }
-    }
-    return as_python(payloads);
-}
-
-auto parse_mmcif(std::string contents, std::string source, const std::string& selection,
-                 const std::string& bonds, const std::string& conformers) -> nb::list {
-    const auto native_selection = adapters::gemmi::record_selection_from_string(selection);
-    const auto native_bonds = adapters::gemmi::bond_strategy_from_string(bonds);
-    const auto native_conformers = adapters::conformer_selection_from_string(conformers);
-    auto payloads = std::vector<MoleculePayload>{};
-    {
-        nb::gil_scoped_release release;
-        std::istringstream input{std::move(contents)};
-        auto reader = adapters::gemmi::mmcif_input::MmcifReader{input,
-                                                                std::move(source),
-                                                                {.selection = native_selection,
-                                                                 .bond_strategy = native_bonds,
-                                                                 .conformers = native_conformers}};
-        while (auto record = reader.next()) {
-            payloads.push_back(make_payload(std::move(*record)));
+        if (format == "mol") {
+            auto reader = adapters::native::mol_input::MolReader{input, std::move(source)};
+            payloads = read_all(reader);
+        } else if (format == "sdf") {
+            auto reader = adapters::native::sdf_input::SdfReader{input, std::move(source)};
+            payloads = read_all(reader);
+        } else if (format == "mol2") {
+            auto reader = adapters::native::mol2_input::Mol2Reader{input, std::move(source)};
+            payloads = read_all(reader);
+        } else if (format == "molecule-json") {
+            auto reader = adapters::native::json_input::JsonReader{
+                input, std::move(source), adapters::conformer_selection_from_string(conformers)};
+            payloads = read_all(reader);
+        } else if (format == "pdb" || format == "mmcif") {
+            const auto options = adapters::gemmi::InputOptions{
+                .selection = adapters::gemmi::record_selection_from_string(selection),
+                .bond_strategy = adapters::gemmi::bond_strategy_from_string(bonds),
+                .conformers = adapters::conformer_selection_from_string(conformers)};
+            if (format == "pdb") {
+                auto reader =
+                    adapters::gemmi::pdb_input::PdbReader{input, std::move(source), options};
+                payloads = read_all(reader);
+            } else {
+                auto reader =
+                    adapters::gemmi::mmcif_input::MmcifReader{input, std::move(source), options};
+                payloads = read_all(reader);
+            }
+        } else {
+            throw std::invalid_argument{"unsupported molecular input format: " + format};
         }
     }
     return as_python(payloads);
@@ -196,14 +149,7 @@ auto parse_mmcif(std::string contents, std::string source, const std::string& se
 } // namespace
 
 void bind_adapters(nb::module_& module) {
-    module.def("_parse_mol", &parse_mol, nb::arg("contents"), nb::arg("source"));
-    module.def("_parse_sdf", &parse_sdf, nb::arg("contents"), nb::arg("source"));
-    module.def("_parse_mol2", &parse_mol2, nb::arg("contents"), nb::arg("source"));
-    module.def("_parse_molecule_json", &parse_molecule_json, nb::arg("contents"), nb::arg("source"),
-               nb::arg("conformers"));
-    module.def("_parse_pdb", &parse_pdb, nb::arg("contents"), nb::arg("source"),
-               nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
-    module.def("_parse_mmcif", &parse_mmcif, nb::arg("contents"), nb::arg("source"),
+    module.def("_parse", &parse, nb::arg("contents"), nb::arg("source"), nb::arg("format"),
                nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
 }
 

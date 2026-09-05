@@ -6,7 +6,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 from ..core import MoleculeCollection
-from . import BondStrategy, ConformerSelection, RecordSelection, parse_mmcif
+from . import BondStrategy, ConformerSelection, RecordSelection, parse
 
 if TYPE_CHECKING:
     import gemmi as _gemmi
@@ -37,8 +37,9 @@ def from_structure(
     gemmi = _require_gemmi()
     if not isinstance(structure, gemmi.Structure):
         raise TypeError("structure must be a gemmi.Structure")
-    return parse_mmcif(
+    return parse(
         structure.make_mmcif_document().as_string(),
+        format="mmcif",
         source_name=source_name,
         selection=selection,
         bonds=bonds,
@@ -59,8 +60,9 @@ def from_document(
     gemmi = _require_gemmi()
     if not isinstance(document, gemmi.cif.Document):
         raise TypeError("document must be a gemmi.cif.Document")
-    return parse_mmcif(
+    return parse(
         document.as_string(),
+        format="mmcif",
         source_name=source_name,
         selection=selection,
         bonds=bonds,

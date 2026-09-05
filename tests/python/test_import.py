@@ -63,21 +63,12 @@ def test_import_surface() -> None:
     assert chargefw.assess is chargefw.calculation.assess
     assert chargefw.io is chargefw.io
     assert chargefw.io.__all__ == [
+        "InputFormat",
         "RecordSelection",
         "BondStrategy",
         "ConformerSelection",
-        "parse_mol",
-        "read_mol",
-        "parse_sdf",
-        "read_sdf",
-        "parse_mol2",
-        "read_mol2",
-        "parse_molecule_json",
-        "read_molecule_json",
-        "parse_pdb",
-        "read_pdb",
-        "parse_mmcif",
-        "read_mmcif",
+        "parse",
+        "read",
     ]
     assert chargefw.io.gemmi.__all__ == ["from_structure", "from_document"]
     assert not hasattr(_chargefw.calculation, "ExecutionMode")

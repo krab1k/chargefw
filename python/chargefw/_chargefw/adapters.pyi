@@ -12,24 +12,10 @@ class MoleculePayload(TypedDict):
     record_index: int
     record_id: str
 
-def _parse_mol(contents: str, source: str) -> list[MoleculePayload]: ...
-def _parse_sdf(contents: str, source: str) -> list[MoleculePayload]: ...
-def _parse_mol2(contents: str, source: str) -> list[MoleculePayload]: ...
-def _parse_molecule_json(
+def _parse(
     contents: str,
     source: str,
-    conformers: Literal["first", "all"],
-) -> list[MoleculePayload]: ...
-def _parse_pdb(
-    contents: str,
-    source: str,
-    selection: Literal["all", "polymers-and-ligands", "polymers"],
-    bonds: Literal["none", "explicit", "templates", "hybrid"],
-    conformers: Literal["first", "all"],
-) -> list[MoleculePayload]: ...
-def _parse_mmcif(
-    contents: str,
-    source: str,
+    format: Literal["mol", "sdf", "mol2", "molecule-json", "pdb", "mmcif"],
     selection: Literal["all", "polymers-and-ligands", "polymers"],
     bonds: Literal["none", "explicit", "templates", "hybrid"],
     conformers: Literal["first", "all"],

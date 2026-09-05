@@ -247,28 +247,25 @@ text, and timings.
 
 ## Molecular input
 
-Serialized molecular formats are read through `chargefw.io`. Parsing functions accept text, while
-corresponding `read_*()` functions accept string or path-like filesystem paths:
+Serialized molecular formats are read through `chargefw.io`. `parse()` accepts text, while `read()`
+accepts string or path-like filesystem paths:
 
 ```python
 import chargefw
 
-molecules = chargefw.io.read_pdb(
+molecules = chargefw.io.read(
     "structure.pdb",
+    format="pdb",
     selection="all",
     bonds="hybrid",
     conformers="all",
 )
 ```
 
-All format functions return a `MoleculeCollection`, including formats that contain exactly one molecule:
-
-- `parse_mol()` and `read_mol()`;
-- `parse_sdf()` and `read_sdf()`;
-- `parse_mol2()` and `read_mol2()`;
-- `parse_molecule_json()` and `read_molecule_json()`;
-- `parse_pdb()` and `read_pdb()`; and
-- `parse_mmcif()` and `read_mmcif()`.
+`parse()` and `read()` require an explicit `format` selected from `"mol"`, `"sdf"`, `"mol2"`,
+`"molecule-json"`, `"pdb"`, and `"mmcif"`. `parse()` accepts text and an optional `source_name`;
+`read()` accepts a string or path-like filesystem path. Both return a `MoleculeCollection`, including
+formats that contain exactly one molecule. File extensions are not inspected.
 
 MOL, SDF, and MOL2 always import their format-defined single conformer. Molecule JSON accepts
 `conformers="first"` or `"all"`. PDB and mmCIF additionally accept the structural selection and bond
