@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from importlib import import_module
 from operator import index as as_index
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
+
+import numpy as np
 
 from ..core import Molecule
 
@@ -139,12 +141,22 @@ def attach_charges(
     property_list_name = f"atom.dprop.{property_name}"
     if not overwrite and molecule.HasProp(property_list_name):
         raise ValueError(f"RDKit molecule already has property {property_list_name!r}")
-    for source_index, atom_id in enumerate(source.atom_ids):
-        if not isinstance(atom_id, int) or isinstance(atom_id, bool):
+    atom_indices: list[int] = []
+    for atom_id in source.atom_ids:
+        if isinstance(atom_id, (bool, np.bool_)):
             raise ValueError("RDKit attachment requires integer atom IDs")
-        if atom_id < 0 or atom_id >= molecule.GetNumAtoms():
+        try:
+            atom_index = as_index(cast(Any, atom_id))
+        except TypeError as error:
+            raise ValueError("RDKit attachment requires integer atom IDs") from error
+        if atom_index < 0 or atom_index >= molecule.GetNumAtoms():
             raise ValueError("RDKit atom ID is outside the target molecule")
-        atom = molecule.GetAtomWithIdx(atom_id)
+        atom_indices.append(atom_index)
+    if len(set(atom_indices)) != molecule.GetNumAtoms():
+        raise ValueError("RDKit atom IDs must map each target atom exactly once")
+
+    for source_index, atom_index in enumerate(atom_indices):
+        atom = molecule.GetAtomWithIdx(atom_index)
         if atom.GetAtomicNum() != int(source.atomic_numbers[source_index]):
             raise ValueError("RDKit target atom mapping does not match atomic numbers")
         if atom.GetFormalCharge() != int(source.formal_charges[source_index]):
@@ -152,8 +164,8 @@ def attach_charges(
         if not overwrite and atom.HasProp(property_name):
             raise ValueError(f"RDKit atom already has property {property_name!r}")
 
-    for atom_id, charge in zip(source.atom_ids, assignment.values, strict=True):
-        molecule.GetAtomWithIdx(atom_id).SetDoubleProp(property_name, float(charge))
+    for atom_index, charge in zip(atom_indices, assignment.values, strict=True):
+        molecule.GetAtomWithIdx(atom_index).SetDoubleProp(property_name, float(charge))
     create_property_list = getattr(chemistry, "CreateAtomDoublePropertyList", None)
     if create_property_list is not None:
         create_property_list(molecule, property_name)

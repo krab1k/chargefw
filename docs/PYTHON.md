@@ -345,8 +345,8 @@ RDKit is an optional dependency installed with `pip install "chargefw[rdkit]"`. 
 RDKit-free. `chargefw.io.rdkit.from_mol()` copies an existing `rdkit.Chem.Mol` without sanitization,
 hydrogen changes, protonation, embedding, or optimization. Aromatic and other non-integral bond
 representations must be converted explicitly first. `attach_charges()` writes one selected assignment to
-double-valued atom properties and creates RDKit's serializable atom-property list when that facility is
-available.
+double-valued atom properties using integer-compatible atom IDs that map each target atom exactly once. It
+creates RDKit's serializable atom-property list when that facility is available.
 
 ```python
 from chargefw.io import rdkit as chargefw_rdkit

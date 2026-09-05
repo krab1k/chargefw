@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import chargefw
+import numpy as np
 from chargefw.io import rdkit as chargefw_rdkit
 
 try:
@@ -130,6 +131,30 @@ class RdkitAdapterTests(unittest.TestCase):
         self.assertEqual(molecule.atom_ids, (0, 1))
         self.assertEqual(target.atoms[0].properties["ChargeFWPartialCharge"], 0.0)
         self.assertEqual(target.properties["atom.dprop.ChargeFWPartialCharge"], "created")
+
+    def test_attachment_requires_a_bijective_atom_mapping(self) -> None:
+        target = FakeMol()
+        target.atoms = (FakeAtom(0, 8, "O"), FakeAtom(1, 8, "O"))
+        molecule = chargefw.Molecule([8, 8], atom_ids=[0, 0])
+        result = chargefw.calculate(molecule, method="formal")
+
+        with (
+            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
+            self.assertRaisesRegex(ValueError, "map each target atom exactly once"),
+        ):
+            chargefw_rdkit.attach_charges(target, result)
+
+        self.assertFalse(any(atom.HasProp("ChargeFWPartialCharge") for atom in target.atoms))
+
+    def test_attachment_accepts_index_compatible_atom_ids(self) -> None:
+        target = FakeMol()
+        molecule = chargefw.Molecule([1, 8], atom_ids=[np.int64(1), np.int64(0)])
+        result = chargefw.calculate(molecule, method="formal")
+
+        with patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry):
+            chargefw_rdkit.attach_charges(target, result)
+
+        self.assertTrue(all(atom.HasProp("ChargeFWPartialCharge") for atom in target.atoms))
 
     def test_missing_dependency_is_actionable(self) -> None:
         error = ModuleNotFoundError("No module named 'rdkit'")
