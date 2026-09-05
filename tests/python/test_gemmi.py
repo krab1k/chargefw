@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import gemmi
 import numpy as np
+from chargefw import calculate
 from chargefw import io as chargefw_io
 from chargefw.io import gemmi as chargefw_gemmi
 
@@ -237,6 +238,25 @@ class GemmiAdapterTests(unittest.TestCase):
         from_document = chargefw_gemmi.from_document(document, source_name="document")
         self.assertEqual([value.record_id for value in from_document], ["first", "second"])
         np.testing.assert_array_equal(from_document[0].coordinates, collection[0].coordinates)
+
+    def test_attach_charges_enriches_document_in_place(self) -> None:
+        import gemmi
+
+        document = gemmi.cif.read_string(MMCIF_TEXT)
+        molecules = chargefw_gemmi.from_document(document)
+        result = calculate(molecules, method="formal")
+
+        chargefw_gemmi.attach_charges(document, result)
+
+        for expected_count, block in zip((2, 1), document, strict=True):
+            self.assertIn("_sb_ncbr_partial_atomic_charges.", block.get_mmcif_category_names())
+            charges = block.find(
+                "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id", "charge"]
+            )
+            self.assertEqual(len(charges), expected_count)
+        with self.assertRaisesRegex(ValueError, "already contains partial charge categories"):
+            chargefw_gemmi.attach_charges(document, result)
+        chargefw_gemmi.attach_charges(document, result, overwrite=True)
 
     def test_selection_conformers_and_types_are_explicit(self) -> None:
         polymers = chargefw_io.parse(

@@ -219,6 +219,7 @@ charge assignments. Assessment itself is not observed.
 `CalculationResult` exposes:
 
 - `status`;
+- the immutable input collection in `molecules`;
 - immutable `assignments`;
 - immutable `assignments_by_molecule`, aligned with the calculation input collection;
 - requested policy in `requested`;
@@ -244,6 +245,28 @@ a typed `ChargeFWError` subclass:
 
 Each exception retains the complete result as `exception.result`, including status, rejections, failure
 text, and timings.
+
+## Generated output
+
+`chargefw.io.dumps()` returns generated molecular or result text, while `chargefw.io.write()` writes it
+to a UTF-8 file. Both require an explicit `format`: `"sdf"`, `"mol2"`, `"mmcif"`, or
+`"result-json"`.
+
+```python
+result = chargefw.calculate(molecules, method="eem")
+chargefw.io.write("charged.cif", result, format="mmcif")
+```
+
+Molecular output is generated only from ChargeFW's normalized molecule model. It does not preserve SDF
+properties, Tripos typing or substructures, polymer hierarchy, crystallographic metadata, or other source
+content that the model does not contain. Generated mmCIF represents each molecule as a separate `UNL`
+data block. The source format does not restrict the output format.
+
+SDF and MOL2 contain one geometry per molecule. When several conformer-specific assignments or several
+coordinate conformers are available, select one with `conformer=`. SDF defaults to V3000; request V2000
+with `sdf_version="v2000"`. Generated mmCIF contains all conformers and assignments. Molecular formats
+require a successful result and valid coordinates; result JSON also serializes failed and cancelled
+results retained by typed calculation exceptions.
 
 ## Molecular input
 
@@ -293,11 +316,22 @@ The Gemmi integration serializes upstream objects through mmCIF text and then us
 reader. This keeps selection and bond behavior aligned with serialized input without sharing C++ objects
 between extension modules.
 
+`attach_charges()` enriches a caller-owned `gemmi.cif.Document` in place using ChargeFW's native mmCIF
+writer. ChargeFW reads the target afresh and retains no imported source document. Target molecules and
+atoms must occur in the same order and have matching elements and formal charges. Pass the same
+non-default `selection` used for conversion. Existing SB NCBR charge categories are rejected unless
+`overwrite=True`.
+
+```python
+result = chargefw.calculate(document_molecules, method="eem")
+chargefw_gemmi.attach_charges(document, result)
+document.write_file("charged.cif")
+```
+
 Structural input defaults are `selection="all"`, `bonds="none"`, and `conformers="all"`. Bond choices are
 `"none"`, `"explicit"`, `"templates"`, and `"hybrid"`; selection choices are `"all"`,
 `"polymers-and-ligands"`, and `"polymers"`. Their language-independent import semantics are defined in
 the [PDB and mmCIF format reference](FORMATS.md#pdb-and-mmcif-input).
 
-The Python package currently has no molecular output API, RDKit or Biopython integration, chemistry
-preparation API, or asynchronous job API. Current distribution and integration work is tracked in the root
-[TODO](../TODO.md).
+The Python package currently has no Biopython integration, chemistry preparation API, or asynchronous job
+API. Current distribution and integration work is tracked in the root [TODO](../TODO.md).

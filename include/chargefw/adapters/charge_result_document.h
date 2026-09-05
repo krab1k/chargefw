@@ -9,7 +9,9 @@
 #include <cstdint>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace chargefw::adapters {
@@ -93,5 +95,11 @@ struct ChargeResultDocument {
     std::vector<ChargeResultRecord> records;
     std::optional<CalculationProvenance> calculation_provenance;
 };
+
+[[nodiscard]] auto make_charge_result_document(
+    std::span<const ImportedMoleculeRecord> records,
+    const RequestedCalculationProvenance& requested, const calculation::ExecutionResult& result,
+    std::string_view generator_name, std::string_view generator_version,
+    std::optional<ExecutionMetrics> execution_metrics = std::nullopt) -> ChargeResultDocument;
 
 } // namespace chargefw::adapters

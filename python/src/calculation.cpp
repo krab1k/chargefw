@@ -1,4 +1,5 @@
 #include "bindings.h"
+#include "native_execution_result.h"
 #include "native_parameter_catalog.h"
 
 #include <chargefw/calculation/assessment.h>
@@ -295,20 +296,20 @@ class NativePlan {
     }
 
     [[nodiscard]] auto calculate(const std::optional<std::size_t> max_threads,
-                                 nb::object observer) const -> nb::dict {
+                                 nb::object observer) const -> NativeExecutionResult {
         auto python_observer = std::optional<PythonCalculationObserver>{};
         const auto* native_observer = std::addressof(calculation::default_calculation_observer());
         if (!observer.is_none()) {
             python_observer.emplace(std::move(observer));
             native_observer = std::addressof(*python_observer);
         }
-        const auto result = [&] {
+        auto result = [&] {
             nb::gil_scoped_release release;
             return calculation::calculate(state_->assessment_, state_->assessment_.plans()[index_],
                                           max_threads.value_or(state_->max_threads_),
                                           *native_observer);
         }();
-        return execution_result(result);
+        return NativeExecutionResult{std::move(result)};
     }
 
   private:
@@ -340,19 +341,19 @@ class NativeAssessment {
         return result;
     }
 
-    [[nodiscard]] auto calculate_default(nb::object observer) const -> nb::dict {
+    [[nodiscard]] auto calculate_default(nb::object observer) const -> NativeExecutionResult {
         auto python_observer = std::optional<PythonCalculationObserver>{};
         const auto* native_observer = std::addressof(calculation::default_calculation_observer());
         if (!observer.is_none()) {
             python_observer.emplace(std::move(observer));
             native_observer = std::addressof(*python_observer);
         }
-        const auto result = [&] {
+        auto result = [&] {
             nb::gil_scoped_release release;
             return calculation::calculate(state_->assessment_, state_->max_threads_,
                                           *native_observer);
         }();
-        return execution_result(result);
+        return NativeExecutionResult{std::move(result)};
     }
 
   private:
@@ -406,6 +407,9 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
 } // namespace
 
 void bind_calculation(nb::module_& module) {
+    nb::class_<NativeExecutionResult>(module, "_NativeExecutionResult")
+        .def("report",
+             [](const NativeExecutionResult& value) { return execution_result(value.result()); });
     nb::class_<NativePlan>(module, "_NativePlan")
         .def("report", &NativePlan::report)
         .def("calculate", &NativePlan::calculate, nb::arg("max_threads") = nb::none(),

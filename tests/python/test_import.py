@@ -64,13 +64,17 @@ def test_import_surface() -> None:
     assert chargefw.io is chargefw.io
     assert chargefw.io.__all__ == [
         "InputFormat",
+        "OutputFormat",
+        "SdfVersion",
         "RecordSelection",
         "BondStrategy",
         "ConformerSelection",
         "parse",
         "read",
+        "dumps",
+        "write",
     ]
-    assert chargefw.io.gemmi.__all__ == ["from_structure", "from_document"]
+    assert chargefw.io.gemmi.__all__ == ["from_structure", "from_document", "attach_charges"]
     assert not hasattr(_chargefw.calculation, "ExecutionMode")
     assert not hasattr(_chargefw.methods, "MethodOptionType")
     assert not hasattr(_chargefw.adapters, "BondStrategy")

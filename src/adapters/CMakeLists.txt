@@ -1,5 +1,6 @@
 target_sources(chargefw_core
         PRIVATE
+        charge_result_document.cpp
         native/json_output.cpp
         native/common_input.cpp
         native/common_output.cpp

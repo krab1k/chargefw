@@ -1,4 +1,8 @@
+from collections.abc import Sequence
 from typing import Literal, TypedDict
+
+from .calculation import _NativeExecutionResult
+from .core import _NativeMolecule
 
 class MoleculePayload(TypedDict):
     atomic_numbers: list[int]
@@ -20,3 +24,19 @@ def _parse(
     bonds: Literal["none", "explicit", "templates", "hybrid"],
     conformers: Literal["first", "all"],
 ) -> list[MoleculePayload]: ...
+def _dumps(
+    result: _NativeExecutionResult,
+    molecules: Sequence[_NativeMolecule],
+    identities: Sequence[tuple[str, int, str]],
+    requested: dict[str, object],
+    format: Literal["sdf", "mol2", "mmcif", "result-json"],
+    conformer: int | None,
+    sdf_version: Literal["v2000", "v3000"],
+) -> str: ...
+def _attach_mmcif(
+    contents: str,
+    result: _NativeExecutionResult,
+    molecules: Sequence[_NativeMolecule],
+    selection: Literal["all", "polymers-and-ligands", "polymers"],
+    overwrite: bool,
+) -> str: ...

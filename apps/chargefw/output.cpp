@@ -23,42 +23,6 @@
 namespace chargefw::cli {
 namespace {
 
-[[nodiscard]] auto result_document(const ImportedExportContext& export_context,
-                                   const adapters::RequestedCalculationProvenance& requested,
-                                   const calculation::ExecutionResult& result,
-                                   const adapters::ExecutionMetrics& metrics)
-    -> adapters::ChargeResultDocument;
-
-[[nodiscard]] auto prerequisite_code(const methods::PrerequisiteIssueKind kind)
-    -> std::string_view {
-    switch (kind) {
-    case methods::PrerequisiteIssueKind::invalid_options:
-        return "invalid_method_options";
-    case methods::PrerequisiteIssueKind::missing_feature:
-        return "missing_feature";
-    case methods::PrerequisiteIssueKind::invalid_geometry:
-        return "invalid_geometry";
-    case methods::PrerequisiteIssueKind::unsupported_molecule:
-        return "unsupported_molecule";
-    case methods::PrerequisiteIssueKind::missing_parameters:
-        return "missing_parameters";
-    case methods::PrerequisiteIssueKind::parameter_classification_failed:
-        return "parameter_classification_failed";
-    }
-    throw std::logic_error{"unknown prerequisite issue kind"};
-}
-
-void append_unique(std::vector<adapters::ResultDiagnostic>& diagnostics,
-                   adapters::ResultDiagnostic diagnostic) {
-    const auto duplicate =
-        std::ranges::any_of(diagnostics, [&diagnostic](const adapters::ResultDiagnostic& existing) {
-            return existing.code == diagnostic.code && existing.message == diagnostic.message;
-        });
-    if (!duplicate) {
-        diagnostics.push_back(std::move(diagnostic));
-    }
-}
-
 void report_diagnostics(const adapters::ChargeResultDocument& document) {
     auto reported = std::set<std::pair<std::string, std::string>>{};
     const auto report = [&reported](const adapters::ResultDiagnostic& diagnostic) {
@@ -186,129 +150,6 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
     }
 }
 
-[[nodiscard]] auto result_document(const ImportedExportContext& export_context,
-                                   const adapters::RequestedCalculationProvenance& requested,
-                                   const calculation::ExecutionResult& result,
-                                   const adapters::ExecutionMetrics& metrics)
-    -> adapters::ChargeResultDocument {
-    const auto status = result.status;
-    const auto diagnostic = [&result] -> std::optional<adapters::ResultDiagnostic> {
-        switch (result.status) {
-        case calculation::ExecutionStatus::success:
-            return std::nullopt;
-        case calculation::ExecutionStatus::invalid_input_or_request:
-            return adapters::ResultDiagnostic{.severity = adapters::DiagnosticSeverity::error,
-                                              .code = "invalid_input_or_request",
-                                              .message = result.failure_message.value_or(
-                                                  "Invalid input or calculation request.")};
-        case calculation::ExecutionStatus::no_executable_plan:
-            return adapters::ResultDiagnostic{
-                .severity = adapters::DiagnosticSeverity::error,
-                .code = "no_executable_plan",
-                .message = "No executable method and parameter-set plan was found."};
-        case calculation::ExecutionStatus::numerical_failure:
-            return adapters::ResultDiagnostic{
-                .severity = adapters::DiagnosticSeverity::error,
-                .code = "numerical_failure",
-                .message = result.failure_message.value_or("Calculation failed numerically.")};
-        case calculation::ExecutionStatus::cancelled:
-            return adapters::ResultDiagnostic{.severity = adapters::DiagnosticSeverity::info,
-                                              .code = "calculation_cancelled",
-                                              .message =
-                                                  "Calculation was cancelled before completion."};
-        }
-        throw std::logic_error{"unknown execution result status"};
-    }();
-    auto effective = adapters::EffectiveCalculationProvenance{};
-    if (result.effective.has_value()) {
-        const auto& calculation = *result.effective;
-        effective.method_id = calculation.method_id;
-        effective.parameter_set_id = calculation.parameter_set_id;
-        effective.execution_mode =
-            std::string{calculation::to_string(calculation.execution_policy.mode())};
-        effective.execution_radius = calculation.execution_policy.radius();
-        effective.execution_charge_correction =
-            std::string{calculation::to_string(calculation.execution_policy.charge_correction())};
-        effective.warnings.reserve(calculation.execution_issues.size());
-        for (const auto& issue : calculation.execution_issues) {
-            effective.warnings.push_back(issue.message);
-        }
-        effective.method_options.emplace(calculation.method_id, calculation.method_options);
-    }
-    auto provenance = adapters::CalculationProvenance{
-        .requested = requested, .effective = std::move(effective), .execution_metrics = metrics};
-    auto document = adapters::ChargeResultDocument{
-        .generator_name = "ChargeFW",
-        .generator_version = CHARGEFW_VERSION_STRING,
-        .status = status,
-        .diagnostics = diagnostic.has_value() ? std::vector{*diagnostic}
-                                              : std::vector<adapters::ResultDiagnostic>{},
-        .records = {},
-        .calculation_provenance = provenance};
-    document.records.reserve(export_context.records.size());
-    for (std::size_t molecule_index = 0; molecule_index < export_context.records.size();
-         ++molecule_index) {
-        const auto& record = export_context.records[molecule_index];
-        auto record_diagnostics = std::vector<adapters::ResultDiagnostic>{};
-        for (const auto& import_diagnostic : record.diagnostics) {
-            append_unique(record_diagnostics, adapters::ResultDiagnostic{
-                                                  .severity = adapters::DiagnosticSeverity::warning,
-                                                  .code = import_diagnostic.code,
-                                                  .message = import_diagnostic.message,
-                                                  .molecule_index = molecule_index,
-                                                  .line = import_diagnostic.line});
-        }
-        if (diagnostic.has_value()) {
-            append_unique(record_diagnostics, *diagnostic);
-        }
-        if (result.status == calculation::ExecutionStatus::no_executable_plan) {
-            for (const auto& rejected : result.rejections) {
-                for (const auto& issue_value : rejected.issues) {
-                    auto candidate = "method '" + rejected.method_id + "'";
-                    if (rejected.parameter_set_id.has_value()) {
-                        candidate += ", parameter set '" + *rejected.parameter_set_id + "'";
-                    }
-                    if (const auto* issue = std::get_if<methods::PrerequisiteIssue>(&issue_value)) {
-                        if (issue->molecule_index.has_value() &&
-                            *issue->molecule_index != molecule_index) {
-                            continue;
-                        }
-                        append_unique(record_diagnostics,
-                                      adapters::ResultDiagnostic{
-                                          .severity = adapters::DiagnosticSeverity::error,
-                                          .code = std::string{prerequisite_code(issue->kind)},
-                                          .message = candidate + ": " + issue->message,
-                                          .molecule_index = issue->molecule_index,
-                                          .atom_index = issue->atom_index,
-                                          .bond_index = issue->bond_index,
-                                          .conformer_index = issue->conformer_index});
-                    } else {
-                        const auto& execution_issue =
-                            std::get<methods::ExecutionIssue>(issue_value);
-                        if (execution_issue.molecule_index.has_value() &&
-                            *execution_issue.molecule_index != molecule_index) {
-                            continue;
-                        }
-                        append_unique(
-                            record_diagnostics,
-                            adapters::ResultDiagnostic{
-                                .severity = adapters::DiagnosticSeverity::error,
-                                .code = std::string{methods::to_string(execution_issue.kind)},
-                                .message = candidate + ": " + execution_issue.message,
-                                .molecule_index = execution_issue.molecule_index});
-                    }
-                }
-            }
-        }
-        document.records.push_back(
-            adapters::ChargeResultRecord{.identity = record.identity,
-                                         .charges = result.charges,
-                                         .status = status,
-                                         .diagnostics = std::move(record_diagnostics)});
-    }
-    return document;
-}
-
 } // namespace
 
 auto utc_timestamp() -> std::string {
@@ -383,7 +224,9 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
         run.metrics.ended_at = utc_timestamp();
         run.metrics.runtime_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
-        const auto document = result_document(export_context, requested, result, run.metrics);
+        const auto document =
+            adapters::make_charge_result_document(export_context.records, requested, result,
+                                                  "ChargeFW", CHARGEFW_VERSION_STRING, run.metrics);
         write_json(prefix.string() + ".json", document);
         report_diagnostics(document);
         switch (result.status) {
@@ -433,7 +276,9 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     run.metrics.ended_at = utc_timestamp();
     run.metrics.runtime_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
-    const auto document = result_document(export_context, requested, result, run.metrics);
+    const auto document =
+        adapters::make_charge_result_document(export_context.records, requested, result, "ChargeFW",
+                                              CHARGEFW_VERSION_STRING, run.metrics);
     write_json(prefix.string() + ".json", document);
     report_diagnostics(document);
     return 0;

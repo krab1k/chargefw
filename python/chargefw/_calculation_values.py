@@ -20,7 +20,6 @@ from ._payloads import (
     EffectiveCalculationPayload,
     ExecutionIssuePayload,
     ExecutionPolicyPayload,
-    ExecutionResultPayload,
     PrerequisiteIssuePayload,
     RejectionPayload,
 )
@@ -103,7 +102,9 @@ class Plan:
             )
         )
 
-    def _calculate(self, threads: int | None, observer: object | None) -> ExecutionResultPayload:
+    def _calculate(
+        self, threads: int | None, observer: object | None
+    ) -> _native_calculation._NativeExecutionResult:
         return self._native.calculate(threads, observer)
 
     def __repr__(self) -> str:
@@ -241,6 +242,8 @@ class CalculationResult:
 
     __slots__ = (
         "_status",
+        "_native",
+        "_molecules",
         "_requested",
         "_assignments",
         "_assignments_by_molecule",
@@ -251,6 +254,8 @@ class CalculationResult:
     )
 
     _status: ExecutionStatus
+    _native: _native_calculation._NativeExecutionResult
+    _molecules: MoleculeCollection
     _requested: RequestedCalculation
     _assignments: tuple[ChargeAssignment, ...]
     _assignments_by_molecule: tuple[tuple[ChargeAssignment, ...], ...]
@@ -261,13 +266,14 @@ class CalculationResult:
 
     def __init__(
         self,
-        payload: ExecutionResultPayload,
+        native: _native_calculation._NativeExecutionResult,
         molecules: MoleculeCollection,
         requested: RequestedCalculation,
         methods: MethodCatalog,
         parameter_sets: ParameterSetCatalog,
         rejections: tuple[Rejection, ...] = (),
     ) -> None:
+        payload = native.report()
         assignments: list[ChargeAssignment] = []
         assignments_by_molecule: list[list[ChargeAssignment]] = [[] for _ in molecules]
         charges = payload["charges"]
@@ -285,6 +291,8 @@ class CalculationResult:
                 )
                 assignments.append(assignment)
                 assignments_by_molecule[molecule_index].append(assignment)
+        self._native = native
+        self._molecules = molecules
         self._status = payload["status"]
         self._requested = requested
         self._assignments = tuple(assignments)
@@ -300,6 +308,28 @@ class CalculationResult:
     @property
     def status(self) -> ExecutionStatus:
         return self._status
+
+    @property
+    def molecules(self) -> MoleculeCollection:
+        return self._molecules
+
+    @property
+    def _requested_payload(self) -> dict[str, object]:
+        return {
+            "method_id": self._requested.method,
+            "parameter_set_id": self._requested.parameter_set,
+            "permissive_types": self._requested.parameter_matching == "permissive",
+            "cutoff_threshold": self._requested.cutoff_threshold,
+            "cover_threshold": self._requested.cover_threshold,
+            "max_threads": self._requested.threads,
+            "execution": self._requested.execution,
+            "radius": self._requested.radius,
+            "charge_correction": self._requested.charge_correction,
+            "method_options": {
+                method_id: dict(options)
+                for method_id, options in self._requested.options_by_method.items()
+            },
+        }
 
     @property
     def assignments(self) -> tuple[ChargeAssignment, ...]:

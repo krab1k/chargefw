@@ -171,6 +171,8 @@ Individual public headers are provided under `chargefw/adapters/native` and
 - `PdbReader` and `MmcifReader` import Gemmi structures with explicit record, bond, and conformer policy.
 - Native writers emit ChargeFW JSON, SDF, and MOL2.
 - The Gemmi writer emits preservation-oriented or generated mmCIF charge data.
+- `make_charge_result_document()` assembles result status, diagnostics, assignments, and provenance for
+  `JsonWriter`; application-specific execution metrics are optional.
 
 Readers return `ImportedMoleculeRecord`, which keeps the molecule together with source identity and import
 diagnostics. The [molecular format reference](FORMATS.md) documents supported subsets, reader policy,
