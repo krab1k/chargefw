@@ -190,7 +190,8 @@ unselected rows and attaches charges only to selected atom IDs.
 
 Generated mmCIF creates one non-polymer `UNL` data block per molecule, including elements, formal charges,
 single/double/triple bonds, and all native conformers. Block and atom IDs are made unique when necessary.
-Coordinates are required.
+Conformer-independent assignments are attached to every retained conformer; conformer-specific
+assignments are attached only to their corresponding model. Coordinates are required.
 
 ### ChargeFW result JSON 1.0
 

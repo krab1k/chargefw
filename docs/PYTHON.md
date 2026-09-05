@@ -268,9 +268,10 @@ so those provenance fields are omitted.
 
 SDF and MOL2 contain one geometry per molecule. When several conformer-specific assignments or several
 coordinate conformers are available, select one with `conformer=`. SDF defaults to V3000; request V2000
-with `sdf_version="v2000"`. Generated mmCIF contains all conformers and assignments. Molecular formats
-require a successful result and valid coordinates; result JSON also serializes failed and cancelled
-results retained by typed calculation exceptions.
+with `sdf_version="v2000"`. Generated mmCIF contains all conformers and applies geometry-independent
+assignments to every retained conformer. Molecular formats require a successful result and valid
+coordinates; result JSON also serializes failed and cancelled results retained by typed calculation
+exceptions.
 
 ## Molecular input
 

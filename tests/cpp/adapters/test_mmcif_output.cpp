@@ -57,6 +57,19 @@ auto two_conformer_charges() -> charges::ChargeSet {
                               "qeq-default"};
 }
 
+auto two_conformer_record() -> adapters::ImportedMoleculeRecord {
+    auto record = generated_record("models");
+    auto conformers = std::vector<core::Conformer>{record.molecule.conformer(0)};
+    conformers.emplace_back(std::vector{core::Position{.x = 0.1, .y = 0.0, .z = 0.0},
+                                        core::Position{.x = 1.3, .y = 0.0, .z = 0.0}},
+                            "2");
+    record.molecule = core::Molecule{
+        std::vector<core::Atom>{record.molecule.atoms().begin(), record.molecule.atoms().end()},
+        std::vector<core::Bond>{record.molecule.bonds().begin(), record.molecule.bonds().end()},
+        std::move(conformers), std::string{record.molecule.name()}};
+    return record;
+}
+
 } // namespace
 
 TEST_CASE("mmCIF generated output preserves charge mapping", "[adapters][mmcif]") {
@@ -114,6 +127,27 @@ TEST_CASE("mmCIF generated output preserves charge mapping", "[adapters][mmcif]"
         CHECK(std::string_view{error.what()} ==
               "no charge assignments for mmCIF output molecule 2");
     }
+}
+
+TEST_CASE("mmCIF generated output applies geometry-independent charges to every conformer",
+          "[adapters][mmcif]") {
+    auto records = std::vector<adapters::ImportedMoleculeRecord>{two_conformer_record()};
+    const auto charges = charges::ChargeSet{
+        "formal",
+        {{.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{{0.25, -0.25}}}}};
+    std::ostringstream output;
+    mmcif_output::MmcifWriter{output}.write_generated(records, charges);
+    auto block = ::gemmi::cif::read_string(output.str()).sole_block();
+
+    auto metadata = block.find("_sb_ncbr_partial_atomic_charges_meta.", {"id"});
+    REQUIRE(metadata.length() == 1);
+    auto charge_rows =
+        block.find("_sb_ncbr_partial_atomic_charges.", {"type_id", "atom_id", "charge"});
+    REQUIRE(charge_rows.length() == 4);
+    CHECK(::gemmi::cif::as_string(charge_rows[0][0]) == ::gemmi::cif::as_string(charge_rows[2][0]));
+    CHECK(::gemmi::cif::as_string(charge_rows[0][1]) == "1");
+    CHECK(::gemmi::cif::as_string(charge_rows[2][1]) == "3");
+    CHECK(::gemmi::cif::as_string(charge_rows[0][2]) == ::gemmi::cif::as_string(charge_rows[2][2]));
 }
 
 TEST_CASE("mmCIF output preserves source categories and charge assignments", "[adapters][mmcif]") {

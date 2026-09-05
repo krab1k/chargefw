@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, cast
 
 import chargefw
+import gemmi
 
 
 def water(*, conformers: int = 1) -> chargefw.Molecule:
@@ -63,6 +64,38 @@ class GeneratedOutputTests(unittest.TestCase):
         selected = chargefw.io.dumps(result, format="sdf", conformer=1)
         self.assertIn("M  V30 1 O 0.1 0 0", selected)
         self.assertIn("_atom_site.pdbx_PDB_model_num", chargefw.io.dumps(result, format="mmcif"))
+
+    def test_mmcif_applies_geometry_independent_charges_to_selected_conformers(self) -> None:
+        contents = json.dumps(
+            {
+                "schema_version": "1.0",
+                "molecules": [
+                    {
+                        "atoms": [{"atomic_number": 1, "formal_charge": 0}],
+                        "conformers": [
+                            {"coordinates": [[0, 0, 0]]},
+                            {"coordinates": [[1, 0, 0]]},
+                        ],
+                    }
+                ],
+            }
+        )
+        for selection, expected_count in (("all", 2), ("first", 1)):
+            with self.subTest(selection=selection):
+                molecules = chargefw.io.parse(
+                    contents, format="molecule-json", conformers=cast(Any, selection)
+                )
+                result = chargefw.calculate(molecules, method="formal")
+                block = gemmi.cif.read_string(
+                    chargefw.io.dumps(result, format="mmcif")
+                ).sole_block()
+                atom_sites = block.find("_atom_site.", ["id"])
+                charges = block.find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])
+                self.assertEqual(len(atom_sites), expected_count)
+                self.assertEqual(
+                    [gemmi.cif.as_string(row[0]) for row in charges],
+                    [gemmi.cif.as_string(row[0]) for row in atom_sites],
+                )
 
     def test_result_json_supports_failed_calculations(self) -> None:
         molecule = chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]])

@@ -17,6 +17,7 @@
 #include <memory>
 #include <optional>
 #include <ostream>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -47,9 +48,9 @@ struct BlockMapping {
     }
 
     BlockMapping mapping;
-    mapping.atom_site_ids.reserve(structure.models.size());
-    mapping.model_ids.reserve(structure.models.size());
-    for (const auto& model : structure.models) {
+    mapping.atom_site_ids.reserve(molecule.conformer_count());
+    mapping.model_ids.reserve(molecule.conformer_count());
+    for (const auto& model : structure.models | std::views::take(molecule.conformer_count())) {
         const auto selected = selection::SelectedModel{model, selection};
         if (selected.atoms().size() != molecule.atom_count()) {
             throw std::runtime_error{"structural atom count does not match calculated atoms"};
@@ -310,9 +311,8 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
         if (assignment.charges.size() != molecule.atom_count()) {
             throw std::runtime_error{"charge assignment size does not match mmCIF molecule"};
         }
-        const auto conformer_index = assignment.target.conformer_index;
-        const auto mapping_index = conformer_index.value_or(0);
-        if (mapping_index >= mapping.atom_site_ids.size()) {
+        if (assignment.target.conformer_index.has_value() &&
+            *assignment.target.conformer_index >= mapping.atom_site_ids.size()) {
             throw std::runtime_error{"charge assignment conformer is missing from mmCIF block"};
         }
         const auto id = std::to_string(assignment_id++);
@@ -321,9 +321,16 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
                              parameter_set.has_value() ? quote(*parameter_set) : ".",
                              quote(generator_name.empty() ? "unknown" : generator_name),
                              quote(generator_version.empty() ? "unknown" : generator_version)});
-        for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
-            charge_rows.append_row({id, quote(mapping.atom_site_ids[mapping_index][atom_index]),
-                                    std::format("{:.4f}", assignment.charges[atom_index])});
+        const auto first_mapping = assignment.target.conformer_index.value_or(0);
+        const auto mapping_count = assignment.target.conformer_index.has_value()
+                                       ? first_mapping + 1
+                                       : mapping.atom_site_ids.size();
+        for (std::size_t mapping_index = first_mapping; mapping_index < mapping_count;
+             ++mapping_index) {
+            for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
+                charge_rows.append_row({id, quote(mapping.atom_site_ids[mapping_index][atom_index]),
+                                        std::format("{:.4f}", assignment.charges[atom_index])});
+            }
         }
     }
 }

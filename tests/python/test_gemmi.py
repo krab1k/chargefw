@@ -249,7 +249,7 @@ class GemmiAdapterTests(unittest.TestCase):
 
         chargefw_gemmi.attach_charges(document, result)
 
-        for expected_count, block in zip((2, 1), document, strict=True):
+        for expected_count, block in zip((4, 1), document, strict=True):
             self.assertIn("_sb_ncbr_partial_atomic_charges.", block.get_mmcif_category_names())
             charges = block.find(
                 "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id", "charge"]
