@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, cast
+from unittest.mock import patch
 
 import gemmi
 import numpy as np
@@ -179,6 +180,12 @@ class NativeInputTests(unittest.TestCase):
 
 
 class GemmiAdapterTests(unittest.TestCase):
+    def test_object_conversion_reports_missing_optional_dependency(self) -> None:
+        missing_gemmi = ModuleNotFoundError("No module named 'gemmi'", name="gemmi")
+        with patch.object(chargefw_gemmi, "import_module", side_effect=missing_gemmi):
+            with self.assertRaisesRegex(ImportError, r"pip install chargefw\[gemmi\]"):
+                chargefw_gemmi.from_structure(cast(Any, object()))
+
     def test_pdb_text_file_and_structure_preserve_mapping(self) -> None:
         text_collection = chargefw_io.parse_pdb(
             PDB_TEXT,

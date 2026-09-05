@@ -2,10 +2,26 @@
 
 from __future__ import annotations
 
-import gemmi as _gemmi
+from importlib import import_module
+from typing import TYPE_CHECKING, Any
 
 from ..core import MoleculeCollection
 from . import BondStrategy, ConformerSelection, RecordSelection, parse_mmcif
+
+if TYPE_CHECKING:
+    import gemmi as _gemmi
+
+
+def _require_gemmi() -> Any:
+    try:
+        return import_module("gemmi")
+    except ModuleNotFoundError as error:
+        if error.name != "gemmi":
+            raise
+        raise ImportError(
+            "chargefw.io.gemmi requires the optional Gemmi Python integration; "
+            "install it with `pip install chargefw[gemmi]`"
+        ) from error
 
 
 def from_structure(
@@ -18,7 +34,8 @@ def from_structure(
 ) -> MoleculeCollection:
     """Convert a ``gemmi.Structure`` to a one-molecule collection."""
 
-    if not isinstance(structure, _gemmi.Structure):
+    gemmi = _require_gemmi()
+    if not isinstance(structure, gemmi.Structure):
         raise TypeError("structure must be a gemmi.Structure")
     return parse_mmcif(
         structure.make_mmcif_document().as_string(),
@@ -39,7 +56,8 @@ def from_document(
 ) -> MoleculeCollection:
     """Convert a ``gemmi.cif.Document`` through ChargeFW's mmCIF parser."""
 
-    if not isinstance(document, _gemmi.cif.Document):
+    gemmi = _require_gemmi()
+    if not isinstance(document, gemmi.cif.Document):
         raise TypeError("document must be a gemmi.cif.Document")
     return parse_mmcif(
         document.as_string(),

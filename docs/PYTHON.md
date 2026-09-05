@@ -11,8 +11,8 @@ progress and support cooperative cancellation through a per-request observer.
 ## Installation status
 
 ChargeFW currently builds Python wheels from the source tree but does not yet publish or qualify a binary
-wheel matrix. Python 3.10 or newer is required. Runtime dependencies are NumPy 1.26 or newer and
-Gemmi 0.7.4.
+wheel matrix. Python 3.10 or newer is required. NumPy 1.26 or newer is the only required Python runtime
+dependency.
 
 ```bash
 uv build --quiet --wheel
@@ -274,8 +274,16 @@ MOL, SDF, and MOL2 always import their format-defined single conformer. Molecule
 `conformers="first"` or `"all"`. PDB and mmCIF additionally accept the structural selection and bond
 options described below.
 
-The base package depends on the upstream `gemmi` Python package. Importing `chargefw` does not import
-Gemmi; import the object-conversion module explicitly:
+PDB and mmCIF parsing use ChargeFW's compiled Gemmi dependency and do not require the upstream Python
+package. Converting upstream `gemmi.Structure` and `gemmi.cif.Document` objects requires the optional
+Gemmi Python integration:
+
+```bash
+pip install "chargefw[gemmi]"
+```
+
+Importing `chargefw.io.gemmi` remains safe without that extra; calling its conversion functions raises an
+actionable `ImportError`. With the extra installed, use the object-conversion module explicitly:
 
 ```python
 from chargefw.io import gemmi as chargefw_gemmi
