@@ -8,6 +8,9 @@ The package is synchronous and in-process. Native molecule construction, assessm
 release the GIL, and independent calculations can run concurrently. Calculations can report structured
 progress and support cooperative cancellation through a per-request observer.
 
+The executable [Python recipes](recipes/README.md) demonstrate complete toolkit integration workflows and
+also serve as concise checks of the public API design.
+
 ## Installation status
 
 ChargeFW currently builds Python wheels from the source tree but does not yet publish or qualify a binary

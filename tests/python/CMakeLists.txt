@@ -47,7 +47,15 @@ add_test(
     NAME test_chargefw_python_rdkit
     COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_rdkit.py"
 )
+
+add_test(
+    NAME test_chargefw_python_recipes
+    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_recipes.py"
+)
 set_tests_properties(test_chargefw_python_rdkit PROPERTIES
+    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
+)
+set_tests_properties(test_chargefw_python_recipes PROPERTIES
     ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
 )
 
