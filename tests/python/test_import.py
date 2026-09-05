@@ -8,6 +8,7 @@ import chargefw.calculation
 import chargefw.core
 import chargefw.io
 import chargefw.io.gemmi
+import chargefw.io.rdkit
 from chargefw import _chargefw
 
 expected_version = os.environ.get("CHARGEFW_EXPECTED_VERSION")
@@ -75,6 +76,7 @@ def test_import_surface() -> None:
         "write",
     ]
     assert chargefw.io.gemmi.__all__ == ["from_structure", "from_document", "attach_charges"]
+    assert chargefw.io.rdkit.__all__ == ["from_mol", "attach_charges"]
     assert not hasattr(_chargefw.calculation, "ExecutionMode")
     assert not hasattr(_chargefw.methods, "MethodOptionType")
     assert not hasattr(_chargefw.adapters, "BondStrategy")

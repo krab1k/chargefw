@@ -43,6 +43,14 @@ add_test(
     COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_output.py"
 )
 
+add_test(
+    NAME test_chargefw_python_rdkit
+    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_rdkit.py"
+)
+set_tests_properties(test_chargefw_python_rdkit PROPERTIES
+    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
+)
+
 set_tests_properties(test_chargefw_python_output PROPERTIES
     ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
 )
@@ -93,6 +101,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_SYSTEM_NAME STREQUAL "Linux" 
         test_chargefw_python_calculation
         test_chargefw_python_gemmi
         test_chargefw_python_output
+        test_chargefw_python_rdkit
         test_chargefw_python_mypy
         APPEND PROPERTY ENVIRONMENT
         "LD_PRELOAD=${CHARGEFW_SANITIZER_RUNTIME}"

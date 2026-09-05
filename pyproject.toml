@@ -25,6 +25,7 @@ Repository = "https://github.com/krab1k/chargefw"
 
 [project.optional-dependencies]
 gemmi = ["gemmi==0.7.4"]
+rdkit = ["rdkit>=2024.9"]
 
 [tool.scikit-build]
 minimum-version = "build-system.requires"

@@ -13,10 +13,8 @@ This file lists unfinished product work. Implemented behavior is documented unde
 
 ## Integrations
 
-- [ ] Add a lazy, optional RDKit adapter that converts `rdkit.Chem.Mol` values without implicit
-  sanitization, hydrogen changes, protonation, embedding, or optimization. Preserve atom, bond, formal
-  charge, and conformer mappings, and provide an explicit charge-attachment helper with overwrite
-  protection.
+- [ ] Qualify the optional RDKit adapter against supported RDKit releases with real-toolkit conversion,
+  mapping, property attachment, and SD serialization tests.
 - [ ] Compare the Python API with the capabilities actually used by the ACC III backend and add only the
   missing explicit capabilities needed for migration. Document intentionally unsupported legacy
   behavior before replacing the existing backend.

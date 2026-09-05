@@ -90,6 +90,7 @@ endforeach()
 set(CHARGEFW_PYTHON_IO_SOURCES
     __init__.py
     gemmi.py
+    rdkit.py
 )
 foreach(io_source IN LISTS CHARGEFW_PYTHON_IO_SOURCES)
     configure_file("chargefw/io/${io_source}"

@@ -333,5 +333,20 @@ Structural input defaults are `selection="all"`, `bonds="none"`, and `conformers
 `"polymers-and-ligands"`, and `"polymers"`. Their language-independent import semantics are defined in
 the [PDB and mmCIF format reference](FORMATS.md#pdb-and-mmcif-input).
 
+RDKit is an optional dependency installed with `pip install "chargefw[rdkit]"`. The base package remains
+RDKit-free. `chargefw.io.rdkit.from_mol()` copies an existing `rdkit.Chem.Mol` without sanitization,
+hydrogen changes, protonation, embedding, or optimization. Aromatic and other non-integral bond
+representations must be converted explicitly first. `attach_charges()` writes one selected assignment to
+double-valued atom properties and creates RDKit's serializable atom-property list when that facility is
+available.
+
+```python
+from chargefw.io import rdkit as chargefw_rdkit
+
+molecule = chargefw_rdkit.from_mol(rdkit_molecule)
+result = chargefw.calculate(molecule, method="eem")
+chargefw_rdkit.attach_charges(rdkit_molecule, result)
+```
+
 The Python package currently has no Biopython integration, chemistry preparation API, or asynchronous job
 API. Current distribution and integration work is tracked in the root [TODO](../TODO.md).
