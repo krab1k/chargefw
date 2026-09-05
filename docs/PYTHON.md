@@ -269,10 +269,9 @@ so those provenance fields are omitted.
 Result JSON requires source record IDs to be strings or `None`. In-memory identities may use other
 hashable values; generated SDF, MOL2, and mmCIF output omit such IDs rather than rejecting the result.
 
-SDF and MOL2 contain one geometry per molecule. When several conformer-specific assignments or several
-coordinate conformers are available, select one with `conformer=`. SDF defaults to V3000; request V2000
-with `sdf_version="v2000"`. Generated mmCIF contains all conformers and applies geometry-independent
-assignments to every retained conformer. Molecular formats require a successful result and valid
+SDF and MOL2 contain the first retained conformer and its charges. SDF defaults to V3000; request V2000
+with `sdf_version="v2000"`. Generated mmCIF contains all retained conformers and applies
+geometry-independent assignments to each one. Molecular formats require a successful result and valid
 coordinates; result JSON also serializes failed and cancelled results retained by typed calculation
 exceptions.
 

@@ -126,10 +126,9 @@ On a successful nonstructural calculation, ChargeFW writes:
 ```
 
 PDB and mmCIF input writes JSON and mmCIF only. SDF and MOL2 output preserves source content when the
-input has the same format. JSON input with multiple conformers cannot be represented in SDF or MOL2
-output; use `--conformers first` when those files are required. The
-[molecular format reference](FORMATS.md#charge-output) describes preservation, generated structures,
-charge fields, precision, and mapping checks.
+input has the same format. Generated SDF and MOL2 use the first retained conformer; generated mmCIF writes
+all retained conformers. The [molecular format reference](FORMATS.md#charge-output) describes
+preservation, generated structures, charge fields, precision, and mapping checks.
 
 Generated SDF and MOL2 use source conformer zero and therefore require source coordinates even when the
 selected method is geometry-independent. With `--conformers first`, preservation-oriented structural

@@ -7,17 +7,14 @@
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 #include <chargefw/adapters/gemmi/mmcif_output.h>
 #include <chargefw/adapters/gemmi/pdb_input.h>
+#include <chargefw/adapters/generated_output.h>
 #include <chargefw/adapters/molecule_record.h>
 #include <chargefw/adapters/native/json_input.h>
 #include <chargefw/adapters/native/json_output.h>
 #include <chargefw/adapters/native/mol2_input.h>
-#include <chargefw/adapters/native/mol2_output.h>
 #include <chargefw/adapters/native/mol_input.h>
 #include <chargefw/adapters/native/sdf_input.h>
-#include <chargefw/adapters/native/sdf_output.h>
 #include <chargefw/calculation/calculation.h>
-#include <chargefw/charges/atomic_charges.h>
-#include <chargefw/charges/charge_collection.h>
 #include <chargefw/config.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/molecule.h>
@@ -29,19 +26,12 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 
-#include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstddef>
-#include <map>
-#include <memory>
 #include <optional>
-#include <ranges>
-#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -209,80 +199,6 @@ auto output_records(const nb::sequence& molecules, const nb::sequence& identitie
     return result;
 }
 
-auto validate_conformer(const core::Molecule& molecule, const std::size_t conformer_index) -> void {
-    if (conformer_index >= molecule.conformer_count()) {
-        throw std::invalid_argument{"selected output conformer is unavailable"};
-    }
-    for (const auto& position : molecule.conformer(conformer_index).positions()) {
-        if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
-            !std::isfinite(position.z)) {
-            throw std::invalid_argument{"molecular output coordinates must be finite"};
-        }
-    }
-}
-
-auto selected_charge_set(const charges::ChargeSet& charge_set,
-                         const std::span<const adapters::ImportedMoleculeRecord> records,
-                         const std::optional<std::size_t> conformer) -> charges::ChargeSet {
-    auto selected = std::vector<charges::ChargeAssignment>{};
-    selected.reserve(records.size());
-    for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
-        auto candidates = std::vector<const charges::ChargeAssignment*>{};
-        for (const auto& assignment : charge_set.assignments()) {
-            if (assignment.target.molecule_index == molecule_index) {
-                candidates.push_back(std::addressof(assignment));
-            }
-        }
-        if (candidates.empty()) {
-            throw std::invalid_argument{"no charge assignment for output molecule " +
-                                        std::to_string(molecule_index)};
-        }
-
-        const auto& molecule = records[molecule_index].molecule;
-        const charges::ChargeAssignment* assignment = nullptr;
-        auto selected_conformer = conformer;
-        if (conformer.has_value()) {
-            const auto found = std::ranges::find_if(
-                candidates, [conformer](const charges::ChargeAssignment* candidate) {
-                    return candidate->target.conformer_index == conformer;
-                });
-            if (found != candidates.end()) {
-                assignment = *found;
-            } else if (candidates.size() == 1 &&
-                       !candidates.front()->target.conformer_index.has_value()) {
-                assignment = candidates.front();
-            } else {
-                throw std::invalid_argument{"selected conformer has no charge assignment"};
-            }
-        } else {
-            if (candidates.size() != 1) {
-                throw std::invalid_argument{
-                    "conformer is required when molecular output has multiple assignments"};
-            }
-            assignment = candidates.front();
-            selected_conformer = assignment->target.conformer_index;
-            if (!selected_conformer.has_value()) {
-                if (molecule.conformer_count() != 1) {
-                    throw std::invalid_argument{
-                        "conformer is required for geometry-independent charges with multiple "
-                        "coordinates"};
-                }
-                selected_conformer = 0;
-            }
-        }
-        if (!selected_conformer.has_value()) {
-            throw std::invalid_argument{"selected output conformer is unavailable"};
-        }
-        validate_conformer(molecule, *selected_conformer);
-        selected.push_back(charges::ChargeAssignment{
-            .target = {.molecule_index = molecule_index, .conformer_index = selected_conformer},
-            .charges = assignment->charges});
-    }
-    return charges::ChargeSet{std::string{charge_set.method_id()}, std::move(selected),
-                              charge_set.parameter_set_id().transform(
-                                  [](const std::string_view id) { return std::string{id}; })};
-}
-
 auto method_option_value(const nb::handle value) -> methods::MethodOptionValue {
     if (nb::isinstance<nb::bool_>(value)) {
         return nb::cast<bool>(value);
@@ -334,8 +250,7 @@ auto requested_provenance(const nb::dict& payload) -> adapters::RequestedCalcula
 
 auto dumps(const NativeExecutionResult& native_result, const nb::sequence& molecules,
            const nb::sequence& identities, const nb::sequence& diagnostics,
-           const nb::dict& requested, const std::string& format,
-           const std::optional<std::size_t> conformer, const std::string& sdf_version)
+           const nb::dict& requested, const std::string& format, const std::string& sdf_version)
     -> std::string {
     auto records = output_records(molecules, identities, diagnostics);
     const auto requested_value = requested_provenance(requested);
@@ -351,45 +266,21 @@ auto dumps(const NativeExecutionResult& native_result, const nb::sequence& molec
             if (!result.calculated()) {
                 throw std::invalid_argument{"molecular output requires a successful calculation"};
             }
-            const auto& charge_set = *result.charges;
-            if (format == "mmcif") {
-                for (const auto& record : records) {
-                    if (record.molecule.conformer_count() == 0) {
-                        throw std::invalid_argument{"mmCIF output requires coordinates"};
-                    }
-                    for (std::size_t conformer_index = 0;
-                         conformer_index < record.molecule.conformer_count(); ++conformer_index) {
-                        validate_conformer(record.molecule, conformer_index);
-                    }
+            const auto output_format = [&format, &sdf_version] {
+                if (format == "sdf") {
+                    return sdf_version == "v2000" ? adapters::generated_output::Format::sdf_v2000
+                                                  : adapters::generated_output::Format::sdf_v3000;
                 }
-                adapters::gemmi::mmcif_output::MmcifWriter{output}.write_generated(
-                    records, charge_set, "ChargeFW", CHARGEFW_VERSION_STRING);
-            } else if (format == "sdf" || format == "mol2") {
-                const auto selected = selected_charge_set(charge_set, records, conformer);
-                for (std::size_t index = 0; index < records.size(); ++index) {
-                    const auto assignment = selected.assignments().subspan(index, 1);
-                    if (format == "sdf") {
-                        const auto property =
-                            std::array{adapters::native::sdf_output::ChargeProperty{
-                                .charge_type_id = 1,
-                                .assignments = assignment,
-                                .method = selected.method_id(),
-                                .parameter_set = selected.parameter_set_id().value_or(""),
-                                .software_name = "ChargeFW",
-                                .software_version = CHARGEFW_VERSION_STRING}};
-                        adapters::native::sdf_output::SdfWriter{output}.write_generated(
-                            records[index].molecule, property,
-                            sdf_version == "v2000"
-                                ? adapters::native::sdf_output::MolFormat::v2000
-                                : adapters::native::sdf_output::MolFormat::v3000);
-                    } else {
-                        adapters::native::mol2_output::Mol2Writer{output}.write_generated(
-                            records[index].molecule, assignment.front());
-                    }
+                if (format == "mol2") {
+                    return adapters::generated_output::Format::mol2;
                 }
-            } else {
+                if (format == "mmcif") {
+                    return adapters::generated_output::Format::mmcif;
+                }
                 throw std::invalid_argument{"unsupported calculation output format: " + format};
-            }
+            }();
+            adapters::generated_output::write(output, records, *result.charges, output_format,
+                                              "ChargeFW", CHARGEFW_VERSION_STRING);
         }
     }
     return output.str();
@@ -473,7 +364,7 @@ void bind_adapters(nb::module_& module) {
                nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
     module.def("_dumps", &dumps, nb::arg("result"), nb::arg("molecules"), nb::arg("identities"),
                nb::arg("diagnostics"), nb::arg("requested"), nb::arg("format"),
-               nb::arg("conformer"), nb::arg("sdf_version"));
+               nb::arg("sdf_version"));
     module.def("_attach_mmcif", &attach_mmcif, nb::arg("contents"), nb::arg("result"),
                nb::arg("molecules"), nb::arg("selection"), nb::arg("overwrite"));
 }

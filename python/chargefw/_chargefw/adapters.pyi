@@ -32,7 +32,6 @@ def _dumps(
     diagnostics: Sequence[Sequence[tuple[str, str, int | None]]],
     requested: dict[str, object],
     format: Literal["sdf", "mol2", "mmcif", "result-json"],
-    conformer: int | None,
     sdf_version: Literal["v2000", "v3000"],
 ) -> str: ...
 def _attach_mmcif(

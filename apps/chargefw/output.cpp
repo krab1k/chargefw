@@ -1,5 +1,6 @@
 #include "cli_support.h"
 
+#include <chargefw/adapters/generated_output.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/config.h>
 
@@ -88,34 +89,35 @@ void write_mmcif(const std::filesystem::path& path, const ImportedExportContext&
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
-    auto writer = adapters::gemmi::mmcif_output::MmcifWriter{output};
     if (export_context.mmcif_source.has_value()) {
-        writer.write_mmcif(export_context.records, charges, *export_context.mmcif_source,
-                           "ChargeFW", CHARGEFW_VERSION_STRING);
+        adapters::gemmi::mmcif_output::MmcifWriter{output}.write_mmcif(
+            export_context.records, charges, *export_context.mmcif_source, "ChargeFW",
+            CHARGEFW_VERSION_STRING);
     } else if (export_context.pdb_source.has_value()) {
-        writer.write_pdb(export_context.records.front(), charges, *export_context.pdb_source,
-                         "ChargeFW", CHARGEFW_VERSION_STRING);
+        adapters::gemmi::mmcif_output::MmcifWriter{output}.write_pdb(
+            export_context.records.front(), charges, *export_context.pdb_source, "ChargeFW",
+            CHARGEFW_VERSION_STRING);
     } else {
-        writer.write_generated(export_context.records, charges, "ChargeFW",
-                               CHARGEFW_VERSION_STRING);
+        adapters::generated_output::write(output, export_context.records, charges,
+                                          adapters::generated_output::Format::mmcif, "ChargeFW",
+                                          CHARGEFW_VERSION_STRING);
     }
 }
 
 void write_mol2(const std::filesystem::path& path, const std::string& input_path,
-                const ImportedExportContext& export_context,
-                const std::span<const charges::ChargeAssignment> assignments) {
+                const ImportedExportContext& export_context, const charges::ChargeSet& charge_set) {
     auto output = std::ofstream{path, std::ios::binary};
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
-    auto writer = adapters::native::mol2_output::Mol2Writer{output};
     if (export_context.format == ImportedExportContext::Format::mol2) {
-        writer.write_preserving_source(input_path, assignments);
+        const auto assignments = assignments_by_molecule(charge_set, export_context.records.size());
+        adapters::native::mol2_output::Mol2Writer{output}.write_preserving_source(input_path,
+                                                                                  assignments);
         return;
     }
-    for (std::size_t index = 0; index < export_context.records.size(); ++index) {
-        writer.write_generated(export_context.records[index].molecule, assignments[index]);
-    }
+    adapters::generated_output::write(output, export_context.records, charge_set,
+                                      adapters::generated_output::Format::mol2);
 }
 
 void write_sdf(const std::filesystem::path& path, const std::string& input_path,
@@ -124,30 +126,21 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
-    auto writer = adapters::native::sdf_output::SdfWriter{output};
-    const auto assignments = charge_set.assignments();
-    const auto properties = std::array{adapters::native::sdf_output::ChargeProperty{
-        .charge_type_id = 1,
-        .assignments = assignments,
-        .method = charge_set.method_id(),
-        .parameter_set = charge_set.parameter_set_id().value_or(""),
-        .software_name = "ChargeFW",
-        .software_version = CHARGEFW_VERSION_STRING}};
     if (export_context.format == ImportedExportContext::Format::sdf) {
-        writer.write_preserving_source(input_path, properties);
-        return;
-    }
-    for (std::size_t index = 0; index < export_context.records.size(); ++index) {
-        const auto property = std::array{adapters::native::sdf_output::ChargeProperty{
+        const auto properties = std::array{adapters::native::sdf_output::ChargeProperty{
             .charge_type_id = 1,
-            .assignments = assignments.subspan(index, 1),
+            .assignments = charge_set.assignments(),
             .method = charge_set.method_id(),
             .parameter_set = charge_set.parameter_set_id().value_or(""),
             .software_name = "ChargeFW",
             .software_version = CHARGEFW_VERSION_STRING}};
-        writer.write_generated(export_context.records[index].molecule, property,
-                               adapters::native::sdf_output::MolFormat::v2000);
+        adapters::native::sdf_output::SdfWriter{output}.write_preserving_source(input_path,
+                                                                                properties);
+        return;
     }
+    adapters::generated_output::write(output, export_context.records, charge_set,
+                                      adapters::generated_output::Format::sdf_v2000, "ChargeFW",
+                                      CHARGEFW_VERSION_STRING);
 }
 
 } // namespace
@@ -264,9 +257,8 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     if (structural_output) {
         std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
     } else {
-        const auto assignments = assignments_by_molecule(*charges, export_context.records.size());
         write_sdf(prefix.string() + ".sdf", input_path, export_context, *charges);
-        write_mol2(prefix.string() + ".mol2", input_path, export_context, assignments);
+        write_mol2(prefix.string() + ".mol2", input_path, export_context, *charges);
         std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json",
                      prefix.string() + ".sdf", prefix.string() + ".mol2", prefix.string() + ".cif");
     }

@@ -163,14 +163,16 @@ returned on cancellation.
 
 ## Molecular adapters
 
-Individual public headers are provided under `chargefw/adapters/native` and
-`chargefw/adapters/gemmi`. The `all.h` headers are convenience includes for applications.
+Public headers are provided under `chargefw/adapters`, with format-specific APIs in its `native` and
+`gemmi` namespaces. The `all.h` headers are convenience includes for applications.
 
 - `MolReader`, `SdfReader`, and `Mol2Reader` import native molecular formats.
 - `JsonReader` imports ChargeFW molecule JSON 1.0.
 - `PdbReader` and `MmcifReader` import Gemmi structures with explicit record, bond, and conformer policy.
 - Native writers emit ChargeFW JSON, SDF, and MOL2.
 - The Gemmi writer emits preservation-oriented or generated mmCIF charge data.
+- `generated_output::write()` applies shared coordinate validation and writes the first retained conformer
+  to generated SDF or MOL2 and all retained conformers to generated mmCIF.
 - `make_charge_result_document()` assembles result status, diagnostics, assignments, and provenance for
   `JsonWriter`; application-specific execution metrics are optional.
 

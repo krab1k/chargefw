@@ -161,19 +161,18 @@ type=empirical; method=eem; parameter_set=example; software_name=ChargeFW; softw
 ```
 
 Generated output can use V2000 or V3000. It writes the native atom order, formal charges, supported bond
-orders, and the conformer identified by the charge assignment. V2000 generation is limited to 999 atoms
-and 999 bonds. Generation requires coordinates and one assignment per numbered charge property; multiple
-properties must target the same conformer.
+orders, first retained conformer, and its conformer-specific or molecule-level charge assignment. V2000
+generation is limited to 999 atoms and 999 bonds. Generation requires coordinates.
 
 ### MOL2
 
 Preservation-oriented output retains source text and replaces the ninth atom field with each calculated
 charge. If source atom rows have no substructure and charge fields, `1 UNL` and the charge are added.
 
-Generated output writes a `SMALL` molecule with `USER_CHARGES`, native atom and bond order, one selected
-conformer, and one charge assignment. Generated atom types are element symbols only; ChargeFW does not
-infer Tripos atom types or substructures. Both preserved and generated output require exactly one
-assignment for each molecule.
+Generated output writes a `SMALL` molecule with `USER_CHARGES`, native atom and bond order, the first
+retained conformer, and its conformer-specific or molecule-level charge assignment. Generated atom types
+are element symbols only; ChargeFW does not infer Tripos atom types or substructures. Preserved output
+requires exactly one assignment for each molecule.
 
 ### mmCIF
 

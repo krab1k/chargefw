@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from operator import index as as_index
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
@@ -146,7 +145,6 @@ def dumps(
     result: CalculationResult,
     *,
     format: OutputFormat,
-    conformer: int | None = None,
     sdf_version: SdfVersion | None = None,
 ) -> str:
     """Serialize a calculation result through a native generated-output writer."""
@@ -159,17 +157,6 @@ def dumps(
         raise TypeError("format must be a string")
     if format not in _OUTPUT_FORMATS:
         raise ValueError(f"unsupported calculation output format: {format}")
-    if isinstance(conformer, bool):
-        raise TypeError("conformer must be an integer or None")
-    if conformer is not None:
-        try:
-            conformer = as_index(conformer)
-        except TypeError as error:
-            raise TypeError("conformer must be an integer or None") from error
-        if conformer < 0:
-            raise ValueError("conformer must be non-negative")
-    if conformer is not None and format not in ("sdf", "mol2"):
-        raise ValueError("conformer is only supported for SDF and MOL2 output")
     if sdf_version is not None and format != "sdf":
         raise ValueError("sdf_version is only supported for SDF output")
     if sdf_version is not None and sdf_version not in ("v2000", "v3000"):
@@ -196,7 +183,6 @@ def dumps(
         ((),) * len(result.molecules) if metadata is None else metadata.diagnostics,
         requested,
         format,
-        conformer,
         sdf_version or "v3000",
     )
 
@@ -206,7 +192,6 @@ def write(
     result: CalculationResult,
     *,
     format: OutputFormat,
-    conformer: int | None = None,
     sdf_version: SdfVersion | None = None,
 ) -> None:
     """Serialize a calculation result to a UTF-8 text file."""
@@ -217,7 +202,6 @@ def write(
         dumps(
             result,
             format=format,
-            conformer=conformer,
             sdf_version=sdf_version,
         ),
         encoding="utf-8",

@@ -10,6 +10,10 @@ chargefw_add_snitch_test(test_json_output
         test_json_output.cpp
 )
 
+chargefw_add_snitch_test(test_generated_output
+        test_generated_output.cpp
+)
+
 chargefw_add_snitch_test(test_mol2_output
         test_mol2_output.cpp
 )

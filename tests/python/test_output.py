@@ -57,12 +57,11 @@ class GeneratedOutputTests(unittest.TestCase):
             chargefw.io.write(path, result, format="mol2")
             self.assertIn("@<TRIPOS>MOLECULE", path.read_text(encoding="utf-8"))
 
-    def test_single_geometry_output_requires_unambiguous_conformer(self) -> None:
+    def test_single_geometry_output_uses_first_conformer(self) -> None:
         result = chargefw.calculate(water(conformers=2), method="formal")
-        with self.assertRaisesRegex(ValueError, "conformer is required"):
-            chargefw.io.dumps(result, format="sdf")
-        selected = chargefw.io.dumps(result, format="sdf", conformer=1)
-        self.assertIn("M  V30 1 O 0.1 0 0", selected)
+        selected = chargefw.io.dumps(result, format="sdf")
+        self.assertIn("M  V30 1 O 0 0 0", selected)
+        self.assertNotIn("M  V30 1 O 0.1 0 0", selected)
         self.assertIn("_atom_site.pdbx_PDB_model_num", chargefw.io.dumps(result, format="mmcif"))
 
     def test_mmcif_applies_geometry_independent_charges_to_selected_conformers(self) -> None:
@@ -144,8 +143,6 @@ class GeneratedOutputTests(unittest.TestCase):
             chargefw.io.dumps(result, format=cast(Any, "pdb"))
         with self.assertRaisesRegex(ValueError, "only supported for SDF"):
             chargefw.io.dumps(result, format="mol2", sdf_version="v2000")
-        with self.assertRaisesRegex(ValueError, "only supported for SDF and MOL2"):
-            chargefw.io.dumps(result, format="mmcif", conformer=0)
 
     def test_manual_molecules_do_not_claim_import_provenance(self) -> None:
         result = chargefw.calculate(water(), method="formal")

@@ -1,6 +1,7 @@
 target_sources(chargefw_core
         PRIVATE
         charge_result_document.cpp
+        generated_output.cpp
         native/json_output.cpp
         native/common_input.cpp
         native/common_output.cpp
@@ -25,6 +26,7 @@ target_sources(chargefw_core
         FILES
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/molecule_record.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/charge_result_document.h
+        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/generated_output.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/conformer_selection.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/all.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/input_options.h
