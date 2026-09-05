@@ -35,28 +35,20 @@ def _collection(
     return MoleculeCollection((_molecule(payload) for payload in payloads), name=source_name)
 
 
-def _single(
-    payloads: list[_native_adapters.MoleculePayload], format_name: str
-) -> Molecule:
-    if len(payloads) != 1:
-        raise RuntimeError(f"{format_name} input did not produce exactly one molecule")
-    return _molecule(payloads[0])
-
-
 def _path(value: str | PathLike[str]) -> Path:
     if not isinstance(value, (str, PathLike)):
         raise TypeError("path must be a string or path-like value")
     return Path(value)
 
 
-def parse_mol(contents: str, *, source_name: str = "") -> Molecule:
-    """Parse one molecule from MOL text."""
+def parse_mol(contents: str, *, source_name: str = "") -> MoleculeCollection:
+    """Parse a one-molecule collection from MOL text."""
 
-    return _single(_native_adapters._parse_mol(contents, source_name), "MOL")
+    return _collection(_native_adapters._parse_mol(contents, source_name), source_name)
 
 
-def read_mol(path: str | PathLike[str]) -> Molecule:
-    """Read one molecule from a UTF-8 MOL file."""
+def read_mol(path: str | PathLike[str]) -> MoleculeCollection:
+    """Read a one-molecule collection from a UTF-8 MOL file."""
 
     source_path = _path(path)
     return parse_mol(source_path.read_text(encoding="utf-8"), source_name=str(source_path))
@@ -121,11 +113,12 @@ def parse_pdb(
     selection: RecordSelection = "all",
     bonds: BondStrategy = "none",
     conformers: ConformerSelection = "all",
-) -> Molecule:
-    """Parse one molecule from PDB text using Gemmi."""
+) -> MoleculeCollection:
+    """Parse a one-molecule collection from PDB text using Gemmi."""
 
-    return _single(
-        _native_adapters._parse_pdb(contents, source_name, selection, bonds, conformers), "PDB"
+    return _collection(
+        _native_adapters._parse_pdb(contents, source_name, selection, bonds, conformers),
+        source_name,
     )
 
 
@@ -135,8 +128,8 @@ def read_pdb(
     selection: RecordSelection = "all",
     bonds: BondStrategy = "none",
     conformers: ConformerSelection = "all",
-) -> Molecule:
-    """Read one molecule from a UTF-8 PDB file."""
+) -> MoleculeCollection:
+    """Read a one-molecule collection from a UTF-8 PDB file."""
 
     source_path = _path(path)
     return parse_pdb(

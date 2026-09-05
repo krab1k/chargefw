@@ -144,7 +144,9 @@ MOLECULE_JSON_TEXT = """{
 
 class NativeInputTests(unittest.TestCase):
     def test_parse_native_molecular_formats(self) -> None:
-        molecule = chargefw_io.parse_mol(MOL_TEXT, source_name="charged.mol")
+        molecules = chargefw_io.parse_mol(MOL_TEXT, source_name="charged.mol")
+        self.assertEqual(len(molecules), 1)
+        molecule = molecules[0]
         self.assertEqual(molecule.atomic_numbers.tolist(), [7, 8])
         self.assertEqual(molecule.formal_charges.tolist(), [1, -1])
         self.assertEqual(molecule.source_name, "charged.mol")
@@ -171,18 +173,20 @@ class NativeInputTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "charged.mol"
             path.write_text(MOL_TEXT, encoding="utf-8")
-            molecule = chargefw_io.read_mol(path)
+            molecules = chargefw_io.read_mol(path)
 
-        self.assertEqual(molecule.source_name, str(path))
+        self.assertEqual(molecules[0].source_name, str(path))
 
 
 class GemmiAdapterTests(unittest.TestCase):
     def test_pdb_text_file_and_structure_preserve_mapping(self) -> None:
-        text_molecule = chargefw_io.parse_pdb(
+        text_collection = chargefw_io.parse_pdb(
             PDB_TEXT,
             source_name="water.pdb",
             bonds="explicit",
         )
+        self.assertEqual(len(text_collection), 1)
+        text_molecule = text_collection[0]
         self.assertEqual(text_molecule.atom_names, ("O", "H1"))
         self.assertEqual(text_molecule.atom_ids, (0, 1))
         self.assertEqual(text_molecule.conformer_names, ("1", "2"))
@@ -193,14 +197,16 @@ class GemmiAdapterTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "water.pdb"
             path.write_text(PDB_TEXT, encoding="utf-8")
-            file_molecule = chargefw_io.read_pdb(path, bonds="explicit")
+            file_molecule = chargefw_io.read_pdb(path, bonds="explicit")[0]
         np.testing.assert_array_equal(file_molecule.atomic_numbers, text_molecule.atomic_numbers)
         np.testing.assert_array_equal(file_molecule.coordinates, text_molecule.coordinates)
 
         structure = gemmi.read_pdb_string(PDB_TEXT)
-        structure_molecule = chargefw_gemmi.from_structure(
+        structure_collection = chargefw_gemmi.from_structure(
             structure, source_name="structure"
         )
+        self.assertEqual(len(structure_collection), 1)
+        structure_molecule = structure_collection[0]
         np.testing.assert_array_equal(
             structure_molecule.atomic_numbers, text_molecule.atomic_numbers
         )
@@ -255,7 +261,7 @@ class GemmiAdapterTests(unittest.TestCase):
             with self.subTest(strategy=strategy):
                 molecule = chargefw_io.parse_pdb(
                     BOND_STRATEGY_PDB, bonds=cast(Any, strategy)
-                )
+                )[0]
                 self.assertEqual(molecule.bond_count, expected_count)
 
     def test_source_atom_ids_distinguish_repeated_atom_names(self) -> None:
@@ -263,7 +269,7 @@ class GemmiAdapterTests(unittest.TestCase):
             "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  \n"
             "ATOM      2  CA  GLY A   2       1.000   0.000   0.000  1.00 20.00           C  \n"
             "END\n"
-        )
+        )[0]
         self.assertEqual(molecule.atom_names, ("CA", "CA"))
         self.assertEqual(molecule.atom_ids, (0, 1))
 

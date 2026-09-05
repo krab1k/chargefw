@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import gemmi as _gemmi
 
-from ..core import Molecule, MoleculeCollection
+from ..core import MoleculeCollection
 from . import BondStrategy, ConformerSelection, RecordSelection, parse_mmcif
 
 
@@ -15,21 +15,18 @@ def from_structure(
     selection: RecordSelection = "all",
     bonds: BondStrategy = "none",
     conformers: ConformerSelection = "all",
-) -> Molecule:
-    """Convert a ``gemmi.Structure`` through ChargeFW's mmCIF parser."""
+) -> MoleculeCollection:
+    """Convert a ``gemmi.Structure`` to a one-molecule collection."""
 
     if not isinstance(structure, _gemmi.Structure):
         raise TypeError("structure must be a gemmi.Structure")
-    collection = parse_mmcif(
+    return parse_mmcif(
         structure.make_mmcif_document().as_string(),
         source_name=source_name,
         selection=selection,
         bonds=bonds,
         conformers=conformers,
     )
-    if len(collection) != 1:
-        raise RuntimeError("Gemmi structure did not produce exactly one molecule")
-    return collection[0]
 
 
 def from_document(

@@ -253,7 +253,7 @@ corresponding `read_*()` functions accept string or path-like filesystem paths:
 ```python
 import chargefw
 
-molecule = chargefw.io.read_pdb(
+molecules = chargefw.io.read_pdb(
     "structure.pdb",
     selection="all",
     bonds="hybrid",
@@ -261,14 +261,14 @@ molecule = chargefw.io.read_pdb(
 )
 ```
 
-Available format functions are:
+All format functions return a `MoleculeCollection`, including formats that contain exactly one molecule:
 
-- `parse_mol()` and `read_mol()`, returning one `Molecule`;
-- `parse_sdf()` and `read_sdf()`, returning a `MoleculeCollection`;
-- `parse_mol2()` and `read_mol2()`, returning a `MoleculeCollection`;
-- `parse_molecule_json()` and `read_molecule_json()`, returning a `MoleculeCollection`;
-- `parse_pdb()` and `read_pdb()`, returning one `Molecule`; and
-- `parse_mmcif()` and `read_mmcif()`, returning a `MoleculeCollection`.
+- `parse_mol()` and `read_mol()`;
+- `parse_sdf()` and `read_sdf()`;
+- `parse_mol2()` and `read_mol2()`;
+- `parse_molecule_json()` and `read_molecule_json()`;
+- `parse_pdb()` and `read_pdb()`; and
+- `parse_mmcif()` and `read_mmcif()`.
 
 MOL, SDF, and MOL2 always import their format-defined single conformer. Molecule JSON accepts
 `conformers="first"` or `"all"`. PDB and mmCIF additionally accept the structural selection and bond
@@ -280,8 +280,8 @@ Gemmi; import the object-conversion module explicitly:
 ```python
 from chargefw.io import gemmi as chargefw_gemmi
 
-molecule = chargefw_gemmi.from_structure(structure, bonds="hybrid")
-collection = chargefw_gemmi.from_document(document)
+structure_molecules = chargefw_gemmi.from_structure(structure, bonds="hybrid")
+document_molecules = chargefw_gemmi.from_document(document)
 ```
 
 The Gemmi integration serializes upstream objects through mmCIF text and then uses ChargeFW's compiled
