@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from operator import index as as_index
 from os import PathLike
 from pathlib import Path
@@ -26,6 +27,28 @@ _MULTI_CONFORMER_FORMATS = frozenset(("molecule-json", "pdb", "mmcif"))
 _OUTPUT_FORMATS = frozenset(("sdf", "mol2", "mmcif", "result-json"))
 
 
+@dataclass(frozen=True, slots=True)
+class _InputMetadata:
+    diagnostics: tuple[tuple[tuple[str, str, int | None], ...], ...]
+    structural_input: tuple[RecordSelection, BondStrategy] | None
+    conformers: ConformerSelection
+
+
+class _ImportedMoleculeCollection(MoleculeCollection):
+    __slots__ = ("_input_metadata",)
+
+    _input_metadata: _InputMetadata
+
+    def __init__(
+        self, molecules: tuple[Molecule, ...], name: str, metadata: _InputMetadata
+    ) -> None:
+        super().__init__(molecules, name=name)
+        object.__setattr__(self, "_input_metadata", metadata)
+
+    def __repr__(self) -> str:
+        return f"MoleculeCollection(molecules={len(self)}, name={self.name!r})"
+
+
 def _molecule(payload: _native_adapters.MoleculePayload) -> Molecule:
     return Molecule(
         atomic_numbers=payload["atomic_numbers"],
@@ -42,9 +65,18 @@ def _molecule(payload: _native_adapters.MoleculePayload) -> Molecule:
 
 
 def _collection(
-    payloads: list[_native_adapters.MoleculePayload], source_name: str
+    payloads: list[_native_adapters.MoleculePayload],
+    source_name: str,
+    structural_input: tuple[RecordSelection, BondStrategy] | None,
+    conformers: ConformerSelection,
 ) -> MoleculeCollection:
-    return MoleculeCollection((_molecule(payload) for payload in payloads), name=source_name)
+    molecules = tuple(_molecule(payload) for payload in payloads)
+    metadata = _InputMetadata(
+        diagnostics=tuple(tuple(payload["diagnostics"]) for payload in payloads),
+        structural_input=structural_input,
+        conformers=conformers,
+    )
+    return _ImportedMoleculeCollection(molecules, source_name, metadata)
 
 
 def _validate_options(
@@ -82,10 +114,9 @@ def parse(
     if not isinstance(source_name, str):
         raise TypeError("source_name must be a string")
     _validate_options(format, selection, bonds, conformers)
-    return _collection(
-        _native_adapters._parse(contents, source_name, format, selection, bonds, conformers),
-        source_name,
-    )
+    payloads = _native_adapters._parse(contents, source_name, format, selection, bonds, conformers)
+    structural_input = (selection, bonds) if format in _STRUCTURAL_FORMATS else None
+    return _collection(payloads, source_name, structural_input, conformers)
 
 
 def read(
@@ -148,11 +179,20 @@ def dumps(
         if molecule.record_id is not None and not isinstance(molecule.record_id, str):
             raise TypeError("serialized molecule record IDs must be strings or None")
         identities.append((molecule.source_name, molecule.record_index, molecule.record_id or ""))
+    metadata = (
+        result.molecules._input_metadata
+        if isinstance(result.molecules, _ImportedMoleculeCollection)
+        else None
+    )
+    requested = dict(result._requested_payload)
+    requested["structural_input"] = None if metadata is None else metadata.structural_input
+    requested["conformers"] = None if metadata is None else metadata.conformers
     return _native_adapters._dumps(
         result._native,
         result.molecules._native_molecules,
         identities,
-        result._requested_payload,
+        ((),) * len(result.molecules) if metadata is None else metadata.diagnostics,
+        requested,
         format,
         conformer,
         sdf_version or "v3000",

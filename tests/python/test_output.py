@@ -80,6 +80,15 @@ class GeneratedOutputTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "successful calculation"):
             chargefw.io.dumps(failed_result, format="mmcif")
 
+    def test_result_json_preserves_import_diagnostics(self) -> None:
+        path = Path(__file__).parents[1] / "fixtures" / "synthetic" / "mol2" / "aromatic.mol2"
+        result = chargefw.calculate(chargefw.io.read(path, format="mol2"), method="formal")
+
+        encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
+
+        diagnostics = encoded["results"][0]["diagnostics"]
+        self.assertEqual([value["code"] for value in diagnostics], ["partial_charges_ignored"])
+
     def test_molecular_output_requires_finite_coordinates(self) -> None:
         missing = chargefw.calculate(chargefw.Molecule([1]), method="formal")
         with self.assertRaisesRegex(ValueError, "conformer|coordinates"):
@@ -104,6 +113,15 @@ class GeneratedOutputTests(unittest.TestCase):
             chargefw.io.dumps(result, format="mol2", sdf_version="v2000")
         with self.assertRaisesRegex(ValueError, "only supported for SDF and MOL2"):
             chargefw.io.dumps(result, format="mmcif", conformer=0)
+
+    def test_manual_molecules_do_not_claim_import_provenance(self) -> None:
+        result = chargefw.calculate(water(), method="formal")
+
+        encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
+
+        requested = encoded["calculation_provenance"]["requested"]
+        self.assertNotIn("input", requested)
+        self.assertNotIn("structural_input", requested)
 
 
 if __name__ == "__main__":

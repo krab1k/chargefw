@@ -262,6 +262,10 @@ properties, Tripos typing or substructures, polymer hierarchy, crystallographic 
 content that the model does not contain. Generated mmCIF represents each molecule as a separate `UNL`
 data block. The source format does not restrict the output format.
 
+Result JSON preserves non-fatal reader diagnostics and the conformer and structural import options for
+collections returned by `parse()` or `read()`. Collections constructed directly have no import policy,
+so those provenance fields are omitted.
+
 SDF and MOL2 contain one geometry per molecule. When several conformer-specific assignments or several
 coordinate conformers are available, select one with `conformer=`. SDF defaults to V3000; request V2000
 with `sdf_version="v2000"`. Generated mmCIF contains all conformers and assignments. Molecular formats

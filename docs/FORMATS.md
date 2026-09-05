@@ -209,7 +209,8 @@ and message fields and may include zero-based molecule, atom, bond, or conformer
 source line number.
 
 Requested provenance records method and parameter selection, classification mode, method options,
-conformer and structural import policy, execution request, resource thresholds, and thread limit.
+available conformer and structural import policy, execution request, resource thresholds, and thread
+limit.
 Effective provenance records the resolved method, parameter set, complete options, execution policy, and
 warnings. When supplied by the application, metrics include UTC start/end timestamps, parsing,
 applicability, computation, writing and total runtimes, and peak resident memory. Durations and memory are

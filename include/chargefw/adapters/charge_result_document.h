@@ -49,7 +49,7 @@ struct RequestedCalculationProvenance {
     std::optional<double> execution_radius;
     std::optional<std::string> execution_charge_correction;
     std::optional<StructuralInputPolicyProvenance> structural_input_policy;
-    std::string conformer_selection;
+    std::optional<std::string> conformer_selection;
     std::map<std::string, methods::MethodOptions> method_options;
 };
 

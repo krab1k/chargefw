@@ -61,6 +61,7 @@ struct MoleculePayload {
     std::vector<std::string> atom_names;
     std::vector<std::string> conformer_names;
     adapters::MoleculeRecordIdentity identity;
+    std::vector<adapters::MoleculeRecordDiagnostic> diagnostics;
 };
 
 auto make_payload(adapters::ImportedMoleculeRecord record) -> MoleculePayload {
@@ -95,6 +96,7 @@ auto make_payload(adapters::ImportedMoleculeRecord record) -> MoleculePayload {
 
     result.name = molecule.name();
     result.identity = std::move(record.identity);
+    result.diagnostics = std::move(record.diagnostics);
     return result;
 }
 
@@ -110,6 +112,11 @@ auto as_python(const MoleculePayload& payload) -> nb::dict {
     result["source"] = payload.identity.source;
     result["record_index"] = payload.identity.record_index;
     result["record_id"] = payload.identity.record_id;
+    auto diagnostics = nb::list{};
+    for (const auto& diagnostic : payload.diagnostics) {
+        diagnostics.append(nb::make_tuple(diagnostic.code, diagnostic.message, diagnostic.line));
+    }
+    result["diagnostics"] = std::move(diagnostics);
     return result;
 }
 
@@ -170,23 +177,34 @@ auto parse(std::string contents, std::string source, const std::string& format,
     return as_python(payloads);
 }
 
-auto output_records(const nb::sequence& molecules, const nb::sequence& identities)
+auto output_records(const nb::sequence& molecules, const nb::sequence& identities,
+                    const nb::sequence& diagnostics)
     -> std::vector<adapters::ImportedMoleculeRecord> {
     const auto molecule_count = static_cast<std::size_t>(nb::len(molecules));
-    if (static_cast<std::size_t>(nb::len(identities)) != molecule_count) {
-        throw std::invalid_argument{"output molecule identity count does not match molecules"};
+    if (static_cast<std::size_t>(nb::len(identities)) != molecule_count ||
+        static_cast<std::size_t>(nb::len(diagnostics)) != molecule_count) {
+        throw std::invalid_argument{"output molecule metadata count does not match molecules"};
     }
     auto result = std::vector<adapters::ImportedMoleculeRecord>{};
     result.reserve(molecule_count);
     for (std::size_t index = 0; index < molecule_count; ++index) {
         const auto identity =
             nb::cast<std::tuple<std::string, std::size_t, std::string>>(identities[index]);
+        auto record_diagnostics = std::vector<adapters::MoleculeRecordDiagnostic>{};
+        for (const auto diagnostic : nb::cast<nb::sequence>(diagnostics[index])) {
+            const auto value =
+                nb::cast<std::tuple<std::string, std::string, std::optional<std::size_t>>>(
+                    diagnostic);
+            record_diagnostics.push_back({.code = std::get<0>(value),
+                                          .message = std::get<1>(value),
+                                          .line = std::get<2>(value)});
+        }
         result.push_back(adapters::ImportedMoleculeRecord{
             .molecule = nb::cast<const core::Molecule&>(molecules[index]),
             .identity = {.source = std::get<0>(identity),
                          .record_index = std::get<1>(identity),
                          .record_id = std::get<2>(identity)},
-            .diagnostics = {}});
+            .diagnostics = std::move(record_diagnostics)});
     }
     return result;
 }
@@ -294,8 +312,14 @@ auto requested_provenance(const nb::dict& payload) -> adapters::RequestedCalcula
         .execution_charge_correction =
             nb::cast<std::optional<std::string>>(payload["charge_correction"]),
         .structural_input_policy = std::nullopt,
-        .conformer_selection = "all",
+        .conformer_selection = nb::cast<std::optional<std::string>>(payload["conformers"]),
         .method_options = {}};
+    const auto structural_input =
+        nb::cast<std::optional<std::tuple<std::string, std::string>>>(payload["structural_input"]);
+    if (structural_input.has_value()) {
+        result.structural_input_policy = adapters::StructuralInputPolicyProvenance{
+            .selection = std::get<0>(*structural_input), .bonds = std::get<1>(*structural_input)};
+    }
     const auto options_by_method = nb::cast<nb::dict>(payload["method_options"]);
     for (const auto& [method_value, options_value] : options_by_method) {
         auto options = std::unordered_map<std::string, methods::MethodOptionValue>{};
@@ -309,10 +333,11 @@ auto requested_provenance(const nb::dict& payload) -> adapters::RequestedCalcula
 }
 
 auto dumps(const NativeExecutionResult& native_result, const nb::sequence& molecules,
-           const nb::sequence& identities, const nb::dict& requested, const std::string& format,
+           const nb::sequence& identities, const nb::sequence& diagnostics,
+           const nb::dict& requested, const std::string& format,
            const std::optional<std::size_t> conformer, const std::string& sdf_version)
     -> std::string {
-    auto records = output_records(molecules, identities);
+    auto records = output_records(molecules, identities, diagnostics);
     const auto requested_value = requested_provenance(requested);
     const auto& result = native_result.result();
     auto output = std::ostringstream{};
@@ -447,8 +472,8 @@ void bind_adapters(nb::module_& module) {
     module.def("_parse", &parse, nb::arg("contents"), nb::arg("source"), nb::arg("format"),
                nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
     module.def("_dumps", &dumps, nb::arg("result"), nb::arg("molecules"), nb::arg("identities"),
-               nb::arg("requested"), nb::arg("format"), nb::arg("conformer"),
-               nb::arg("sdf_version"));
+               nb::arg("diagnostics"), nb::arg("requested"), nb::arg("format"),
+               nb::arg("conformer"), nb::arg("sdf_version"));
     module.def("_attach_mmcif", &attach_mmcif, nb::arg("contents"), nb::arg("result"),
                nb::arg("molecules"), nb::arg("selection"), nb::arg("overwrite"));
 }

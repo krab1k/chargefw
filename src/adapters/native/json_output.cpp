@@ -144,7 +144,9 @@ constexpr auto metric_scale = 1000.0;
           {"radius_angstrom", optional_value(provenance.requested.execution_radius)},
           {"charge_correction",
            optional_value(provenance.requested.execution_charge_correction)}}}};
-    requested["input"] = {{"conformers", provenance.requested.conformer_selection}};
+    if (provenance.requested.conformer_selection.has_value()) {
+        requested["input"] = {{"conformers", *provenance.requested.conformer_selection}};
+    }
     requested["method_options"] = method_options_json(provenance.requested.method_options);
     if (provenance.requested.structural_input_policy.has_value()) {
         requested["structural_input"] = {

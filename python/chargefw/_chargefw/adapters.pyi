@@ -15,6 +15,7 @@ class MoleculePayload(TypedDict):
     source: str
     record_index: int
     record_id: str
+    diagnostics: list[tuple[str, str, int | None]]
 
 def _parse(
     contents: str,
@@ -28,6 +29,7 @@ def _dumps(
     result: _NativeExecutionResult,
     molecules: Sequence[_NativeMolecule],
     identities: Sequence[tuple[str, int, str]],
+    diagnostics: Sequence[Sequence[tuple[str, str, int | None]]],
     requested: dict[str, object],
     format: Literal["sdf", "mol2", "mmcif", "result-json"],
     conformer: int | None,

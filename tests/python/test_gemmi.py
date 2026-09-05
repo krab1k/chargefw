@@ -1,5 +1,6 @@
 """Molecular format input and Gemmi conversion checks."""
 
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -267,6 +268,14 @@ class GemmiAdapterTests(unittest.TestCase):
         )
         self.assertEqual(polymers[0].atom_names, ("CA",))
         self.assertEqual(polymers[0].conformer_count, 1)
+        result = calculate(polymers, method="formal")
+        requested = json.loads(chargefw_io.dumps(result, format="result-json"))[
+            "calculation_provenance"
+        ]["requested"]
+        self.assertEqual(requested["input"], {"conformers": "first"})
+        self.assertEqual(
+            requested["structural_input"], {"selection": "polymers", "bonds": "none"}
+        )
 
         with self.assertRaises(TypeError):
             chargefw_gemmi.from_structure(cast(Any, object()))
