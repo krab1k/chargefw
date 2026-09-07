@@ -122,6 +122,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_SYSTEM_NAME STREQUAL "Linux" 
         test_chargefw_python_gemmi
         test_chargefw_python_output
         test_chargefw_python_rdkit
+        test_chargefw_python_recipes
         test_chargefw_python_mypy
         APPEND PROPERTY ENVIRONMENT
         "LD_PRELOAD=${CHARGEFW_SANITIZER_RUNTIME}"

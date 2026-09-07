@@ -13,9 +13,9 @@ also serve as concise checks of the public API design.
 
 ## Installation status
 
-ChargeFW currently builds Python wheels from the source tree but does not yet publish or qualify a binary
-wheel matrix. Python 3.10 or newer is required. NumPy 1.26 or newer is the only required Python runtime
-dependency.
+Python 3.10 or newer is required. NumPy 1.26 or newer is the only required runtime dependency. The current
+manual release process builds and tests Linux x86-64 wheels for CPython 3.10 through 3.14; other platforms
+and architectures are not yet qualified.
 
 ```bash
 uv build --quiet --wheel

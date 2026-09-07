@@ -1,15 +1,18 @@
 # ChargeFW TODO
 
-This file lists unfinished product work. Implemented behavior is documented under [`docs/`](docs/).
+This file lists unfinished product work. Implemented behavior is documented under [`docs/`](docs/), and
+developer and release procedures are in [DEVELOPMENT.md](DEVELOPMENT.md) and
+[RELEASING.md](RELEASING.md).
 
 ## Distribution
 
-- [ ] Declare and qualify an initial CPython/Linux wheel matrix. Each wheel must pass clean-environment
-  installation, relocation, bundled-parameter discovery, shared-library loading, Gemmi conversion, and
-  calculation tests without relying on another ChargeFW installation or `LD_LIBRARY_PATH`.
-- [ ] Automate release validation in CI, including formatting, GCC and Clang debug/release tests,
-  AddressSanitizer and UndefinedBehaviorSanitizer tests, and installed-package relocation and downstream
-  CMake consumer tests.
+- [ ] Automate the manual `cibuildwheel` release process in [RELEASING.md](RELEASING.md), including
+  artifact retention and publication through trusted PyPI environments.
+- [ ] Automate repository validation, including formatting, GCC and Clang debug/release tests,
+  AddressSanitizer and UndefinedBehaviorSanitizer tests, installed-package relocation, and the downstream
+  CMake consumer.
+- [ ] Add and qualify wheels for other platforms, architectures, and Python versions as their native and
+  optional Python dependencies permit.
 
 ## Integrations
 

@@ -72,7 +72,8 @@ result = chargefw.calculate(
 charges = result.assignments[0].values
 ```
 
-The Python package is pre-release and does not yet have a qualified binary wheel matrix.
+The Python package is pre-release. See the [Python package guide](docs/PYTHON.md) for installation and
+the [release guide](RELEASING.md) for package build and publication details.
 
 ## Documentation
 
@@ -85,6 +86,8 @@ The Python package is pre-release and does not yet have a qualified binary wheel
 - **[Parameter sets](docs/PARAMETERS.md)** - understand parameter data and matching behavior.
 - **[Native C++ API](docs/NATIVE.md)** - embed ChargeFW in a C++ application.
 - **[Project design](docs/PROJECT.md)** - understand the architecture and scientific scope.
+- **[Development guide](DEVELOPMENT.md)** - configure, build, test, and validate the repository.
+- **[Release guide](RELEASING.md)** - build, verify, and publish Python distributions.
 - **[Unfinished work](TODO.md)** - see current product gaps.
 - **[Contribution guide](AGENTS.md)** - work on the ChargeFW repository.
 

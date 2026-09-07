@@ -9,13 +9,16 @@ Read this file before changing the repository. Then read only the relevant secti
 - [docs/CLI.md](docs/CLI.md): implemented command-line behavior;
 - [docs/NATIVE.md](docs/NATIVE.md): implemented public C++ API and installation;
 - [docs/PYTHON.md](docs/PYTHON.md): implemented Python API and package behavior;
+- [DEVELOPMENT.md](DEVELOPMENT.md): executable local build, test, analysis, and container workflows;
+- [RELEASING.md](RELEASING.md): Python distribution validation and publication procedure;
 - [TODO.md](TODO.md): unfinished product work; and
 - [README.md](README.md): concise project entry point.
 
 Keep ownership clear. The files under `docs/` are user documentation and must describe implemented
 behavior, not development plans or milestone history. Unfinished work belongs in `TODO.md`; remove it
 when complete rather than retaining checked history. `README.md` should remain a concise user entry
-point.
+point. `DEVELOPMENT.md` and `RELEASING.md` own executable contributor and maintainer procedures;
+`AGENTS.md` owns repository policy and should link to those procedures rather than duplicate them.
 
 ## Repository map
 
@@ -31,6 +34,8 @@ tests/python/       Python package and adapter tests
 tests/fixtures/     Molecular and parameter test data
 cmake/              Dependencies, diagnostics, and installation rules
 docs/               Implemented user documentation
+DEVELOPMENT.md       Developer build and validation manual
+RELEASING.md         Maintainer package release procedure
 Dockerfile           User-facing CLI container image
 docker/              Developer compatibility containers
 ```

@@ -42,6 +42,13 @@ CHARGEFW_BUILD_CLI = "OFF"
 CHARGEFW_BUILD_PYTHON = "ON"
 CHARGEFW_BUILD_TESTS = "OFF"
 
+[tool.cibuildwheel]
+build = "cp31[0-4]-manylinux_x86_64"
+config-settings = { "cmake.define.CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS" = "OFF" }
+test-requires = "pytest"
+test-extras = "gemmi"
+test-command = "pytest {project}/tests/python -q"
+
 [[tool.dynamic-metadata]]
 provider = "scikit_build_core.metadata.regex"
 field = "version"
