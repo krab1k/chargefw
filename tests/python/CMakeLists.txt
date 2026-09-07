@@ -66,6 +66,18 @@ set_tests_properties(test_chargefw_python_gemmi PROPERTIES
     ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
 )
 
+set_tests_properties(
+    test_chargefw_python_import
+    test_chargefw_python_component_install
+    test_chargefw_python_molecule
+    test_chargefw_python_calculation
+    test_chargefw_python_gemmi
+    test_chargefw_python_output
+    test_chargefw_python_rdkit
+    test_chargefw_python_recipes
+    PROPERTIES FAIL_REGULAR_EXPRESSION "nanobind: leaked"
+)
+
 add_test(
     NAME test_chargefw_python_mypy
     COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" -m mypy --strict python/chargefw tests/python

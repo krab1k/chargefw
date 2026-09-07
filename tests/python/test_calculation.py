@@ -221,6 +221,9 @@ class CalculationTests(unittest.TestCase):
 
         self.assertEqual(result.status, "success")
         self.assertTrue(unraisable.called)
+        # The recorded exception owns its traceback, which otherwise retains this calculation frame
+        # until interpreter shutdown and produces a false-positive Nanobind leak report.
+        unraisable.reset_mock()
 
     def test_default_calculation_selects_a_supported_plan(self) -> None:
         result = chargefw.calculate(water())
