@@ -77,3 +77,4 @@ __pycache__/
 _*install
 old
 CMakeUserPresets.json
+.kilo
