@@ -55,7 +55,7 @@ should include only the individual adapter headers it uses.
 - Keep scientific applicability, execution availability, deterministic selection, and calculation
   distinct, while allowing the application facade to compose them.
 - Keep execution policy separate from method options. Never silently change method, parameter set,
-  classification, execution mode/radius, charge correction, topology, protonation, or geometry.
+  classification, execution mode/radius, topology, protonation, or geometry.
 - Preserve source atom order, molecule/conformer identity, and mappings at every result boundary.
 - Missing scientific prerequisites are hard failures. Resource thresholds only guide automatic
   execution; explicit full execution may override them with a reported warning.

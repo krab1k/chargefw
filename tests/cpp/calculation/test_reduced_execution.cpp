@@ -215,8 +215,6 @@ auto assert_reduced_matches_full(
               (selection_kind == calculation::ExecutionSelectionKind::cutoff
                    ? calculation::ExecutionMode::cutoff
                    : calculation::ExecutionMode::cover));
-        CHECK(reduced.effective->execution_policy.charge_correction() ==
-              calculation::ChargeCorrectionPolicy::uniform);
         REQUIRE(full.charges->size() == reduced.charges->size());
 
         for (std::size_t assignment_index = 0; assignment_index < full.charges->size();
@@ -233,7 +231,7 @@ auto assert_reduced_matches_full(
 
 } // namespace
 
-TEST_CASE("reduced execution validates inputs, correction, and mode selection",
+TEST_CASE("reduced execution validates inputs and mode selection",
           "[calculation][reduced-execution]") {
     const ZeroFragmentMethod zero_method;
     const auto charged_molecule = core::Molecule{
@@ -282,34 +280,20 @@ TEST_CASE("reduced execution validates inputs, correction, and mode selection",
         }
     }
 
-    const auto corrected = calculation::calculate(
+    const auto cutoff = calculation::calculate(
         {.molecules = prepared,
          .selected = selected,
-         .execution_policy =
-             calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff, 8.0,
-                                          calculation::ChargeCorrectionPolicy::uniform},
+         .execution_policy = calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff, 8.0},
          .max_threads = 2});
-    CHECK(corrected.charges.assignment(0).charges[0] == 0.5);
-    CHECK(corrected.charges.assignment(0).charges[1] == 0.5);
+    CHECK(cutoff.charges.assignment(0).charges[0] == 0.5);
+    CHECK(cutoff.charges.assignment(0).charges[1] == 0.5);
 
-    const auto uncorrected = calculation::calculate(
+    const auto cover = calculation::calculate(
         {.molecules = prepared,
          .selected = selected,
-         .execution_policy =
-             calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff, 8.0,
-                                          calculation::ChargeCorrectionPolicy::none},
-         .max_threads = 2});
-    CHECK(uncorrected.charges.assignment(0).charges[0] == 0.0);
-    CHECK(uncorrected.charges.assignment(0).charges[1] == 0.0);
-
-    const auto cover_corrected =
-        calculation::calculate({.molecules = prepared,
-                                .selected = selected,
-                                .execution_policy = calculation::ExecutionPolicy{
-                                    calculation::ExecutionMode::cover, 8.0,
-                                    calculation::ChargeCorrectionPolicy::uniform}});
-    CHECK(cover_corrected.charges.assignment(0).charges[0] == 0.5);
-    CHECK(cover_corrected.charges.assignment(0).charges[1] == 0.5);
+         .execution_policy = calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0}});
+    CHECK(cover.charges.assignment(0).charges[0] == 0.5);
+    CHECK(cover.charges.assignment(0).charges[1] == 0.5);
 
     assert_reduced_matches_full("eem", {make_eem_parameters()});
 
@@ -421,8 +405,7 @@ TEST_CASE("reduced execution preserves mixed source target order",
             {.molecules = prepared,
              .selected = selected,
              .execution_policy =
-                 calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius,
-                                              calculation::ChargeCorrectionPolicy::uniform},
+                 calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius},
              .max_threads = 2});
 
         REQUIRE(result.charges.size() == 3);

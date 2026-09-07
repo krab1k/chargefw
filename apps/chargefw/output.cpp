@@ -178,10 +178,6 @@ auto make_requested_provenance(const ImportedExportContext& export_context,
         .max_threads = request.resource_policy.max_threads,
         .execution_kind = std::string{calculation::to_string(request.execution_selection.kind())},
         .execution_radius = request.execution_selection.radius(),
-        .execution_charge_correction = request.execution_selection.charge_correction().transform(
-            [](const calculation::ChargeCorrectionPolicy policy) {
-                return std::string{calculation::to_string(policy)};
-            }),
         .structural_input_policy =
             export_context.structural_input_policy.has_value()
                 ? std::optional{adapters::StructuralInputPolicyProvenance{

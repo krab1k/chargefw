@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from .._payloads import AssessmentReportPayload, ExecutionPlanPayload, ExecutionResultPayload
-from .._types import ChargeCorrection, Execution
+from .._types import Execution
 from .core import _NativeMolecule
 from .parameters import _NativeParameterCatalog
 
@@ -29,7 +29,6 @@ def _make_assessment(
     permissive_types: bool,
     execution: Execution,
     radius: float | None,
-    charge_correction: ChargeCorrection | None,
     cutoff_threshold: int | None,
     cover_threshold: int | None,
     max_threads: int,

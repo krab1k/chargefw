@@ -841,8 +841,7 @@ TEST_CASE("direct calculation emits terminal observation boundaries in every mod
         const auto policy =
             mode == calculation::ExecutionMode::full
                 ? calculation::ExecutionPolicy{}
-                : calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius,
-                                               calculation::ChargeCorrectionPolicy::uniform};
+                : calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius};
 
         const auto result = calculation::calculate({.molecules = prepared,
                                                     .selected = selected,
@@ -861,8 +860,7 @@ TEST_CASE("direct failures and cancellation finish observation in every mode",
         const auto policy =
             mode == calculation::ExecutionMode::full
                 ? calculation::ExecutionPolicy{}
-                : calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius,
-                                               calculation::ChargeCorrectionPolicy::uniform};
+                : calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius};
 
         {
             const auto observer = RecordingObserver{};

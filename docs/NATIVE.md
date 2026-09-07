@@ -124,9 +124,10 @@ classifier semantics.
 `ExecutionSelectionKind` accepts automatic, full, cutoff, or cover selection. Effective plans always use
 the concrete `ExecutionMode` values full, cutoff, or cover.
 
-- Full execution requires no radius and the `none` charge-correction policy.
+- Full execution requires no radius.
 - Explicit cutoff and cover require a finite radius of at least 8 Å.
 - Automatic reduced execution uses 12 Å.
+- Reduced execution uniformly corrects the final molecular charge to the method target.
 - The default full-to-cutoff and cutoff-to-cover thresholds are 20,000 and 80,000 atoms.
 - `std::nullopt` disables the corresponding resource threshold.
 - A thread count of zero delegates scheduling to oneTBB.

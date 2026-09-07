@@ -216,11 +216,7 @@ auto AssessmentResult::assess_prepared(
                                 ? std::optional<double>{}
                                 : std::optional{execution_selection.radius().value_or(
                                       default_automatic_reduced_radius)};
-        const auto correction =
-            mode == ExecutionMode::full
-                ? ChargeCorrectionPolicy::none
-                : execution_selection.charge_correction().value_or(ChargeCorrectionPolicy::uniform);
-        return ExecutionPolicy{mode, radius, correction};
+        return ExecutionPolicy{mode, radius};
     };
     const auto append_rejection =
         [this, &policy_for](const methods::ApplicableMethod& candidate, const ExecutionMode mode,

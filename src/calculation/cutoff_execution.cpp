@@ -18,13 +18,11 @@
 namespace chargefw::calculation {
 namespace {
 
-[[nodiscard]] auto
-calculate_target(const methods::ApplicableMethod& selected,
-                 const features::PreparedMolecule& source,
-                 const parameters::ParameterClassification* source_classification,
-                 const std::size_t conformer_index, const double radius,
-                 const ChargeCorrectionPolicy charge_correction, const std::size_t max_threads,
-                 const detail::ProgressContext& progress_ctx) -> charges::AtomicCharges {
+[[nodiscard]] auto calculate_target(
+    const methods::ApplicableMethod& selected, const features::PreparedMolecule& source,
+    const parameters::ParameterClassification* source_classification,
+    const std::size_t conformer_index, const double radius, const std::size_t max_threads,
+    const detail::ProgressContext& progress_ctx) -> charges::AtomicCharges {
     const auto& source_molecule = source.molecule();
     auto values = std::vector<double>(source_molecule.atom_count());
     const auto requirements = selected.method->requirements();
@@ -47,11 +45,9 @@ calculate_target(const methods::ApplicableMethod& selected,
             }
         });
 
-    detail::apply_charge_correction(
-        values,
-        detail::final_target_charge(requirements.resources.fragment_target_charge_policy,
-                                    source_molecule),
-        charge_correction);
+    detail::enforce_target_charge(
+        values, detail::final_target_charge(requirements.resources.fragment_target_charge_policy,
+                                            source_molecule));
     return charges::AtomicCharges{std::move(values)};
 }
 
@@ -77,7 +73,7 @@ auto calculate_cutoff_charges(const methods::ApplicableMethod& selected,
             const std::optional<std::size_t> conformer_index,
             const std::size_t fragment_max_threads, const detail::ProgressContext& target_ctx) {
             return calculate_target(selected, molecule, classification, *conformer_index, *radius,
-                                    policy.charge_correction(), fragment_max_threads, target_ctx);
+                                    fragment_max_threads, target_ctx);
         });
 }
 

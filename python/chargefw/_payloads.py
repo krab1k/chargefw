@@ -9,7 +9,6 @@ from numpy.typing import NDArray
 
 from ._types import (
     CalculationPhase,
-    ChargeCorrection,
     ExecutionIssueKind,
     ExecutionMode,
     ExecutionStatus,
@@ -50,7 +49,6 @@ class ExecutionIssuePayload(TypedDict):
 class ExecutionPolicyPayload(TypedDict):
     mode: ExecutionMode
     radius: float | None
-    charge_correction: ChargeCorrection
 
 
 class EffectiveCalculationPayload(TypedDict):

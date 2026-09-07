@@ -23,12 +23,7 @@ from ._payloads import (
     PrerequisiteIssuePayload,
     RejectionPayload,
 )
-from ._types import (
-    ChargeCorrection,
-    ExecutionMode,
-    ExecutionStatus,
-    MethodOptionValue,
-)
+from ._types import ExecutionMode, ExecutionStatus, MethodOptionValue
 from .charges import ChargeAssignment
 from .core import MoleculeCollection
 
@@ -37,7 +32,6 @@ from .core import MoleculeCollection
 class ExecutionPolicy:
     mode: ExecutionMode
     radius: float | None
-    charge_correction: ChargeCorrection
 
 
 class Plan:
@@ -193,7 +187,6 @@ def _execution_policy(value: ExecutionPolicyPayload) -> ExecutionPolicy:
     return ExecutionPolicy(
         mode=value["mode"],
         radius=value["radius"],
-        charge_correction=value["charge_correction"],
     )
 
 
@@ -324,7 +317,6 @@ class CalculationResult:
             "max_threads": self._requested.threads,
             "execution": self._requested.execution,
             "radius": self._requested.radius,
-            "charge_correction": self._requested.charge_correction,
             "method_options": {
                 method_id: dict(options)
                 for method_id, options in self._requested.options_by_method.items()

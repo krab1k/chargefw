@@ -13,16 +13,10 @@ import numpy as np
 
 from ._methods import Method
 from ._parameters import ParameterSet
-from ._types import (
-    ChargeCorrection,
-    Execution,
-    MethodOptionValue,
-    ParameterMatching,
-)
+from ._types import Execution, MethodOptionValue, ParameterMatching
 
 _MAX_NATIVE_THREADS = int(np.iinfo(np.int32).max)
 _EXECUTIONS = frozenset(("auto", "full", "cutoff", "cover"))
-_CHARGE_CORRECTIONS = frozenset(("none", "uniform"))
 
 
 def _normalized_nonnegative_integer(value: Any, name: str) -> int:
@@ -103,7 +97,6 @@ class RequestedCalculation:
     parameter_matching: ParameterMatching
     execution: Execution
     radius: float | None
-    charge_correction: ChargeCorrection | None
     cutoff_threshold: int | None
     cover_threshold: int | None
     threads: int
@@ -118,7 +111,6 @@ class RequestedCalculation:
         parameter_matching: ParameterMatching = "strict",
         execution: Execution = "auto",
         radius: float | None = None,
-        charge_correction: ChargeCorrection | None = None,
         cutoff_threshold: int | None = 20_000,
         cover_threshold: int | None = 80_000,
         threads: int = 0,
@@ -158,18 +150,8 @@ class RequestedCalculation:
             raise TypeError("execution must be a string")
         if execution not in _EXECUTIONS:
             raise ValueError("execution must be 'auto', 'full', 'cutoff', or 'cover'")
-        if charge_correction is not None:
-            if not isinstance(charge_correction, str):
-                raise TypeError("charge_correction must be a string or None")
-            if charge_correction not in _CHARGE_CORRECTIONS:
-                raise ValueError("charge_correction must be 'none', 'uniform', or None")
-        if execution == "auto" and charge_correction is not None:
-            raise ValueError("automatic execution does not accept a charge correction")
-        if execution == "full":
-            if radius is not None:
-                raise ValueError("full execution does not accept a radius")
-            if charge_correction is not None:
-                raise ValueError("full execution does not accept a charge correction")
+        if execution == "full" and radius is not None:
+            raise ValueError("full execution does not accept a radius")
         if execution in ("cutoff", "cover") and radius is None:
             raise ValueError(f"{execution} execution requires a radius")
         if radius is not None:
@@ -211,7 +193,6 @@ class RequestedCalculation:
         object.__setattr__(self, "parameter_matching", parameter_matching)
         object.__setattr__(self, "execution", execution)
         object.__setattr__(self, "radius", radius)
-        object.__setattr__(self, "charge_correction", charge_correction)
         object.__setattr__(self, "cutoff_threshold", normalized_cutoff)
         object.__setattr__(self, "cover_threshold", normalized_cover)
         object.__setattr__(self, "threads", normalized_threads)

@@ -141,9 +141,7 @@ constexpr auto metric_scale = 1000.0;
           {"max_threads", provenance.requested.max_threads}}},
         {"execution",
          {{"kind", provenance.requested.execution_kind},
-          {"radius_angstrom", optional_value(provenance.requested.execution_radius)},
-          {"charge_correction",
-           optional_value(provenance.requested.execution_charge_correction)}}}};
+          {"radius_angstrom", optional_value(provenance.requested.execution_radius)}}}};
     if (provenance.requested.conformer_selection.has_value()) {
         requested["input"] = {{"conformers", *provenance.requested.conformer_selection}};
     }
@@ -160,9 +158,7 @@ constexpr auto metric_scale = 1000.0;
     if (provenance.effective.execution_mode.has_value()) {
         effective["execution"] = {
             {"mode", *provenance.effective.execution_mode},
-            {"radius_angstrom", optional_value(provenance.effective.execution_radius)},
-            {"charge_correction",
-             optional_value(provenance.effective.execution_charge_correction)}};
+            {"radius_angstrom", optional_value(provenance.effective.execution_radius)}};
     }
     effective["method_options"] = method_options_json(provenance.effective.method_options);
     Json result{{"requested", std::move(requested)}, {"effective", std::move(effective)}};

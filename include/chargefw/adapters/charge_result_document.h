@@ -47,7 +47,6 @@ struct RequestedCalculationProvenance {
     std::size_t max_threads = 0;
     std::string execution_kind;
     std::optional<double> execution_radius;
-    std::optional<std::string> execution_charge_correction;
     std::optional<StructuralInputPolicyProvenance> structural_input_policy;
     std::optional<std::string> conformer_selection;
     std::map<std::string, methods::MethodOptions> method_options;
@@ -58,7 +57,6 @@ struct EffectiveCalculationProvenance {
     std::optional<std::string> parameter_set_id;
     std::optional<std::string> execution_mode;
     std::optional<double> execution_radius;
-    std::optional<std::string> execution_charge_correction;
     std::vector<std::string> warnings;
     std::map<std::string, methods::MethodOptions> method_options;
 };

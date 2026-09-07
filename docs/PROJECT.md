@@ -117,9 +117,8 @@ Cutoff and cover are implemented for:
 abeem, eem, eqeq, eqeqc, qeq, sfkeem, sqe, sqeq0, sqeqp
 ```
 
-Reduced execution defaults to uniform correction of the final molecular charge. A caller can explicitly
-request no correction where the execution policy permits it. Reduced calculations are approximations;
-the project does not claim a general accuracy envelope for them.
+Reduced execution uniformly corrects the final molecular charge to its method target. Reduced calculations
+are approximations; the project does not claim a general accuracy envelope for them.
 
 ## Results and provenance
 
@@ -129,8 +128,8 @@ applicable, conformer; atom values remain in source order.
 
 Application-facing results distinguish success, invalid input or request, no executable plan, numerical
 failure, and cancellation. Successful results retain the effective method, parameter set, validated
-options, execution mode, radius, correction policy, and execution warnings. The CLI additionally records
-requested policy, diagnostics, timings, timestamps, and peak resident memory in its JSON result.
+options, execution mode, radius, and execution warnings. The CLI additionally records requested policy,
+diagnostics, timings, timestamps, and peak resident memory in its JSON result.
 
 ## Molecular data scope
 

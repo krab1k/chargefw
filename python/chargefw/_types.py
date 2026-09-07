@@ -4,7 +4,6 @@ from typing import Literal, TypeAlias
 
 MethodOptionValue: TypeAlias = bool | int | float | str
 Execution: TypeAlias = Literal["auto", "full", "cutoff", "cover"]
-ChargeCorrection: TypeAlias = Literal["none", "uniform"]
 ParameterMatching: TypeAlias = Literal["strict", "permissive"]
 ExecutionMode: TypeAlias = Literal["full", "cutoff", "cover"]
 CalculationPhase: TypeAlias = Literal[

@@ -225,8 +225,6 @@ auto requested_provenance(const nb::dict& payload) -> adapters::RequestedCalcula
         .max_threads = nb::cast<std::size_t>(payload["max_threads"]),
         .execution_kind = nb::cast<std::string>(payload["execution"]),
         .execution_radius = nb::cast<std::optional<double>>(payload["radius"]),
-        .execution_charge_correction =
-            nb::cast<std::optional<std::string>>(payload["charge_correction"]),
         .structural_input_policy = std::nullopt,
         .conformer_selection = nb::cast<std::optional<std::string>>(payload["conformers"]),
         .method_options = {}};

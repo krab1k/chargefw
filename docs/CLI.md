@@ -79,7 +79,6 @@ The CLI reads the imported collection before calculation and stops at the first 
 | `--method-option METHOD.OPTION=VALUE` | Override a method option; repeatable |
 | `--execution auto|full|cutoff|cover` | Select execution policy; default `auto` |
 | `--radius ANGSTROM` | Radius for cutoff/cover; explicit reduced modes require at least 8 Å |
-| `--charge-correction uniform|none` | Correction for explicit reduced execution |
 | `--cutoff-atom-threshold COUNT|unlimited` | Automatic full-to-cutoff threshold; default 20,000 |
 | `--cover-atom-threshold COUNT|unlimited` | Automatic cutoff-to-cover threshold; default 80,000 |
 | `--threads COUNT` | Maximum calculation threads; `0` delegates to oneTBB |
@@ -99,8 +98,11 @@ inapplicable. `applicability` reports the reasons without running a calculation.
 
 Automatic planning prefers full execution. For methods with cubic-time or quadratic-memory behavior,
 collections containing a molecule above the cutoff threshold use supported cutoff execution. Above the
-cover threshold, supported cover execution is preferred. Automatic reduced execution uses a 12 Å radius
-and uniform charge correction.
+cover threshold, supported cover execution is preferred. Automatic reduced execution uses a 12 Å radius.
+
+Cutoff and cover assemble fragment-derived charges and uniformly correct the final molecular charge to the
+method target. This maintains the net-charge constraint while retaining the reduced execution
+approximation.
 
 Explicit `full`, `cutoff`, or `cover` filters plans to that mode. Explicit full execution can exceed the
 resource threshold and reports a warning rather than silently changing mode.

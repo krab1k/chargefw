@@ -64,13 +64,9 @@ auto final_target_charge(const methods::FragmentTargetChargePolicy policy,
     throw std::invalid_argument{"unsupported fragment target-charge policy"};
 }
 
-auto apply_charge_correction(std::vector<double>& values, const double target_charge,
-                             const ChargeCorrectionPolicy policy) -> void {
-    if (policy == ChargeCorrectionPolicy::none || values.empty()) {
+auto enforce_target_charge(std::vector<double>& values, const double target_charge) -> void {
+    if (values.empty()) {
         return;
-    }
-    if (policy != ChargeCorrectionPolicy::uniform) {
-        throw std::invalid_argument{"unsupported charge correction policy"};
     }
 
     double total = 0.0;

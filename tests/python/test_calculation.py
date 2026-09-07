@@ -241,7 +241,6 @@ class CalculationTests(unittest.TestCase):
             chargefw.ExecutionPolicy(
                 mode="full",
                 radius=None,
-                charge_correction="none",
             ),
         )
         self.assertEqual(plan.method.id, "eem")
@@ -504,7 +503,6 @@ class CalculationTests(unittest.TestCase):
             method="eem",
             execution="cutoff",
             radius=8.0,
-            charge_correction="none",
         )
         self.assertEqual(reduced.status, "success")
         reduced_effective = reduced.plan
@@ -515,7 +513,6 @@ class CalculationTests(unittest.TestCase):
             chargefw.ExecutionPolicy(
                 mode="cutoff",
                 radius=8.0,
-                charge_correction="none",
             ),
         )
 
@@ -663,7 +660,6 @@ class CalculationTests(unittest.TestCase):
                 False,
                 cast(Any, "invalid"),
                 None,
-                None,
                 20_000,
                 80_000,
                 0,
@@ -672,7 +668,6 @@ class CalculationTests(unittest.TestCase):
     def test_invalid_options_are_rejected_early(self) -> None:
         invalid_options = (
             (ValueError, {"execution": "fast"}),
-            (ValueError, {"charge_correction": "invalid"}),
             (ValueError, {"parameter_matching": "guess"}),
             (TypeError, {"threads": True}),
             (TypeError, {"cutoff_threshold": False}),

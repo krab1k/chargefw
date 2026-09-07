@@ -25,49 +25,35 @@ enum class ExecutionSelectionKind : std::uint8_t {
     cover,
 };
 
-enum class ChargeCorrectionPolicy : std::uint8_t {
-    none,
-    uniform,
-};
-
 [[nodiscard]] auto execution_selection_kind_from_string(std::string_view value)
     -> ExecutionSelectionKind;
-[[nodiscard]] auto charge_correction_policy_from_string(std::string_view value)
-    -> ChargeCorrectionPolicy;
 [[nodiscard]] auto to_string(ExecutionSelectionKind value) -> std::string_view;
 [[nodiscard]] auto to_string(ExecutionMode value) -> std::string_view;
-[[nodiscard]] auto to_string(ChargeCorrectionPolicy value) -> std::string_view;
 
 class ExecutionPolicy {
   public:
-    explicit ExecutionPolicy(
-        ExecutionMode mode = ExecutionMode::full, std::optional<double> radius = {},
-        ChargeCorrectionPolicy charge_correction = ChargeCorrectionPolicy::none);
+    explicit ExecutionPolicy(ExecutionMode mode = ExecutionMode::full,
+                             std::optional<double> radius = {});
 
     [[nodiscard]] auto mode() const noexcept -> ExecutionMode;
     [[nodiscard]] auto radius() const noexcept -> std::optional<double>;
-    [[nodiscard]] auto charge_correction() const noexcept -> ChargeCorrectionPolicy;
 
   private:
     ExecutionMode mode_ = ExecutionMode::full;
     std::optional<double> radius_;
-    ChargeCorrectionPolicy charge_correction_ = ChargeCorrectionPolicy::none;
 };
 
 class ExecutionSelection {
   public:
     explicit ExecutionSelection(ExecutionSelectionKind kind = ExecutionSelectionKind::automatic,
-                                std::optional<double> radius = {},
-                                std::optional<ChargeCorrectionPolicy> charge_correction = {});
+                                std::optional<double> radius = {});
 
     [[nodiscard]] auto kind() const noexcept -> ExecutionSelectionKind;
     [[nodiscard]] auto radius() const noexcept -> std::optional<double>;
-    [[nodiscard]] auto charge_correction() const noexcept -> std::optional<ChargeCorrectionPolicy>;
 
   private:
     ExecutionSelectionKind kind_ = ExecutionSelectionKind::automatic;
     std::optional<double> radius_;
-    std::optional<ChargeCorrectionPolicy> charge_correction_;
 };
 
 struct ResourcePolicy {

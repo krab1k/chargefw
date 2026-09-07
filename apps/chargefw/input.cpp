@@ -207,9 +207,6 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
     command.add_option("--execution", arguments.execution,
                        "Execution: auto, full, cutoff, or cover");
     command.add_option("--radius", arguments.radius, "Cutoff or cover radius in angstrom");
-    arguments.charge_correction_option =
-        command.add_option("--charge-correction", arguments.charge_correction,
-                           "Reduced-execution charge correction: uniform or none");
     arguments.cutoff_atom_threshold_option =
         command.add_option("--cutoff-atom-threshold", arguments.cutoff_atom_threshold,
                            "Automatic full-to-cutoff atom threshold, or unlimited");
@@ -258,11 +255,7 @@ auto make_request(core::MoleculeCollection molecules, const SelectionArguments& 
         .execution_selection =
             calculation::ExecutionSelection{
                 calculation::execution_selection_kind_from_string(arguments.execution),
-                arguments.radius,
-                arguments.charge_correction_option->count() == 0
-                    ? std::nullopt
-                    : std::optional{calculation::charge_correction_policy_from_string(
-                          arguments.charge_correction)}},
+                arguments.radius},
         .resource_policy = {
             .cutoff_atom_threshold =
                 arguments.cutoff_atom_threshold_option->count() == 0

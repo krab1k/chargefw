@@ -208,14 +208,14 @@ empirical partial-charge model.
 | `parameter_matching` | `"strict"` (default) or `"permissive"` |
 | `execution` | `"auto"` (default), `"full"`, `"cutoff"`, or `"cover"` |
 | `radius` | Reduced radius in ångströms; explicit cutoff/cover require at least `8.0` |
-| `charge_correction` | `"uniform"`, `"none"`, or `None` |
 | `cutoff_threshold` | Automatic full-to-cutoff threshold; default `20_000`, `None` is unlimited |
 | `cover_threshold` | Automatic cutoff-to-cover threshold; default `80_000`, `None` is unlimited |
 | `threads` | Non-negative oneTBB thread limit; omitted or `0` delegates to oneTBB |
 
 Flat `options` require an explicit method. `options` and `options_by_method` cannot be combined. Automatic
-execution accepts an optional radius override but not a charge-correction override. Explicit full
-execution rejects radius and correction arguments; explicit cutoff and cover require a radius.
+execution accepts an optional radius override. Explicit full execution rejects a radius; explicit cutoff
+and cover require one. Reduced execution uniformly corrects the final molecular charge to the method
+target.
 
 ```python
 assessment = chargefw.assess(

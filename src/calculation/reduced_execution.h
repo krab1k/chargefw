@@ -19,8 +19,7 @@ auto validate_reduced_request(const methods::ApplicableMethod& selected,
                                           const features::SpatialFragment& fragment) -> double;
 [[nodiscard]] auto final_target_charge(methods::FragmentTargetChargePolicy policy,
                                        const core::Molecule& source) -> double;
-auto apply_charge_correction(std::vector<double>& values, double target_charge,
-                             ChargeCorrectionPolicy policy) -> void;
+auto enforce_target_charge(std::vector<double>& values, double target_charge) -> void;
 [[nodiscard]] auto
 calculate_fragment_charges(const methods::ApplicableMethod& selected, const core::Molecule& source,
                            const parameters::ParameterClassification* source_classification,

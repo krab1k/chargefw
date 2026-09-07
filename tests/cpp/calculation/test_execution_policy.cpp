@@ -9,8 +9,7 @@
 
 namespace calculation = chargefw::calculation;
 
-TEST_CASE("execution selection and charge correction parse from strings",
-          "[calculation][execution-policy]") {
+TEST_CASE("execution selection parses from strings", "[calculation][execution-policy]") {
     CHECK(calculation::execution_selection_kind_from_string("auto") ==
           calculation::ExecutionSelectionKind::automatic);
     CHECK(calculation::execution_selection_kind_from_string("full") ==
@@ -24,29 +23,17 @@ TEST_CASE("execution selection and charge correction parse from strings",
         static_cast<void>(calculation::execution_selection_kind_from_string("unknown"));
     };
     CHECK_THROWS_AS(bad_selection(), std::invalid_argument);
-
-    CHECK(calculation::charge_correction_policy_from_string("none") ==
-          calculation::ChargeCorrectionPolicy::none);
-    CHECK(calculation::charge_correction_policy_from_string("uniform") ==
-          calculation::ChargeCorrectionPolicy::uniform);
-
-    const auto bad_correction = [] {
-        static_cast<void>(calculation::charge_correction_policy_from_string("unknown"));
-    };
-    CHECK_THROWS_AS(bad_correction(), std::invalid_argument);
 }
 
 TEST_CASE("execution policy and selection convert to strings", "[calculation][execution-policy]") {
     CHECK(calculation::to_string(calculation::ExecutionSelectionKind::automatic) == "auto");
     CHECK(calculation::to_string(calculation::ExecutionSelectionKind::full) == "full");
     CHECK(calculation::to_string(calculation::ExecutionMode::cutoff) == "cutoff");
-    CHECK(calculation::to_string(calculation::ChargeCorrectionPolicy::uniform) == "uniform");
     CHECK(calculation::to_string(calculation::ExecutionStatus::no_executable_plan) ==
           "no_executable_plan");
 }
 
-TEST_CASE("execution policy validates mode, radius, and correction",
-          "[calculation][execution-policy]") {
+TEST_CASE("execution policy validates mode and radius", "[calculation][execution-policy]") {
     const calculation::ExecutionPolicy default_policy;
     CHECK(default_policy.mode() == calculation::ExecutionMode::full);
     CHECK_FALSE(default_policy.radius().has_value());
@@ -54,7 +41,6 @@ TEST_CASE("execution policy validates mode, radius, and correction",
     const calculation::ExecutionPolicy full_policy{calculation::ExecutionMode::full};
     CHECK(full_policy.mode() == calculation::ExecutionMode::full);
     CHECK_FALSE(full_policy.radius().has_value());
-    CHECK(full_policy.charge_correction() == calculation::ChargeCorrectionPolicy::none);
 
     const auto full_with_radius = [] {
         static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::full, 8.0});
@@ -85,19 +71,12 @@ TEST_CASE("execution policy validates mode, radius, and correction",
 
     const calculation::ExecutionPolicy cutoff_policy{calculation::ExecutionMode::cutoff, 8.0};
     CHECK(cutoff_policy.radius() == std::optional<double>{8.0});
-    CHECK(cutoff_policy.charge_correction() == calculation::ChargeCorrectionPolicy::none);
-
-    const calculation::ExecutionPolicy corrected_cutoff_policy{
-        calculation::ExecutionMode::cutoff, 8.0, calculation::ChargeCorrectionPolicy::uniform};
-    CHECK(corrected_cutoff_policy.charge_correction() ==
-          calculation::ChargeCorrectionPolicy::uniform);
 
     const calculation::ExecutionPolicy cover_policy{calculation::ExecutionMode::cover, 12.0};
     CHECK(cover_policy.radius() == std::optional<double>{12.0});
 }
 
-TEST_CASE("execution selection validates kind, radius, and correction",
-          "[calculation][execution-policy]") {
+TEST_CASE("execution selection validates kind and radius", "[calculation][execution-policy]") {
     const calculation::ExecutionSelection default_selection;
     CHECK(default_selection.kind() == calculation::ExecutionSelectionKind::automatic);
     CHECK_FALSE(default_selection.radius().has_value());
@@ -108,13 +87,6 @@ TEST_CASE("execution selection validates kind, radius, and correction",
 
     const calculation::ExecutionSelection full_selection{calculation::ExecutionSelectionKind::full};
     CHECK_FALSE(full_selection.radius().has_value());
-    CHECK_FALSE(full_selection.charge_correction().has_value());
-
-    const calculation::ExecutionSelection corrected_cutoff_selection{
-        calculation::ExecutionSelectionKind::cutoff, 8.0,
-        calculation::ChargeCorrectionPolicy::uniform};
-    CHECK(corrected_cutoff_selection.charge_correction() ==
-          std::optional{calculation::ChargeCorrectionPolicy::uniform});
 
     const auto auto_too_small = [] {
         static_cast<void>(
@@ -133,13 +105,6 @@ TEST_CASE("execution selection validates kind, radius, and correction",
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff});
     };
     CHECK_THROWS_AS(cutoff_no_radius(), std::invalid_argument);
-
-    const auto full_with_correction = [] {
-        static_cast<void>(
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full, std::nullopt,
-                                            calculation::ChargeCorrectionPolicy::uniform});
-    };
-    CHECK_THROWS_AS(full_with_correction(), std::invalid_argument);
 }
 
 TEST_CASE("resource policy exposes thresholds", "[calculation][execution-policy]") {

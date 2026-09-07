@@ -61,14 +61,6 @@ auto method_options(const nb::dict& values)
     return result;
 }
 
-auto charge_correction_selection(const std::optional<std::string>& value)
-    -> std::optional<calculation::ChargeCorrectionPolicy> {
-    if (!value.has_value()) {
-        return std::nullopt;
-    }
-    return calculation::charge_correction_policy_from_string(*value);
-}
-
 auto prerequisite_issue(const methods::PrerequisiteIssue& issue) -> nb::dict {
     auto result = nb::dict{};
     result["kind"] = std::string{methods::to_string(issue.kind)};
@@ -95,7 +87,6 @@ auto execution_policy(const calculation::ExecutionPolicy& policy) -> nb::dict {
     auto result = nb::dict{};
     result["mode"] = std::string{calculation::to_string(policy.mode())};
     result["radius"] = policy.radius().has_value() ? nb::cast(*policy.radius()) : nb::none();
-    result["charge_correction"] = std::string{calculation::to_string(policy.charge_correction())};
     return result;
 }
 
@@ -365,7 +356,6 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
                      std::optional<std::string> parameter_set_id, const nb::dict& options,
                      const bool permissive_types, const std::string& execution,
                      const std::optional<double> radius,
-                     const std::optional<std::string>& charge_correction,
                      const std::optional<std::size_t> cutoff_threshold,
                      const std::optional<std::size_t> cover_threshold,
                      const std::size_t max_threads) -> NativeAssessment {
@@ -395,8 +385,7 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
         .classification_options = {.permissive_types = permissive_types},
         .execution_selection =
             calculation::ExecutionSelection{
-                calculation::execution_selection_kind_from_string(execution), radius,
-                charge_correction_selection(charge_correction)},
+                calculation::execution_selection_kind_from_string(execution), radius},
         .resource_policy = {.cutoff_atom_threshold = cutoff_threshold,
                             .cover_atom_threshold = cover_threshold,
                             .max_threads = max_threads},
@@ -423,8 +412,8 @@ void bind_calculation(nb::module_& module) {
     module.def("_make_assessment", &make_assessment, nb::arg("molecules"),
                nb::arg("molecule_collection_name"), nb::arg("catalog"), nb::arg("method_id"),
                nb::arg("parameter_set_id"), nb::arg("method_options"), nb::arg("permissive_types"),
-               nb::arg("execution"), nb::arg("radius"), nb::arg("charge_correction"),
-               nb::arg("cutoff_threshold"), nb::arg("cover_threshold"), nb::arg("max_threads"));
+               nb::arg("execution"), nb::arg("radius"), nb::arg("cutoff_threshold"),
+               nb::arg("cover_threshold"), nb::arg("max_threads"));
 }
 
 } // namespace chargefw::python

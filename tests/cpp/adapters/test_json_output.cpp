@@ -42,7 +42,6 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
                           .max_threads = 0,
                           .execution_kind = "auto",
                           .execution_radius = std::nullopt,
-                          .execution_charge_correction = std::nullopt,
                           .structural_input_policy =
                               adapters::StructuralInputPolicyProvenance{.selection = "polymers",
                                                                         .bonds = "hybrid"},
@@ -54,7 +53,6 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
                           .parameter_set_id = "test-formal",
                           .execution_mode = "cutoff",
                           .execution_radius = 8.0,
-                          .execution_charge_correction = "uniform",
                           .warnings = {"full execution exceeds the shared threshold"},
                           .method_options = {{"formal", chargefw::methods::MethodOptions{}}}},
             .execution_metrics =
@@ -104,7 +102,6 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     CHECK(effective.at("method").at("id") == "formal");
     CHECK(effective.at("parameter_set").at("id") == "test-formal");
     CHECK(effective.at("execution").at("radius_angstrom") == 8.0);
-    CHECK(effective.at("execution").at("charge_correction") == "uniform");
     CHECK(effective.at("warnings").at(0) == "full execution exceeds the shared threshold");
     CHECK(effective.at("method_options").at("formal").empty());
 

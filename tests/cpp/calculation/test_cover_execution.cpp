@@ -114,8 +114,7 @@ TEST_CASE("cover execution produces fragment-size-dependent charges",
           "[calculation][cover-execution]") {
     const auto collection = core::MoleculeCollection{std::vector{make_linear_molecule(10)}};
     const features::PreparedMoleculeCollection prepared{collection};
-    const auto policy = calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0,
-                                                     calculation::ChargeCorrectionPolicy::none};
+    const auto policy = calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0};
 
     {
         const FragmentSizeMethod method;
@@ -134,8 +133,8 @@ TEST_CASE("cover execution produces fragment-size-dependent charges",
         REQUIRE(parallel_values.size() == serial_values.size());
         for (std::size_t atom_index = 0; atom_index < serial_values.size(); ++atom_index) {
             CHECK(parallel_values[atom_index] == serial_values[atom_index]);
-            const auto expected = atom_index < 4 ? 9.0 : 10.0;
-            CHECK(serial_values[atom_index] == expected);
+            const auto expected = atom_index < 4 ? -0.6 : 0.4;
+            CHECK(std::abs(serial_values[atom_index] - expected) < 1.0e-12);
         }
     }
 
@@ -147,9 +146,8 @@ TEST_CASE("cover execution produces fragment-size-dependent charges",
         const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
         const auto corrected = calculation::calculate_cover_charges(
             selected, charged_prepared,
-            calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0,
-                                         calculation::ChargeCorrectionPolicy::uniform},
-            1, calculation::default_calculation_observer());
+            calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0}, 1,
+            calculation::default_calculation_observer());
 
         const auto& values = corrected.assignment(0).charges;
         for (std::size_t atom_index = 0; atom_index < values.size(); ++atom_index) {

@@ -92,8 +92,6 @@ auto make_charge_result_document(const std::span<const ImportedMoleculeRecord> r
         effective.execution_mode =
             std::string{calculation::to_string(calculation.execution_policy.mode())};
         effective.execution_radius = calculation.execution_policy.radius();
-        effective.execution_charge_correction =
-            std::string{calculation::to_string(calculation.execution_policy.charge_correction())};
         effective.warnings.reserve(calculation.execution_issues.size());
         for (const auto& issue : calculation.execution_issues) {
             effective.warnings.push_back(issue.message);
