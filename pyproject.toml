@@ -21,6 +21,8 @@ classifiers = [
 ]
 
 [project.urls]
+Documentation = "https://github.com/krab1k/chargefw/blob/main/docs/PYTHON.md"
+Examples = "https://github.com/krab1k/chargefw/tree/main/docs/recipes"
 Repository = "https://github.com/krab1k/chargefw"
 
 [project.optional-dependencies]

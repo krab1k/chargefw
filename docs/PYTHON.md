@@ -29,25 +29,14 @@ and does not depend on the current directory or an environment variable.
 For a direct CMake build, set `CHARGEFW_BUILD_PYTHON=ON`. The option defaults to `OFF` for ordinary native
 builds.
 
-## Basic calculation
+## Quick start
 
 ```python
 import chargefw
 
-molecule = chargefw.Molecule(
-    atomic_numbers=[8, 1, 1],
-    formal_charges=[0, 0, 0],
-    bonds=[[0, 1, 1], [0, 2, 1]],
-    coordinates=[
-        [0.0, 0.0, 0.0],
-        [0.96, 0.0, 0.0],
-        [-0.24, 0.93, 0.0],
-    ],
-    name="water",
-)
-
+molecules = chargefw.io.read("structure.sdf", format="sdf")
 result = chargefw.calculate(
-    molecule,
+    molecules,
     method="qeq",
     parameter_set="QEq_original",
     execution="full",
@@ -58,6 +47,57 @@ print(result.assignments[0].values)
 For reproducible scientific work, select both the method and its parameter set when the method uses one.
 Automatic selection is deterministic, but catalog priority is not a recommendation that one charge model
 or parameterization is scientifically preferable for a particular molecule.
+
+## Reading molecular files
+
+Serialized molecular formats are read through `chargefw.io`. `parse()` accepts text, while `read()`
+accepts string or path-like filesystem paths:
+
+```python
+import chargefw
+
+molecules = chargefw.io.read(
+    "structure.sdf",
+    format="sdf",
+)
+```
+
+`parse()` and `read()` require an explicit `format` selected from `"mol"`, `"sdf"`, `"mol2"`,
+`"molecule-json"`, `"pdb"`, and `"mmcif"`. `parse()` also accepts an optional `source_name`. Both return
+a `MoleculeCollection`, including formats that contain exactly one molecule. File extensions are not
+inspected, and the current Python API reads and materializes the complete collection eagerly. The
+supported values are available as `chargefw.io.INPUT_FORMATS`.
+
+The Python-facing collection distinctions are:
+
+| Input | Python collection behavior | Python-specific choices |
+| --- | --- | --- |
+| MOL | One molecule with one conformer | None |
+| SDF and MOL2 | One molecule per record, one conformer each | None |
+| Molecule JSON | One molecule per array entry | `conformers="first"` or `"all"` |
+| PDB | One molecule; compatible models become conformers | `selection`, `bonds`, `conformers` |
+| mmCIF | One molecule per coordinate-bearing block | `selection`, `bonds`, `conformers` |
+
+Exact parsing, normalization, diagnostics, and record semantics belong to the
+[molecular format reference](FORMATS.md#format-overview).
+
+Inspect imported molecules through immutable arrays and source identities:
+
+```python
+for molecule in molecules:
+    print(
+        molecule.source,
+        molecule.name,
+        molecule.atom_count,
+        molecule.bond_count,
+        molecule.conformer_names,
+        int(molecule.formal_charges.sum()),
+    )
+```
+
+One calculation plan applies to the complete collection. If a method or parameter set is inapplicable to
+one SDF record or mmCIF block, it is not executable for that collection; process records separately only
+when independent per-record policy is intentional.
 
 `calculate()` also accepts a `MoleculeCollection` or any iterable of `Molecule` values.
 
@@ -87,7 +127,23 @@ Retrieve one assignment directly by its source indices:
 second_conformer_charges = result.assignment(molecule=0, conformer=1).values
 ```
 
-## Molecules and ownership
+## Constructing Molecule objects from arrays
+
+Use `Molecule` directly when molecular data is already available as arrays:
+
+```python
+molecule = chargefw.Molecule(
+    atomic_numbers=[8, 1, 1],
+    formal_charges=[0, 0, 0],
+    bonds=[[0, 1, 1], [0, 2, 1]],
+    coordinates=[
+        [0.0, 0.0, 0.0],
+        [0.96, 0.0, 0.0],
+        [-0.24, 0.93, 0.0],
+    ],
+    name="water",
+)
+```
 
 `Molecule` accepts:
 
@@ -334,60 +390,7 @@ The language-independent preservation, conformer, rounding, and schema rules are
 source-preserving. Use the Gemmi document integration below when an original mmCIF document must retain
 unrelated categories.
 
-## Molecular input
-
-Serialized molecular formats are read through `chargefw.io`. `parse()` accepts text, while `read()`
-accepts string or path-like filesystem paths:
-
-```python
-import chargefw
-
-molecules = chargefw.io.read(
-    "structure.pdb",
-    format="pdb",
-    selection="all",
-    bonds="hybrid",
-    conformers="all",
-)
-```
-
-`parse()` and `read()` require an explicit `format` selected from `"mol"`, `"sdf"`, `"mol2"`,
-`"molecule-json"`, `"pdb"`, and `"mmcif"`. `parse()` accepts text and an optional `source_name`;
-`read()` accepts a string or path-like filesystem path. Both return a `MoleculeCollection`, including
-formats that contain exactly one molecule. File extensions are not inspected, and the current Python
-API reads and materializes the complete collection eagerly. The supported values are available as
-`chargefw.io.INPUT_FORMATS`.
-
-The Python-facing collection distinctions are:
-
-| Input | Python collection behavior | Python-specific choices |
-| --- | --- | --- |
-| MOL | One molecule with one conformer | None |
-| SDF and MOL2 | One molecule per record, one conformer each | None |
-| Molecule JSON | One molecule per array entry | `conformers="first"` or `"all"` |
-| PDB | One molecule; compatible models become conformers | `selection`, `bonds`, `conformers` |
-| mmCIF | One molecule per coordinate-bearing block | `selection`, `bonds`, `conformers` |
-
-Exact parsing, normalization, diagnostics, and record semantics belong to the
-[molecular format reference](FORMATS.md#format-overview).
-
-Inspect imported molecules through immutable arrays and source identities:
-
-```python
-for molecule in molecules:
-    print(
-        molecule.source,
-        molecule.name,
-        molecule.atom_count,
-        molecule.bond_count,
-        molecule.conformer_names,
-        int(molecule.formal_charges.sum()),
-    )
-```
-
-One calculation plan applies to the complete collection. If a method or parameter set is inapplicable to
-one SDF record or mmCIF block, it is not executable for that collection; process records separately only
-when independent per-record policy is intentional.
+## Toolkit integrations
 
 PDB and mmCIF parsing use ChargeFW's compiled Gemmi dependency and do not require the upstream Python
 package. Converting upstream `gemmi.Structure` and `gemmi.cif.Document` objects requires the optional

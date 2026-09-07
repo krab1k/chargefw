@@ -27,7 +27,28 @@ pip install "chargefw[rdkit]"
 The base package can read PDB and mmCIF text through its compiled Gemmi dependency without installing
 the Gemmi Python package.
 
-## Basic calculation
+## Python usage
+
+### From a molecular file
+
+```python
+import chargefw
+
+molecules = chargefw.io.read("molecule.sdf", format="sdf")
+result = chargefw.calculate(
+    molecules,
+    method="qeq",
+    parameter_set="QEq_original",
+    execution="full",
+)
+print(result.assignments[0].values)
+```
+
+For reproducible scientific work, select both the method and its parameter set when the method uses
+one. Automatic selection is deterministic, but catalog priority is not a recommendation that a model
+or parameterization is scientifically preferable for a particular molecule.
+
+### From arrays
 
 ```python
 import chargefw
@@ -53,33 +74,22 @@ result = chargefw.calculate(
 print(result.assignments[0].values)
 ```
 
-For reproducible scientific work, select both the method and its parameter set when the method uses
-one. Automatic selection is deterministic, but catalog priority is not a recommendation that a model
-or parameterization is scientifically preferable for a particular molecule.
-
-## Molecular files
-
-Read a prepared molecule collection and write a complete result record:
+Write a complete result record with `chargefw.io.write()`:
 
 ```python
-import chargefw
-
-molecules = chargefw.io.read("molecules.sdf", format="sdf")
-result = chargefw.calculate(
-    molecules,
-    method="qeq",
-    parameter_set="QEq_original",
-    execution="full",
-)
 chargefw.io.write("charges.json", result, format="result-json")
 ```
 
 ## Documentation
 
-- [Python package guide](https://github.com/krab1k/chargefw/blob/main/docs/PYTHON.md)
-- [Executable Python recipes](https://github.com/krab1k/chargefw/tree/main/docs/recipes)
-- [Molecular input and charge output formats](https://github.com/krab1k/chargefw/blob/main/docs/FORMATS.md)
-- [Project design and scientific scope](https://github.com/krab1k/chargefw/blob/main/docs/PROJECT.md)
-- [Source repository](https://github.com/krab1k/chargefw)
+- **[Python API](https://github.com/krab1k/chargefw/blob/main/docs/PYTHON.md)** - read molecules,
+  calculate charges, and inspect methods and results.
+- **[Python recipes](https://github.com/krab1k/chargefw/tree/main/docs/recipes)** - run complete SDF,
+  Gemmi, RDKit, and parameter-set workflows.
+- **[Molecular formats](https://github.com/krab1k/chargefw/blob/main/docs/FORMATS.md)** - check
+  supported input, output, parsing, and mapping semantics.
+- **[Project design](https://github.com/krab1k/chargefw/blob/main/docs/PROJECT.md)** - understand the
+  architecture and scientific scope.
+- **[Source repository](https://github.com/krab1k/chargefw)** - browse the source and report issues.
 
 ChargeFW is distributed under the MIT license.

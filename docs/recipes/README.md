@@ -4,6 +4,19 @@ These executable examples demonstrate complete Python workflows. The [Python pac
 contains shorter API snippets, while the [format reference](../FORMATS.md) defines shared molecular input
 and charge output behavior.
 
+## Calculate a molecular file
+
+[`calculate_file.py`](calculate_file.py) is the shortest complete file-to-charges workflow. It reads any
+supported molecular format, calculates one explicitly selected method and parameter set in full, and
+prints each source-ordered charge array.
+
+```bash
+python docs/recipes/calculate_file.py ethanol.sdf \
+    --format sdf \
+    --method qeq \
+    --parameter-set QEq_original
+```
+
 ## Inspect imported molecules
 
 [`inspect_molecules.py`](inspect_molecules.py) reads any supported molecular format and reports the source

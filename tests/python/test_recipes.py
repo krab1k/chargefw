@@ -37,6 +37,29 @@ M  END
 
 
 class RecipeTests(unittest.TestCase):
+    def test_calculate_file_recipe(self) -> None:
+        with TemporaryDirectory() as directory:
+            input_path = Path(directory) / "water.sdf"
+            input_path.write_text(f"{WATER_MOL}$$$$\n", encoding="utf-8")
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(RECIPES / "calculate_file.py"),
+                    str(input_path),
+                    "--format",
+                    "sdf",
+                    "--method",
+                    "qeq",
+                    "--parameter-set",
+                    "QEq_original",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(completed.stdout.count("["), 1)
+
     def test_inspect_molecules_recipe(self) -> None:
         with TemporaryDirectory() as directory:
             input_path = Path(directory) / "water.sdf"
