@@ -45,17 +45,22 @@ def from_mol(molecule: Any, *, source_name: str = "") -> Molecule:
             )
         bonds.append((bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), int(order_value)))
 
-    coordinates = [
+    conformers = tuple(molecule.GetConformers())
+    coordinates = (
         [
-            (
-                conformer.GetAtomPosition(index).x,
-                conformer.GetAtomPosition(index).y,
-                conformer.GetAtomPosition(index).z,
-            )
-            for index in range(len(atoms))
+            [
+                (
+                    conformer.GetAtomPosition(index).x,
+                    conformer.GetAtomPosition(index).y,
+                    conformer.GetAtomPosition(index).z,
+                )
+                for index in range(len(atoms))
+            ]
+            for conformer in conformers
         ]
-        for conformer in molecule.GetConformers()
-    ]
+        if conformers
+        else None
+    )
     atom_names = tuple(
         atom.GetProp("_TriposAtomName")
         if atom.HasProp("_TriposAtomName")
@@ -70,7 +75,7 @@ def from_mol(molecule: Any, *, source_name: str = "") -> Molecule:
         coordinates=coordinates,
         name=name,
         atom_names=atom_names,
-        conformer_names=[str(value.GetId()) for value in molecule.GetConformers()],
+        conformer_names=[str(value.GetId()) for value in conformers],
         source_name=source_name,
         atom_ids=range(len(atoms)),
     )

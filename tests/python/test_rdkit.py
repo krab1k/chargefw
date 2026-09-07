@@ -84,7 +84,7 @@ class FakeBond:
 class FakeMol:
     def __init__(self) -> None:
         self.atoms = (FakeAtom(0, 8, "O"), FakeAtom(1, 1, "H"))
-        self.conformers = (FakeConformer(),)
+        self.conformers: tuple[FakeConformer, ...] = (FakeConformer(),)
         self.properties: dict[str, str] = {}
 
     def GetAtoms(self) -> tuple[FakeAtom, ...]:
@@ -118,6 +118,18 @@ class FakeChemistry:
 
 
 class RdkitAdapterTests(unittest.TestCase):
+    def test_conversion_without_conformers_supports_coordinate_independent_methods(self) -> None:
+        target = FakeMol()
+        target.conformers = ()
+
+        with patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry):
+            molecule = chargefw_rdkit.from_mol(target)
+
+        self.assertEqual(molecule.coordinates.shape, (0, 2, 3))
+        self.assertFalse(molecule.has_coordinates)
+        result = chargefw.calculate(molecule, method="formal")
+        np.testing.assert_array_equal(result.assignments[0].values, [0.0, 0.0])
+
     def test_conversion_and_charge_attachment(self) -> None:
         target = FakeMol()
         with patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry):
