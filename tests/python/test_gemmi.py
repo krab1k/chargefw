@@ -7,11 +7,11 @@ from tempfile import TemporaryDirectory
 from typing import Any, cast
 from unittest.mock import patch
 
+import chargefw.io.gemmi
 import gemmi
 import numpy as np
 from chargefw import calculate
 from chargefw import io as chargefw_io
-from chargefw.io import gemmi as chargefw_gemmi
 
 PDB_TEXT = """HEADER    TEST PDB
 TITLE     TWO MODELS
@@ -185,10 +185,10 @@ class GemmiAdapterTests(unittest.TestCase):
     def test_object_conversion_reports_missing_optional_dependency(self) -> None:
         missing_gemmi = ModuleNotFoundError("No module named 'gemmi'", name="gemmi")
         with (
-            patch.object(chargefw_gemmi, "import_module", side_effect=missing_gemmi),
+            patch.object(chargefw.io.gemmi, "import_module", side_effect=missing_gemmi),
             self.assertRaisesRegex(ImportError, r"pip install chargefw\[gemmi\]"),
         ):
-            chargefw_gemmi.from_structure(cast(Any, object()))
+            chargefw.io.gemmi.from_structure(cast(Any, object()))
 
     def test_pdb_text_file_and_structure_preserve_mapping(self) -> None:
         text_collection = chargefw_io.parse(
@@ -214,7 +214,7 @@ class GemmiAdapterTests(unittest.TestCase):
         np.testing.assert_array_equal(file_molecule.coordinates, text_molecule.coordinates)
 
         structure = gemmi.read_pdb_string(PDB_TEXT)
-        structure_collection = chargefw_gemmi.from_structure(structure, source_name="structure")
+        structure_collection = chargefw.io.gemmi.from_structure(structure, source_name="structure")
         self.assertEqual(len(structure_collection), 1)
         structure_molecule = structure_collection[0]
         np.testing.assert_array_equal(
@@ -236,7 +236,7 @@ class GemmiAdapterTests(unittest.TestCase):
         self.assertEqual([value.atom_count for value in from_file], [2, 1])
 
         document = gemmi.cif.read_string(MMCIF_TEXT)
-        from_document = chargefw_gemmi.from_document(document, source_name="document")
+        from_document = chargefw.io.gemmi.from_document(document, source_name="document")
         self.assertEqual([value.record_id for value in from_document], ["first", "second"])
         np.testing.assert_array_equal(from_document[0].coordinates, collection[0].coordinates)
 
@@ -244,10 +244,10 @@ class GemmiAdapterTests(unittest.TestCase):
         import gemmi
 
         document = gemmi.cif.read_string(MMCIF_TEXT)
-        molecules = chargefw_gemmi.from_document(document)
+        molecules = chargefw.io.gemmi.from_document(document)
         result = calculate(molecules, method="formal")
 
-        chargefw_gemmi.attach_charges(document, result)
+        chargefw.io.gemmi.attach_charges(document, result)
 
         for expected_count, block in zip((4, 1), document, strict=True):
             self.assertIn("_sb_ncbr_partial_atomic_charges.", block.get_mmcif_category_names())
@@ -256,8 +256,8 @@ class GemmiAdapterTests(unittest.TestCase):
             )
             self.assertEqual(len(charges), expected_count)
         with self.assertRaisesRegex(ValueError, "already contains partial charge categories"):
-            chargefw_gemmi.attach_charges(document, result)
-        chargefw_gemmi.attach_charges(document, result, overwrite=True)
+            chargefw.io.gemmi.attach_charges(document, result)
+        chargefw.io.gemmi.attach_charges(document, result, overwrite=True)
 
     def test_selection_conformers_and_types_are_explicit(self) -> None:
         polymers = chargefw_io.parse(
@@ -273,12 +273,10 @@ class GemmiAdapterTests(unittest.TestCase):
             "calculation_provenance"
         ]["requested"]
         self.assertEqual(requested["input"], {"conformers": "first"})
-        self.assertEqual(
-            requested["structural_input"], {"selection": "polymers", "bonds": "none"}
-        )
+        self.assertEqual(requested["structural_input"], {"selection": "polymers", "bonds": "none"})
 
         with self.assertRaises(TypeError):
-            chargefw_gemmi.from_structure(cast(Any, object()))
+            chargefw.io.gemmi.from_structure(cast(Any, object()))
         with self.assertRaises(ValueError):
             chargefw_io.parse(PDB_TEXT, format="pdb", selection=cast(Any, "invalid"))
         with self.assertRaises(ValueError):

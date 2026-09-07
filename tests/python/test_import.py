@@ -66,6 +66,8 @@ def test_import_surface() -> None:
     assert chargefw.io.__all__ == [
         "InputFormat",
         "OutputFormat",
+        "INPUT_FORMATS",
+        "OUTPUT_FORMATS",
         "SdfVersion",
         "RecordSelection",
         "BondStrategy",
@@ -75,6 +77,15 @@ def test_import_surface() -> None:
         "dumps",
         "write",
     ]
+    assert chargefw.io.INPUT_FORMATS == (
+        "mol",
+        "sdf",
+        "mol2",
+        "molecule-json",
+        "pdb",
+        "mmcif",
+    )
+    assert chargefw.io.OUTPUT_FORMATS == ("sdf", "mol2", "mmcif", "result-json")
     assert chargefw.io.gemmi.__all__ == ["from_structure", "from_document", "attach_charges"]
     assert chargefw.io.rdkit.__all__ == ["from_mol", "attach_charges"]
     assert not hasattr(_chargefw.calculation, "ExecutionMode")

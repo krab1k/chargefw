@@ -20,10 +20,10 @@ RecordSelection: TypeAlias = Literal["all", "polymers-and-ligands", "polymers"]
 BondStrategy: TypeAlias = Literal["none", "explicit", "templates", "hybrid"]
 ConformerSelection: TypeAlias = Literal["first", "all"]
 
-_INPUT_FORMATS = frozenset(("mol", "sdf", "mol2", "molecule-json", "pdb", "mmcif"))
+INPUT_FORMATS: tuple[InputFormat, ...] = ("mol", "sdf", "mol2", "molecule-json", "pdb", "mmcif")
+OUTPUT_FORMATS: tuple[OutputFormat, ...] = ("sdf", "mol2", "mmcif", "result-json")
 _STRUCTURAL_FORMATS = frozenset(("pdb", "mmcif"))
 _MULTI_CONFORMER_FORMATS = frozenset(("molecule-json", "pdb", "mmcif"))
-_OUTPUT_FORMATS = frozenset(("sdf", "mol2", "mmcif", "result-json"))
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,7 +86,7 @@ def _validate_options(
 ) -> None:
     if not isinstance(format, str):
         raise TypeError("format must be a string")
-    if format not in _INPUT_FORMATS:
+    if format not in INPUT_FORMATS:
         raise ValueError(f"unsupported molecular input format: {format}")
     if format not in _STRUCTURAL_FORMATS:
         if selection != "all":
@@ -155,7 +155,7 @@ def dumps(
         raise TypeError("result must be a CalculationResult")
     if not isinstance(format, str):
         raise TypeError("format must be a string")
-    if format not in _OUTPUT_FORMATS:
+    if format not in OUTPUT_FORMATS:
         raise ValueError(f"unsupported calculation output format: {format}")
     if sdf_version is not None and format != "sdf":
         raise ValueError("sdf_version is only supported for SDF output")
@@ -211,6 +211,8 @@ def write(
 __all__ = [
     "InputFormat",
     "OutputFormat",
+    "INPUT_FORMATS",
+    "OUTPUT_FORMATS",
     "SdfVersion",
     "RecordSelection",
     "BondStrategy",
