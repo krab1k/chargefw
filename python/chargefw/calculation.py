@@ -280,7 +280,11 @@ def calculate(
     threads: int | None = None,
     observer: CalculationObserver | None = None,
 ) -> CalculationResult:
-    """Calculate molecules with an assessed plan, or assess and use the default plan."""
+    """Calculate molecules with an assessed plan, or assess and use the default plan.
+
+    Without an explicit method, selection uses deterministic catalog priority among applicable
+    methods.
+    """
 
     collection = _as_collection(molecules)
     native_observer = _observer_adapter(observer)
