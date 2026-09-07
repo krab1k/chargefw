@@ -1,0 +1,85 @@
+# ChargeFW for Python
+
+ChargeFW calculates empirical partial atomic charges through Python bindings to its native C++
+calculation engine. It provides 22 charge methods, bundled parameter sets, deterministic applicability
+and execution planning, source-ordered result mapping, molecular-file input and output, and optional
+Gemmi and RDKit integration.
+
+ChargeFW expects prepared molecular graphs with formal charges and any coordinates required by the
+selected method. It does not parse SMILES, add hydrogens, choose protonation states, perceive arbitrary
+bonds, or generate coordinates.
+
+## Installation
+
+ChargeFW requires Python 3.10 or newer:
+
+```bash
+pip install chargefw
+```
+
+Install an optional toolkit integration when converting existing toolkit objects:
+
+```bash
+pip install "chargefw[gemmi]"
+pip install "chargefw[rdkit]"
+```
+
+The base package can read PDB and mmCIF text through its compiled Gemmi dependency without installing
+the Gemmi Python package.
+
+## Basic calculation
+
+```python
+import chargefw
+
+molecule = chargefw.Molecule(
+    atomic_numbers=[8, 1, 1],
+    formal_charges=[0, 0, 0],
+    bonds=[[0, 1, 1], [0, 2, 1]],
+    coordinates=[
+        [0.0, 0.0, 0.0],
+        [0.96, 0.0, 0.0],
+        [-0.24, 0.93, 0.0],
+    ],
+    name="water",
+)
+
+result = chargefw.calculate(
+    molecule,
+    method="qeq",
+    parameter_set="QEq_original",
+    execution="full",
+)
+print(result.assignments[0].values)
+```
+
+For reproducible scientific work, select both the method and its parameter set when the method uses
+one. Automatic selection is deterministic, but catalog priority is not a recommendation that a model
+or parameterization is scientifically preferable for a particular molecule.
+
+## Molecular files
+
+Read a prepared molecule collection and write a complete result record:
+
+```python
+import chargefw
+
+molecules = chargefw.io.read("molecules.sdf", format="sdf")
+result = chargefw.calculate(
+    molecules,
+    method="qeq",
+    parameter_set="QEq_original",
+    execution="full",
+)
+chargefw.io.write("charges.json", result, format="result-json")
+```
+
+## Documentation
+
+- [Python package guide](https://github.com/krab1k/chargefw/blob/main/docs/PYTHON.md)
+- [Executable Python recipes](https://github.com/krab1k/chargefw/tree/main/docs/recipes)
+- [Molecular input and charge output formats](https://github.com/krab1k/chargefw/blob/main/docs/FORMATS.md)
+- [Project design and scientific scope](https://github.com/krab1k/chargefw/blob/main/docs/PROJECT.md)
+- [Source repository](https://github.com/krab1k/chargefw)
+
+ChargeFW is distributed under the MIT license.
