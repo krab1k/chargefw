@@ -109,6 +109,7 @@ def _observer_adapter(observer: CalculationObserver | None) -> _NativeObserverAd
         raise TypeError("observer must be a CalculationObserver or None")
     return _NativeObserverAdapter(observer)
 
+
 for _value_type in (
     RequestedCalculation,
     ExecutionPolicy,
@@ -156,6 +157,27 @@ def _default_parameter_descriptors() -> ParameterSetCatalog:
 
 parameter_sets = _default_parameter_descriptors()
 methods = _method_catalog(parameter_sets)
+
+
+def _validate_parameter_set_id(requested: RequestedCalculation) -> None:
+    if requested.parameter_set is None:
+        return
+    try:
+        parameter_set = parameter_sets[requested.parameter_set]
+    except KeyError:
+        raise ValueError(
+            f"unknown parameter set {requested.parameter_set!r}; "
+            "inspect chargefw.parameter_sets for available IDs"
+        ) from None
+    if (
+        requested.method is not None
+        and requested.method in methods
+        and parameter_set.method != requested.method
+    ):
+        raise ValueError(
+            f"parameter set {parameter_set.id!r} belongs to method "
+            f"{parameter_set.method!r}, not {requested.method!r}"
+        )
 
 
 def _as_collection(value: Molecule | MoleculeCollection | Iterable[Molecule]) -> MoleculeCollection:
@@ -233,6 +255,7 @@ def assess(
         cover_threshold=cover_threshold,
         threads=threads,
     )
+    _validate_parameter_set_id(requested)
     collection = _as_collection(molecules)
     native = _native_calculation._make_assessment(
         collection._native_molecules,

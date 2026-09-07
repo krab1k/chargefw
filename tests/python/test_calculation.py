@@ -160,9 +160,7 @@ class CalculationTests(unittest.TestCase):
         molecule_count = 64
         observer = CountingObserver()
         result = chargefw.calculate(
-            chargefw.MoleculeCollection(
-                chargefw.Molecule([1]) for _ in range(molecule_count)
-            ),
+            chargefw.MoleculeCollection(chargefw.Molecule([1]) for _ in range(molecule_count)),
             method="formal",
             execution="full",
             threads=2,
@@ -615,13 +613,14 @@ class CalculationTests(unittest.TestCase):
         )
 
     def test_invalid_selection_requests_raise_value_error(self) -> None:
-        invalid_requests: tuple[dict[str, Any], ...] = (
-            {"method": "not-a-method"},
-            {"method": "eem", "parameter_set": "not-a-parameter-set"},
-        )
-        for arguments in invalid_requests:
-            with self.subTest(arguments=arguments), self.assertRaises(ValueError):
-                chargefw.assess(water(), **arguments)
+        with self.assertRaises(ValueError):
+            chargefw.assess(water(), method="not-a-method")
+
+        with self.assertRaises(ValueError):
+            chargefw.assess(water(), method="eem", parameter_set="not-a-parameter-set")
+
+        with self.assertRaises(ValueError):
+            chargefw.assess(water(), method="eem", parameter_set="QEq_original")
 
     def test_results_outlive_calculation_inputs(self) -> None:
         def calculate_owned_result() -> tuple[chargefw.CalculationResult, chargefw.Plan]:
