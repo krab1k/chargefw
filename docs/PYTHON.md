@@ -172,7 +172,8 @@ default to source-order integers.
 ## Methods and parameter sets
 
 The package-level `chargefw.methods` and `chargefw.parameter_sets` values are immutable ordered mappings
-with lookup by stable ID:
+with lookup by stable ID. Select by ID or pass a descriptor from these mappings to `assess()` or
+`calculate()`:
 
 ```python
 eem = chargefw.methods["eem"]

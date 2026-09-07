@@ -46,11 +46,8 @@ def test_import_surface() -> None:
         "Rejection",
         "ExecutedPlan",
         "CalculationTimings",
-        "MethodOptionCatalog",
         "MethodOption",
-        "MethodCatalog",
         "Method",
-        "ParameterSetCatalog",
         "ParameterSet",
         "io",
     ]
@@ -58,8 +55,9 @@ def test_import_surface() -> None:
     assert chargefw.RequestedCalculation is chargefw.calculation.RequestedCalculation
     assert chargefw.CalculationObserver is chargefw.calculation.CalculationObserver
     assert chargefw.CalculationProgress is chargefw.calculation.CalculationProgress
-    assert isinstance(chargefw.methods, chargefw.MethodCatalog)
-    assert isinstance(chargefw.parameter_sets, chargefw.ParameterSetCatalog)
+    assert not hasattr(chargefw, "MethodCatalog")
+    assert not hasattr(chargefw, "MethodOptionCatalog")
+    assert not hasattr(chargefw, "ParameterSetCatalog")
     assert chargefw.calculate is chargefw.calculation.calculate
     assert chargefw.assess is chargefw.calculation.assess
     assert chargefw.io is chargefw.io

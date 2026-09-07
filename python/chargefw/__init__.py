@@ -1,15 +1,9 @@
 """ChargeFW Python API."""
 
+from . import io as io
 from ._chargefw import version as _native_version
-from ._methods import (
-    ExecutionIssue,
-    Method,
-    MethodCatalog,
-    MethodOption,
-    MethodOptionCatalog,
-    PrerequisiteIssue,
-)
-from ._parameters import ParameterSet, ParameterSetCatalog
+from ._methods import ExecutionIssue, Method, MethodOption, PrerequisiteIssue
+from ._parameters import ParameterSet
 from .calculation import (
     Assessment,
     CalculationCancelledError,
@@ -33,7 +27,6 @@ from .calculation import (
 )
 from .charges import ChargeAssignment
 from .core import Molecule, MoleculeCollection, SourceIdentity
-from . import io as io
 
 __version__ = _native_version()
 
@@ -64,11 +57,8 @@ __all__ = [
     "Rejection",
     "ExecutedPlan",
     "CalculationTimings",
-    "MethodOptionCatalog",
     "MethodOption",
-    "MethodCatalog",
     "Method",
-    "ParameterSetCatalog",
     "ParameterSet",
     "io",
 ]

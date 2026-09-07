@@ -2,7 +2,7 @@
 
 import gc
 import unittest
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock, Thread
 from time import perf_counter, sleep
@@ -728,9 +728,12 @@ class CalculationTests(unittest.TestCase):
         self.assertFalse(hasattr(chargefw, "load_parameter_set"))
         self.assertFalse(hasattr(chargefw, "load_parameter_sets"))
         self.assertFalse(hasattr(chargefw, "method_descriptors"))
+        self.assertFalse(hasattr(chargefw, "MethodCatalog"))
+        self.assertFalse(hasattr(chargefw, "MethodOptionCatalog"))
+        self.assertFalse(hasattr(chargefw, "ParameterSetCatalog"))
 
         methods = chargefw.methods
-        self.assertIsInstance(methods, chargefw.MethodCatalog)
+        self.assertIsInstance(methods, Mapping)
         self.assertIn("eem", methods)
         self.assertEqual(methods.get("eem"), methods["eem"])
         self.assertIsNone(methods.get("not-a-method"))
@@ -753,7 +756,7 @@ class CalculationTests(unittest.TestCase):
         )
         peoe = methods["peoe"]
         self.assertEqual(len(peoe.options), 1)
-        self.assertIsInstance(peoe.options, chargefw.MethodOptionCatalog)
+        self.assertIsInstance(peoe.options, Mapping)
         self.assertEqual(peoe.options["iters"].id, "iters")
         self.assertEqual(peoe.options["iters"].type, "integer")
         self.assertEqual(peoe.options["iters"].default, 6)
@@ -763,7 +766,7 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(overlap.type, "string")
         self.assertIn("Ohno", overlap.choices)
 
-        self.assertIsInstance(chargefw.parameter_sets, chargefw.ParameterSetCatalog)
+        self.assertIsInstance(chargefw.parameter_sets, Mapping)
         parameter_set = next(iter(eem.parameter_sets.values()))
         self.assertEqual(chargefw.parameter_sets[parameter_set.id], parameter_set)
         result = chargefw.calculate(

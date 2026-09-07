@@ -130,8 +130,6 @@ for _value_type in (
     PrerequisiteIssue,
     ExecutionIssue,
     MethodOption,
-    MethodOptionCatalog,
     Method,
-    MethodCatalog,
 ):
     _value_type.__module__ = "chargefw"

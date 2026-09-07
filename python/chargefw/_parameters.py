@@ -53,4 +53,3 @@ def _parameter_set(value: ParameterSetDescriptorPayload) -> ParameterSet:
 
 
 ParameterSet.__module__ = "chargefw"
-ParameterSetCatalog.__module__ = "chargefw"
