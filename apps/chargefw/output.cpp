@@ -253,16 +253,6 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
 
     const auto structural_output = export_context.format == ImportedExportContext::Format::pdb ||
                                    export_context.format == ImportedExportContext::Format::mmcif;
-    if (!structural_output && export_context.format == ImportedExportContext::Format::json &&
-        std::ranges::any_of(export_context.records,
-                            [](const adapters::ImportedMoleculeRecord& record) {
-                                const auto& molecule = record.molecule;
-                                return molecule.conformer_count() > 1;
-                            })) {
-        throw std::runtime_error{
-            "JSON input with multiple conformers cannot be written to SDF or MOL2"};
-    }
-
     const auto* charges = result.charges ? std::addressof(*result.charges) : nullptr;
     if (charges == nullptr) {
         throw std::runtime_error{"calculation result is missing charges"};

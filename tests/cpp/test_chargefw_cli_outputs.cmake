@@ -156,6 +156,61 @@ if(NOT mixed_record_count EQUAL 2 OR NOT mixed_first_id STREQUAL "v2000" OR
 endif()
 file(REMOVE_RECURSE "${mixed_output_directory}")
 
+set(multiconformer_input "${CMAKE_CURRENT_BINARY_DIR}/multi_conformer.json")
+set(multiconformer_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_multiconformer")
+set(multiconformer_output_prefix "${multiconformer_output_directory}/multi_conformer.chargefw")
+file(WRITE "${multiconformer_input}" [=[
+{
+  "schema_version": "1.0",
+  "molecules": [{
+    "id": "oxygen",
+    "atoms": [{"atomic_number": 8, "formal_charge": 0}],
+    "conformers": [
+      {"id": "first", "coordinates": [[1.25, 2.5, 3.75]]},
+      {"id": "second", "coordinates": [[9.5, 8.5, 7.5]]}
+    ]
+  }]
+}
+]=])
+file(REMOVE_RECURSE "${multiconformer_output_directory}")
+execute_process(
+        COMMAND "${CHARGEFW_CLI}" calculate --method formal "${multiconformer_input}"
+                "${multiconformer_output_directory}"
+        RESULT_VARIABLE multiconformer_result
+        ERROR_VARIABLE multiconformer_error
+)
+if(NOT multiconformer_result EQUAL 0)
+    message(FATAL_ERROR "multi-conformer JSON CLI calculation failed: ${multiconformer_error}")
+endif()
+foreach(extension IN ITEMS json sdf mol2 cif)
+    if(NOT EXISTS "${multiconformer_output_prefix}.${extension}")
+        message(FATAL_ERROR "multi-conformer JSON CLI output was not created: ${extension}")
+    endif()
+endforeach()
+
+file(READ "${multiconformer_output_prefix}.sdf" multiconformer_sdf)
+string(FIND "${multiconformer_sdf}" "1.2500" sdf_first_position)
+string(FIND "${multiconformer_sdf}" "9.5000" sdf_second_position)
+if(sdf_first_position EQUAL -1 OR NOT sdf_second_position EQUAL -1)
+    message(FATAL_ERROR "generated SDF did not select conformer zero")
+endif()
+
+file(READ "${multiconformer_output_prefix}.mol2" multiconformer_mol2)
+string(FIND "${multiconformer_mol2}" "1.25 2.5 3.75" mol2_first_position)
+string(FIND "${multiconformer_mol2}" "9.5 8.5 7.5" mol2_second_position)
+if(mol2_first_position EQUAL -1 OR NOT mol2_second_position EQUAL -1)
+    message(FATAL_ERROR "generated MOL2 did not select conformer zero")
+endif()
+
+file(READ "${multiconformer_output_prefix}.cif" multiconformer_cif)
+string(FIND "${multiconformer_cif}" "1.250000 2.500000 3.750000" cif_first_position)
+string(FIND "${multiconformer_cif}" "9.500000 8.500000 7.500000" cif_second_position)
+if(cif_first_position EQUAL -1 OR cif_second_position EQUAL -1)
+    message(FATAL_ERROR "generated mmCIF did not retain every conformer")
+endif()
+file(REMOVE "${multiconformer_input}")
+file(REMOVE_RECURSE "${multiconformer_output_directory}")
+
 set(deterministic_result "")
 foreach(run IN ITEMS 1 2)
     set(deterministic_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_deterministic_${run}")
