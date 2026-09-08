@@ -70,20 +70,46 @@ class FakeAtom:
         self.properties[name] = value
 
 
+class FakeBondType:
+    SINGLE = "SINGLE"
+    DOUBLE = "DOUBLE"
+    TRIPLE = "TRIPLE"
+    AROMATIC = "AROMATIC"
+    DATIVEONE = "DATIVEONE"
+    DATIVE = "DATIVE"
+    DATIVEL = "DATIVEL"
+    DATIVER = "DATIVER"
+    ZERO = "ZERO"
+
+
 class FakeBond:
+    def __init__(
+        self, bond_type: str = FakeBondType.SINGLE, *, aromatic: bool = False, query: bool = False
+    ) -> None:
+        self.bond_type = bond_type
+        self.aromatic = aromatic
+        self.query = query
+
     def GetBeginAtomIdx(self) -> int:
         return 0
 
     def GetEndAtomIdx(self) -> int:
         return 1
 
-    def GetBondTypeAsDouble(self) -> float:
-        return 1.0
+    def HasQuery(self) -> bool:
+        return self.query
+
+    def GetBondType(self) -> str:
+        return self.bond_type
+
+    def GetIsAromatic(self) -> bool:
+        return self.aromatic
 
 
 class FakeMol:
     def __init__(self) -> None:
         self.atoms = (FakeAtom(0, 8, "O"), FakeAtom(1, 1, "H"))
+        self.bonds = (FakeBond(),)
         self.conformers: tuple[FakeConformer, ...] = (FakeConformer(),)
         self.properties: dict[str, str] = {}
 
@@ -91,7 +117,7 @@ class FakeMol:
         return self.atoms
 
     def GetBonds(self) -> tuple[FakeBond, ...]:
-        return (FakeBond(),)
+        return self.bonds
 
     def GetConformers(self) -> tuple[FakeConformer, ...]:
         return self.conformers
@@ -111,6 +137,7 @@ class FakeMol:
 
 class FakeChemistry:
     Mol = FakeMol
+    BondType = FakeBondType
 
     @staticmethod
     def CreateAtomDoublePropertyList(molecule: FakeMol, name: str) -> None:
@@ -143,6 +170,59 @@ class RdkitAdapterTests(unittest.TestCase):
         self.assertEqual(molecule.atom_ids, (0, 1))
         self.assertEqual(target.atoms[0].properties["ChargeFWPartialCharge"], 0.0)
         self.assertEqual(target.properties["atom.dprop.ChargeFWPartialCharge"], "created")
+
+    def test_conversion_rejects_unsupported_bond_types_by_default(self) -> None:
+        for bond_type in (FakeBondType.AROMATIC, FakeBondType.DATIVE, FakeBondType.DATIVEONE):
+            with self.subTest(bond_type=bond_type):
+                target = FakeMol()
+                target.bonds = (FakeBond(bond_type),)
+                with (
+                    patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
+                    self.assertRaisesRegex(ValueError, f"unsupported bond type {bond_type}"),
+                ):
+                    chargefw_rdkit.from_mol(target)
+
+    def test_single_conversion_normalizes_only_aromatic_and_dative_bonds(self) -> None:
+        for bond_type in (
+            FakeBondType.AROMATIC,
+            FakeBondType.DATIVEONE,
+            FakeBondType.DATIVE,
+            FakeBondType.DATIVEL,
+            FakeBondType.DATIVER,
+        ):
+            with self.subTest(bond_type=bond_type):
+                target = FakeMol()
+                target.bonds = (FakeBond(bond_type),)
+                with patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry):
+                    molecule = chargefw_rdkit.from_mol(target, bond_conversion="single")
+                self.assertEqual(molecule.bonds.tolist(), [[0, 1, 1]])
+
+        target = FakeMol()
+        target.bonds = (FakeBond(FakeBondType.ZERO),)
+        with (
+            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
+            self.assertRaisesRegex(ValueError, "unsupported bond type ZERO"),
+        ):
+            chargefw_rdkit.from_mol(target, bond_conversion="single")
+
+        target.bonds = (FakeBond(query=True),)
+        with (
+            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
+            self.assertRaisesRegex(ValueError, "query bonds cannot be imported"),
+        ):
+            chargefw_rdkit.from_mol(target, bond_conversion="single")
+
+    def test_bond_conversion_is_validated(self) -> None:
+        with (
+            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
+            self.assertRaisesRegex(TypeError, "bond_conversion must be a string"),
+        ):
+            chargefw_rdkit.from_mol(FakeMol(), bond_conversion=True)  # type: ignore[arg-type]
+        with (
+            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
+            self.assertRaisesRegex(ValueError, "bond_conversion must be 'none' or 'single'"),
+        ):
+            chargefw_rdkit.from_mol(FakeMol(), bond_conversion="all")  # type: ignore[arg-type]
 
     def test_attachment_requires_a_bijective_atom_mapping(self) -> None:
         target = FakeMol()
@@ -196,6 +276,29 @@ class RdkitAdapterTests(unittest.TestCase):
             loaded = Chem.SDMolSupplier(str(path), sanitize=False, removeHs=False)[0]
             self.assertIsNotNone(loaded)
             self.assertEqual(loaded.GetAtomWithIdx(0).GetDoubleProp("ChargeFWPartialCharge"), 0.0)
+
+    @unittest.skipIf(Chem is None, "RDKit is not installed")
+    def test_real_rdkit_aromatic_and_dative_bond_conversion(self) -> None:
+        assert Chem is not None
+        aromatic = Chem.MolFromSmiles("c1ccccc1")
+        self.assertIsNotNone(aromatic)
+        with self.assertRaisesRegex(ValueError, "unsupported bond type AROMATIC"):
+            chargefw_rdkit.from_mol(aromatic)
+        normalized = chargefw_rdkit.from_mol(aromatic, bond_conversion="single")
+        self.assertTrue(np.all(normalized.bonds[:, 2] == 1))
+
+        for name in ("DATIVE", "DATIVEONE"):
+            with self.subTest(bond_type=name):
+                editable = Chem.RWMol()
+                editable.AddAtom(Chem.Atom(7))
+                editable.AddAtom(Chem.Atom(26))
+                editable.AddBond(0, 1, getattr(Chem.BondType, name))
+                target = editable.GetMol()
+                self.assertEqual(target.GetBondWithIdx(0).GetBondTypeAsDouble(), 1.0)
+                with self.assertRaisesRegex(ValueError, f"unsupported bond type {name}"):
+                    chargefw_rdkit.from_mol(target)
+                normalized = chargefw_rdkit.from_mol(target, bond_conversion="single")
+                self.assertEqual(normalized.bonds.tolist(), [[0, 1, 1]])
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from importlib import import_module
 from operator import index as as_index
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast
 
 import numpy as np
 
@@ -13,6 +13,8 @@ from ..core import Molecule
 if TYPE_CHECKING:
     from ..calculation import CalculationResult
     from ..charges import ChargeAssignment
+
+BondConversion: TypeAlias = Literal["none", "single"]
 
 
 def _require_rdkit() -> Any:
@@ -26,24 +28,51 @@ def _require_rdkit() -> Any:
         ) from error
 
 
-def from_mol(molecule: Any, *, source_name: str = "") -> Molecule:
-    """Copy an existing RDKit molecule without preparation or sanitization."""
+def from_mol(
+    molecule: Any, *, source_name: str = "", bond_conversion: BondConversion = "none"
+) -> Molecule:
+    """Copy an RDKit molecule, optionally converting aromatic and dative bonds to single."""
 
     chemistry = _require_rdkit()
     if not isinstance(molecule, chemistry.Mol):
         raise TypeError("molecule must be an rdkit.Chem.Mol")
     if not isinstance(source_name, str):
         raise TypeError("source_name must be a string")
+    if not isinstance(bond_conversion, str):
+        raise TypeError("bond_conversion must be a string")
+    if bond_conversion not in ("none", "single"):
+        raise ValueError("bond_conversion must be 'none' or 'single'")
 
     atoms = tuple(molecule.GetAtoms())
     bonds: list[tuple[int, int, int]] = []
+    direct_bond_orders = {
+        chemistry.BondType.SINGLE: 1,
+        chemistry.BondType.DOUBLE: 2,
+        chemistry.BondType.TRIPLE: 3,
+    }
+    normalized_bond_types = {
+        value
+        for name in ("AROMATIC", "DATIVEONE", "DATIVE", "DATIVEL", "DATIVER")
+        if (value := getattr(chemistry.BondType, name, None)) is not None
+    }
     for bond in molecule.GetBonds():
-        order_value = bond.GetBondTypeAsDouble()
-        if order_value not in (1.0, 2.0, 3.0):
+        if bond.HasQuery():
+            raise ValueError("RDKit query bonds cannot be imported as molecular input")
+        bond_type = bond.GetBondType()
+        is_aromatic = bond.GetIsAromatic()
+        order = direct_bond_orders.get(bond_type) if not is_aromatic else None
+        if (
+            order is None
+            and bond_conversion == "single"
+            and (is_aromatic or bond_type in normalized_bond_types)
+        ):
+            order = 1
+        if order is None:
             raise ValueError(
-                "RDKit molecule contains a bond that is not explicitly single, double, or triple"
+                f"RDKit molecule contains unsupported bond type {bond_type}; only explicit single, "
+                "double, and triple bonds are accepted without bond conversion"
             )
-        bonds.append((bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), int(order_value)))
+        bonds.append((bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), order))
 
     conformers = tuple(molecule.GetConformers())
     coordinates = (
@@ -176,4 +205,4 @@ def attach_charges(
         create_property_list(molecule, property_name)
 
 
-__all__ = ["from_mol", "attach_charges"]
+__all__ = ["BondConversion", "from_mol", "attach_charges"]
