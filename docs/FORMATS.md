@@ -167,7 +167,8 @@ generation is limited to 999 atoms and 999 bonds. Generation requires coordinate
 ### MOL2
 
 Preservation-oriented output retains source text and replaces the ninth atom field with each calculated
-charge. If source atom rows have no substructure and charge fields, `1 UNL` and the charge are added.
+charge. If source atom rows omit it, only the missing fields are added: six-field rows receive `1 UNL`
+before the charge, seven-field rows receive `UNL`, and eight-field rows receive only the charge.
 
 Generated output writes a `SMALL` molecule with `USER_CHARGES`, native atom and bond order, the first
 retained conformer, and its conformer-specific or molecule-level charge assignment. Generated atom types

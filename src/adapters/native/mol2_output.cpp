@@ -46,7 +46,13 @@ constexpr std::string_view bond_marker{"@<TRIPOS>BOND"};
     if (const auto range = field_range(content, 8); range.has_value()) {
         result.replace(range->first, range->second - range->first, formatted);
     } else {
-        result += " 1 UNL ";
+        if (!field_range(content, 6).has_value()) {
+            result += " 1";
+        }
+        if (!field_range(content, 7).has_value()) {
+            result += " UNL";
+        }
+        result += ' ';
         result += formatted;
     }
     result += ending;

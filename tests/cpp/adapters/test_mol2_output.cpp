@@ -1,3 +1,4 @@
+#include <chargefw/adapters/native/mol2_input.h>
 #include <chargefw/adapters/native/mol2_output.h>
 #include <chargefw/charges/atomic_charges.h>
 #include <chargefw/charges/charge_collection.h>
@@ -16,6 +17,7 @@
 #include <vector>
 
 namespace mol2_output = chargefw::adapters::native::mol2_output;
+namespace mol2_input = chargefw::adapters::native::mol2_input;
 namespace charges = chargefw::charges;
 
 namespace {
@@ -83,6 +85,46 @@ TEST_CASE("MOL2 output preserves source structure and replaces atom charges", "[
         CHECK(text.contains("1 C1 0 0 0 C.3 1 UNL -0.1000"));
         CHECK(text.contains("2 H1 1 0 0 H 1 UNL 0.1000"));
         std::filesystem::remove(source);
+    }
+
+    {
+        constexpr auto source = "@<TRIPOS>MOLECULE\nmissing charges\n3 0 0 0 0\nSMALL\n"
+                                "NO_CHARGES\n\n@<TRIPOS>ATOM\n"
+                                "1 C1 0 0 0 C.3\n"
+                                "2 N1 1 0 0 N.3 7\n"
+                                "3 O1 2 0 0 O.2 8 RES\n"
+                                "@<TRIPOS>BOND\n";
+        auto output = std::ostringstream{};
+        const auto assignments = std::vector{assignment({-0.1, 0.2, -0.3})};
+        mol2_output::Mol2Writer{output}.write_preserving_buffer(source, assignments);
+        const auto text = output.str();
+
+        auto round_trip_input = std::istringstream{text};
+        auto reader = mol2_input::Mol2Reader{round_trip_input, "missing_charges.mol2"};
+        const auto record = reader.next();
+        REQUIRE(record.has_value());
+        CHECK(record->molecule.atom_count() == 3);
+        CHECK_FALSE(reader.next().has_value());
+
+        constexpr auto atom_marker = std::string_view{"@<TRIPOS>ATOM\n"};
+        auto atom_lines =
+            std::istringstream{text.substr(text.find(atom_marker) + atom_marker.size())};
+        const auto expected_substructures = std::vector<std::pair<std::string, std::string>>{
+            {"1", "UNL"}, {"7", "UNL"}, {"8", "RES"}};
+        const auto expected_charges = std::vector<std::string>{"-0.1000", "0.2000", "-0.3000"};
+        for (std::size_t index = 0; index < expected_charges.size(); ++index) {
+            std::string line;
+            REQUIRE(std::getline(atom_lines, line));
+            auto fields = std::istringstream{line};
+            auto tokens = std::vector<std::string>{};
+            for (std::string token; fields >> token;) {
+                tokens.push_back(std::move(token));
+            }
+            REQUIRE(tokens.size() == 9);
+            CHECK(tokens[6] == expected_substructures[index].first);
+            CHECK(tokens[7] == expected_substructures[index].second);
+            CHECK(tokens[8] == expected_charges[index]);
+        }
     }
 
     {
