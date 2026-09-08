@@ -63,8 +63,6 @@ struct ResourcePolicy {
     // Automatic execution promotes cutoff calculations to cover above this threshold. nullopt means
     // unlimited cutoff execution.
     std::optional<std::size_t> cover_atom_threshold = default_cover_atom_threshold;
-    // Zero delegates the worker count to the oneTBB runtime.
-    std::size_t max_threads = 0;
 };
 
 } // namespace chargefw::calculation

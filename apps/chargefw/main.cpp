@@ -136,6 +136,8 @@ auto run(std::span<char*> arguments) -> int {
     chargefw::cli::add_input_options(*calculate, calculate_input);
     calculate->add_option("output", output_directory, "Output directory")->required();
     chargefw::cli::add_selection_options(*calculate, calculate_selection);
+    calculate->add_option("--threads", calculate_selection.max_threads,
+                          "Maximum calculation threads; 0 uses the oneTBB default");
     calculate->add_flag("--progress", progress, "Show calculation progress on standard error");
     chargefw::cli::add_input_options(*inspect, inspect_input);
     chargefw::cli::add_input_options(*applicability, applicability_input);
@@ -185,9 +187,9 @@ auto run(std::span<char*> arguments) -> int {
         std::chrono::duration<double>{std::chrono::steady_clock::now() - parsing_started}.count();
     auto export_context = std::move(imported.export_context);
     auto request = chargefw::cli::make_request(std::move(imported.molecules), calculate_selection);
-    const auto requested_provenance =
-        chargefw::cli::make_requested_provenance(export_context, request);
-    const auto max_threads = request.resource_policy.max_threads;
+    const auto requested_provenance = chargefw::cli::make_requested_provenance(
+        export_context, request, calculate_selection.max_threads);
+    const auto max_threads = calculate_selection.max_threads;
     const auto progress_observer = TerminalProgressObserver{};
     const auto interrupt_handler = ScopedInterruptHandler{};
     const auto interruptible_observer =

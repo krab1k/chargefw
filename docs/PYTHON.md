@@ -216,7 +216,8 @@ empirical partial-charge model.
 Flat `options` require an explicit method. `options` and `options_by_method` cannot be combined. Automatic
 execution accepts an optional radius override. Explicit full execution rejects a radius; explicit cutoff
 and cover require one. Reduced execution uniformly corrects the final molecular charge to the method
-target.
+target. On an `Assessment`, `threads` configures its default plan executions; a `threads` value passed to
+`calculate(..., plan, threads=...)` overrides that default for the individual execution.
 
 ```python
 assessment = chargefw.assess(

@@ -33,9 +33,8 @@ namespace {
 
 [[nodiscard]] auto calculate_application(
     const calculation::AssessmentRequest& request,
-    const calculation::CalculationObserver& observer = calculation::default_calculation_observer())
-    -> calculation::ExecutionResult {
-    const auto max_threads = request.resource_policy.max_threads;
+    const calculation::CalculationObserver& observer = calculation::default_calculation_observer(),
+    const std::size_t max_threads = 1) -> calculation::ExecutionResult {
     auto assessment = calculation::assess(request);
     return calculation::calculate(assessment, max_threads, observer);
 }
@@ -444,8 +443,7 @@ TEST_CASE("cancellation produces a terminal observer event", "[calculation][obse
                 .parameter_sets = {},
                 .method_id = "formal",
                 .execution_selection =
-                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-                .resource_policy = {.max_threads = 1}},
+                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
             observer);
 
         CHECK(result.cancelled());
@@ -549,8 +547,7 @@ TEST_CASE("serial cutoff execution emits aggregate fragment progress", "[calcula
                 .parameter_sets = {},
                 .execution_selection =
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
-                                                    calculation::minimum_reduced_radius},
-                .resource_policy = {.max_threads = 1}},
+                                                    calculation::minimum_reduced_radius}},
             observer);
 
         REQUIRE(result.calculated());
@@ -573,8 +570,7 @@ TEST_CASE("serial cover execution emits aggregate multi-pivot progress",
                 .parameter_sets = {},
                 .execution_selection =
                     calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cover,
-                                                    calculation::minimum_reduced_radius},
-                .resource_policy = {.max_threads = 1}},
+                                                    calculation::minimum_reduced_radius}},
             observer);
 
         REQUIRE(result.calculated());
@@ -598,8 +594,7 @@ TEST_CASE("multi-molecule target events carry source molecule identity",
                 .parameter_sets = {},
                 .method_id = "formal",
                 .execution_selection =
-                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-                .resource_policy = {.max_threads = 1}},
+                    calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}},
             observer);
 
         REQUIRE(result.calculated());
@@ -639,8 +634,7 @@ TEST_CASE("empty reduced targets do not emit fragment progress", "[calculation][
                 .molecules = core::MoleculeCollection{std::vector{empty_molecule}},
                 .parameter_sets = {},
                 .execution_selection =
-                    calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
-                .resource_policy = {.max_threads = 1}},
+                    calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius}},
             empty_observer);
         REQUIRE(result.calculated());
         CHECK(fragment_progress_events(empty_observer).empty());
@@ -658,9 +652,8 @@ TEST_CASE("parallel reduced targets each emit one terminal progress snapshot",
                                                                   chargefw::test::make_water()}},
                 .parameter_sets = {},
                 .execution_selection =
-                    calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
-                .resource_policy = {.max_threads = 2}},
-            observer);
+                    calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius}},
+            observer, 2);
         CHECK(result.calculated());
 
         for (const auto target_index : {std::size_t{0}, std::size_t{1}}) {
@@ -693,8 +686,7 @@ TEST_CASE("observer target events preserve source target identity in every execu
                     selection_kind == calculation::ExecutionSelectionKind::full
                         ? calculation::ExecutionSelection{selection_kind}
                         : calculation::ExecutionSelection{selection_kind,
-                                                          calculation::minimum_reduced_radius},
-                .resource_policy = {.max_threads = 1}},
+                                                          calculation::minimum_reduced_radius}},
             observer);
         REQUIRE(result.calculated());
         REQUIRE(result.charges->size() == 3);
@@ -755,8 +747,7 @@ TEST_CASE("reduced fragment failures finish observation with a numerical result"
             .method_id = "qeq",
             .parameter_set_id = "invalid-qeq",
             .execution_selection =
-                calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
-            .resource_policy = {.max_threads = 1}});
+                calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius}});
 
         const auto result = calculation::calculate(assessment, 1, observer);
         CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
@@ -804,9 +795,8 @@ TEST_CASE("reduced execution observes cancellation after fragment progress",
                         core::MoleculeCollection{std::vector{make_many_separated_waters()}},
                     .parameter_sets = {},
                     .execution_selection =
-                        calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
-                    .resource_policy = {.max_threads = max_threads}},
-                observer);
+                        calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius}},
+                observer, max_threads);
 
             CHECK(result.cancelled());
             CHECK(!result.calculated());

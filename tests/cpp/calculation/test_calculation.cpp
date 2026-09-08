@@ -40,11 +40,13 @@ concept HasPublicParameterSets = requires(T& value) { value.parameter_sets; };
 template <typename T>
 concept HasPublicSelectedCandidate = requires(T& value) { value.selected; };
 
+template <typename T>
+concept HasAssessmentThreadLimit = requires(T& value) { value.max_threads; };
+
 [[nodiscard]] auto calculate_application(const calculation::AssessmentRequest& request)
     -> calculation::ExecutionResult {
-    const auto max_threads = request.resource_policy.max_threads;
     auto assessment = calculation::assess(request);
-    return calculation::calculate(assessment, max_threads);
+    return calculation::calculate(assessment, 1);
 }
 
 auto make_parameter_set(std::string id, std::string method_id, const std::uint16_t priority)
@@ -127,6 +129,7 @@ auto make_permissive_peoe_parameter_set() -> chargefw::parameters::ParameterSet 
 
 static_assert(!HasPublicParameterSets<calculation::AssessmentResult>);
 static_assert(!HasPublicSelectedCandidate<calculation::AssessmentResult>);
+static_assert(!HasAssessmentThreadLimit<calculation::ResourcePolicy>);
 static_assert(std::is_move_constructible_v<calculation::AssessmentResult>);
 static_assert(!std::is_move_assignable_v<calculation::AssessmentResult>);
 
@@ -537,13 +540,13 @@ TEST_CASE("parallel calculation materializes assignments in source order",
 
     // Parallel execution may emit progress out of order, but materialized assignments always retain
     // the source molecule/conformer order.
-    const auto parallel_ordered_result = calculate_application(calculation::AssessmentRequest{
+    auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{
             chargefw::test::make_two_conformer_water(), chargefw::test::make_water()}},
         .method_id = "eqeq",
         .execution_selection =
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-        .resource_policy = {.max_threads = 2}});
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
+    const auto parallel_ordered_result = calculation::calculate(assessment, 2);
     REQUIRE(parallel_ordered_result.calculated());
     REQUIRE(parallel_ordered_result.charges->size() == 3);
     CHECK(parallel_ordered_result.charges->assignment(0).target.molecule_index == 0);

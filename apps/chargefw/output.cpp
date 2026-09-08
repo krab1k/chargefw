@@ -185,7 +185,8 @@ auto peak_resident_memory_mb() -> double {
 }
 
 auto make_requested_provenance(const ImportedExportContext& export_context,
-                               const calculation::AssessmentRequest& request)
+                               const calculation::AssessmentRequest& request,
+                               const std::size_t max_threads)
     -> adapters::RequestedCalculationProvenance {
     auto requested = adapters::RequestedCalculationProvenance{
         .method_id = request.method_id,
@@ -193,7 +194,7 @@ auto make_requested_provenance(const ImportedExportContext& export_context,
         .permissive_types = request.classification_options.permissive_types,
         .cutoff_atom_threshold = request.resource_policy.cutoff_atom_threshold,
         .cover_atom_threshold = request.resource_policy.cover_atom_threshold,
-        .max_threads = request.resource_policy.max_threads,
+        .max_threads = max_threads,
         .execution_kind = std::string{calculation::to_string(request.execution_selection.kind())},
         .execution_radius = request.execution_selection.radius(),
         .structural_input_policy =

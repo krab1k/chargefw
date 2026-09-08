@@ -75,7 +75,8 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments);
                                 const SelectionArguments& arguments)
     -> calculation::AssessmentRequest;
 [[nodiscard]] auto make_requested_provenance(const ImportedExportContext& export_context,
-                                             const calculation::AssessmentRequest& request)
+                                             const calculation::AssessmentRequest& request,
+                                             std::size_t max_threads)
     -> adapters::RequestedCalculationProvenance;
 
 void print_inspection(const ImportedCollection& imported);

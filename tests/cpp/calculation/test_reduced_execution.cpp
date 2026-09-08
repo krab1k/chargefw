@@ -40,9 +40,8 @@ namespace {
 
 [[nodiscard]] auto calculate_application(calculation::AssessmentRequest request)
     -> calculation::ExecutionResult {
-    const auto max_threads = request.resource_policy.max_threads;
     auto assessment = calculation::assess(std::move(request));
-    return calculation::calculate(assessment, max_threads);
+    return calculation::calculate(assessment, 1);
 }
 
 class ZeroFragmentMethod final : public methods::Method {
@@ -193,11 +192,10 @@ auto assert_reduced_matches_full(
     const std::vector<parameters::ParameterSet>& parameter_sets = {},
     core::Molecule molecule = chargefw::test::make_two_conformer_water()) -> void {
     const auto molecules = core::MoleculeCollection{std::vector{molecule, std::move(molecule)}};
-    const auto full = calculate_application(
-        calculation::AssessmentRequest{.molecules = molecules,
-                                       .parameter_sets = parameter_sets,
-                                       .method_id = std::string{method_id},
-                                       .resource_policy = {.max_threads = 2}});
+    const auto full =
+        calculate_application(calculation::AssessmentRequest{.molecules = molecules,
+                                                             .parameter_sets = parameter_sets,
+                                                             .method_id = std::string{method_id}});
     REQUIRE(full.calculated());
 
     for (const auto selection_kind : {calculation::ExecutionSelectionKind::cutoff,
@@ -206,8 +204,7 @@ auto assert_reduced_matches_full(
             .molecules = molecules,
             .parameter_sets = parameter_sets,
             .method_id = std::string{method_id},
-            .execution_selection = calculation::ExecutionSelection{selection_kind, 8.0},
-            .resource_policy = {.max_threads = 2}});
+            .execution_selection = calculation::ExecutionSelection{selection_kind, 8.0}});
 
         REQUIRE(reduced.calculated());
         REQUIRE(reduced.effective.has_value());
@@ -374,8 +371,7 @@ TEST_CASE("reduced solver failures retain method and target context",
             .method_id = "qeq",
             .parameter_set_id = "invalid-qeq",
             .execution_selection =
-                calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius},
-            .resource_policy = {.max_threads = 1}});
+                calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius}});
 
         CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
         CHECK_FALSE(result.calculated());

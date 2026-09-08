@@ -387,8 +387,7 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
             calculation::ExecutionSelection{
                 calculation::execution_selection_kind_from_string(execution), radius},
         .resource_policy = {.cutoff_atom_threshold = cutoff_threshold,
-                            .cover_atom_threshold = cover_threshold,
-                            .max_threads = max_threads},
+                            .cover_atom_threshold = cover_threshold},
     };
     return NativeAssessment{calculation::assess(std::move(request)), max_threads};
 }

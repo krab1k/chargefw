@@ -107,7 +107,7 @@ coordinates are missing or non-finite.
 - method-scoped `methods::MethodOptions` overrides;
 - strict or permissive parameter classification options;
 - an `ExecutionSelection`; and
-- a `ResourcePolicy` containing automatic thresholds and the default execution thread limit.
+- a `ResourcePolicy` containing automatic execution thresholds.
 
 `calculation::assess()` returns an `AssessmentResult` with priority-ordered `plans()`, structured
 `rejections()`, `default_plan()`, and applicability timing. A plan exposes its applicable candidate,
@@ -130,7 +130,15 @@ the concrete `ExecutionMode` values full, cutoff, or cover.
 - Reduced execution uniformly corrects the final molecular charge to the method target.
 - The default full-to-cutoff and cutoff-to-cover thresholds are 20,000 and 80,000 atoms.
 - `std::nullopt` disables the corresponding resource threshold.
-- A thread count of zero delegates scheduling to oneTBB.
+
+Pass the thread limit to `calculate()` for each execution. A count of zero delegates scheduling to
+oneTBB, and the same prepared assessment may be executed repeatedly with different limits:
+
+```cpp
+auto assessment = calculation::assess(std::move(request));
+auto serial = calculation::calculate(assessment, 1);
+auto parallel = calculation::calculate(assessment, 4);
+```
 
 Automatic policy does not turn missing scientific requirements into warnings. Explicit unsupported
 execution produces no runnable plan, and explicit full execution above a threshold remains runnable with

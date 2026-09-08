@@ -51,9 +51,8 @@ namespace {
 
 [[nodiscard]] auto calculate_application(calculation::AssessmentRequest request)
     -> calculation::ExecutionResult {
-    const auto max_threads = request.resource_policy.max_threads;
     auto assessment = calculation::assess(std::move(request));
-    return calculation::calculate(assessment, max_threads);
+    return calculation::calculate(assessment, 1);
 }
 
 auto assert_same_charges(const chargefw::charges::AtomicCharges& actual,
