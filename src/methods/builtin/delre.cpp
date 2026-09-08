@@ -11,42 +11,6 @@
 #include <vector>
 
 namespace chargefw::methods::builtin {
-namespace {
-
-[[nodiscard]] auto matches_atomic_number(const core::Atom& atom,
-                                         const parameters::AtomParameterKey& key) -> bool {
-    return key.atomic_number == 0 || key.atomic_number == atom.atomic_number();
-}
-
-[[nodiscard]] auto bond_parameters_are_reversed(const core::Molecule& molecule,
-                                                const parameters::ParameterView& parameters,
-                                                const std::size_t bond_index) -> bool {
-    const auto& bond = molecule.bond(bond_index);
-    const auto& first_atom = molecule.atom(bond.first_atom_index());
-    const auto& second_atom = molecule.atom(bond.second_atom_index());
-
-    const auto parameter_entry_index =
-        parameters.classification().bond().parameter_entry_index(bond_index);
-    const auto& key = parameters.parameter_set().bond().entry(parameter_entry_index).key;
-
-    const auto forward = matches_atomic_number(first_atom, key.first_atom) &&
-                         matches_atomic_number(second_atom, key.second_atom);
-
-    if (forward) {
-        return false;
-    }
-
-    const auto reverse = matches_atomic_number(first_atom, key.second_atom) &&
-                         matches_atomic_number(second_atom, key.first_atom);
-
-    if (reverse) {
-        return true;
-    }
-
-    throw std::logic_error{"DelRe bond parameter classification is inconsistent"};
-}
-
-} // namespace
 
 auto DelReMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                           PrerequisiteResult& result) const
@@ -91,10 +55,17 @@ auto DelReMethod::calculate(const CalculationInput& input) const -> charges::Ato
         const auto first_index = static_cast<Eigen::Index>(bond.first_atom_index());
         const auto second_index = static_cast<Eigen::Index>(bond.second_atom_index());
 
-        const auto reversed = bond_parameters_are_reversed(molecule, parameters, bond_index);
+        const auto parameter_entry_index =
+            parameters.classification().bond().parameter_entry_index(bond_index);
+        const auto& key = parameters.parameter_set().bond().entry(parameter_entry_index).key;
+        // DelRe_original has plain element keys and symmetric homonuclear gamma values.
+        const auto first_is_parameter_a =
+            molecule.atom(bond.first_atom_index()).atomic_number() == key.first_atom.atomic_number;
 
-        matrix(first_index, second_index) = reversed ? gamma_b[bond_index] : gamma_a[bond_index];
-        matrix(second_index, first_index) = reversed ? gamma_a[bond_index] : gamma_b[bond_index];
+        matrix(first_index, second_index) =
+            first_is_parameter_a ? gamma_a[bond_index] : gamma_b[bond_index];
+        matrix(second_index, first_index) =
+            first_is_parameter_a ? gamma_b[bond_index] : gamma_a[bond_index];
     }
 
     const Eigen::VectorXd solution = matrix.partialPivLu().solve(rhs);

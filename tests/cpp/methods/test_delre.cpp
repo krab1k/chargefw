@@ -14,6 +14,7 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
+#include <cmath>
 #include <cstddef>
 #include <snitch/snitch.hpp>
 #include <vector>
@@ -80,5 +81,26 @@ TEST_CASE("DelRe produces conformer-independent water charges with explicit clas
         CHECK(std::abs(charges[1] - (0.625)) < 1.0e-12);
         CHECK(std::abs(charges[2] - (0.625)) < 1.0e-12);
         CHECK(std::abs(charges.total() - (0.0)) < 1.0e-12);
+    }
+}
+
+TEST_CASE("DelRe charges are invariant to bond endpoint ordering", "[methods][delre]") {
+    const auto* delre = methods::method_registry().find("delre");
+    REQUIRE(delre != nullptr);
+
+    const auto parameter_set = make_parameter_set();
+    const auto molecule = chargefw::test::make_water_graph();
+    const auto reversed_molecule = chargefw::test::flip_bond_directions(molecule);
+    const auto classification = parameters::ParameterClassification{
+        parameters::AtomParameterClassification{std::vector<std::size_t>{0, 1, 1}},
+        parameters::BondParameterClassification{std::vector<std::size_t>{0, 0}}};
+
+    const auto charges = calculate_delre(*delre, molecule, parameter_set, classification);
+    const auto reversed_charges =
+        calculate_delre(*delre, reversed_molecule, parameter_set, classification);
+
+    REQUIRE(charges.size() == reversed_charges.size());
+    for (std::size_t atom_index = 0; atom_index < charges.size(); ++atom_index) {
+        CHECK(std::abs(charges[atom_index] - reversed_charges[atom_index]) < 1.0e-12);
     }
 }
