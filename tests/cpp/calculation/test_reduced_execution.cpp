@@ -354,7 +354,6 @@ TEST_CASE("reduced execution validates inputs and mode selection",
     assert_reduced_matches_full("sqe", {make_sqe_parameters("sqe", false, true)});
     assert_reduced_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false, true)});
     assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true, true)});
-    assert_reduced_matches_full("sqe", {make_sqe_parameters("sqe", false)}, make_charged_water());
     assert_reduced_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)},
                                 make_charged_water());
     assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)},

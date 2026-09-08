@@ -2,6 +2,7 @@
 
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
+#include <chargefw/core/molecule.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
 #include <cmath>
@@ -22,7 +23,29 @@ namespace {
     return parameter_a[atom_index] + parameter_b[atom_index] + parameter_c[atom_index];
 }
 
+[[nodiscard]] auto uses_formal_initial_charges(const MethodOptions& options) -> bool {
+    const auto option = options.values().find("initial_charges");
+    if (option == options.values().end()) {
+        return false;
+    }
+
+    const auto* value = std::get_if<std::string>(&option->second);
+    return value != nullptr && *value == "formal";
+}
+
 } // namespace
+
+auto PEOEMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                         PrerequisiteResult& result) const -> void {
+    if (!uses_formal_initial_charges(input.method_options) &&
+        core::total_formal_charge(input.prepared_molecule.molecule()) != 0) {
+        result.add(PrerequisiteIssue{
+            .kind = PrerequisiteIssueKind::unsupported_molecule,
+            .message = "PEOE supports only neutral molecules because its implemented charge "
+                       "transfers conserve their initial zero total charge; set initial_charges="
+                       "formal to use atomic formal charges"});
+    }
+}
 
 auto PEOEMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto iterations = input.method_options().get<int>("iters");
@@ -38,6 +61,11 @@ auto PEOEMethod::calculate(const CalculationInput& input) const -> charges::Atom
     const auto atom_count = molecule.atom_count();
 
     std::vector charges(atom_count, 0.0);
+    if (input.method_options().get<std::string>("initial_charges") == "formal") {
+        for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
+            charges[atom_index] = static_cast<double>(molecule.atom(atom_index).formal_charge());
+        }
+    }
     std::vector electronegativities(atom_count, 0.0);
 
     for (int iteration = 0; iteration < iterations; ++iteration) {

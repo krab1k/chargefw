@@ -26,6 +26,16 @@ namespace {
 
 } // namespace
 
+auto SQEMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                        PrerequisiteResult& result) const -> void {
+    if (core::total_formal_charge(input.prepared_molecule.molecule()) != 0) {
+        result.add(PrerequisiteIssue{
+            .kind = PrerequisiteIssueKind::unsupported_molecule,
+            .message = "SQE supports only neutral molecules because its split-charge construction "
+                       "has no initial charges and conserves zero total charge"});
+    }
+}
+
 auto sqe_core::calculate(const CalculationInput& input,
                          const std::span<const double> initial_charge_values)
     -> std::vector<double> {

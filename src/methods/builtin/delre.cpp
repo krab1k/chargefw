@@ -48,6 +48,17 @@ namespace {
 
 } // namespace
 
+auto DelReMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                          PrerequisiteResult& result) const
+    -> void {
+    if (core::total_formal_charge(input.prepared_molecule.molecule()) != 0) {
+        result.add(PrerequisiteIssue{
+            .kind = PrerequisiteIssueKind::unsupported_molecule,
+            .message = "DelRe supports only neutral molecules because its bond-charge construction "
+                       "conserves zero total charge"});
+    }
+}
+
 auto DelReMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     const auto& molecule = input.molecule();
     const auto& parameters = input.parameters();
