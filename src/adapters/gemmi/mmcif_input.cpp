@@ -19,7 +19,7 @@
 namespace chargefw::adapters::gemmi::mmcif_input {
 namespace {
 
-auto validate_atom_site_ids(::gemmi::cif::Block& block) -> void {
+auto normalize_atom_site_ids(::gemmi::cif::Block& block) -> void {
     auto atom_sites = block.find("_atom_site.", {"id"});
     std::unordered_set<int> ids;
     ids.reserve(atom_sites.length());
@@ -28,8 +28,9 @@ auto validate_atom_site_ids(::gemmi::cif::Block& block) -> void {
         int id = 0;
         const auto [end, error] =
             std::from_chars(source_id.data(), source_id.data() + source_id.size(), id);
+        const auto canonical_id = std::to_string(id);
         if (error != std::errc{} || end != source_id.data() + source_id.size() ||
-            std::to_string(id) != source_id) {
+            canonical_id != source_id) {
             throw std::runtime_error{"mmCIF _atom_site.id must be a unique canonical integer; "
                                      "unsupported value '" +
                                      source_id + "'"};
@@ -39,6 +40,7 @@ auto validate_atom_site_ids(::gemmi::cif::Block& block) -> void {
                                      "duplicate value '" +
                                      source_id + "'"};
         }
+        row[0] = canonical_id;
     }
 }
 
@@ -71,7 +73,7 @@ auto MmcifReader::next() -> std::optional<ImportedMoleculeRecord> {
             continue;
         }
 
-        validate_atom_site_ids(block);
+        normalize_atom_site_ids(block);
         const auto structure = ::gemmi::make_structure_from_block(block);
         if (structure.models.empty()) {
             throw std::runtime_error{"structural input contains no models"};

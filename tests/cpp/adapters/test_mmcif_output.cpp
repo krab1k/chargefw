@@ -150,7 +150,8 @@ TEST_CASE("mmCIF generated output applies geometry-independent charges to every 
     CHECK(::gemmi::cif::as_string(charge_rows[0][2]) == ::gemmi::cif::as_string(charge_rows[2][2]));
 }
 
-TEST_CASE("mmCIF output preserves source categories and charge assignments", "[adapters][mmcif]") {
+TEST_CASE("mmCIF output preserves source categories and maps quoted atom-site IDs",
+          "[adapters][mmcif]") {
     std::istringstream input{R"cif(data_source
 _entry.id source
 _custom_extension.note 'keep me'
@@ -177,8 +178,8 @@ _atom_site.auth_comp_id
 _atom_site.auth_asym_id
 _atom_site.auth_atom_id
 _atom_site.pdbx_PDB_model_num
-HETATM 1 C C1 . UNL A 1 0 0 0 1 0 0 1 UNL A C1 1
-HETATM 2 O O1 . UNL A 1 1 0 0 1 0 -1 1 UNL A O1 1
+HETATM '1' C C1 . UNL A 1 0 0 0 1 0 0 1 UNL A C1 1
+HETATM '2' O O1 . UNL A 1 1 0 0 1 0 -1 1 UNL A O1 1
 #
 )cif"};
     auto reader = mmcif_input::MmcifReader{input};
@@ -194,6 +195,14 @@ HETATM 2 O O1 . UNL A 1 1 0 0 1 0 -1 1 UNL A O1 1
     REQUIRE(custom_note != nullptr);
     CHECK(::gemmi::cif::as_string(*custom_note) == "keep me");
     CHECK(document.blocks[0].has_mmcif_category("_sb_ncbr_partial_atomic_charges."));
+    auto atom_sites = document.blocks[0].find("_atom_site.", {"id"});
+    auto charge_rows = document.blocks[0].find("_sb_ncbr_partial_atomic_charges.", {"atom_id"});
+    REQUIRE(atom_sites.length() == 2);
+    REQUIRE(charge_rows.length() == 2);
+    CHECK(::gemmi::cif::as_string(atom_sites[0][0]) == "1");
+    CHECK(::gemmi::cif::as_string(atom_sites[1][0]) == "2");
+    CHECK(::gemmi::cif::as_string(charge_rows[0][0]) == ::gemmi::cif::as_string(atom_sites[0][0]));
+    CHECK(::gemmi::cif::as_string(charge_rows[1][0]) == ::gemmi::cif::as_string(atom_sites[1][0]));
 
     std::istringstream appended_input{output.str()};
     auto appended_reader = mmcif_input::MmcifReader{appended_input};
