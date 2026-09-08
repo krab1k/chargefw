@@ -166,7 +166,7 @@ void add_sequential_bonds(BondAccumulator& bonds,
 }
 
 void add_component_bonds(BondAccumulator& result, const selection::SelectedResidue& residue,
-                         const std::span<const component_templates::BondTemplate> bonds) {
+                         const auto& bonds) {
     for (const auto& bond : bonds) {
         const auto first = residue.find_atom(bond.first);
         const auto second = residue.find_atom(bond.second);
@@ -235,15 +235,23 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
     const auto& residues = model.residues();
     BondAccumulator result;
 
-    std::unordered_map<std::string_view, std::vector<component_templates::BondTemplate>>
-        component_bonds;
+    struct ParsedComponentBond {
+        std::string first;
+        std::string second;
+        core::BondOrder order;
+    };
+
+    std::unordered_map<std::string, std::vector<ParsedComponentBond>> component_bonds;
     auto rows =
         block.find("_chem_comp_bond.", {"comp_id", "atom_id_1", "atom_id_2", "value_order"});
     for (const auto row : rows) {
-        const std::string_view component{row[0]};
-        if (const auto order = bond_order(row[3])) {
-            component_bonds[component].emplace_back(component_templates::BondTemplate{
-                .first = row[1], .second = row[2], .order = *order});
+        auto component = ::gemmi::cif::as_string(row[0]);
+        auto first = ::gemmi::cif::as_string(row[1]);
+        auto second = ::gemmi::cif::as_string(row[2]);
+        const auto order_value = ::gemmi::cif::as_string(row[3]);
+        if (const auto order = bond_order(order_value)) {
+            component_bonds[std::move(component)].emplace_back(ParsedComponentBond{
+                .first = std::move(first), .second = std::move(second), .order = *order});
         }
     }
 

@@ -4,6 +4,8 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 namespace mmcif = chargefw::adapters::gemmi::mmcif_input;
 namespace gemmi_adapter = chargefw::adapters::gemmi;
@@ -239,7 +241,8 @@ link1 covale A LIG 1 O1 B LIG 1 C2
     CHECK(explicit_molecule.bond(1).order() == chargefw::core::BondOrder::SINGLE);
     CHECK(read_strategy(gemmi_adapter::BondStrategy::hybrid).bond_count() == 3);
 
-    const auto duplicate_input = R"cif(data_duplicate
+    const auto duplicate_input = [](const std::string_view component_bond) {
+        return std::string{R"cif(data_duplicate
 loop_
 _atom_site.group_PDB
 _atom_site.id
@@ -269,11 +272,12 @@ _chem_comp_bond.comp_id
 _chem_comp_bond.atom_id_1
 _chem_comp_bond.atom_id_2
 _chem_comp_bond.value_order
-ALA N CA DOUB
-#
-)cif";
-    const auto read_duplicate_bond = [&](const gemmi_adapter::BondStrategy strategy) {
-        std::istringstream duplicate_stream{duplicate_input};
+)cif"} + std::string{component_bond} +
+               "\n#\n";
+    };
+    const auto read_duplicate_bond = [&](const gemmi_adapter::BondStrategy strategy,
+                                         const std::string_view component_bond) {
+        std::istringstream duplicate_stream{duplicate_input(component_bond)};
         auto duplicate_reader =
             mmcif::MmcifReader{duplicate_stream, {}, {.bond_strategy = strategy}};
         const auto record = duplicate_reader.next();
@@ -283,12 +287,17 @@ ALA N CA DOUB
         return molecule.bond(0);
     };
 
-    CHECK(read_duplicate_bond(gemmi_adapter::BondStrategy::templates).order() ==
+    CHECK(read_duplicate_bond(gemmi_adapter::BondStrategy::templates, "ALA N CA DOUB").order() ==
           chargefw::core::BondOrder::SINGLE);
-    CHECK(read_duplicate_bond(gemmi_adapter::BondStrategy::explicit_bonds).order() ==
-          chargefw::core::BondOrder::DOUBLE);
-    CHECK(read_duplicate_bond(gemmi_adapter::BondStrategy::hybrid).order() ==
-          chargefw::core::BondOrder::DOUBLE);
+    for (const auto strategy :
+         {gemmi_adapter::BondStrategy::explicit_bonds, gemmi_adapter::BondStrategy::hybrid}) {
+        const auto unquoted = read_duplicate_bond(strategy, "ALA N CA DOUB");
+        const auto quoted = read_duplicate_bond(strategy, "'ALA' 'N' 'CA' 'DOUB'");
+        CHECK(quoted.first_atom_index() == unquoted.first_atom_index());
+        CHECK(quoted.second_atom_index() == unquoted.second_atom_index());
+        CHECK(quoted.order() == unquoted.order());
+        CHECK(quoted.order() == chargefw::core::BondOrder::DOUBLE);
+    }
 }
 
 TEST_CASE("mmCIF input rejects incompatible conformer atom sequences", "[adapters][mmcif]") {
