@@ -36,10 +36,10 @@ auto is_first_named_atom(const ::gemmi::Residue& residue, const std::size_t atom
     return true;
 }
 
-auto select_altloc(const ::gemmi::Residue& residue, const std::size_t first_atom_index)
-    -> const ::gemmi::Atom& {
+auto select_altloc_index(const ::gemmi::Residue& residue, const std::size_t first_atom_index)
+    -> std::size_t {
     const auto& first = residue.atoms[first_atom_index];
-    const auto* selected = std::addressof(first);
+    auto selected_index = first_atom_index;
 
     for (std::size_t candidate_index = first_atom_index + 1; candidate_index < residue.atoms.size();
          ++candidate_index) {
@@ -48,12 +48,13 @@ auto select_altloc(const ::gemmi::Residue& residue, const std::size_t first_atom
             continue;
         }
 
-        if (altloc_priority(candidate.altloc) < altloc_priority(selected->altloc)) {
-            selected = std::addressof(candidate);
+        if (altloc_priority(candidate.altloc) <
+            altloc_priority(residue.atoms[selected_index].altloc)) {
+            selected_index = candidate_index;
         }
     }
 
-    return *selected;
+    return selected_index;
 }
 
 } // namespace
@@ -80,12 +81,19 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
             SelectedResidue selected{
                 .residue = std::addressof(residue), .chain_name = chain.name, .atom_indices = {}};
             selected.atom_indices.reserve(residue.atoms.size());
+            auto retained = std::vector<bool>(residue.atoms.size(), false);
             for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
-                if (!is_first_named_atom(residue, index)) {
+                if (is_first_named_atom(residue, index)) {
+                    retained[select_altloc_index(residue, index)] = true;
+                }
+            }
+
+            for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
+                if (!retained[index]) {
                     continue;
                 }
 
-                const auto& atom = select_altloc(residue, index);
+                const auto& atom = residue.atoms[index];
                 atoms_.push_back(std::addressof(atom));
                 selected.atom_indices.emplace_back(atom.name, atom_index);
                 atom_indices_.emplace(std::addressof(atom), atom_index);

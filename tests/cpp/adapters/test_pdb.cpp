@@ -153,6 +153,24 @@ END
     }
 }
 
+TEST_CASE("PDB input keeps selected alternate locations in source order", "[adapters][pdb]") {
+    std::istringstream input{
+        R"pdb(HETATM    1  C1 BLIG A   1       0.000   0.000   0.000  1.00  0.00           C
+HETATM    2  O1  LIG A   1       1.000   0.000   0.000  1.00  0.00           O
+HETATM    3  C1 ALIG A   1       2.000   0.000   0.000  1.00  0.00           C
+END
+)pdb"};
+
+    auto reader = pdb::PdbReader{input};
+    const auto record = reader.next();
+    REQUIRE(record.has_value());
+    REQUIRE(record->molecule.atom_count() == 2);
+    CHECK(record->molecule.atom(0).name() == "O1");
+    CHECK(record->molecule.atom(1).name() == "C1");
+    CHECK(record->molecule.conformer(0)[0].x == 1.0);
+    CHECK(record->molecule.conformer(0)[1].x == 2.0);
+}
+
 TEST_CASE("PDB input rejects empty and incompatible selected models", "[adapters][pdb]") {
     {
         std::istringstream input{"END\n"};

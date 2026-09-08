@@ -394,23 +394,40 @@ TEST_CASE("mmCIF output from PDB input omits unselected alternate locations",
           "[adapters][pdb][mmcif]") {
     std::istringstream input{
         R"pdb(HETATM    1  C1 BLIG A   1       0.000   0.000   0.000  1.00  0.00           C
-HETATM    2  C1 ALIG A   1       1.000   0.000   0.000  1.00  0.00           C
-HETATM    3  O1  LIG A   1       2.000   0.000   0.000  1.00  0.00           O
+HETATM    2  O1  LIG A   1       1.000   0.000   0.000  1.00  0.00           O
+HETATM    3  C1 ALIG A   1       2.000   0.000   0.000  1.00  0.00           C
 END
 )pdb"};
     auto reader = adapters::gemmi::pdb_input::PdbReader{input, "alternate-locations.pdb"};
     auto record = std::move(*reader.next());
     REQUIRE(record.molecule.atom_count() == 2);
-    CHECK(record.molecule.conformer(0)[0].x == 1.0);
+    CHECK(record.molecule.atom(0).name() == "O1");
+    CHECK(record.molecule.atom(1).name() == "C1");
     const auto source = mmcif_output::PdbSource{.structure = reader.source_structure(),
                                                 .selection = reader.options().selection};
     std::ostringstream output;
     mmcif_output::MmcifWriter{output}.write_pdb(record, charge_set(1), source);
     auto document = ::gemmi::cif::read_string(output.str());
     auto atom_sites =
-        document.blocks.front().find("_atom_site.", {"label_atom_id", "label_alt_id"});
+        document.blocks.front().find("_atom_site.", {"id", "label_atom_id", "label_alt_id"});
     REQUIRE(atom_sites.length() == 2);
-    CHECK(::gemmi::cif::as_string(atom_sites[0][0]) == "C1");
-    CHECK(::gemmi::cif::as_string(atom_sites[0][1]) == "A");
-    CHECK(::gemmi::cif::as_string(atom_sites[1][0]) == "O1");
+    CHECK(::gemmi::cif::as_string(atom_sites[0][1]) == "O1");
+    CHECK(::gemmi::cif::as_string(atom_sites[1][1]) == "C1");
+    CHECK(::gemmi::cif::as_string(atom_sites[1][2]) == "A");
+
+    auto charge_rows =
+        document.blocks.front().find("_sb_ncbr_partial_atomic_charges.", {"atom_id", "charge"});
+    REQUIRE(charge_rows.length() == 2);
+    CHECK(::gemmi::cif::as_string(charge_rows[0][0]) == ::gemmi::cif::as_string(atom_sites[0][0]));
+    CHECK(::gemmi::cif::as_string(charge_rows[1][0]) == ::gemmi::cif::as_string(atom_sites[1][0]));
+
+    std::istringstream round_trip{output.str()};
+    auto round_trip_reader = mmcif_input::MmcifReader{round_trip};
+    const auto round_trip_record = round_trip_reader.next();
+    REQUIRE(round_trip_record.has_value());
+    REQUIRE(round_trip_record->molecule.atom_count() == 2);
+    CHECK(round_trip_record->molecule.atom(0).name() == "O1");
+    CHECK(round_trip_record->molecule.atom(1).name() == "C1");
+    CHECK(round_trip_record->molecule.conformer(0)[0].x == 1.0);
+    CHECK(round_trip_record->molecule.conformer(0)[1].x == 2.0);
 }
