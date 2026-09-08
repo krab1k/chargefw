@@ -399,6 +399,45 @@ END
     CHECK(round_trip_record->molecule.conformer_count() == 2);
 }
 
+TEST_CASE("mmCIF output from PDB input preserves selected CONECT bonds", "[adapters][pdb][mmcif]") {
+    std::istringstream input{
+        R"pdb(HETATM    1  C1  LIG A   1       0.000   0.000   0.000  1.00  0.00           C
+HETATM    2  O1  LIG A   1       1.200   0.000   0.000  1.00  0.00           O
+HETATM    3  O   HOH A   2       2.400   0.000   0.000  1.00  0.00           O
+CONECT    1    2    3
+CONECT    2    1
+END
+)pdb"};
+    const auto options = adapters::gemmi::InputOptions{
+        .selection = adapters::gemmi::RecordSelection::polymers_and_ligands,
+        .bond_strategy = adapters::gemmi::BondStrategy::explicit_bonds};
+    auto reader = adapters::gemmi::pdb_input::PdbReader{input, "conect.pdb", options};
+    auto record = std::move(*reader.next());
+    REQUIRE(record.molecule.atom_count() == 2);
+    REQUIRE(record.molecule.bond_count() == 1);
+
+    const auto source = mmcif_output::PdbSource{.structure = reader.source_structure(),
+                                                .selection = reader.options().selection};
+    std::ostringstream output;
+    mmcif_output::MmcifWriter{output}.write_pdb(record, charge_set(1), source);
+
+    auto document = ::gemmi::cif::read_string(output.str());
+    auto connections = document.sole_block().find(
+        "_struct_conn.", {"conn_type_id", "ptnr1_label_atom_id", "ptnr2_label_atom_id"});
+    REQUIRE(connections.length() == 1);
+    CHECK(::gemmi::cif::as_string(connections[0][0]) == "covale");
+    CHECK(::gemmi::cif::as_string(connections[0][1]) == "C1");
+    CHECK(::gemmi::cif::as_string(connections[0][2]) == "O1");
+
+    std::istringstream round_trip{output.str()};
+    auto round_trip_reader = mmcif_input::MmcifReader{round_trip, {}, options};
+    const auto round_trip_record = round_trip_reader.next();
+    REQUIRE(round_trip_record.has_value());
+    CHECK(round_trip_record->molecule.atom_count() == 2);
+    REQUIRE(round_trip_record->molecule.bond_count() == 1);
+    CHECK(round_trip_record->molecule.bond(0).order() == core::BondOrder::SINGLE);
+}
+
 TEST_CASE("mmCIF output from PDB input omits unselected alternate locations",
           "[adapters][pdb][mmcif]") {
     std::istringstream input{

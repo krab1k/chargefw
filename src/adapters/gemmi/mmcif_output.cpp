@@ -18,9 +18,11 @@
 #include <optional>
 #include <ostream>
 #include <ranges>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -354,6 +356,58 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
     return result;
 }
 
+auto add_selected_conect_connections(::gemmi::Structure& structure) -> void {
+    if (structure.models.empty()) {
+        return;
+    }
+
+    const auto& model = structure.models.front();
+    std::unordered_map<int, ::gemmi::AtomAddress> addresses;
+    for (const auto& chain : model.chains) {
+        for (const auto& residue : chain.residues) {
+            for (const auto& atom : residue.atoms) {
+                addresses.emplace(atom.serial, ::gemmi::make_address(chain, residue, atom));
+            }
+        }
+    }
+
+    std::set<std::pair<int, int>> seen;
+    for (const auto& connection : structure.connections) {
+        if (connection.type != ::gemmi::Connection::Covale &&
+            connection.type != ::gemmi::Connection::Disulf) {
+            continue;
+        }
+        const auto first = model.find_cra(connection.partner1, true).atom;
+        const auto second = model.find_cra(connection.partner2, true).atom;
+        if (first != nullptr && second != nullptr) {
+            seen.emplace(std::minmax(first->serial, second->serial));
+        }
+    }
+
+    std::size_t connection_index = 1;
+    for (const auto& [first_serial, partners] : structure.conect_map) {
+        for (const auto second_serial : partners) {
+            const auto edge = std::minmax(first_serial, second_serial);
+            if (edge.first == edge.second || !addresses.contains(edge.first) ||
+                !addresses.contains(edge.second) || !seen.insert(edge).second) {
+                continue;
+            }
+
+            auto name = "conect_" + std::to_string(connection_index++);
+            while (structure.find_connection_by_name(name) != nullptr) {
+                name = "conect_" + std::to_string(connection_index++);
+            }
+            auto connection = ::gemmi::Connection{};
+            connection.name = std::move(name);
+            connection.type = ::gemmi::Connection::Covale;
+            connection.asu = ::gemmi::Asu::Same;
+            connection.partner1 = addresses.at(edge.first);
+            connection.partner2 = addresses.at(edge.second);
+            structure.connections.push_back(std::move(connection));
+        }
+    }
+}
+
 [[nodiscard]] auto selected_pdb_structure(const PdbSource& source) -> ::gemmi::Structure {
     auto structure = source.structure;
     for (auto& model : structure.models) {
@@ -370,6 +424,7 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
         ::gemmi::remove_empty_children(model);
     }
     ::gemmi::setup_entities(structure);
+    add_selected_conect_connections(structure);
     return structure;
 }
 
