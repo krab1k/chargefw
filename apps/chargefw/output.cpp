@@ -45,6 +45,20 @@ void report_diagnostics(const adapters::ChargeResultDocument& document) {
     }
 }
 
+void finalize_output(std::ofstream& output, const std::filesystem::path& path) {
+    if (!output) {
+        throw std::runtime_error{"Unable to write output file: " + path.string()};
+    }
+    output.flush();
+    if (!output) {
+        throw std::runtime_error{"Unable to write output file: " + path.string()};
+    }
+    output.close();
+    if (!output) {
+        throw std::runtime_error{"Unable to write output file: " + path.string()};
+    }
+}
+
 [[nodiscard]] auto assignments_by_molecule(const charges::ChargeSet& charge_set,
                                            const std::size_t molecule_count)
     -> std::vector<charges::ChargeAssignment> {
@@ -81,6 +95,7 @@ void write_json(const std::filesystem::path& path, const adapters::ChargeResultD
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
     adapters::native::json_output::JsonWriter{output}.write(document);
+    finalize_output(output, path);
 }
 
 void write_mmcif(const std::filesystem::path& path, const ImportedExportContext& export_context,
@@ -102,6 +117,7 @@ void write_mmcif(const std::filesystem::path& path, const ImportedExportContext&
                                           adapters::generated_output::Format::mmcif, "ChargeFW",
                                           CHARGEFW_VERSION_STRING);
     }
+    finalize_output(output, path);
 }
 
 void write_mol2(const std::filesystem::path& path, const std::string& input_path,
@@ -114,10 +130,11 @@ void write_mol2(const std::filesystem::path& path, const std::string& input_path
         const auto assignments = assignments_by_molecule(charge_set, export_context.records.size());
         adapters::native::mol2_output::Mol2Writer{output}.write_preserving_source(input_path,
                                                                                   assignments);
-        return;
+    } else {
+        adapters::generated_output::write(output, export_context.records, charge_set,
+                                          adapters::generated_output::Format::mol2);
     }
-    adapters::generated_output::write(output, export_context.records, charge_set,
-                                      adapters::generated_output::Format::mol2);
+    finalize_output(output, path);
 }
 
 void write_sdf(const std::filesystem::path& path, const std::string& input_path,
@@ -136,11 +153,12 @@ void write_sdf(const std::filesystem::path& path, const std::string& input_path,
             .software_version = CHARGEFW_VERSION_STRING}};
         adapters::native::sdf_output::SdfWriter{output}.write_preserving_source(input_path,
                                                                                 properties);
-        return;
+    } else {
+        adapters::generated_output::write(output, export_context.records, charge_set,
+                                          adapters::generated_output::Format::sdf_v2000, "ChargeFW",
+                                          CHARGEFW_VERSION_STRING);
     }
-    adapters::generated_output::write(output, export_context.records, charge_set,
-                                      adapters::generated_output::Format::sdf_v2000, "ChargeFW",
-                                      CHARGEFW_VERSION_STRING);
+    finalize_output(output, path);
 }
 
 } // namespace
@@ -250,13 +268,9 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     }
     const auto writing_started = std::chrono::steady_clock::now();
     write_mmcif(prefix.string() + ".cif", export_context, *charges);
-    if (structural_output) {
-        std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
-    } else {
+    if (!structural_output) {
         write_sdf(prefix.string() + ".sdf", input_path, export_context, *charges);
         write_mol2(prefix.string() + ".mol2", input_path, export_context, *charges);
-        std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json",
-                     prefix.string() + ".sdf", prefix.string() + ".mol2", prefix.string() + ".cif");
     }
     run.metrics.writing_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - writing_started}.count();
@@ -269,6 +283,12 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
                                               CHARGEFW_VERSION_STRING, run.metrics);
     write_json(prefix.string() + ".json", document);
     report_diagnostics(document);
+    if (structural_output) {
+        std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
+    } else {
+        std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json",
+                     prefix.string() + ".sdf", prefix.string() + ".mol2", prefix.string() + ".cif");
+    }
     return 0;
 }
 

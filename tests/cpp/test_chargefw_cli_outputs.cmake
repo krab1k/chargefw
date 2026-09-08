@@ -3,6 +3,55 @@ set(output_prefix "${output_directory}/water.chargefw")
 include("${CMAKE_CURRENT_LIST_DIR}/prepare_moved_install.cmake")
 file(REMOVE_RECURSE "${output_directory}")
 
+function(expect_output_failure label extension)
+    set(failure_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_output_failure_${label}")
+    set(failure_output_prefix "${failure_output_directory}/water.chargefw")
+    file(REMOVE_RECURSE "${failure_output_directory}")
+    file(MAKE_DIRECTORY "${failure_output_directory}")
+    file(CREATE_LINK "/dev/full" "${failure_output_prefix}.${extension}" SYMBOLIC RESULT link_result)
+    if(NOT link_result STREQUAL "0")
+        message(FATAL_ERROR "Unable to create /dev/full output link: ${link_result}")
+    endif()
+
+    execute_process(
+            COMMAND "${CHARGEFW_CLI}" calculate --method eem "${CHARGEFW_INPUT}"
+                    "${failure_output_directory}"
+            RESULT_VARIABLE failure_result
+            OUTPUT_VARIABLE failure_output
+            ERROR_VARIABLE failure_error
+    )
+    if(NOT failure_result EQUAL 2 OR
+       NOT failure_error MATCHES "Unable to write output file: ${failure_output_prefix}.${extension}" OR
+       failure_output MATCHES "Wrote")
+        message(FATAL_ERROR "${label} output failure was not reported correctly: ${failure_error}")
+    endif()
+    file(REMOVE_RECURSE "${failure_output_directory}")
+endfunction()
+
+if(EXISTS "/dev/full")
+    foreach(extension IN ITEMS cif sdf mol2 json)
+        expect_output_failure("full_${extension}" "${extension}")
+    endforeach()
+endif()
+
+set(open_failure_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_output_open_failure")
+set(open_failure_output_prefix "${open_failure_output_directory}/water.chargefw")
+file(REMOVE_RECURSE "${open_failure_output_directory}")
+file(MAKE_DIRECTORY "${open_failure_output_prefix}.cif")
+execute_process(
+        COMMAND "${CHARGEFW_CLI}" calculate --method eem "${CHARGEFW_INPUT}"
+                "${open_failure_output_directory}"
+        RESULT_VARIABLE open_failure_result
+        OUTPUT_VARIABLE open_failure_output
+        ERROR_VARIABLE open_failure_error
+)
+if(NOT open_failure_result EQUAL 2 OR
+   NOT open_failure_error MATCHES "Unable to open output file: ${open_failure_output_prefix}.cif" OR
+   open_failure_output MATCHES "Wrote")
+    message(FATAL_ERROR "normal filesystem output failure was not reported correctly: ${open_failure_error}")
+endif()
+file(REMOVE_RECURSE "${open_failure_output_directory}")
+
 foreach(mode IN ITEMS full cutoff cover)
     set(mode_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_${mode}")
     set(mode_output_prefix "${mode_output_directory}/water.chargefw")
