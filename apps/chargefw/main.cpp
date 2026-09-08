@@ -143,7 +143,11 @@ auto run(std::span<char*> arguments) -> int {
     parameters->add_option("method", parameter_method, "Limit results to a method ID");
     const auto argc = static_cast<int>(arguments.size());
     auto* const argv = arguments.data();
-    CLI11_PARSE(app, argc, argv);
+    try {
+        app.parse(argc, argv);
+    } catch (const CLI::ParseError& error) {
+        return app.exit(error) == 0 ? 0 : 2;
+    }
 
     if (*methods) {
         chargefw::cli::print_methods();

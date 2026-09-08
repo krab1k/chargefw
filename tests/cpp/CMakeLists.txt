@@ -83,6 +83,15 @@ endfunction()
 
 if(CHARGEFW_BUILD_CLI)
     add_test(
+            NAME test_chargefw_cli_arguments
+            COMMAND ${CMAKE_COMMAND}
+                    -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
+                    -DCHARGEFW_INSTALL_BINDIR=${CMAKE_INSTALL_BINDIR}
+                    -DCHARGEFW_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/tests/cpp/chargefw_cli_arguments_prefix
+                    -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/sdf/water.sdf
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_arguments.cmake
+    )
+    add_test(
             NAME test_chargefw_cli_outputs
             COMMAND ${CMAKE_COMMAND}
                     -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
