@@ -237,6 +237,10 @@ auto import_input(const InputArguments& arguments) -> ImportedCollection {
 
 auto make_request(core::MoleculeCollection molecules, const SelectionArguments& arguments)
     -> calculation::AssessmentRequest {
+    if (arguments.parameter_set_option->count() > 0 && arguments.method_option->count() == 0) {
+        throw std::invalid_argument{"--parameter-set requires --method"};
+    }
+
     auto method_options = std::unordered_map<std::string, methods::MethodOptions>{};
     for (const auto& text : arguments.method_options) {
         const auto [method_id, option] = parse_method_option(text);

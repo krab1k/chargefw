@@ -74,7 +74,7 @@ The CLI reads the imported collection before calculation and stops at the first 
 | Option | Meaning |
 | --- | --- |
 | `--method ID` | Restrict assessment to one method |
-| `--parameter-set ID` | Restrict assessment to one bundled parameter set |
+| `--parameter-set ID` | Parameter set for `--method` (required) |
 | `--permissive-types` | Allow [permissive parameter classification](PARAMETERS.md#strict-and-permissive-matching) |
 | `--method-option METHOD.OPTION=VALUE` | Override a method option; repeatable |
 | `--execution auto|full|cutoff|cover` | Select execution policy; default `auto` |

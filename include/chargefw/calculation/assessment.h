@@ -71,6 +71,8 @@ struct AssessmentRequest {
     // IDs must be unique across this request, including parameter sets for different methods.
     std::vector<parameters::ParameterSet> parameter_sets;
     std::optional<std::string> method_id;
+    // A parameter-set ID requires method_id so the selected parameterization has an unambiguous
+    // scientific model.
     std::optional<std::string> parameter_set_id;
     std::unordered_map<std::string, methods::MethodOptions> method_options;
     parameters::ClassificationOptions classification_options{};

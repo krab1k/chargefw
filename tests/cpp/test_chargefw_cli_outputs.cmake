@@ -70,6 +70,7 @@ endfunction()
 
 expect_invalid_policy(missing_radius --execution cutoff)
 expect_invalid_policy(short_radius --execution cover --radius 7)
+expect_invalid_policy(parameter_without_method --parameter-set QEq_original)
 
 set(malformed_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_malformed")
 file(REMOVE_RECURSE "${malformed_output_directory}")

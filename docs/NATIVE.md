@@ -103,7 +103,7 @@ coordinates are missing or non-finite.
 `calculation::AssessmentRequest` contains:
 
 - the owned `MoleculeCollection` and parameter sets;
-- optional method and parameter-set IDs;
+- an optional method ID and its parameter-set ID;
 - method-scoped `methods::MethodOptions` overrides;
 - strict or permissive parameter classification options;
 - an `ExecutionSelection`; and

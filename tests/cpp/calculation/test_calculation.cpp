@@ -356,6 +356,32 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
     };
     CHECK_THROWS_AS(calculate_missing_parameter_set(), std::invalid_argument);
 
+    const auto assess_parameter_without_method = [] -> void {
+        static_cast<void>(calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {make_singular_eem_parameter_set()},
+            .parameter_set_id = "singular-eem"}));
+    };
+    CHECK_THROWS_AS(assess_parameter_without_method(), std::invalid_argument);
+
+    const auto assess_parameter_for_parameterless_method = [] -> void {
+        static_cast<void>(calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {make_singular_eem_parameter_set()},
+            .method_id = "formal",
+            .parameter_set_id = "singular-eem"}));
+    };
+    CHECK_THROWS_AS(assess_parameter_for_parameterless_method(), std::invalid_argument);
+
+    const auto assess_incompatible_parameter_set = [] -> void {
+        static_cast<void>(calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+            .parameter_sets = {make_singular_eem_parameter_set()},
+            .method_id = "qeq",
+            .parameter_set_id = "singular-eem"}));
+    };
+    CHECK_THROWS_AS(assess_incompatible_parameter_set(), std::invalid_argument);
+
     const auto assess_missing_cutoff_threshold = [] -> void {
         static_cast<void>(calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},

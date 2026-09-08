@@ -135,6 +135,18 @@ auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
     if (!request.parameter_set_id.has_value()) {
         return;
     }
+    if (!request.method_id.has_value()) {
+        throw std::invalid_argument{"parameter-set selection requires an explicit method"};
+    }
+
+    const auto* method = methods::method_registry().find(*request.method_id);
+    if (method == nullptr) {
+        throw std::invalid_argument{"method '" + *request.method_id + "' is not registered"};
+    }
+    if (!method->requirements().requires_parameters()) {
+        throw std::invalid_argument{"method '" + *request.method_id +
+                                    "' does not accept a parameter set"};
+    }
 
     const auto found = std::ranges::find_if(
         request.parameter_sets, [&request](const parameters::ParameterSet& parameter_set) {
@@ -143,6 +155,11 @@ auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
     if (found == request.parameter_sets.end()) {
         throw std::invalid_argument{"parameter set '" + *request.parameter_set_id +
                                     "' was not provided"};
+    }
+    if (!found->method_id().empty() && found->method_id() != *request.method_id) {
+        throw std::invalid_argument{"parameter set '" + *request.parameter_set_id +
+                                    "' belongs to method '" + std::string{found->method_id()} +
+                                    "', not '" + *request.method_id + "'"};
     }
 
     std::erase_if(request.parameter_sets,

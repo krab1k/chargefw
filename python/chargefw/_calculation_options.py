@@ -123,6 +123,8 @@ class RequestedCalculation:
         parameter_set_id = (
             parameter_set.id if isinstance(parameter_set, ParameterSet) else parameter_set
         )
+        if parameter_set_id is not None and method_id is None:
+            raise ValueError("parameter_set requires an explicit method")
         if (
             isinstance(parameter_set, ParameterSet)
             and method_id is not None

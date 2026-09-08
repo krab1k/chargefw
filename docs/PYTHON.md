@@ -203,7 +203,7 @@ empirical partial-charge model.
 | Argument | Values and defaults |
 | --- | --- |
 | `method` | Method ID, `Method`, or `None` |
-| `parameter_set` | Parameter-set ID, `ParameterSet`, or `None` |
+| `parameter_set` | Parameter-set ID or `ParameterSet`; requires `method` |
 | `options` | Option mapping for an explicitly selected method |
 | `options_by_method` | Method-ID to option-mapping overrides for automatic selection |
 | `parameter_matching` | `"strict"` (default) or `"permissive"` |
