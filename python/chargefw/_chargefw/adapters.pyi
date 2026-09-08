@@ -39,5 +39,6 @@ def _attach_mmcif(
     result: _NativeExecutionResult,
     molecules: Sequence[_NativeMolecule],
     selection: Literal["all", "polymers-and-ligands", "polymers"],
+    conformers: Literal["first", "all"],
     overwrite: bool,
 ) -> str: ...

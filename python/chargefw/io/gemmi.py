@@ -7,7 +7,13 @@ from typing import TYPE_CHECKING, Any
 
 from .._chargefw import adapters as _native_adapters
 from ..core import MoleculeCollection
-from . import BondStrategy, ConformerSelection, RecordSelection, parse
+from . import (
+    BondStrategy,
+    ConformerSelection,
+    RecordSelection,
+    _ImportedMoleculeCollection,
+    parse,
+)
 
 if TYPE_CHECKING:
     import gemmi as _gemmi
@@ -91,12 +97,16 @@ def attach_charges(
         raise TypeError("result must be a CalculationResult")
     if not isinstance(overwrite, bool):
         raise TypeError("overwrite must be a bool")
+    conformers: ConformerSelection = "all"
+    if isinstance(result.molecules, _ImportedMoleculeCollection):
+        conformers = result.molecules._input_metadata.conformers
     charged = gemmi.cif.read_string(
         _native_adapters._attach_mmcif(
             document.as_string(),
             result._native,
             result.molecules._native_molecules,
             selection,
+            conformers,
             overwrite,
         )
     )

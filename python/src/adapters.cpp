@@ -285,14 +285,15 @@ auto dumps(const NativeExecutionResult& native_result, const nb::sequence& molec
 }
 
 auto attach_mmcif(std::string contents, const NativeExecutionResult& native_result,
-                  const nb::sequence& molecules, const std::string& selection, const bool overwrite)
-    -> std::string {
+                  const nb::sequence& molecules, const std::string& selection,
+                  const std::string& conformers, const bool overwrite) -> std::string {
     auto source_molecules = std::vector<core::Molecule>{};
     source_molecules.reserve(static_cast<std::size_t>(nb::len(molecules)));
     for (const auto molecule : molecules) {
         source_molecules.push_back(nb::cast<const core::Molecule&>(molecule));
     }
     const auto native_selection = adapters::gemmi::record_selection_from_string(selection);
+    const auto native_conformers = adapters::conformer_selection_from_string(conformers);
     const auto& result = native_result.result();
     auto output = std::ostringstream{};
     {
@@ -306,7 +307,7 @@ auto attach_mmcif(std::string contents, const NativeExecutionResult& native_resu
             {},
             {.selection = native_selection,
              .bond_strategy = adapters::gemmi::BondStrategy::none,
-             .conformers = adapters::ConformerSelection::all}};
+             .conformers = native_conformers}};
         auto records = std::vector<adapters::ImportedMoleculeRecord>{};
         while (auto record = reader.next()) {
             records.push_back(std::move(*record));
@@ -364,7 +365,8 @@ void bind_adapters(nb::module_& module) {
                nb::arg("diagnostics"), nb::arg("requested"), nb::arg("format"),
                nb::arg("sdf_version"));
     module.def("_attach_mmcif", &attach_mmcif, nb::arg("contents"), nb::arg("result"),
-               nb::arg("molecules"), nb::arg("selection"), nb::arg("overwrite"));
+               nb::arg("molecules"), nb::arg("selection"), nb::arg("conformers"),
+               nb::arg("overwrite"));
 }
 
 } // namespace chargefw::python

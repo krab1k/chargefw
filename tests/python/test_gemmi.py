@@ -285,6 +285,36 @@ class GemmiAdapterTests(unittest.TestCase):
             chargefw.io.gemmi.attach_charges(document, result)
         chargefw.io.gemmi.attach_charges(document, result, overwrite=True)
 
+    def test_attach_charges_ignores_incompatible_later_models_excluded_on_import(self) -> None:
+        contents = MMCIF_TEXT.replace(
+            "HETATM 4 O O . HOH A 2 ? 1.1",
+            "HETATM 4 N N . HOH A 2 ? 1.1",
+        )
+        document = gemmi.cif.read_string(contents)
+        molecules = chargefw.io.gemmi.from_document(document, conformers="first")
+        result = calculate(molecules, method="formal")
+
+        chargefw.io.gemmi.attach_charges(document, result)
+
+        charges = document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])
+        self.assertEqual(
+            [gemmi.cif.as_string(row[0]) for row in charges],
+            ["1", "2"],
+        )
+
+    def test_attach_charges_ignores_compatible_later_models_excluded_on_import(self) -> None:
+        document = gemmi.cif.read_string(MMCIF_TEXT)
+        molecules = chargefw.io.gemmi.from_document(document, conformers="first")
+        result = calculate(molecules, method="formal")
+
+        chargefw.io.gemmi.attach_charges(document, result)
+
+        charges = document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])
+        self.assertEqual(
+            [gemmi.cif.as_string(row[0]) for row in charges],
+            ["1", "2"],
+        )
+
     def test_selection_conformers_and_types_are_explicit(self) -> None:
         polymers = chargefw_io.parse(
             MMCIF_TEXT,

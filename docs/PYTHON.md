@@ -419,8 +419,9 @@ between extension modules.
 `attach_charges()` enriches a caller-owned `gemmi.cif.Document` in place using ChargeFW's native mmCIF
 writer. ChargeFW reads the target afresh and retains no imported source document. Target molecules and
 atoms must occur in the same order and have matching elements and formal charges. Pass the same
-non-default `selection` used for conversion. Existing SB NCBR charge categories are rejected unless
-`overwrite=True`.
+non-default `selection` used for conversion. Attachment reuses the imported collection's conformer
+selection, so models excluded with `conformers="first"` are neither validated nor assigned charges.
+Existing SB NCBR charge categories are rejected unless `overwrite=True`.
 
 ```python
 result = chargefw.calculate(
