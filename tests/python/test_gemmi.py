@@ -285,6 +285,44 @@ class GemmiAdapterTests(unittest.TestCase):
             chargefw.io.gemmi.attach_charges(document, result)
         chargefw.io.gemmi.attach_charges(document, result, overwrite=True)
 
+    def test_attach_charges_preserves_unrelated_mmcif_metadata(self) -> None:
+        cases = (
+            ("formal", None, 1),
+            ("qeq", "QEq_original", 2),
+        )
+        for method, parameter_set, expected_metadata_rows in cases:
+            with self.subTest(method=method):
+                document = gemmi.read_pdb_string(PDB_TEXT).make_mmcif_document()
+                block = document.sole_block()
+                block.set_pair("_audit.creation_method", "attachment-test")
+                molecules = chargefw.io.gemmi.from_document(document)
+                result = calculate(
+                    molecules,
+                    method=method,
+                    parameter_set=parameter_set,
+                    execution="full",
+                )
+
+                chargefw.io.gemmi.attach_charges(document, result)
+
+                block = document.sole_block()
+                self.assertEqual(block.find_value("_audit.creation_method"), "attachment-test")
+                metadata = block.find(
+                    "_sb_ncbr_partial_atomic_charges_meta.", ["method", "parameter_set"]
+                )
+                self.assertEqual(len(metadata), expected_metadata_rows)
+                self.assertTrue(all(gemmi.cif.as_string(row[0]) == method for row in metadata))
+                if parameter_set is None:
+                    self.assertTrue(all(row[1] == "." for row in metadata))
+                else:
+                    self.assertTrue(
+                        all(gemmi.cif.as_string(row[1]) == parameter_set for row in metadata)
+                    )
+                charges = block.find(
+                    "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id", "charge"]
+                )
+                self.assertEqual(len(charges), 4)
+
     def test_attach_charges_ignores_incompatible_later_models_excluded_on_import(self) -> None:
         contents = MMCIF_TEXT.replace(
             "HETATM 4 O O . HOH A 2 ? 1.1",

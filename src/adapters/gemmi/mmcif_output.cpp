@@ -301,11 +301,14 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
     }
     ensure_dictionary(block);
     auto assignment_id = next_assignment_id(block);
-    auto metadata = block.find_or_add(metadata_category, {"id", "type", "method", "parameter_set",
-                                                          "software_name", "software_version"});
-    auto charge_rows = block.find_or_add(charges_category, {"type_id", "atom_id", "charge"});
-    metadata.ensure_loop();
-    charge_rows.ensure_loop();
+    block
+        .find_or_add(metadata_category,
+                     {"id", "type", "method", "parameter_set", "software_name", "software_version"})
+        .ensure_loop();
+    block.find_or_add(charges_category, {"type_id", "atom_id", "charge"}).ensure_loop();
+    auto metadata = block.find(metadata_category, {"id", "type", "method", "parameter_set",
+                                                   "software_name", "software_version"});
+    auto charge_rows = block.find(charges_category, {"type_id", "atom_id", "charge"});
 
     for (const auto& assignment : assignments) {
         if (assignment.charges.size() != molecule.atom_count()) {
