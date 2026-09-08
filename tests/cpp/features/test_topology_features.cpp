@@ -1,5 +1,7 @@
 #include "support/test_molecules.h"
 
+#include "features/topology_helpers.h"
+
 #include <chargefw/features/topology_features.h>
 
 #include <algorithm>
@@ -66,4 +68,16 @@ TEST_CASE("topology features reject invalid atom indices", "[features][topology]
     const features::TopologyFeatures topology{water};
 
     CHECK_THROWS_AS(topology.degree(3), std::out_of_range);
+}
+
+TEST_CASE("topology helpers identify connected components", "[features][topology]") {
+    const std::vector<std::vector<std::size_t>> adjacency{{1}, {0}, {3}, {2}, {}};
+
+    const auto components = features::connected_components(adjacency);
+
+    REQUIRE(components.size() == 3);
+    CHECK(components[0] == std::vector<std::size_t>{0, 1});
+    CHECK(components[1] == std::vector<std::size_t>{2, 3});
+    CHECK(components[2] == std::vector<std::size_t>{4});
+    CHECK(features::connected_components({}).empty());
 }

@@ -13,6 +13,9 @@ auto breadth_first_distances(const std::vector<std::vector<std::size_t>>& adjace
 auto all_pairs_bond_distances(const std::vector<std::vector<std::size_t>>& adjacency)
     -> std::vector<std::vector<int>>;
 
+auto connected_components(const std::vector<std::vector<std::size_t>>& adjacency)
+    -> std::vector<std::vector<std::size_t>>;
+
 auto is_connected(const std::vector<std::vector<std::size_t>>& adjacency) -> bool;
 
 } // namespace chargefw::features

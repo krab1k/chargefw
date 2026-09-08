@@ -185,6 +185,43 @@ auto make_formally_charged_neutral_pair() -> chargefw::core::Molecule {
         "formal-charge-pair"};
 }
 
+auto make_component_test_molecule(std::vector<chargefw::core::Atom> atoms,
+                                  std::vector<chargefw::core::Bond> bonds, std::string name)
+    -> chargefw::core::Molecule {
+    std::vector<chargefw::core::Position> positions;
+    positions.reserve(atoms.size());
+    for (std::size_t atom_index = 0; atom_index < atoms.size(); ++atom_index) {
+        positions.push_back(
+            chargefw::core::Position{.x = static_cast<double>(atom_index), .y = 0.0, .z = 0.0});
+    }
+
+    std::vector conformers{chargefw::core::Conformer{std::move(positions), std::string{"model-1"}}};
+    return chargefw::core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers),
+                                    std::move(name)};
+}
+
+auto check_delre_and_sqe_component_prerequisites(const chargefw::core::Molecule& molecule,
+                                                 const bool expected_applicable) -> void {
+    const features::PreparedMolecule prepared{molecule};
+    constexpr std::array method_ids{std::string_view{"delre"}, std::string_view{"sqe"}};
+
+    for (const auto method_id : method_ids) {
+        CAPTURE(method_id);
+        const auto* method = methods::method_registry().find(method_id);
+        REQUIRE(method != nullptr);
+
+        const auto result = method->check_method_prerequisites(
+            {.prepared_molecule = prepared, .method_options = {}});
+        CHECK(static_cast<bool>(result) == expected_applicable);
+
+        if (!expected_applicable) {
+            REQUIRE(result.issues().size() == 1);
+            CHECK(result.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
+            CHECK(result.issues()[0].message.contains("neutral connected components"));
+        }
+    }
+}
+
 } // namespace
 
 TEST_CASE("built-in method registry matches the conformance manifest",
@@ -350,9 +387,48 @@ TEST_CASE("neutral-only methods reject ammonium with bundled parameters",
         REQUIRE(applicability.rejected[0].issues.size() == 1);
         const auto& issue = applicability.rejected[0].issues[0];
         CHECK(issue.kind == methods::PrerequisiteIssueKind::unsupported_molecule);
-        CHECK(issue.message.contains("supports only neutral molecules"));
+        CHECK(issue.message.contains("neutral"));
         CHECK(issue.message.contains("zero total charge"));
     }
+}
+
+TEST_CASE("DelRe and SQE reject a cancelling disconnected ion pair", "[methods][builtin-methods]") {
+    const auto molecule = make_component_test_molecule(
+        {chargefw::core::Atom{7, 1, "N"}, chargefw::core::Atom{1, 0, "H1"},
+         chargefw::core::Atom{1, 0, "H2"}, chargefw::core::Atom{1, 0, "H3"},
+         chargefw::core::Atom{1, 0, "H4"}, chargefw::core::Atom{8, -1, "O"},
+         chargefw::core::Atom{1, 0, "H5"}},
+        {chargefw::core::Bond{0, 1, chargefw::core::BondOrder::SINGLE},
+         chargefw::core::Bond{0, 2, chargefw::core::BondOrder::SINGLE},
+         chargefw::core::Bond{0, 3, chargefw::core::BondOrder::SINGLE},
+         chargefw::core::Bond{0, 4, chargefw::core::BondOrder::SINGLE},
+         chargefw::core::Bond{5, 6, chargefw::core::BondOrder::SINGLE}},
+        "ammonium-hydroxide-pair");
+
+    CHECK(chargefw::core::total_formal_charge(molecule) == 0.0);
+    check_delre_and_sqe_component_prerequisites(molecule, false);
+}
+
+TEST_CASE("DelRe and SQE accept neutral disconnected components", "[methods][builtin-methods]") {
+    const auto molecule = make_component_test_molecule(
+        {chargefw::core::Atom{8, 0, "O1"}, chargefw::core::Atom{1, 0, "H1"},
+         chargefw::core::Atom{8, 0, "O2"}, chargefw::core::Atom{1, 0, "H2"}},
+        {chargefw::core::Bond{0, 1, chargefw::core::BondOrder::SINGLE},
+         chargefw::core::Bond{2, 3, chargefw::core::BondOrder::SINGLE}},
+        "neutral-components");
+
+    check_delre_and_sqe_component_prerequisites(molecule, true);
+}
+
+TEST_CASE("DelRe and SQE accept a connected net-neutral zwitterion", "[methods][builtin-methods]") {
+    const auto molecule = make_component_test_molecule(
+        {chargefw::core::Atom{7, 1, "N"}, chargefw::core::Atom{6, 0, "C"},
+         chargefw::core::Atom{8, -1, "O"}},
+        {chargefw::core::Bond{0, 1, chargefw::core::BondOrder::SINGLE},
+         chargefw::core::Bond{1, 2, chargefw::core::BondOrder::SINGLE}},
+        "zwitterion");
+
+    check_delre_and_sqe_component_prerequisites(molecule, true);
 }
 
 TEST_CASE("PEOE methods initialize from formal charges when requested",

@@ -95,10 +95,11 @@ Method options are validated against each method's schema before execution.
 
 PEOE and MPEOE initialize charge transfer from zero by default and therefore support only neutral
 molecules in that mode. Their `initial_charges=formal` option instead starts each atom at its supplied
-formal charge and supports charged molecules while conserving the molecular formal-charge total. DelRe
-and ordinary SQE support only neutral molecules because their implemented formulations conserve zero
-total charge. SQE+q0 and SQE+qp include initial charges and support charged molecules when their other
-requirements are met.
+formal charge and supports charged molecules while conserving the molecular formal-charge total. Every
+connected component must be formally neutral for DelRe and ordinary SQE because their implemented
+bond-transfer formulations start from zero and conserve zero charge within each component. Connected,
+net-neutral zwitterions remain supported. SQE+q0 and SQE+qp include initial charges and support charged
+molecules when their other requirements are met.
 
 ## Assessment and execution
 

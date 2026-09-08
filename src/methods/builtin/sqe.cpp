@@ -1,5 +1,7 @@
 #include "methods/builtin/sqe.h"
 
+#include "features/topology_helpers.h"
+
 #include <chargefw/core/molecule.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
@@ -7,6 +9,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <numeric>
 #include <stdexcept>
 #include <vector>
 
@@ -28,11 +31,25 @@ namespace {
 
 auto SQEMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                         PrerequisiteResult& result) const -> void {
-    if (core::total_formal_charge(input.prepared_molecule.molecule()) != 0) {
-        result.add(PrerequisiteIssue{
-            .kind = PrerequisiteIssueKind::unsupported_molecule,
-            .message = "SQE supports only neutral molecules because its split-charge construction "
-                       "has no initial charges and conserves zero total charge"});
+    const auto& molecule = input.prepared_molecule.molecule();
+    const auto components =
+        features::connected_components(input.prepared_molecule.topology().adjacency());
+
+    for (const auto& component : components) {
+        const auto formal_charge =
+            std::accumulate(component.begin(), component.end(), 0,
+                            [&molecule](const int sum, const std::size_t atom_index) {
+                                return sum + molecule.atom(atom_index).formal_charge();
+                            });
+        if (formal_charge != 0) {
+            result.add(PrerequisiteIssue{
+                .kind = PrerequisiteIssueKind::unsupported_molecule,
+                .message =
+                    "SQE supports only molecules with neutral connected components because its "
+                    "split-charge construction has no initial charges and conserves zero total "
+                    "charge within each component"});
+            return;
+        }
     }
 }
 
