@@ -6,9 +6,26 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace mmcif = chargefw::adapters::gemmi::mmcif_input;
 namespace gemmi_adapter = chargefw::adapters::gemmi;
+
+TEST_CASE("mmCIF input rejects unsupported atom-site IDs", "[adapters][mmcif]") {
+    for (const auto& [id_rows, expected_message] :
+         {std::pair{"Csite\n", "unsupported value 'Csite'"},
+          std::pair{"001\n", "unsupported value '001'"},
+          std::pair{"1\n1\n", "duplicate value '1'"}}) {
+        std::istringstream input{"data_ids\nloop_\n_atom_site.id\n" + std::string{id_rows}};
+        auto reader = mmcif::MmcifReader{input};
+        try {
+            static_cast<void>(reader.next());
+            CHECK(false);
+        } catch (const std::runtime_error& error) {
+            CHECK(std::string_view{error.what()}.contains(expected_message));
+        }
+    }
+}
 
 TEST_CASE("mmCIF input preserves records, models, selection, and bond strategy",
           "[adapters][mmcif]") {

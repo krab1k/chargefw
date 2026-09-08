@@ -108,7 +108,8 @@ errors.
 
 PDB and mmCIF are parsed through Gemmi. PDB produces one molecule record. Each mmCIF data block containing
 `_atom_site.id` produces one molecule record; blocks without coordinate data are skipped. The source block
-name is retained as the mmCIF record ID.
+name is retained as the mmCIF record ID. Atom-site IDs must be unique canonical integers representable by
+Gemmi atom serials; string IDs and noncanonical forms such as `001` are rejected.
 
 The first selected model defines atom order, elements, formal charges, names, topology, and source
 mapping. Later models become conformers only when they have the same selected atom count, element, formal
