@@ -72,8 +72,9 @@ The public native namespaces mirror these responsibilities:
 | `chargefw::charges` | Source-indexed charge assignments and charge sets |
 | `chargefw::adapters` | Native and Gemmi-backed molecular input and output |
 
-Applications normally use the owned assessment facade rather than the lower-level prepared-feature and
-classification interfaces.
+Application-facing calculation functions compose the owned assessment facade rather than exposing the
+lower-level prepared-feature and classification interfaces. Callers need an explicit assessment only when
+they want to inspect or reuse its concrete plans.
 
 ## Methods and parameters
 

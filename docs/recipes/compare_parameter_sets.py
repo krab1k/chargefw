@@ -1,4 +1,4 @@
-"""Compare bundled parameter sets for one method and one molecular geometry.
+"""Assess and compare bundled parameter sets for one method and one molecular geometry.
 
 Run with: python docs/recipes/compare_parameter_sets.py molecule.sdf --format sdf --method eem
 """
@@ -19,7 +19,7 @@ def compare_parameter_sets(
     method_id: str,
     reference_id: str | None = None,
 ) -> None:
-    """Report source-aligned differences without ranking scientific accuracy."""
+    """Assess once and report differences without ranking scientific accuracy."""
 
     molecules = chargefw.io.read(input_path, format=input_format)
     if len(molecules) != 1 or molecules[0].conformer_count != 1:
@@ -29,21 +29,18 @@ def compare_parameter_sets(
     if not method.parameter_sets:
         raise ValueError(f"method {method_id!r} has no bundled parameter sets")
 
+    assessment = chargefw.assess(molecules, method=method, execution="full")
+    for rejection in assessment.rejections:
+        parameter_set = rejection.parameter_set
+        identifier = parameter_set.id if parameter_set is not None else "-"
+        reasons = "; ".join(issue.message for issue in rejection.issues)
+        print(f"Rejected {identifier}: {reasons}")
+
     executable: list[tuple[str, np.ndarray]] = []
-    for parameter_set in method.parameter_sets.values():
-        assessment = chargefw.assess(
-            molecules,
-            method=method,
-            parameter_set=parameter_set,
-            execution="full",
-        )
-        plan = assessment.default_plan
-        if plan is None:
-            reasons = "; ".join(
-                issue.message for rejection in assessment.rejections for issue in rejection.issues
-            )
-            print(f"Rejected {parameter_set.id}: {reasons}")
-            continue
+    for plan in assessment.plans:
+        parameter_set = plan.parameter_set
+        if parameter_set is None:
+            raise RuntimeError(f"{method_id!r} produced a plan without a parameter set")
         result = chargefw.calculate(molecules, plan)
         executable.append((parameter_set.id, result.assignments[0].values))
 

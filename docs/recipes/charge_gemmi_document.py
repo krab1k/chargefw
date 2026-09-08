@@ -44,23 +44,15 @@ def charge_document(
         selection=selection,
         bonds="hybrid",
     )
-    assessment = chargefw.assess(
+    result = chargefw.calculate(
         molecules,
         method=method,
         parameter_set=parameter_set,
         execution="full",
     )
-    plan = assessment.default_plan
-    if plan is None:
-        messages = [
-            issue.message for rejection in assessment.rejections for issue in rejection.issues
-        ]
-        raise RuntimeError("requested calculation is not applicable:\n" + "\n".join(messages))
-
-    for warning in plan.warnings:
+    for warning in result.warnings:
         print(f"Warning: {warning.message}")
 
-    result = chargefw.calculate(molecules, plan)
     chargefw.io.gemmi.attach_charges(document, result, selection=selection)
     document.write_file(str(output_path))
     if result_json is not None:

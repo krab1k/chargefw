@@ -1,8 +1,8 @@
 # Python package
 
 The `chargefw` Python package provides owned molecule values, immutable NumPy arrays, bundled method and
-parameter catalogs, reusable assessment plans, calculation results, and Gemmi conversion over the native
-ChargeFW engine.
+parameter catalogs, direct calculation, optional reusable assessment plans, calculation results, and
+Gemmi conversion over the native ChargeFW engine.
 
 The package is synchronous and in-process. Native molecule construction, assessment, and calculation
 release the GIL, and independent calculations can run concurrently. Calculations can report structured
@@ -95,11 +95,10 @@ for molecule in molecules:
     )
 ```
 
-One calculation plan applies to the complete collection. If a method or parameter set is inapplicable to
-one SDF record or mmCIF block, it is not executable for that collection; process records separately only
-when independent per-record policy is intentional.
-
-`calculate()` also accepts a `MoleculeCollection` or any iterable of `Molecule` values.
+`calculate()` accepts a `MoleculeCollection` or any iterable of `Molecule` values. One calculation plan
+applies to the complete collection. If a method or parameter set is inapplicable to one SDF record or
+mmCIF block, it is not executable for that collection. Automatic selection also chooses one method,
+parameter set, and execution mode that applies to every record.
 
 For a collection, `assignments_by_molecule` groups the source-ordered assignments for each input molecule.
 Use it with the original collection for ordinary molecule-by-molecule iteration:
@@ -117,6 +116,26 @@ for molecule, assignments in zip(molecules, result.assignments_by_molecule, stri
     for assignment in assignments:
         print(molecule.name, assignment.conformer_index, assignment.values)
 ```
+
+Process records separately when independent per-record policy is intentional. Each call below performs
+its own automatic assessment, so records can select different methods, parameter sets, or execution
+modes:
+
+```python
+for molecule in molecules:
+    result = chargefw.calculate(molecule)
+    parameter_set = result.plan.parameter_set
+    print(
+        molecule.name,
+        result.plan.method.id,
+        parameter_set.id if parameter_set is not None else None,
+        result.plan.policy.mode,
+    )
+```
+
+This loop is not equivalent to `calculate(molecules)`: the latter requires one common plan and produces
+one result containing source-aligned assignments for the complete collection. Choose the collection
+boundary deliberately when using automatic selection.
 
 Geometry-dependent methods produce one assignment for each conformer; geometry-independent methods
 produce one assignment with `conformer_index` set to `None`.
@@ -196,9 +215,9 @@ including permissive matching. Automatic selection considers higher method and p
 first, with stable IDs as the tie-breaker. The `formal` method copies input formal charges and `dummy`
 returns zeros; neither is an empirical partial-charge model.
 
-## Assessment and calculation policy
+## Calculation policy
 
-`assess()` and automatic `calculate()` accept keyword-only policy arguments:
+Direct `calculate()` accepts keyword-only policy arguments:
 
 | Argument | Values and defaults |
 | --- | --- |
@@ -216,19 +235,42 @@ returns zeros; neither is an empirical partial-charge model.
 Flat `options` require an explicit method. `options` and `options_by_method` cannot be combined. Automatic
 execution accepts an optional radius override. Explicit full execution rejects a radius; explicit cutoff
 and cover require one. Reduced execution uniformly corrects the final molecular charge to the method
-target. On an `Assessment`, `threads` configures its default plan executions; a `threads` value passed to
-`calculate(..., plan, threads=...)` overrides that default for the individual execution.
+target. Direct calculation performs assessment internally, executes the selected default plan, and
+returns its effective policy and warnings in the result.
 
 ```python
-assessment = chargefw.assess(
+result = chargefw.calculate(
     molecule,
     method="eem",
     parameter_set="EEM_Baek1991",
     execution="auto",
 )
+print(result.plan.method.id, result.plan.policy.mode, result.warnings)
+```
+
+## Advanced assessment and plan reuse
+
+Calling `assess()` directly is optional. Use it to inspect applicability or policy warnings before
+calculation, compare runnable alternatives, or execute several plans without repeating molecule
+preparation and parameter classification. The
+[parameter-set comparison recipe](recipes/compare_parameter_sets.py) demonstrates this workflow with one
+assessment and several plans.
+
+`assess()` accepts the same selection and policy arguments as direct `calculate()`. Its `threads`
+argument configures default plan executions; passing `threads` to `calculate(..., plan, threads=...)`
+overrides that default for one execution.
+
+```python
+assessment = chargefw.assess(molecule, method="eem", execution="full")
 
 for plan in assessment.plans:
-    print(plan.method.id, plan.policy.mode, plan.warnings)
+    parameter_set = plan.parameter_set
+    print(
+        plan.method.id,
+        parameter_set.id if parameter_set is not None else None,
+        plan.policy.mode,
+        plan.warnings,
+    )
 ```
 
 An `Assessment` contains priority-ordered reusable `plans`, structured `rejections`, a `default_plan`,
@@ -254,9 +296,10 @@ if plan is not None:
     result = chargefw.calculate(molecule, plan, threads=1)
 ```
 
-Plans are bound to the exact molecule objects and collection name used during assessment. Selection
-arguments cannot be supplied with a plan. A plan is reusable after its `Assessment` is released and can
-be used by independent concurrent calculations.
+Plans are bound to the exact molecule objects and collection name used during assessment. They cannot be
+applied to another record or a reconstructed equivalent molecule, and selection arguments cannot be
+supplied with a plan. A plan is reusable after its `Assessment` is released and can be used by independent
+concurrent calculations over those same objects.
 
 ## Progress and cancellation
 

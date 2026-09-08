@@ -1,8 +1,10 @@
 # Python recipes
 
-These executable examples demonstrate complete Python workflows. The [Python package guide](../PYTHON.md)
-contains shorter API snippets, while the [format reference](../FORMATS.md) defines shared molecular input
-and charge output behavior.
+These executable examples demonstrate complete Python workflows. Ordinary calculation recipes call
+`chargefw.calculate()` directly. The parameter-set comparison recipe uses explicit assessment as an
+advanced workflow for inspecting and executing several prepared plans. The
+[Python package guide](../PYTHON.md) contains shorter API snippets, while the
+[format reference](../FORMATS.md) defines shared molecular input and charge output behavior.
 
 ## Calculate a molecular file
 
@@ -29,10 +31,10 @@ python docs/recipes/inspect_molecules.py input.sdf --format sdf
 
 ## Calculate an SDF collection
 
-[`calculate_sdf_collection.py`](calculate_sdf_collection.py) reads a multimolecule SDF, assesses one
-explicit QEq policy for the complete collection, calculates source-mapped charges, and writes result JSON
-with requested and effective provenance. One inapplicable record makes the policy inapplicable to the
-collection; the recipe does not silently choose a separate model per record.
+[`calculate_sdf_collection.py`](calculate_sdf_collection.py) reads a multimolecule SDF, directly
+calculates one explicit QEq policy for the complete collection, and writes result JSON with requested and
+effective provenance. One inapplicable record makes the policy inapplicable to the collection; the recipe
+does not silently choose a separate model per record.
 
 ```bash
 python docs/recipes/calculate_sdf_collection.py input.sdf result.json
@@ -40,6 +42,18 @@ python docs/recipes/calculate_sdf_collection.py input.sdf result.json
 
 Python molecular output is generated from normalized molecules and does not preserve SDF data fields.
 Result JSON is used here because it retains the complete calculation record.
+
+For independent automatic policies, use an ordinary per-record loop instead. Each call performs a separate
+assessment, so the selected method, parameter set, or execution mode can differ between records:
+
+```python
+molecules = chargefw.io.read("input.sdf", format="sdf")
+
+for molecule in molecules:
+    result = chargefw.calculate(molecule)
+    for assignment in result.assignments:
+        print(molecule.name, result.plan.method.id, assignment.values)
+```
 
 ## Charge a Gemmi document
 
@@ -73,9 +87,10 @@ accepts an externally prepared RDKit conformer ensemble.
 
 ## Compare bundled parameter sets
 
-[`compare_parameter_sets.py`](compare_parameter_sets.py) assesses every bundled parameter set for one
-method and one molecular geometry, reports inapplicable sets, and compares executable source-aligned
-charge vectors against one reference.
+[`compare_parameter_sets.py`](compare_parameter_sets.py) performs one explicit assessment for a method
+and molecular geometry, reports rejected parameter sets, and executes each prepared plan to compare its
+source-aligned charge vector against one reference. This advanced workflow avoids repeating molecule
+preparation and parameter classification for every executable parameter set.
 
 ```bash
 python docs/recipes/compare_parameter_sets.py molecule.sdf --format sdf --method eem

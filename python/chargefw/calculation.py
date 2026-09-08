@@ -238,7 +238,7 @@ def assess(
     cover_threshold: int | None = 80_000,
     threads: int = 0,
 ) -> Assessment:
-    """Assess molecules and return reusable executable calculation plans."""
+    """Inspect applicability and return reusable executable calculation plans."""
 
     requested = RequestedCalculation(
         method=method,
@@ -298,10 +298,10 @@ def calculate(
     threads: int | None = None,
     observer: CalculationObserver | None = None,
 ) -> CalculationResult:
-    """Calculate molecules with an assessed plan, or assess and use the default plan.
+    """Calculate molecules directly, or execute an explicitly assessed plan.
 
-    Without an explicit method, selection uses deterministic catalog priority among applicable
-    methods.
+    Direct calculation assesses the input and uses the default plan. Without an explicit method,
+    selection uses deterministic catalog priority among applicable methods.
     """
 
     collection = _as_collection(molecules)
