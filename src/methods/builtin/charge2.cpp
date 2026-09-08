@@ -6,13 +6,14 @@
 #include <chargefw/parameters/models/parameter_view.h>
 
 #include <cstddef>
-#include <stdexcept>
 #include <vector>
 
 namespace chargefw::methods::builtin {
 namespace {
 
 constexpr auto hydrogen_atomic_number = 1;
+// Fixed by the canonical Charge2 parameter set.
+constexpr auto hydrogen_electronegativity_reference = 7.17;
 constexpr auto max_bond_distance = std::size_t{3};
 
 struct Charge2Shells {
@@ -45,23 +46,6 @@ struct Charge2Shells {
     return shells_by_atom;
 }
 
-[[nodiscard]] auto hydrogen_electronegativity(const parameters::ParameterView& parameters)
-    -> double {
-    const auto& atom_parameters = parameters.parameter_set().atom();
-
-    for (std::size_t parameter_index = 0; parameter_index < atom_parameters.size();
-         ++parameter_index) {
-        const auto& entry = atom_parameters[parameter_index];
-
-        if (entry.key.atomic_number == hydrogen_atomic_number &&
-            atom_parameters.contains(parameter_index, "chi")) {
-            return atom_parameters.parameter(parameter_index, "chi");
-        }
-    }
-
-    throw std::logic_error{"Charge2 requires hydrogen atom parameter 'chi'"};
-}
-
 } // namespace
 
 auto Charge2Method::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
@@ -81,8 +65,6 @@ auto Charge2Method::calculate(const CalculationInput& input) const -> charges::A
     const auto b = parameters.common("b");
     const auto c = parameters.common("c");
     const auto alpha = parameters.common("alpha");
-
-    const auto chi_hydrogen = hydrogen_electronegativity(parameters);
 
     const auto atom_count = molecule.atom_count();
     const auto shells_by_atom = precompute_charge2_shells(input.topology().adjacency());
@@ -123,13 +105,15 @@ auto Charge2Method::calculate(const CalculationInput& input) const -> charges::A
             auto beta_charge = 0.0;
 
             for (const auto bonded_index : two_bonds_apart) {
-                beta_charge += (chi[bonded_index] - chi_hydrogen) * polarizability / b;
+                beta_charge +=
+                    (chi[bonded_index] - hydrogen_electronegativity_reference) * polarizability / b;
             }
 
             auto gamma_charge = 0.0;
 
             for (const auto bonded_index : three_bonds_apart) {
-                gamma_charge += (chi[bonded_index] - chi_hydrogen) * polarizability / b / c;
+                gamma_charge += (chi[bonded_index] - hydrogen_electronegativity_reference) *
+                                polarizability / b / c;
             }
 
             q[atom_index] = alpha_charge + beta_charge + gamma_charge;
