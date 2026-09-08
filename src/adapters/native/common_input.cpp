@@ -17,6 +17,10 @@ auto read_line(std::istream& input, std::size_t& line, const std::string_view re
         throw std::runtime_error{"unexpected end of " + std::string{record_name} + " record"};
     }
 
+    if (result.ends_with('\r')) {
+        result.pop_back();
+    }
+
     ++line;
     return result;
 }

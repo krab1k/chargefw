@@ -44,6 +44,43 @@ namespace {
 
 } // namespace
 
+TEST_CASE("MOL2 input treats LF and CRLF records equivalently", "[adapters][mol2]") {
+    constexpr auto lf_source = "@<TRIPOS>MOLECULE\nminimal\n2 1 0 0 0\nSMALL\nNO_CHARGES\n\n"
+                               "@<TRIPOS>ATOM\n1 C1 0 0 0 C.3\n2 H1 1 0 0 H\n"
+                               "@<TRIPOS>BOND\n1 1 2 1\n";
+    constexpr auto crlf_source =
+        "@<TRIPOS>MOLECULE\r\nminimal\r\n2 1 0 0 0\r\nSMALL\r\nNO_CHARGES\r\n\r\n"
+        "@<TRIPOS>ATOM\r\n1 C1 0 0 0 C.3\r\n2 H1 1 0 0 H\r\n"
+        "@<TRIPOS>BOND\r\n1 1 2 1\r\n";
+
+    auto lf_input = std::istringstream{lf_source};
+    auto crlf_input = std::istringstream{crlf_source};
+    auto lf_reader = mol2_input::Mol2Reader{lf_input, "lf.mol2"};
+    auto crlf_reader = mol2_input::Mol2Reader{crlf_input, "crlf.mol2"};
+    const auto lf_record = lf_reader.next();
+    const auto crlf_record = crlf_reader.next();
+
+    REQUIRE(lf_record.has_value());
+    REQUIRE(crlf_record.has_value());
+    CHECK(crlf_record->identity.record_id == lf_record->identity.record_id);
+    CHECK(crlf_record->molecule.atom_count() == lf_record->molecule.atom_count());
+    CHECK(crlf_record->molecule.bond_count() == lf_record->molecule.bond_count());
+    CHECK(crlf_record->molecule.atom(0).name() == lf_record->molecule.atom(0).name());
+    CHECK_FALSE(crlf_reader.next().has_value());
+
+    auto output = std::ostringstream{};
+    const auto assignments = std::vector{assignment({-0.1, 0.1})};
+    mol2_output::Mol2Writer{output}.write_preserving_buffer(crlf_source, assignments);
+    CHECK(output.str().contains("@<TRIPOS>ATOM\r\n"));
+
+    auto round_trip_input = std::istringstream{output.str()};
+    auto round_trip_reader = mol2_input::Mol2Reader{round_trip_input, "round_trip.mol2"};
+    const auto round_trip_record = round_trip_reader.next();
+    REQUIRE(round_trip_record.has_value());
+    CHECK(round_trip_record->molecule.atom_count() == lf_record->molecule.atom_count());
+    CHECK(round_trip_record->molecule.bond_count() == lf_record->molecule.bond_count());
+}
+
 TEST_CASE("MOL2 output preserves source structure and replaces atom charges", "[adapters][mol2]") {
     {
         auto output = std::ostringstream{};

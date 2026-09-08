@@ -181,6 +181,9 @@ Mol2Reader::Mol2Reader(std::istream& input, std::string source)
 auto Mol2Reader::next() -> std::optional<ImportedMoleculeRecord> {
     std::string line;
     while (std::getline(*input_, line)) {
+        if (line.ends_with('\r')) {
+            line.pop_back();
+        }
         if (line == molecule_marker) {
             return parse_record(*input_, MoleculeRecordIdentity{.source = source_,
                                                                 .record_index = record_index_++,

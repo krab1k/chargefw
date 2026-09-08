@@ -40,6 +40,18 @@ namespace {
            "M  END\n";
 }
 
+[[nodiscard]] auto with_crlf(const std::string_view source) -> std::string {
+    auto result = std::string{};
+    result.reserve(source.size());
+    for (const auto character : source) {
+        if (character == '\n') {
+            result.push_back('\r');
+        }
+        result.push_back(character);
+    }
+    return result;
+}
+
 class DecimalCommaNumpunct final : public std::numpunct<char> {
   protected:
     [[nodiscard]] auto do_decimal_point() const -> char override {
@@ -98,6 +110,36 @@ TEST_CASE("native numeric parsing is complete and locale independent", "[adapter
         CHECK(position.x == 1.25);
         CHECK(position.y == 25.0);
         CHECK(position.z == -0.03125);
+    }
+}
+
+TEST_CASE("native MOL and SDF input accepts CRLF", "[adapters][native]") {
+    constexpr auto v2000 = "minimal\nchargefw\n\n"
+                           "  1  0  0  0  0  0  0  0  0  0999 V2000\n"
+                           "    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n"
+                           "M  END\n";
+
+    {
+        auto input = std::istringstream{with_crlf(v2000)};
+        const auto record = mol::parse_mol(input, {});
+        CHECK(record.identity.record_id == "minimal");
+        CHECK(record.molecule.atom_count() == 1);
+    }
+
+    {
+        auto input = std::istringstream{with_crlf(v3000_with_coordinates("0 0 0"))};
+        const auto record = mol::parse_mol(input, {});
+        CHECK(record.identity.record_id == "coordinates");
+        CHECK(record.molecule.atom_count() == 1);
+    }
+
+    {
+        auto input =
+            std::istringstream{with_crlf(std::string{v2000} + "$$$$\n" + v2000 + "$$$$\n")};
+        auto reader = sdf::SdfReader{input, "records.sdf"};
+        REQUIRE(reader.next().has_value());
+        REQUIRE(reader.next().has_value());
+        CHECK_FALSE(reader.next().has_value());
     }
 }
 

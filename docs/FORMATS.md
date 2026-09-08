@@ -22,10 +22,10 @@ order is retained in charge assignments and in every output mapping.
 | mmCIF | Yes, through Gemmi | Preserved or generated mmCIF | One molecule per coordinate-bearing block |
 | ChargeFW result JSON 1.0 | No | Yes | One result record per imported molecule |
 
-Readers report malformed or unsupported molecular data as errors. A successful imported record also
-carries its source name, zero-based record index, format-derived record ID, and non-fatal diagnostics.
-Streaming SDF and MOL2 readers consume one record at a time; molecule JSON, PDB, and mmCIF parsing retains
-the complete source document in memory.
+Readers report malformed or unsupported molecular data as errors. Native MOL, SDF, and MOL2 input accepts
+both LF and CRLF line endings. A successful imported record also carries its source name, zero-based record
+index, format-derived record ID, and non-fatal diagnostics. Streaming SDF and MOL2 readers consume one
+record at a time; molecule JSON, PDB, and mmCIF parsing retains the complete source document in memory.
 
 ## MOL and SDF input
 

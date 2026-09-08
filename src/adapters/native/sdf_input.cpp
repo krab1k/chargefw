@@ -12,6 +12,9 @@ auto consume_to_sdf_delimiter(std::istream& input) -> void {
     std::string line;
 
     while (std::getline(input, line)) {
+        if (line.ends_with('\r')) {
+            line.pop_back();
+        }
         if (line == "$$$$") {
             return;
         }
