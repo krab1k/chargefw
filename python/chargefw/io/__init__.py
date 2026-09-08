@@ -49,11 +49,12 @@ class _ImportedMoleculeCollection(MoleculeCollection):
 
 
 def _molecule(payload: _native_adapters.MoleculePayload) -> Molecule:
+    coordinates = payload["coordinates"] or None
     return Molecule(
         atomic_numbers=payload["atomic_numbers"],
         formal_charges=payload["formal_charges"],
         bonds=payload["bonds"],
-        coordinates=payload["coordinates"],
+        coordinates=coordinates,
         name=payload["name"],
         atom_names=payload["atom_names"],
         conformer_names=payload["conformer_names"],

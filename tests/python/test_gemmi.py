@@ -172,6 +172,32 @@ class NativeInputTests(unittest.TestCase):
         self.assertEqual(all_conformers[0].conformer_names, ("first", "second"))
         self.assertEqual(first_conformer[0].conformer_names, ("first",))
 
+    def test_parse_topology_only_molecule_json_supports_formal_calculation(self) -> None:
+        topology_only_conformers: tuple[list[Any] | None, ...] = (None, [])
+        for conformers in topology_only_conformers:
+            with self.subTest(conformers=conformers):
+                molecule_data: dict[str, Any] = {
+                    "schema_version": "1.0",
+                    "molecules": [
+                        {
+                            "atoms": [
+                                {"atomic_number": 7, "formal_charge": 1},
+                                {"atomic_number": 1, "formal_charge": 0},
+                            ],
+                            "bonds": [{"atoms": [0, 1], "order": 1}],
+                        }
+                    ],
+                }
+                if conformers is not None:
+                    molecule_data["molecules"][0]["conformers"] = conformers
+
+                molecules = chargefw_io.parse(json.dumps(molecule_data), format="molecule-json")
+                self.assertEqual(molecules[0].conformer_count, 0)
+                result = calculate(molecules, method="formal", execution="full")
+
+                self.assertEqual(result.status, "success")
+                np.testing.assert_array_equal(result.assignments[0].values, [1.0, 0.0])
+
     def test_path_readers_set_source_name(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "charged.mol"
