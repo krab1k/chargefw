@@ -92,8 +92,6 @@ function(chargefw_setup_dependencies)
     if(NOT TARGET gemmi::gemmi_cpp)
         set(BUILD_GEMMI_PROGRAM OFF)
         set(BUILD_SHARED_LIBS ON)
-        set(BUILD_TESTING OFF)
-        set(GEMMI_BUILD_TESTING OFF)
         set(INSTALL_DEV_FILES ON)
         set(CHARGEFW_GEMMI_FETCHED ON PARENT_SCOPE)
         FetchContent_Declare(

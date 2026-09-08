@@ -6,13 +6,23 @@ not need to manage prepared-feature or classification lifetimes.
 
 ## Build and link
 
-ChargeFW requires CMake 3.28 or newer and a GCC or Clang toolchain with C++23 support.
+ChargeFW requires CMake 3.28 or newer, Ninja, and a GCC or Clang toolchain with C++23 support. The
+default build downloads pinned dependencies when they are not already available.
 
 ```bash
-cmake --preset gcc-release -DCMAKE_INSTALL_PREFIX="$PWD/_install"
-cmake --build --preset gcc-release
-cmake --install build/gcc-release --strip
+cmake -S . -B build/native-release -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
+    -DCHARGEFW_BUILD_CLI=OFF \
+    -DCHARGEFW_BUILD_PYTHON=OFF \
+    -DCHARGEFW_BUILD_TESTS=OFF \
+    -DCHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS=OFF
+cmake --build build/native-release --parallel
+cmake --install build/native-release --prefix "$PWD/_install" --strip
 ```
+
+Set `CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS=ON` only for an installation that will remain on the build
+machine. IPO does not make the installed binaries CPU-specific.
 
 Use the installed CMake package from another project:
 

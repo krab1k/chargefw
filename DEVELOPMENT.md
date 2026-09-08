@@ -9,8 +9,8 @@ Native development requires CMake 3.28 or newer, Ninja, and a C++23-capable GCC 
 CMake downloads pinned dependencies when compatible system packages are unavailable.
 
 The checked-in presets also build the Python bindings. Their Python interpreter needs Python 3.10 or
-newer, development headers, NumPy, Nanobind, mypy, and Gemmi 0.7.4. RDKit is optional. Override the
-preset's `/usr/bin/python3` when these packages are installed elsewhere:
+newer, development headers, NumPy, Nanobind, mypy, and Gemmi 0.7.4. RDKit is optional. The presets use
+`/usr/bin/python3`; select another interpreter explicitly when needed:
 
 ```bash
 cmake --preset gcc-debug \
@@ -23,15 +23,18 @@ Use `gcc-debug` for normal development:
 
 ```bash
 cmake --preset gcc-debug
-cmake --build --preset gcc-debug
-ctest --preset gcc-debug
+cmake --build build/gcc-debug
+ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$'
 ```
+
+Gemmi registers its internal `cpptest` unconditionally even though that executable is excluded from
+normal builds. Exclude it when invoking CTest directly.
 
 For a quick edit cycle, build the affected target and run its test by name:
 
 ```bash
-cmake --build --preset gcc-debug --target test_molecule
-ctest --preset gcc-debug -R '^test_molecule$'
+cmake --build build/gcc-debug --target test_molecule
+ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$' -R '^test_molecule$'
 ```
 
 Available presets are:
@@ -45,20 +48,25 @@ Available presets are:
 | `clang-ubsan` | Undefined behavior |
 | `clang-tidy` | Static analysis during compilation |
 
-Configure, build, and test another preset in the same way. `clang-tidy` runs during its build and has no
-CTest preset:
+All checked-in presets build the native library, CLI, tests, and Python bindings. Release presets also
+enable IPO and host-native optimization; debug, sanitizer, and static-analysis presets disable
+host-native optimization for reproducibility. Ignored `CMakeUserPresets.json` presets may inherit the
+stable `gcc-debug` and `gcc-release` names to customize local build and installation directories.
+
+Configure another preset in the same way, then build and test its directory. `clang-tidy` runs during
+its build and does not need a test run:
 
 ```bash
 cmake --preset clang-tidy
-cmake --build --preset clang-tidy
+cmake --build build/clang-tidy
 ```
 
 Build sanitizer presets with low parallelism because they can use substantial memory:
 
 ```bash
 cmake --preset clang-asan
-cmake --build --preset clang-asan -j 1
-ctest --preset clang-asan
+cmake --build build/clang-asan --parallel 1
+ctest --test-dir build/clang-asan --output-on-failure -E '^cpptest$'
 ```
 
 The expected validation depth for different changes is listed in
@@ -70,8 +78,9 @@ CTest runs the Python API, adapter, recipe, installation, and mypy tests with th
 `PYTHONPATH`. A focused Python test is run like any other CTest test:
 
 ```bash
-cmake --build --preset gcc-debug --target chargefw_python
-ctest --preset gcc-debug -R '^test_chargefw_python_calculation$'
+cmake --build build/gcc-debug --target chargefw_python
+ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$' \
+    -R '^test_chargefw_python_calculation$'
 ```
 
 Ruff is configured in `pyproject.toml`. Run it on modified Python files:
@@ -97,18 +106,22 @@ pre-commit run --all-files
 
 ## Installation and containers
 
-Build and install the native library and CLI:
-
-```bash
-cmake --preset gcc-release -DCMAKE_INSTALL_PREFIX="$PWD/_install"
-cmake --build --preset gcc-release
-cmake --install build/gcc-release --strip
-```
+Use the self-contained source installation recipes for the [native library](docs/NATIVE.md#build-and-link)
+and [CLI](docs/CLI.md#installation). They intentionally exclude the Python and test dependencies used
+by the validation presets.
 
 The root `Dockerfile` builds the distributable CLI image:
 
 ```bash
 docker build --tag chargefw:local .
+```
+
+For an image that will remain on the build machine, enable host-native optimization explicitly:
+
+```bash
+docker build \
+    --build-arg CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS=ON \
+    --tag chargefw:local-native .
 ```
 
 The Dockerfiles under `docker/` build and test ChargeFW on Ubuntu 26.04, Debian 13, and Fedora 44. Run

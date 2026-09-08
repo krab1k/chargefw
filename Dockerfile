@@ -12,13 +12,15 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
 WORKDIR /source
 COPY . .
 
+ARG CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS=OFF
+
 RUN cmake -S . -B /build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
         -DCHARGEFW_BUILD_CLI=ON \
         -DCHARGEFW_BUILD_PYTHON=OFF \
         -DCHARGEFW_BUILD_TESTS=OFF \
-        -DCHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS=OFF \
+        -DCHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS="${CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS}" \
     && cmake --build /build --target chargefw_cli --parallel \
     && cmake --install /build --prefix /opt/chargefw --strip
 

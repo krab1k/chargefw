@@ -38,9 +38,11 @@ install.components = ["python"]
 wheel.packages = ["python/chargefw"]
 
 [tool.scikit-build.cmake.define]
+CMAKE_INTERPROCEDURAL_OPTIMIZATION = "ON"
 CHARGEFW_BUILD_CLI = "OFF"
 CHARGEFW_BUILD_PYTHON = "ON"
 CHARGEFW_BUILD_TESTS = "OFF"
+CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS = "OFF"
 
 [tool.cibuildwheel]
 build = "cp31[0-4]-manylinux_x86_64"

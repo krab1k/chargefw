@@ -2,64 +2,78 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "gcc-debug",
-      "displayName": "GCC Debug",
+      "name": "_validation",
+      "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/gcc-debug",
+      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "OFF",
         "CHARGEFW_BUILD_TESTS": "ON",
+        "CHARGEFW_BUILD_CLI": "ON",
         "CHARGEFW_BUILD_PYTHON": "ON",
         "CHARGEFW_ENABLE_WARNINGS": "ON",
+        "CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS": "OFF",
         "CHARGEFW_PYTHON_EXECUTABLE": "/usr/bin/python3"
+      }
+    },
+    {
+      "name": "_gcc-validation",
+      "hidden": true,
+      "inherits": "_validation",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "_clang-validation",
+      "hidden": true,
+      "inherits": "_validation",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "gcc-debug",
+      "displayName": "GCC Debug",
+      "inherits": "_gcc-validation",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
       "name": "gcc-release",
       "displayName": "GCC Release",
-      "inherits": "gcc-debug",
-      "binaryDir": "${sourceDir}/build/gcc-release",
+      "inherits": "_gcc-validation",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON",
+        "CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS": "ON"
       }
     },
     {
       "name": "clang-debug",
       "displayName": "Clang Debug",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/clang-debug",
+      "inherits": "_clang-validation",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "/usr/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CHARGEFW_BUILD_TESTS": "ON",
-        "CHARGEFW_BUILD_PYTHON": "ON",
-        "CHARGEFW_ENABLE_WARNINGS": "ON",
-        "CHARGEFW_ENABLE_CLANG_TIDY": "OFF",
-        "CHARGEFW_PYTHON_EXECUTABLE": "/usr/bin/python3"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
       "name": "clang-release",
       "displayName": "Clang Release",
-      "inherits": "clang-debug",
-      "binaryDir": "${sourceDir}/build/clang-release",
+      "inherits": "_clang-validation",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON"
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": "ON",
+        "CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS": "ON"
       }
     },
     {
       "name": "clang-asan",
       "displayName": "Clang ASan",
       "inherits": "clang-debug",
-      "binaryDir": "${sourceDir}/build/clang-asan",
       "cacheVariables": {
-        "CHARGEFW_BUILD_PYTHON": "ON",
         "CHARGEFW_ENABLE_ASAN": "ON"
       }
     },
@@ -67,9 +81,7 @@
       "name": "clang-ubsan",
       "displayName": "Clang UBSan",
       "inherits": "clang-debug",
-      "binaryDir": "${sourceDir}/build/clang-ubsan",
       "cacheVariables": {
-        "CHARGEFW_BUILD_PYTHON": "ON",
         "CHARGEFW_ENABLE_UBSAN": "ON"
       }
     },
@@ -77,114 +89,8 @@
       "name": "clang-tidy",
       "displayName": "Clang Tidy",
       "inherits": "clang-debug",
-      "binaryDir": "${sourceDir}/build/clang-tidy",
       "cacheVariables": {
-        "CHARGEFW_BUILD_PYTHON": "ON",
         "CHARGEFW_ENABLE_CLANG_TIDY": "ON"
-      }
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "gcc-debug",
-      "configurePreset": "gcc-debug"
-    },
-    {
-      "name": "gcc-release",
-      "configurePreset": "gcc-release"
-    },
-    {
-      "name": "clang-debug",
-      "configurePreset": "clang-debug"
-    },
-    {
-      "name": "clang-release",
-      "configurePreset": "clang-release"
-    },
-    {
-      "name": "clang-asan",
-      "configurePreset": "clang-asan"
-    },
-    {
-      "name": "clang-ubsan",
-      "configurePreset": "clang-ubsan"
-    },
-    {
-      "name": "clang-tidy",
-      "configurePreset": "clang-tidy"
-    }
-  ],
-  "testPresets": [
-    {
-      "name": "gcc-debug",
-      "configurePreset": "gcc-debug",
-      "filter": {
-        "exclude": {
-          "name": "^cpptest$"
-        }
-      },
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "clang-asan",
-      "configurePreset": "clang-asan",
-      "filter": {
-        "exclude": {
-          "name": "^cpptest$"
-        }
-      },
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "clang-debug",
-      "configurePreset": "clang-debug",
-      "filter": {
-        "exclude": {
-          "name": "^cpptest$"
-        }
-      },
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "gcc-release",
-      "configurePreset": "gcc-release",
-      "filter": {
-        "exclude": {
-          "name": "^cpptest$"
-        }
-      },
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "clang-release",
-      "configurePreset": "clang-release",
-      "filter": {
-        "exclude": {
-          "name": "^cpptest$"
-        }
-      },
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "clang-ubsan",
-      "configurePreset": "clang-ubsan",
-      "filter": {
-        "exclude": {
-          "name": "^cpptest$"
-        }
-      },
-      "output": {
-        "outputOnFailure": true
       }
     }
   ]

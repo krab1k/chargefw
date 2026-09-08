@@ -20,5 +20,5 @@ WORKDIR /source
 COPY . .
 
 RUN cmake --preset gcc-release -DCHARGEFW_PYTHON_EXECUTABLE=/opt/venv/bin/python \
-    && cmake --build --preset gcc-release --parallel \
-    && ctest --preset gcc-release
+    && cmake --build build/gcc-release --parallel \
+    && ctest --test-dir build/gcc-release --output-on-failure -E '^cpptest$'

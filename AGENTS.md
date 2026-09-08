@@ -81,7 +81,7 @@ should include only the individual adapter headers it uses.
 ### Validation cadence
 
 - Use `gcc-debug` for the rapid edit/build/focused-test loop. After a coherent change, run the full
-  `ctest --preset gcc-debug` suite.
+  `ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$'` suite.
 - Use `clang-debug` for cross-compiler validation when changing templates, conversions, overloads,
   headers, or compiler-sensitive C++ behavior; run its focused test before substantial work is complete.
 - Use `gcc-release` and `clang-release` for optimization- or `NDEBUG`-sensitive behavior, numerical
@@ -100,7 +100,8 @@ should include only the individual adapter headers it uses.
 ### Container validation
 
 The root `Dockerfile` builds the user-facing Ubuntu 26.04 CLI image. It performs an optimized native
-release build without tests, Python bindings, or host-specific `-march=native` instructions.
+release build without tests, Python bindings, or host-specific `-march=native` instructions by default.
+The native-optimization build argument is only for images that remain on the build machine.
 
 `docker/Dockerfile.ubuntu-26.04`, `docker/Dockerfile.debian-13`, and `docker/Dockerfile.fedora-44` are
 developer compatibility containers. Each builds and tests the `gcc-release` configuration; run them one
