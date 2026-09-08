@@ -97,10 +97,10 @@ constexpr std::array method_manifest{
                    Complexity::atoms_cubed, Complexity::atoms_squared, false, false,
                    FragmentCharge::unsupported},
     MethodManifest{"mpeoe", "MPEOE", "Modified Partial Equalization of Atomic Electronegativity",
-                   true, 110, false, 1, 2, 1, 1, Complexity::atoms_plus_bonds, Complexity::atoms,
+                   true, 110, false, 1, 2, 1, 2, Complexity::atoms_plus_bonds, Complexity::atoms,
                    false, false, FragmentCharge::unsupported},
     MethodManifest{"peoe", "PEOE", "Partial Equalization of Atomic Electronegativity", true, 120,
-                   false, 1, 3, 0, 1, Complexity::atoms_plus_bonds, Complexity::atoms, false, false,
+                   false, 1, 3, 0, 2, Complexity::atoms_plus_bonds, Complexity::atoms, false, false,
                    FragmentCharge::unsupported},
     MethodManifest{"qeq", "QEq", "Charge Equilibration", true, 170, true, 0, 2, 0, 1,
                    Complexity::atoms_cubed, Complexity::atoms_squared, true, true,
@@ -175,6 +175,14 @@ auto make_ammonium() -> chargefw::core::Molecule {
 
     return chargefw::core::Molecule{std::move(atoms), std::move(bonds), std::move(conformers),
                                     "ammonium"};
+}
+
+auto make_formally_charged_neutral_pair() -> chargefw::core::Molecule {
+    return chargefw::core::Molecule{
+        std::vector{chargefw::core::Atom{7, 1, "N"}, chargefw::core::Atom{8, -1, "O"}},
+        std::vector{chargefw::core::Bond{0, 1, chargefw::core::BondOrder::SINGLE}},
+        {},
+        "formal-charge-pair"};
 }
 
 } // namespace
@@ -324,7 +332,8 @@ TEST_CASE("neutral-only methods reject ammonium with bundled parameters",
     const auto prepared = features::PreparedMoleculeCollection{collection};
     const auto parameter_sets =
         parameters::load_parameter_sets_json_directory(CHARGEFW_TEST_PARAMETER_DIR);
-    constexpr std::array method_ids{std::string_view{"delre"}, std::string_view{"sqe"}};
+    constexpr std::array method_ids{std::string_view{"peoe"}, std::string_view{"mpeoe"},
+                                    std::string_view{"delre"}, std::string_view{"sqe"}};
 
     for (const auto method_id : method_ids) {
         CAPTURE(method_id);
@@ -343,6 +352,65 @@ TEST_CASE("neutral-only methods reject ammonium with bundled parameters",
         CHECK(issue.kind == methods::PrerequisiteIssueKind::unsupported_molecule);
         CHECK(issue.message.contains("supports only neutral molecules"));
         CHECK(issue.message.contains("zero total charge"));
+    }
+}
+
+TEST_CASE("PEOE methods initialize from formal charges when requested",
+          "[methods][builtin-methods]") {
+    const auto parameter_sets =
+        parameters::load_parameter_sets_json_directory(CHARGEFW_TEST_PARAMETER_DIR);
+    constexpr std::array method_ids{std::string_view{"peoe"}, std::string_view{"mpeoe"}};
+
+    for (const auto method_id : method_ids) {
+        CAPTURE(method_id);
+        const auto* method = methods::method_registry().find(method_id);
+        REQUIRE(method != nullptr);
+        const std::array candidates{method};
+        auto formal_options = methods::MethodOptions{};
+        formal_options.set("initial_charges", std::string{"formal"});
+
+        const auto ammonium = make_ammonium();
+        const auto ammonium_collection =
+            chargefw::core::MoleculeCollection{std::vector{ammonium}, "ammonium"};
+        const auto prepared_ammonium = features::PreparedMoleculeCollection{ammonium_collection};
+        const auto ammonium_applicability = methods::find_applicable_methods(
+            {.molecules = prepared_ammonium,
+             .methods = candidates,
+             .parameter_sets = parameter_sets,
+             .method_options = {{std::string{method_id}, formal_options}}});
+
+        CHECK(ammonium_applicability.rejected.empty());
+        REQUIRE(ammonium_applicability.applicable.size() == 1);
+        const auto ammonium_result = chargefw::calculation::calculate(
+            {.molecules = prepared_ammonium,
+             .selected = ammonium_applicability.applicable.front()});
+        REQUIRE(ammonium_result.charges.size() == 1);
+        CHECK(std::abs(ammonium_result.charges.assignment(0).charges.total() - 1.0) < 1.0e-10);
+
+        const auto neutral_pair = make_formally_charged_neutral_pair();
+        const auto pair_collection =
+            chargefw::core::MoleculeCollection{std::vector{neutral_pair}, "formal-charge-pair"};
+        const auto prepared_pair = features::PreparedMoleculeCollection{pair_collection};
+        const auto zero_applicability = methods::find_applicable_methods(
+            {.molecules = prepared_pair, .methods = candidates, .parameter_sets = parameter_sets});
+        const auto formal_applicability = methods::find_applicable_methods(
+            {.molecules = prepared_pair,
+             .methods = candidates,
+             .parameter_sets = parameter_sets,
+             .method_options = {{std::string{method_id}, formal_options}}});
+
+        REQUIRE(zero_applicability.applicable.size() == 1);
+        REQUIRE(formal_applicability.applicable.size() == 1);
+        const auto zero_result = chargefw::calculation::calculate(
+            {.molecules = prepared_pair, .selected = zero_applicability.applicable.front()});
+        const auto formal_result = chargefw::calculation::calculate(
+            {.molecules = prepared_pair, .selected = formal_applicability.applicable.front()});
+        const auto& zero_charges = zero_result.charges.assignment(0).charges;
+        const auto& formal_charges = formal_result.charges.assignment(0).charges;
+
+        CHECK(std::abs(zero_charges.total()) < 1.0e-10);
+        CHECK(std::abs(formal_charges.total()) < 1.0e-10);
+        CHECK(std::abs(zero_charges[0] - formal_charges[0]) > 1.0e-6);
     }
 }
 

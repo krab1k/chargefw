@@ -38,12 +38,21 @@ class MPEOEMethod final : public Method {
                              .type = MethodOptionType::integer,
                              .default_value = 7,
                              .choices = {},
-                             .minimum = 1}};
+                             .minimum = 1},
+            MethodOptionSpec{.id = "initial_charges",
+                             .description = "Atomic charges before MPEOE charge transfer",
+                             .type = MethodOptionType::string,
+                             .default_value = std::string{"zero"},
+                             .choices = {std::string{"zero"}, std::string{"formal"}}}};
         return {option_schema.data(), option_schema.size()};
     }
 
     [[nodiscard]] auto calculate(const CalculationInput& input) const
         -> charges::AtomicCharges override;
+
+  protected:
+    auto add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                 PrerequisiteResult& result) const -> void override;
 };
 
 } // namespace chargefw::methods::builtin

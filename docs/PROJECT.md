@@ -93,9 +93,12 @@ Methods declare their coordinate, topology, element-property, formal-charge, and
 requirements. Assessment reports both runnable plans and structured reasons for rejected candidates.
 Method options are validated against each method's schema before execution.
 
-DelRe and ordinary SQE support only neutral molecules because their implemented formulations conserve
-zero total charge. SQE+q0 and SQE+qp include initial charges and support charged molecules when their
-other requirements are met.
+PEOE and MPEOE initialize charge transfer from zero by default and therefore support only neutral
+molecules in that mode. Their `initial_charges=formal` option instead starts each atom at its supplied
+formal charge and supports charged molecules while conserving the molecular formal-charge total. DelRe
+and ordinary SQE support only neutral molecules because their implemented formulations conserve zero
+total charge. SQE+q0 and SQE+qp include initial charges and support charged molecules when their other
+requirements are met.
 
 ## Assessment and execution
 

@@ -702,10 +702,14 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(result.status, "success")
         if result.plan is None:
             self.fail("successful calculation must report plan provenance")
-        self.assertEqual(dict(result.plan.options), {"iters": 2})
+        self.assertEqual(
+            dict(result.plan.options),
+            {"initial_charges": "zero", "iters": 2},
+        )
 
         for options in (
             {"iters": 0},
+            {"initial_charges": "unknown"},
             {"unknown": 1},
         ):
             with self.subTest(options=options), self.assertRaises(ValueError):
@@ -755,12 +759,16 @@ class CalculationTests(unittest.TestCase):
             tuple(chargefw.parameter_sets.for_method("eem")),
         )
         peoe = methods["peoe"]
-        self.assertEqual(len(peoe.options), 1)
+        self.assertEqual(len(peoe.options), 2)
         self.assertIsInstance(peoe.options, Mapping)
         self.assertEqual(peoe.options["iters"].id, "iters")
         self.assertEqual(peoe.options["iters"].type, "integer")
         self.assertEqual(peoe.options["iters"].default, 6)
         self.assertEqual(peoe.options["iters"].minimum, 1)
+        initial_charges = peoe.options["initial_charges"]
+        self.assertEqual(initial_charges.type, "string")
+        self.assertEqual(initial_charges.default, "zero")
+        self.assertEqual(initial_charges.choices, ("zero", "formal"))
         qeq = methods["qeq"]
         overlap = qeq.options["overlap_term"]
         self.assertEqual(overlap.type, "string")
