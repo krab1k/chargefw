@@ -19,6 +19,10 @@ behavior, not development plans or milestone history. Unfinished work belongs in
 when complete rather than retaining checked history. `README.md` should remain a concise user entry
 point. `DEVELOPMENT.md` and `RELEASING.md` own executable contributor and maintainer procedures;
 `AGENTS.md` owns repository policy and should link to those procedures rather than duplicate them.
+Document cross-interface concepts, rationale, and limitations once in `docs/PROJECT.md`. Interface-specific
+documents should state only the syntax and behavior needed for that interface and link to the owning
+document when additional explanation is useful; do not repeat the same explanatory text across CLI,
+native, and Python documentation.
 
 ## Repository map
 

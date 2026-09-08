@@ -116,8 +116,10 @@ The effective execution mode is always one of:
 Automatic planning prefers full execution. For methods classified as expensive, the default resource
 policy moves to cutoff above 20,000 atoms and to cover above 80,000 atoms when those modes are supported.
 Automatic reduced execution uses a 12 Å radius. Explicit reduced execution requires a radius of at least
-8 Å. Explicit full execution may override a resource threshold and returns a warning rather than changing
-the requested mode.
+8 Å. This lower bound was selected empirically because smaller fragments showed large RMS deviations from
+full calculations. Larger radii generally improve agreement with full execution by including more of the
+molecular environment, but increase calculation time. Explicit full execution may override a resource
+threshold and returns a warning rather than changing the requested mode.
 
 Cutoff and cover are implemented for:
 
@@ -126,7 +128,8 @@ abeem, eem, eqeq, eqeqc, qeq, sfkeem, sqe, sqeq0, sqeqp
 ```
 
 Reduced execution uniformly corrects the final molecular charge to its method target. Reduced calculations
-are approximations; the project does not claim a general accuracy envelope for them.
+are approximations; the empirical radius guidance is not a general accuracy guarantee across methods and
+molecular systems.
 
 ## Results and provenance
 
