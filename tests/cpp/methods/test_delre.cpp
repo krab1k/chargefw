@@ -7,6 +7,7 @@
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/classification/parameter_classification.h>
+#include <chargefw/parameters/classification/parameter_classifier.h>
 #include <chargefw/parameters/models/atom_parameters.h>
 #include <chargefw/parameters/models/bond_parameters.h>
 #include <chargefw/parameters/models/parameter_key.h>
@@ -36,6 +37,21 @@ auto make_parameter_set() -> parameters::ParameterSet {
                                     {.key = chargefw::test::plain_atom_key(1),
                                      .parameters = {{.name = "delta", .value = 1.0}}}}},
         parameters::BondParameters{{{.key = chargefw::test::plain_bond_key(8, 1),
+                                     .parameters = {{.name = "eps", .value = 1.0},
+                                                    {.name = "gammaA", .value = 0.2},
+                                                    {.name = "gammaB", .value = 0.1}}}}}};
+}
+
+auto make_wildcard_parameter_set() -> parameters::ParameterSet {
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{
+            .id = "wildcard-delre", .method_id = "delre", .name = "Wildcard DelRe parameters"},
+        {},
+        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(8),
+                                     .parameters = {{.name = "delta", .value = 2.0}}},
+                                    {.key = chargefw::test::plain_atom_key(1),
+                                     .parameters = {{.name = "delta", .value = 1.0}}}}},
+        parameters::BondParameters{{{.key = chargefw::test::plain_bond_key(0, 1),
                                      .parameters = {{.name = "eps", .value = 1.0},
                                                     {.name = "gammaA", .value = 0.2},
                                                     {.name = "gammaB", .value = 0.1}}}}}};
@@ -100,6 +116,31 @@ TEST_CASE("DelRe charges are invariant to bond endpoint ordering", "[methods][de
         calculate_delre(*delre, reversed_molecule, parameter_set, classification);
 
     REQUIRE(charges.size() == reversed_charges.size());
+    for (std::size_t atom_index = 0; atom_index < charges.size(); ++atom_index) {
+        CHECK(std::abs(charges[atom_index] - reversed_charges[atom_index]) < 1.0e-12);
+    }
+}
+
+TEST_CASE("DelRe wildcard bond keys preserve physical endpoint orientation", "[methods][delre]") {
+    const auto* delre = methods::method_registry().find("delre");
+    REQUIRE(delre != nullptr);
+
+    const auto parameter_set = make_wildcard_parameter_set();
+    const auto molecule = chargefw::test::make_water_graph();
+    const auto reversed_molecule = chargefw::test::flip_bond_directions(molecule);
+    const auto classification = parameters::classify_parameters(
+        molecule, features::TopologyFeatures{molecule}, parameter_set);
+    const auto reversed_classification = parameters::classify_parameters(
+        reversed_molecule, features::TopologyFeatures{reversed_molecule}, parameter_set);
+
+    const auto charges = calculate_delre(*delre, molecule, parameter_set, classification);
+    const auto reversed_charges =
+        calculate_delre(*delre, reversed_molecule, parameter_set, reversed_classification);
+
+    REQUIRE(charges.size() == reversed_charges.size());
+    CHECK(std::abs(charges[0] - (-1.25)) < 1.0e-12);
+    CHECK(std::abs(charges[1] - 0.625) < 1.0e-12);
+    CHECK(std::abs(charges[2] - 0.625) < 1.0e-12);
     for (std::size_t atom_index = 0; atom_index < charges.size(); ++atom_index) {
         CHECK(std::abs(charges[atom_index] - reversed_charges[atom_index]) < 1.0e-12);
     }

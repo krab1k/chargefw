@@ -74,9 +74,14 @@ auto DelReMethod::calculate(const CalculationInput& input) const -> charges::Ato
         const auto parameter_entry_index =
             parameters.classification().bond().parameter_entry_index(bond_index);
         const auto& key = parameters.parameter_set().bond().entry(parameter_entry_index).key;
-        // DelRe_original has plain element keys and symmetric homonuclear gamma values.
-        const auto first_is_parameter_a =
-            molecule.atom(bond.first_atom_index()).atomic_number() == key.first_atom.atomic_number;
+        const auto first_atomic_number = molecule.atom(bond.first_atom_index()).atomic_number();
+        const auto second_atomic_number = molecule.atom(bond.second_atom_index()).atomic_number();
+        // gammaA and gammaB follow parameter-key order, while molecular bonds are undirected.
+        // Match both endpoints because atomic number zero is a wildcard in parameter keys.
+        const auto first_is_parameter_a = (key.first_atom.atomic_number == 0 ||
+                                           key.first_atom.atomic_number == first_atomic_number) &&
+                                          (key.second_atom.atomic_number == 0 ||
+                                           key.second_atom.atomic_number == second_atomic_number);
 
         matrix(first_index, second_index) =
             first_is_parameter_a ? gamma_a[bond_index] : gamma_b[bond_index];
