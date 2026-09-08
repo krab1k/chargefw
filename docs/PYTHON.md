@@ -1,8 +1,8 @@
 # Python package
 
-The `chargefw` Python package provides owned molecule values, immutable NumPy arrays, method and parameter
-catalogs, reusable assessment plans, calculation results, and Gemmi conversion over the native ChargeFW
-engine.
+The `chargefw` Python package provides owned molecule values, immutable NumPy arrays, bundled method and
+parameter catalogs, reusable assessment plans, calculation results, and Gemmi conversion over the native
+ChargeFW engine.
 
 The package is synchronous and in-process. Native molecule construction, assessment, and calculation
 release the GIL, and independent calculations can run concurrently. Calculations can report structured
@@ -189,12 +189,12 @@ print(iterations.default, iterations.minimum)
 ```
 
 Method descriptors expose names, publication metadata, priority, coordinate requirements, reduced-mode
-capabilities, options, and associated bundled parameter sets. The Python API does not expose native
-method objects, parameter classifications, or custom parameter-catalog construction. The native
-[parameter-set JSON reference](PARAMETERS.md) defines classifier behavior, including permissive matching.
-Automatic selection considers higher method and parameter-set priorities first, with stable IDs as the
-tie-breaker. The `formal` method copies input formal charges and `dummy` returns zeros; neither is an
-empirical partial-charge model.
+capabilities, options, and associated parameter sets. Python exposes only the installed bundled parameter
+catalog. Its package-level and method-level mappings are immutable and cannot be extended. The
+[parameter-set JSON reference](PARAMETERS.md) documents the bundled data and classifier behavior,
+including permissive matching. Automatic selection considers higher method and parameter-set priorities
+first, with stable IDs as the tie-breaker. The `formal` method copies input formal charges and `dummy`
+returns zeros; neither is an empirical partial-charge model.
 
 ## Assessment and calculation policy
 

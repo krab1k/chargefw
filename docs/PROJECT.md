@@ -85,9 +85,8 @@ kcm, mgc, mpeoe, peoe, qeq, sfkeem, smpqeq, sqe, sqeq0, sqeqp, tsef, veem
 ```
 
 Bundled JSON parameter sets are installed with the library. Parameter-dependent methods are assessed
-against those sets unless a native caller supplies another catalog. The CLI and Python package expose
-the bundled catalog only. The [parameter-set JSON reference](PARAMETERS.md) defines custom native
-parameter data and its classifier semantics.
+against this catalog. The [parameter-set JSON reference](PARAMETERS.md) documents its data format and
+classifier semantics.
 
 Methods declare their coordinate, topology, element-property, formal-charge, and parameter
 requirements. Assessment reports both runnable plans and structured reasons for rejected candidates.

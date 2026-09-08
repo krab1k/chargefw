@@ -1,9 +1,8 @@
 # Parameter-set JSON
 
-ChargeFW parameter sets are JSON documents consumed by the native
-`parameters::load_parameter_set_json*()` functions. Bundled sets use this format. The CLI and Python
-package expose only the installed bundled catalog. Custom parameter-set loading is available through the
-native C++ API only.
+ChargeFW's bundled parameter sets are JSON documents installed with the library. User-facing interfaces
+select parameter sets from this catalog. This reference documents its data format and classifier
+semantics.
 
 A parameter set declares values for one method. Method requirements determine which common, atom, and
 bond parameter names must be present. During assessment, ChargeFW verifies those names, then classifies
