@@ -14,44 +14,49 @@
 namespace chargefw::methods::builtin {
 namespace {
 
+constexpr auto coulomb = 14.4;
+constexpr auto bohr_radius_angstrom = 0.529177;
+
 using OverlapTerm = double (*)(double distance, double hardness_i, double hardness_j);
 
 [[nodiscard]] auto resolve_overlap_term(const std::string& type) -> OverlapTerm {
     if (type == "Nishimoto-Mataga") {
         return [](const double distance, const double hardness_i, const double hardness_j) {
-            return 1.0 / (distance + 2.0 / (hardness_i + hardness_j));
+            return coulomb / (distance + 2.0 * coulomb / (hardness_i + hardness_j));
         };
     }
     if (type == "Nishimoto-Mataga-Weiss") {
         return [](const double distance, const double hardness_i, const double hardness_j) {
             constexpr auto factor = 1.2;
-            return factor / (distance + (2.0 * factor) / (hardness_i + hardness_j));
+            return factor * coulomb /
+                   (distance + 2.0 * factor * coulomb / (hardness_i + hardness_j));
         };
     }
     if (type == "Ohno") {
         return [](const double distance, const double hardness_i, const double hardness_j) {
-            return 1.0 /
-                   std::sqrt(distance * distance + std::pow(2.0 / (hardness_i + hardness_j), 2.0));
+            return coulomb / std::sqrt(distance * distance +
+                                       std::pow(2.0 * coulomb / (hardness_i + hardness_j), 2.0));
         };
     }
     if (type == "Ohno-Klopman") {
         return [](const double distance, const double hardness_i, const double hardness_j) {
-            return 1.0 /
-                   std::sqrt(distance * distance +
-                             std::pow(1.0 / (2.0 * hardness_i) + 1.0 / (2.0 * hardness_j), 2.0));
+            return coulomb /
+                   std::sqrt(
+                       distance * distance +
+                       std::pow(coulomb / (2.0 * hardness_i) + coulomb / (2.0 * hardness_j), 2.0));
         };
     }
     if (type == "DasGupta-Huzinaga") {
         return [](const double distance, const double hardness_i, const double hardness_j) {
-            constexpr auto k = 0.4;
-            return 1.0 / (distance + 1.0 / (hardness_i / 2.0 * std::exp(k * distance) +
-                                            hardness_j / 2.0 * std::exp(k * distance)));
+            constexpr auto k = 0.4 / bohr_radius_angstrom;
+            return coulomb / (distance + coulomb / (hardness_i / 2.0 * std::exp(k * distance) +
+                                                    hardness_j / 2.0 * std::exp(k * distance)));
         };
     }
     if (type == "Louwen-Vogt") {
         return [](const double distance, const double hardness_i, const double hardness_j) {
-            const auto gamma = (hardness_i + hardness_j) / 2.0;
-            return 1.0 / std::cbrt(1.0 / std::pow(gamma, 3.0) + std::pow(distance, 3.0));
+            const auto gamma = std::sqrt(hardness_i * hardness_j);
+            return coulomb / std::cbrt(std::pow(coulomb / gamma, 3.0) + std::pow(distance, 3.0));
         };
     }
 

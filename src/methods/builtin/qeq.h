@@ -14,8 +14,8 @@ class QEqMethod final : public Method {
             .name = "QEq",
             .full_name = "Charge Equilibration",
             .publication = "10.1021/j100161a070",
-            .notes = "Uses a single constrained solve; overlap_term "
-                     "selects the Coulomb interaction expression.",
+            .notes = "Uses fixed atom parameters in a single constrained solve with a selectable "
+                     "empirical two-center Coulomb term; hydrogen is not iterated.",
             .priority = 170};
 
         return metadata;
@@ -38,9 +38,9 @@ class QEqMethod final : public Method {
         -> std::span<const MethodOptionSpec> override {
         static const std::array option_schema{MethodOptionSpec{
             .id = "overlap_term",
-            .description = "QEq Coulomb repulsion overlap term",
+            .description = "QEq empirical two-center Coulomb term",
             .type = MethodOptionType::string,
-            .default_value = std::string{"Louwen-Vogt"},
+            .default_value = std::string{"DasGupta-Huzinaga"},
             .choices = {std::string{"Nishimoto-Mataga"}, std::string{"Nishimoto-Mataga-Weiss"},
                         std::string{"Ohno"}, std::string{"Ohno-Klopman"},
                         std::string{"DasGupta-Huzinaga"}, std::string{"Louwen-Vogt"}}}};

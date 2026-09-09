@@ -118,6 +118,11 @@ ABEEM places each bond charge at the point whose distances from the two nuclei a
 corresponding covalent radii, following Yang and Wang (1997). These centers determine nonincident
 atom-bond and bond-bond interactions; the final atomic charges receive half of each incident bond charge.
 
+QEq uses fixed, eV-valued atomic parameters in a single constrained solve with empirical two-center
+Coulomb terms evaluated from angstrom coordinates. It does not iterate charge-dependent hydrogen. The
+default DasGupta-Huzinaga term follows Oda and Hirono (2003); the optional Louwen-Vogt term uses the
+geometric-mean approximation of Njo, Fan, and van de Graaf (1998).
+
 ## Assessment and execution
 
 Assessment prepares a molecule collection once, performs parameter classification, evaluates scientific
