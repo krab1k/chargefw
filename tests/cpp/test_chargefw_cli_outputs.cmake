@@ -469,9 +469,31 @@ if(NOT denr_method_output MATCHES "minimum>=0" OR
 endif()
 
 execute_process(
-        COMMAND "${CHARGEFW_CLI}" parameters qeq
+        COMMAND "${CHARGEFW_CLI}" parameters
         OUTPUT_VARIABLE parameters_output
 )
-if(NOT parameters_output MATCHES "QEq_original" OR parameters_output MATCHES "EEM_original")
-    message(FATAL_ERROR "parameter filtering is incorrect: ${parameters_output}")
+if(NOT parameters_output MATCHES "QEq_original.*Rappe 1991")
+    message(FATAL_ERROR "parameter summary output is incorrect: ${parameters_output}")
+endif()
+
+execute_process(
+        COMMAND "${CHARGEFW_CLI}" parameters --method qeq
+        OUTPUT_VARIABLE filtered_parameters_output
+)
+if(NOT filtered_parameters_output MATCHES "QEq_original" OR
+   filtered_parameters_output MATCHES "EEM_Baek1991")
+    message(FATAL_ERROR "parameter filtering is incorrect: ${filtered_parameters_output}")
+endif()
+
+execute_process(
+        COMMAND "${CHARGEFW_CLI}" parameters QEq_original
+        OUTPUT_VARIABLE parameter_details_output
+)
+if(NOT parameter_details_output MATCHES "id: QEq_original" OR
+   NOT parameter_details_output MATCHES "method: qeq" OR
+   NOT parameter_details_output MATCHES "name: Rappe 1991" OR
+   NOT parameter_details_output MATCHES "publication: 10.1021/j100161a070" OR
+   NOT parameter_details_output MATCHES "notes: Derived from experimental atomic IPs and EAs" OR
+   NOT parameter_details_output MATCHES "priority: 0")
+    message(FATAL_ERROR "parameter-set details are incomplete: ${parameter_details_output}")
 endif()

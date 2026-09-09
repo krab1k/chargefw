@@ -60,7 +60,7 @@ endif()
 
 file(RENAME "${source_prefix}" "${moved_prefix}")
 execute_process(
-        COMMAND "${moved_prefix}/bin/chargefw" parameters eem
+        COMMAND "${moved_prefix}/bin/chargefw" parameters EEM_Baek1991
         RESULT_VARIABLE run_result
         ERROR_VARIABLE run_error
 )

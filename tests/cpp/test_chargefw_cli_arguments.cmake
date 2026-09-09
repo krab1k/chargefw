@@ -15,6 +15,9 @@ expect_argument_error(missing_required_argument calculate "${CHARGEFW_INPUT}")
 expect_argument_error(invalid_threads calculate --threads not-a-count "${CHARGEFW_INPUT}" output)
 expect_argument_error(unknown_option calculate --unknown-option "${CHARGEFW_INPUT}" output)
 expect_argument_error(unknown_method methods not-a-method)
+expect_argument_error(unknown_parameter_set parameters not-a-parameter-set)
+expect_argument_error(unknown_parameter_method parameters --method not-a-method)
+expect_argument_error(parameter_filter_and_detail parameters --method qeq QEq_original)
 
 execute_process(
         COMMAND "${CHARGEFW_CLI}" --help

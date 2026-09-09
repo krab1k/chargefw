@@ -36,7 +36,7 @@ chargefw calculate [options] INPUT OUTPUT_DIRECTORY
 chargefw inspect [input-options] INPUT
 chargefw applicability [options] INPUT
 chargefw methods [METHOD]
-chargefw parameters [METHOD]
+chargefw parameters [--method METHOD] [PARAMETER_SET]
 ```
 
 Run `chargefw COMMAND --help` for the option syntax accepted by the installed version.
@@ -179,13 +179,18 @@ List method IDs and full names, inspect one method, or list bundled parameter se
 chargefw methods
 chargefw methods eem
 chargefw parameters
-chargefw parameters eem
+chargefw parameters --method eem
+chargefw parameters QEq_original
 ```
 
 `chargefw methods METHOD` reports the selected method's identity, publication, priority, coordinate
 requirement, time and memory complexity, cutoff and cover support, and option schema. Complexity uses
 Big-O notation with `n` for atoms and `m` for bonds, as defined in the
 [project design](PROJECT.md#methods-and-parameters).
+
+`chargefw parameters` lists parameter-set IDs and names. Use `--method METHOD` to filter the summary by
+the parameter set's declared method. Pass a parameter-set ID instead to report its method, name,
+publication, notes, and priority; the positional ID and `--method` cannot be combined.
 
 ## Exit statuses
 

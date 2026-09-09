@@ -128,6 +128,7 @@ auto run(std::span<char*> arguments) -> int {
     std::string output_directory;
     std::string method_info;
     std::string parameter_method;
+    std::string parameter_set_info;
     bool progress = false;
     auto* calculate = app.add_subcommand("calculate", "Calculate and write partial charges");
     auto* inspect = app.add_subcommand("inspect", "Inspect imported molecular records");
@@ -144,7 +145,9 @@ auto run(std::span<char*> arguments) -> int {
     chargefw::cli::add_input_options(*applicability, applicability_input);
     chargefw::cli::add_selection_options(*applicability, applicability_selection);
     methods->add_option("method", method_info, "Show details for a method ID");
-    parameters->add_option("method", parameter_method, "Limit results to a method ID");
+    parameters->add_option("parameter-set", parameter_set_info,
+                           "Show details for a parameter-set ID");
+    parameters->add_option("--method", parameter_method, "Limit results to a method ID");
     const auto argc = static_cast<int>(arguments.size());
     auto* const argv = arguments.data();
     try {
@@ -158,7 +161,7 @@ auto run(std::span<char*> arguments) -> int {
         return 0;
     }
     if (*parameters) {
-        chargefw::cli::print_parameter_sets(parameter_method);
+        chargefw::cli::print_parameter_sets(parameter_set_info, parameter_method);
         return 0;
     }
     if (*inspect) {

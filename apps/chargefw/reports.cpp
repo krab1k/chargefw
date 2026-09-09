@@ -4,13 +4,34 @@
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <print>
 #include <stdexcept>
+#include <string_view>
 #include <variant>
+#include <vector>
 
 namespace chargefw::cli {
+namespace {
+
+struct SummaryRow {
+    std::string_view id;
+    std::string_view name;
+};
+
+void print_summary(const std::vector<SummaryRow>& rows) {
+    std::size_t id_width = 0;
+    for (const auto& row : rows) {
+        id_width = std::max(id_width, row.id.size());
+    }
+    for (const auto& row : rows) {
+        std::println("{:<{}}  {}", row.id, id_width, row.name);
+    }
+}
+
+} // namespace
 
 void print_inspection(const ImportedCollection& imported) {
     std::println("records: {}", imported.molecules.size());
@@ -70,9 +91,12 @@ void print_applicability(const calculation::AssessmentResult& assessment) {
 void print_methods(const std::string& method_id) {
     const auto& registry = methods::method_registry();
     if (method_id.empty()) {
+        auto rows = std::vector<SummaryRow>{};
+        rows.reserve(registry.methods().size());
         for (const auto& method : registry.methods()) {
-            std::println("{}\t{}", method->id(), method->metadata().full_name);
+            rows.push_back({method->id(), method->metadata().full_name});
         }
+        print_summary(rows);
         return;
     }
 
@@ -121,13 +145,42 @@ void print_methods(const std::string& method_id) {
     }
 }
 
-void print_parameter_sets(const std::string& method_id) {
-    for (const auto& parameter_set : parameters::load_default_parameter_sets()) {
-        if (method_id.empty() || parameter_set.method_id() == method_id) {
-            std::println("{}\t{}\t{}", parameter_set.id(), parameter_set.method_id(),
-                         parameter_set.name());
+void print_parameter_sets(const std::string& parameter_set_id, const std::string& method_id) {
+    const auto parameter_sets = parameters::load_default_parameter_sets();
+    if (parameter_set_id.empty()) {
+        if (!method_id.empty() && methods::method_registry().find(method_id) == nullptr) {
+            throw std::invalid_argument{"method '" + method_id + "' is not registered"};
         }
+        const auto visible = [&method_id](const parameters::ParameterSet& parameter_set) {
+            return method_id.empty() || parameter_set.method_id() == method_id;
+        };
+        auto rows = std::vector<SummaryRow>{};
+        rows.reserve(parameter_sets.size());
+        for (const auto& parameter_set : parameter_sets) {
+            if (visible(parameter_set)) {
+                rows.push_back({parameter_set.id(), parameter_set.name()});
+            }
+        }
+        print_summary(rows);
+        return;
     }
+    if (!method_id.empty()) {
+        throw std::invalid_argument{"parameter-set ID and --method cannot be combined"};
+    }
+
+    const auto parameter_set =
+        std::ranges::find(parameter_sets, parameter_set_id, &parameters::ParameterSet::id);
+    if (parameter_set == parameter_sets.end()) {
+        throw std::invalid_argument{"parameter set '" + parameter_set_id + "' was not found"};
+    }
+
+    const auto& metadata = parameter_set->metadata();
+    std::println("id: {}", metadata.id);
+    std::println("method: {}", metadata.method_id);
+    std::println("name: {}", metadata.name);
+    std::println("publication: {}", metadata.publication.empty() ? "-" : metadata.publication);
+    std::println("notes: {}", metadata.notes.empty() ? "-" : metadata.notes);
+    std::println("priority: {}", metadata.priority);
 }
 
 } // namespace chargefw::cli
