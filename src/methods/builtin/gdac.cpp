@@ -2,7 +2,6 @@
 
 #include "methods/builtin/element_prerequisites.h"
 
-#include <chargefw/core/periodic_table.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
 #include <cmath>
@@ -27,12 +26,7 @@ namespace {
 
 auto GDACMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                          PrerequisiteResult& result) const -> void {
-    if (core::total_formal_charge(input.prepared_molecule.molecule()) != 0) {
-        result.add(PrerequisiteIssue{.kind = PrerequisiteIssueKind::unsupported_molecule,
-                                     .message = "GDAC supports only neutral molecules because its "
-                                                "implemented charge transfers start "
-                                                "from zero total charge"});
-    }
+    detail::add_component_neutrality_prerequisite_issue(input, result, "GDAC");
 
     detail::add_element_prerequisite_issues(
         input, result, "GDAC requires a positive van der Waals radius",

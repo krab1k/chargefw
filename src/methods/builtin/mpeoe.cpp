@@ -1,7 +1,7 @@
 #include "methods/builtin/mpeoe.h"
 
-#include <chargefw/core/atom.h>
-#include <chargefw/core/bond.h>
+#include "methods/builtin/element_prerequisites.h"
+
 #include <chargefw/core/molecule.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
@@ -38,13 +38,8 @@ namespace {
 auto MPEOEMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                           PrerequisiteResult& result) const
     -> void {
-    if (!uses_formal_initial_charges(input.method_options) &&
-        core::total_formal_charge(input.prepared_molecule.molecule()) != 0) {
-        result.add(PrerequisiteIssue{
-            .kind = PrerequisiteIssueKind::unsupported_molecule,
-            .message = "MPEOE supports only neutral molecules because its implemented charge "
-                       "transfers conserve their initial zero total charge; set initial_charges="
-                       "formal to use atomic formal charges"});
+    if (!uses_formal_initial_charges(input.method_options)) {
+        detail::add_component_neutrality_prerequisite_issue(input, result, "MPEOE");
     }
 }
 

@@ -2,7 +2,6 @@
 
 #include "methods/builtin/element_prerequisites.h"
 
-#include <chargefw/core/molecule.h>
 #include <chargefw/core/periodic_table.h>
 
 #include <Eigen/LU>
@@ -18,13 +17,7 @@ auto MGCMethod::add_method_specific_prerequisite_issues(const MethodPrerequisite
         input, result, "MGC requires a positive element electronegativity",
         [](const core::Element& element) -> bool { return element.electronegativity > 0.0; });
 
-    if (core::total_formal_charge(input.prepared_molecule.molecule()) != 0) {
-        result.add(PrerequisiteIssue{
-            .kind = PrerequisiteIssueKind::unsupported_molecule,
-            .message =
-                "MGC supports only neutral molecules because its graph-charge equation conserves "
-                "zero total charge"});
-    }
+    detail::add_component_neutrality_prerequisite_issue(input, result, "MGC");
 }
 
 auto MGCMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {

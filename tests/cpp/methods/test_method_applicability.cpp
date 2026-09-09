@@ -401,8 +401,11 @@ TEST_CASE("applicability reports full-execution resource threshold warnings",
               .availability == methods::ExecutionAvailability::unsupported);
 
     const std::vector<const methods::Method*> topology_methods{mgc};
+    const auto topology_collection = chargefw::core::MoleculeCollection{
+        std::vector{chargefw::test::make_water_graph()}, "topology-test-collection"};
+    const features::PreparedMoleculeCollection topology_prepared{topology_collection};
     const auto topology_result =
-        methods::find_applicable_methods({.molecules = prepared_collection,
+        methods::find_applicable_methods({.molecules = topology_prepared,
                                           .methods = topology_methods,
                                           .parameter_sets = {},
                                           .resource_policy = {.cutoff_atom_threshold = 2}});

@@ -2,15 +2,43 @@
 
 #include "core/diagnostic_description.h"
 
+#include "features/topology_helpers.h"
+
+#include <chargefw/core/molecule.h>
 #include <chargefw/core/periodic_table.h>
 #include <chargefw/methods/method_prerequisites.h>
 
 #include <concepts>
 #include <cstddef>
+#include <numeric>
 #include <string>
 #include <string_view>
 
 namespace chargefw::methods::builtin::detail {
+
+inline auto add_component_neutrality_prerequisite_issue(const MethodPrerequisiteInput& input,
+                                                        PrerequisiteResult& result,
+                                                        const std::string_view method_name)
+    -> void {
+    const auto& molecule = input.prepared_molecule.molecule();
+    const auto components =
+        features::connected_components(input.prepared_molecule.topology().adjacency());
+
+    for (const auto& component : components) {
+        const auto formal_charge =
+            std::accumulate(component.begin(), component.end(), 0,
+                            [&molecule](const int sum, const std::size_t atom_index) {
+                                return sum + molecule.atom(atom_index).formal_charge();
+                            });
+        if (formal_charge != 0) {
+            result.add(PrerequisiteIssue{
+                .kind = PrerequisiteIssueKind::unsupported_molecule,
+                .message = std::string{method_name} +
+                           " supports only molecules with neutral connected components"});
+            return;
+        }
+    }
+}
 
 template <typename ElementSupported>
     requires std::predicate<ElementSupported, const core::Element&>
