@@ -94,8 +94,10 @@ should include only the individual adapter headers it uses.
 - Use `clang-asan` for ownership, lifetime, bounds, mapping, parser, container, view, and pointer
   changes. Use `clang-ubsan` for arithmetic, conversions, shifts, alignment, indexing, and other
   undefined-behavior risks. Run the focused sanitizer test first and the full relevant sanitizer suite
-  before completing substantial risk-sensitive work. Keep sanitizer builds serial or deliberately
-  low-parallel because template-heavy translation units can consume substantial memory.
+  before completing substantial risk-sensitive work. Never run ASan and UBSan builds or tests
+  concurrently; finish one sanitizer configuration before starting another. Keep each sanitizer build
+  serial or deliberately low-parallel because template-heavy translation units can consume substantial
+  memory.
 - Run `clang-tidy` after meaningful implementation or public-interface changes and before a milestone;
   it is static analysis, not a replacement for compiler or runtime tests.
 - Before a substantial merge or milestone, run the full debug, release, sanitizer, and clang-tidy
