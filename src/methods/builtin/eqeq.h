@@ -17,12 +17,15 @@ namespace eqeq_core {
 class EQeqMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "eqeq",
-                                                 .name = "EQeq",
-                                                 .full_name =
-                                                     "Extended Charge Equilibration Method",
-                                                 .publication = "10.1021/jz3008485",
-                                                 .priority = 150};
+        static constexpr MethodMetadata metadata{
+            .id = "eqeq",
+            .name = "EQeq",
+            .full_name = "Extended Charge Equilibration Method",
+            .publication = "10.1021/jz3008485",
+            .notes = "Implements the finite, non-periodic EQeq variant "
+                     "using neutral atomic reference-charge centers "
+                     "only.",
+            .priority = 150};
 
         return metadata;
     }

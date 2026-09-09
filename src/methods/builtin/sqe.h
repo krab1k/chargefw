@@ -21,6 +21,10 @@ class SQEMethod final : public Method {
                                                  .name = "SQE",
                                                  .full_name = "Split-charge Equilibration",
                                                  .publication = "10.1063/1.2346671",
+                                                 .notes =
+                                                     "Every connected component must be formally "
+                                                     "neutral. Use SQE+q0 when formal-charge "
+                                                     "localization matters.",
                                                  .priority = 90};
 
         return metadata;

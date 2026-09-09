@@ -30,6 +30,7 @@ auto method_descriptors() -> nb::list {
         descriptor["publication"] = metadata.publication.has_value()
                                         ? nb::cast(std::string{*metadata.publication})
                                         : nb::none();
+        descriptor["notes"] = std::string{metadata.notes};
         descriptor["priority"] = metadata.priority;
         descriptor["requires_coordinates"] = requirements.coordinates;
         descriptor["time_complexity"] =

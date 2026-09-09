@@ -7,11 +7,14 @@ namespace chargefw::methods::builtin {
 class DummyMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "dummy",
-                                                 .name = "Dummy method",
-                                                 .full_name = "Dummy zero charges",
-                                                 .publication = std::nullopt,
-                                                 .priority = 0};
+        static constexpr MethodMetadata metadata{
+            .id = "dummy",
+            .name = "Dummy method",
+            .full_name = "Dummy zero charges",
+            .publication = std::nullopt,
+            .notes = "Always returns zero charges regardless of input "
+                     "formal charges; not an empirical charge model.",
+            .priority = 0};
 
         return metadata;
     }

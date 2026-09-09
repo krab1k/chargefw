@@ -92,6 +92,9 @@ classifier semantics.
 Methods declare their coordinate, topology, element-property, formal-charge, and parameter
 requirements. Assessment reports both runnable plans and structured reasons for rejected candidates.
 Method options are validated against each method's schema before execution.
+Method metadata may also provide a concise human-readable note for important implementation scope or
+input behavior. Notes explain structured requirements and deliberate variants; applicability checks remain
+authoritative for a specific molecule and parameter set.
 
 Method resource requirements describe asymptotic time and memory scaling in Big-O notation, where `n`
 is the atom count and `m` is the bond count. These terms guide execution planning; they do not predict a

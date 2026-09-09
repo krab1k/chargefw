@@ -123,9 +123,10 @@ coordinates are missing or non-finite.
 `rejections()`, `default_plan()`, and applicability timing. A plan exposes its applicable candidate,
 concrete `ExecutionPolicy`, and warnings. Plans are tied to the assessment that created them.
 
-Use `methods::method_registry()` to inspect built-in method metadata and option schemas, and
-`methods::complexity_notation()` to format declared time and memory complexity. The notation and its
-variables are defined in the [project design](PROJECT.md#methods-and-parameters). Use
+Use `methods::method_registry()` to inspect built-in method metadata, human-readable implementation
+notes, and option schemas. Use `methods::complexity_notation()` to format declared time and memory
+complexity. The notation and its variables are defined in the
+[project design](PROJECT.md#methods-and-parameters). Use
 `parameters::load_default_parameter_sets()` for the installed bundled catalog. Parameter-set IDs in one
 assessment request must be unique. The [parameter-set JSON reference](PARAMETERS.md) documents the bundled
 data format and classifier semantics.

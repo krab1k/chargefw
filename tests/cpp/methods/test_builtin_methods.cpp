@@ -267,6 +267,17 @@ TEST_CASE("method complexity terms have Big-O notation", "[methods]") {
     CHECK(methods::complexity_notation(Complexity::atoms_plus_bonds_cubed) == "O((n + m)^3)");
 }
 
+TEST_CASE("built-in methods expose human-readable notes", "[methods][builtin-methods]") {
+    const auto* denr = methods::method_registry().find("denr");
+    const auto* charge2 = methods::method_registry().find("charge2");
+    REQUIRE(denr != nullptr);
+    REQUIRE(charge2 != nullptr);
+
+    CHECK(denr->metadata().notes == "This implementation fixes initial charges to zero and "
+                                    "supports only net-neutral molecules.");
+    CHECK(charge2->metadata().notes.empty());
+}
+
 TEST_CASE("DENR exposes its step and iteration defaults", "[methods][builtin-methods]") {
     const auto* denr = methods::method_registry().find("denr");
     REQUIRE(denr != nullptr);

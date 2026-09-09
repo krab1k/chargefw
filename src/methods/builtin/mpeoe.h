@@ -14,6 +14,10 @@ class MPEOEMethod final : public Method {
             .name = "MPEOE",
             .full_name = "Modified Partial Equalization of Atomic Electronegativity",
             .publication = "10.1021/j100374a066",
+            .notes =
+                "The default zero-charge initialization supports only neutral molecules. "
+                "initial_charges=formal is a ChargeFW extension that preserves supplied formal "
+                "charges.",
             .priority = 110};
 
         return metadata;

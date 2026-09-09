@@ -111,6 +111,7 @@ void print_methods(const std::string& method_id) {
     std::println("name: {}", metadata.name);
     std::println("full name: {}", metadata.full_name);
     std::println("publication: {}", metadata.publication.value_or("-"));
+    std::println("notes: {}", metadata.notes.empty() ? "-" : metadata.notes);
     std::println("priority: {}", metadata.priority);
     std::println("requires coordinates: {}", requirements.coordinates ? "yes" : "no");
     std::println("time complexity: {}", methods::complexity_notation(requirements.resources.time));

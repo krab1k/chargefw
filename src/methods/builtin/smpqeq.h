@@ -12,6 +12,7 @@ class SMPQEqMethod final : public Method {
                                                  .full_name =
                                                      "Self-Consistent Charge Equilibration Method",
                                                  .publication = "10.1021/jp8063273",
+                                                 .notes = "Uses five fixed self-consistency steps.",
                                                  .priority = 160};
 
         return metadata;

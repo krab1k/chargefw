@@ -11,6 +11,9 @@ class DelReMethod final : public Method {
                                                  .name = "DelRe",
                                                  .full_name = "Method of Del Re",
                                                  .publication = "10.1039/JR9580004031",
+                                                 .notes =
+                                                     "Every connected component must be formally "
+                                                     "neutral.",
                                                  .priority = 130};
 
         return metadata;

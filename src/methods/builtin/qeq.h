@@ -9,11 +9,14 @@ namespace chargefw::methods::builtin {
 class QEqMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "qeq",
-                                                 .name = "QEq",
-                                                 .full_name = "Charge Equilibration",
-                                                 .publication = "10.1021/j100161a070",
-                                                 .priority = 170};
+        static constexpr MethodMetadata metadata{
+            .id = "qeq",
+            .name = "QEq",
+            .full_name = "Charge Equilibration",
+            .publication = "10.1021/j100161a070",
+            .notes = "Uses a single constrained solve; overlap_term "
+                     "selects the Coulomb interaction expression.",
+            .priority = 170};
 
         return metadata;
     }

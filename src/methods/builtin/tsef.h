@@ -7,12 +7,14 @@ namespace chargefw::methods::builtin {
 class TSEFMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "tsef",
-                                                 .name = "TSEF",
-                                                 .full_name =
-                                                     "Topologically Symmetrical Energy Function",
-                                                 .publication = "10.1080/10629360701844142",
-                                                 .priority = 55};
+        static constexpr MethodMetadata metadata{
+            .id = "tsef",
+            .name = "TSEF",
+            .full_name = "Topologically Symmetrical Energy Function",
+            .publication = "10.1080/10629360701844142",
+            .notes = "Requires a connected molecular bond graph because "
+                     "every atom pair needs a finite bond-path distance.",
+            .priority = 55};
 
         return metadata;
     }

@@ -183,9 +183,9 @@ chargefw parameters --method eem
 chargefw parameters QEq_original
 ```
 
-`chargefw methods METHOD` reports the selected method's identity, publication, priority, coordinate
-requirement, time and memory complexity, cutoff and cover support, and option schema. Complexity uses
-Big-O notation with `n` for atoms and `m` for bonds, as defined in the
+`chargefw methods METHOD` reports the selected method's identity, publication, human-readable notes,
+priority, coordinate requirement, time and memory complexity, cutoff and cover support, and option schema.
+Complexity uses Big-O notation with `n` for atoms and `m` for bonds, as defined in the
 [project design](PROJECT.md#methods-and-parameters).
 
 `chargefw parameters` lists parameter-set IDs and names. Use `--method METHOD` to filter the summary by

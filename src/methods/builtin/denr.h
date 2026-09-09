@@ -9,12 +9,14 @@ namespace chargefw::methods::builtin {
 class DENRMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "denr",
-                                                 .name = "DENR",
-                                                 .full_name =
-                                                     "Dynamical Electronegativity Relaxation",
-                                                 .publication = "10.1080/10629360701844142",
-                                                 .priority = 50};
+        static constexpr MethodMetadata metadata{
+            .id = "denr",
+            .name = "DENR",
+            .full_name = "Dynamical Electronegativity Relaxation",
+            .publication = "10.1080/10629360701844142",
+            .notes = "This implementation fixes initial charges to "
+                     "zero and supports only net-neutral molecules.",
+            .priority = 50};
 
         return metadata;
     }

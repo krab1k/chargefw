@@ -7,11 +7,14 @@ namespace chargefw::methods::builtin {
 class FormalMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "formal",
-                                                 .name = "Formal",
-                                                 .full_name = "Formal atomic charges",
-                                                 .publication = std::nullopt,
-                                                 .priority = 10};
+        static constexpr MethodMetadata metadata{
+            .id = "formal",
+            .name = "Formal",
+            .full_name = "Formal atomic charges",
+            .publication = std::nullopt,
+            .notes = "Copies input atomic formal charges unchanged; "
+                     "not an empirical charge model.",
+            .priority = 10};
 
         return metadata;
     }

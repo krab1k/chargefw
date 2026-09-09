@@ -121,6 +121,7 @@ class MethodDescriptorPayload(TypedDict):
     name: str
     full_name: str
     publication: str | None
+    notes: str
     priority: int
     requires_coordinates: bool
     time_complexity: str

@@ -63,6 +63,7 @@ class Method:
     name: str
     full_name: str
     publication: str | None
+    notes: str
     priority: int
     requires_coordinates: bool
     time_complexity: str
@@ -93,6 +94,7 @@ def _method_descriptor(
         name=value["name"],
         full_name=value["full_name"],
         publication=value["publication"],
+        notes=value["notes"],
         priority=value["priority"],
         requires_coordinates=value["requires_coordinates"],
         time_complexity=value["time_complexity"],

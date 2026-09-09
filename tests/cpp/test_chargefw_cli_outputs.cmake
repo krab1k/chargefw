@@ -463,7 +463,8 @@ if(NOT eem_method_output MATCHES "full name: Electronegativity Equalization Meth
 endif()
 
 execute_process(COMMAND "${CHARGEFW_CLI}" methods denr OUTPUT_VARIABLE denr_method_output)
-if(NOT denr_method_output MATCHES "minimum>=0" OR
+if(NOT denr_method_output MATCHES "notes: This implementation fixes initial charges to zero" OR
+   NOT denr_method_output MATCHES "minimum>=0" OR
    NOT denr_method_output MATCHES "minimum>0")
     message(FATAL_ERROR "method option details are incomplete: ${denr_method_output}")
 endif()

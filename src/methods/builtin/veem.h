@@ -7,12 +7,14 @@ namespace chargefw::methods::builtin {
 class VEEMMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "veem",
-                                                 .name = "VEEM",
-                                                 .full_name =
-                                                     "Valence Electrons Equalization Method",
-                                                 .publication = "10.1088/1674-0068/24/01/31-39",
-                                                 .priority = 20};
+        static constexpr MethodMetadata metadata{
+            .id = "veem",
+            .name = "VEEM",
+            .full_name = "Valence Electrons Equalization Method",
+            .publication = "10.1088/1674-0068/24/01/31-39",
+            .notes = "Supports only net-neutral molecules; molecular "
+                     "connectivity is not used.",
+            .priority = 20};
 
         return metadata;
     }

@@ -754,6 +754,7 @@ class CalculationTests(unittest.TestCase):
             cast(Any, methods)._by_id["unexpected"] = methods["eem"]
 
         eem = methods["eem"]
+        self.assertEqual(eem.notes, "")
         self.assertTrue(eem.requires_coordinates)
         self.assertEqual(eem.time_complexity, "O(n^3)")
         self.assertEqual(eem.memory_complexity, "O(n^2)")
@@ -764,6 +765,7 @@ class CalculationTests(unittest.TestCase):
             tuple(chargefw.parameter_sets.for_method("eem")),
         )
         peoe = methods["peoe"]
+        self.assertIn("initial_charges=formal", peoe.notes)
         self.assertEqual(len(peoe.options), 2)
         self.assertIsInstance(peoe.options, Mapping)
         self.assertEqual(peoe.options["iters"].id, "iters")

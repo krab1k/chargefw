@@ -7,11 +7,14 @@ namespace chargefw::methods::builtin {
 class KCMMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "kcm",
-                                                 .name = "KCM",
-                                                 .full_name = "Kirchhoff Charge Model",
-                                                 .publication = "10.1002/jcc.20892",
-                                                 .priority = 60};
+        static constexpr MethodMetadata metadata{
+            .id = "kcm",
+            .name = "KCM",
+            .full_name = "Kirchhoff Charge Model",
+            .publication = "10.1002/jcc.20892",
+            .notes = "This implementation supports neutral molecular "
+                     "graphs only.",
+            .priority = 60};
 
         return metadata;
     }

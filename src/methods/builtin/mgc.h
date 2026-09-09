@@ -7,11 +7,14 @@ namespace chargefw::methods::builtin {
 class MGCMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "mgc",
-                                                 .name = "MGC",
-                                                 .full_name = "Molecular Graph Charge",
-                                                 .publication = "10.1002/poc.378",
-                                                 .priority = 70};
+        static constexpr MethodMetadata metadata{
+            .id = "mgc",
+            .name = "MGC",
+            .full_name = "Molecular Graph Charge",
+            .publication = "10.1002/poc.378",
+            .notes = "Supports only net-neutral molecules; input bond "
+                     "orders weight the molecular graph.",
+            .priority = 70};
 
         return metadata;
     }

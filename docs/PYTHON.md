@@ -210,8 +210,10 @@ iterations = chargefw.methods["peoe"].options["iters"]
 print(iterations.default, iterations.minimum)
 ```
 
-Method descriptors expose names, publication metadata, priority, coordinate requirements, Big-O time and
-memory complexity, reduced-mode capabilities, options, and associated parameter sets.
+Method descriptors expose names, publication metadata, human-readable `notes`, priority, coordinate
+requirements, Big-O time and memory complexity, reduced-mode capabilities, options, and associated
+parameter sets. Notes describe important implementation scope or input behavior; assessment remains the
+authoritative applicability check for a specific molecule and parameter set.
 `requires_coordinates=True` means every input molecule must have coordinates and every conformer must
 contain finite, non-coincident coordinates; the method then produces one assignment per conformer.
 Complexity uses `n` for atoms and `m` for bonds, as defined in the

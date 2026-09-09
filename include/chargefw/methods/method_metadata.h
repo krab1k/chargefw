@@ -9,6 +9,7 @@ struct MethodMetadata {
     std::string_view name;
     std::string_view full_name;
     std::optional<std::string_view> publication;
+    std::string_view notes{};
     int priority = 0;
 };
 

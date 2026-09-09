@@ -12,12 +12,15 @@ namespace chargefw::methods::builtin {
 class GDACMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "gdac",
-                                                 .name = "GDAC",
-                                                 .full_name =
-                                                     "Geometry-Dependent Net Atomic Charges",
-                                                 .publication = "10.1021/jp0023213",
-                                                 .priority = 100};
+        static constexpr MethodMetadata metadata{
+            .id = "gdac",
+            .name = "GDAC",
+            .full_name = "Geometry-Dependent Net Atomic Charges",
+            .publication = "10.1021/jp0023213",
+            .notes = "This implementation omits charged-species "
+                     "initialization and supports only net-neutral "
+                     "molecules.",
+            .priority = 100};
 
         return metadata;
     }
