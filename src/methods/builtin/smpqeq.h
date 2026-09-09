@@ -7,13 +7,13 @@ namespace chargefw::methods::builtin {
 class SMPQEqMethod final : public Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const MethodMetadata& override {
-        static constexpr MethodMetadata metadata{.id = "smpqeq",
-                                                 .name = "SMP/QEq",
-                                                 .full_name =
-                                                     "Self-Consistent Charge Equilibration Method",
-                                                 .publication = "10.1021/jp8063273",
-                                                 .notes = "Uses five fixed self-consistency steps.",
-                                                 .priority = 160};
+        static constexpr MethodMetadata metadata{
+            .id = "smpqeq",
+            .name = "SMP/QEq",
+            .full_name = "Self-Consistent Charge Equilibration Method",
+            .publication = "10.1021/jp8063273",
+            .notes = "Iterates charge-dependent hardness to convergence.",
+            .priority = 160};
 
         return metadata;
     }

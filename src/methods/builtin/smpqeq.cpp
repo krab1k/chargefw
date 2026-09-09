@@ -13,7 +13,9 @@
 namespace chargefw::methods::builtin {
 namespace {
 
-constexpr auto iteration_count = 5;
+constexpr auto coulomb = 14.4;
+constexpr auto maximum_iterations = 100;
+constexpr auto convergence_tolerance = 1.0e-10;
 
 [[nodiscard]] auto interaction(const double distance, const double second_i, const double second_j)
     -> double {
@@ -23,13 +25,15 @@ constexpr auto iteration_count = 5;
     }
 
     const auto gamma = 2.0 * std::sqrt(second_i * second_j);
+    const auto scaled_distance = distance / coulomb;
 
-    return 1.0 / std::cbrt(1.0 / std::pow(gamma, 3.0) + std::pow(distance, 3.0));
+    return 1.0 / std::cbrt(1.0 / std::pow(gamma, 3.0) + std::pow(scaled_distance, 3.0));
 }
 
 [[nodiscard]] auto diagonal_term(const double previous_charge, const double second,
                                  const double third, const double fourth) -> double {
-    return 2.0 * (second + third * previous_charge + fourth * previous_charge * previous_charge);
+    return 2.0 * (second + third * previous_charge / 4.0 +
+                  fourth * previous_charge * previous_charge / 12.0);
 }
 
 } // namespace
@@ -54,8 +58,10 @@ auto SMPQEqMethod::calculate(const CalculationInput& input) const -> charges::At
 
     Eigen::MatrixXd A = Eigen::MatrixXd::Zero(n + 1, n + 1);
     Eigen::VectorXd b = Eigen::VectorXd::Zero(n + 1);
+    Eigen::VectorXd previous_charges = Eigen::VectorXd::Zero(n);
 
-    for (auto iteration = 0; iteration < iteration_count; ++iteration) {
+    // Zhang specifies self-consistent iteration, not a fixed iteration count.
+    for (auto iteration = 0; iteration < maximum_iterations; ++iteration) {
         A.setZero();
 
         for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
@@ -85,9 +91,15 @@ auto SMPQEqMethod::calculate(const CalculationInput& input) const -> charges::At
         b(n) = input.target_charge();
 
         b = A.partialPivLu().solve(b);
+
+        if ((b.head(n) - previous_charges).cwiseAbs().maxCoeff() <= convergence_tolerance) {
+            return charges::AtomicCharges{std::vector<double>{b.data(), b.data() + n}};
+        }
+
+        previous_charges = b.head(n);
     }
 
-    return charges::AtomicCharges{std::vector<double>{b.data(), b.data() + n}};
+    throw std::runtime_error{"SMP/QEq self-consistent solve did not converge"};
 }
 
 } // namespace chargefw::methods::builtin
