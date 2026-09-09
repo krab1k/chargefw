@@ -114,6 +114,10 @@ polarizability feedback stops at the published charge tolerance or the configure
 Every connected component must be formally neutral. The resonance and hybridization extensions from the
 later Abraham and Hudson method are not implemented.
 
+ABEEM places each bond charge at the point whose distances from the two nuclei are proportional to the
+corresponding covalent radii, following Yang and Wang (1997). These centers determine nonincident
+atom-bond and bond-bond interactions; the final atomic charges receive half of each incident bond charge.
+
 ## Assessment and execution
 
 Assessment prepares a molecule collection once, performs parameter classification, evaluates scientific

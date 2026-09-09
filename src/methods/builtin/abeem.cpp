@@ -38,9 +38,9 @@ namespace {
     const auto& [x1, y1, z1] = geometry.position(bond.first_atom_index());
     const auto& [x2, y2, z2] = geometry.position(bond.second_atom_index());
 
-    return core::Position{.x = (first_weight * x1 + second_weight * x2) / weight_sum,
-                          .y = (first_weight * y1 + second_weight * y2) / weight_sum,
-                          .z = (first_weight * z1 + second_weight * z2) / weight_sum};
+    return core::Position{.x = (second_weight * x1 + first_weight * x2) / weight_sum,
+                          .y = (second_weight * y1 + first_weight * y2) / weight_sum,
+                          .z = (second_weight * z1 + first_weight * z2) / weight_sum};
 }
 
 [[nodiscard]] auto atom_bond_distance(const features::ConformerFeatures& geometry,
