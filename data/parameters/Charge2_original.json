@@ -4,7 +4,7 @@
     "name": "Abraham 1982",
     "method": "charge2",
     "publication": "10.1002/jcc.540030316",
-    "notes": "Mulliken-derived electronegativities; empirical polarizabilities",
+    "notes": "Mulliken-derived electronegativities; empirical polarizabilities; fitted Br/I values",
     "priority": 0
   },
   "common":
@@ -44,11 +44,11 @@
       },
       {
         "key": {"element": "Br", "classifier": "plain", "type": "*"},
-        "values": [10.87, 1.885, -0.172]
+        "values": [11.60, 1.885, -0.172]
       },
       {
         "key": {"element": "I", "classifier": "plain", "type": "*"},
-        "values": [9.99, 2.423, -0.144]
+        "values": [11.00, 2.423, -0.144]
       }
 
     ]

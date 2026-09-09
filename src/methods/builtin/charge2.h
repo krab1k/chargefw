@@ -24,7 +24,7 @@ class Charge2Method final : public Method {
         requirements.common_parameters = {"a1", "a2", "a3", "b", "c", "alpha"};
         requirements.atom_parameters = {"chi", "P0", "q0"};
         requirements.resources.time = ComplexityTerm::atoms_plus_bonds;
-        requirements.resources.memory = ComplexityTerm::constant;
+        requirements.resources.memory = ComplexityTerm::atoms;
         return requirements;
     }
 
@@ -32,7 +32,7 @@ class Charge2Method final : public Method {
         -> std::span<const MethodOptionSpec> override {
         static const std::array option_schema{
             MethodOptionSpec{.id = "iters",
-                             .description = "Number of Charge2 iterations",
+                             .description = "Maximum number of Charge2 iterations",
                              .type = MethodOptionType::integer,
                              .default_value = 10,
                              .choices = {},
@@ -42,6 +42,10 @@ class Charge2Method final : public Method {
 
     [[nodiscard]] auto calculate(const CalculationInput& input) const
         -> charges::AtomicCharges override;
+
+  protected:
+    auto add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
+                                                 PrerequisiteResult& result) const -> void override;
 };
 
 } // namespace chargefw::methods::builtin

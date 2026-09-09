@@ -105,6 +105,12 @@ bond-transfer formulations start from zero and conserve zero charge within each 
 net-neutral zwitterions remain supported. SQE+q0 and SQE+qp include initial charges and support charged
 molecules when their other requirements are met.
 
+Charge2 implements the neutral-molecule inductive scheme from Abraham, Griffiths, and Loftus (1982).
+Its one-, two-, and three-bond effects are applied as conservative bond transfers, and its iterative
+polarizability feedback stops at the published charge tolerance or the configured maximum iteration count.
+Every connected component must be formally neutral. The resonance and hybridization extensions from the
+later Abraham and Hudson method are not implemented.
+
 ## Assessment and execution
 
 Assessment prepares a molecule collection once, performs parameter classification, evaluates scientific

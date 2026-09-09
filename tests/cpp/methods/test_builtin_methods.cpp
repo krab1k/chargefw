@@ -65,7 +65,7 @@ constexpr std::array method_manifest{
                    Complexity::atoms_plus_bonds_squared, true, true,
                    FragmentCharge::proportional_to_atom_count},
     MethodManifest{"charge2", "Charge2", "Charge2", true, 30, false, 6, 3, 0, 1,
-                   Complexity::atoms_plus_bonds, Complexity::constant, false, false,
+                   Complexity::atoms_plus_bonds, Complexity::atoms, false, false,
                    FragmentCharge::unsupported},
     MethodManifest{"delre", "DelRe", "Method of Del Re", true, 130, false, 0, 1, 3, 0,
                    Complexity::atoms_cubed, Complexity::atoms_squared, false, false,
