@@ -198,7 +198,10 @@ with lookup by stable ID. Select by ID or pass a descriptor from these mappings 
 eem = chargefw.methods["eem"]
 
 for method_id, method in chargefw.methods.items():
-    print(method_id, method.name, method.supports_cutoff)
+    print(method_id, method.full_name)
+
+print(eem.time_complexity, eem.memory_complexity)
+print(eem.requires_coordinates, eem.supports_cutoff, eem.supports_cover)
 
 for parameter_set in eem.parameter_sets.values():
     print(parameter_set.id, parameter_set.name)
@@ -207,8 +210,12 @@ iterations = chargefw.methods["peoe"].options["iters"]
 print(iterations.default, iterations.minimum)
 ```
 
-Method descriptors expose names, publication metadata, priority, coordinate requirements, reduced-mode
-capabilities, options, and associated parameter sets. Python exposes only the installed bundled parameter
+Method descriptors expose names, publication metadata, priority, coordinate requirements, Big-O time and
+memory complexity, reduced-mode capabilities, options, and associated parameter sets.
+`requires_coordinates=True` means every input molecule must have coordinates and every conformer must
+contain finite, non-coincident coordinates; the method then produces one assignment per conformer.
+Complexity uses `n` for atoms and `m` for bonds, as defined in the
+[project design](PROJECT.md#methods-and-parameters). Python exposes only the installed bundled parameter
 catalog. Its package-level and method-level mappings are immutable and cannot be extended. The
 [parameter-set JSON reference](PARAMETERS.md) documents the bundled data and classifier behavior,
 including permissive matching. Automatic selection considers higher method and parameter-set priorities

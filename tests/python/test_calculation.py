@@ -755,6 +755,8 @@ class CalculationTests(unittest.TestCase):
 
         eem = methods["eem"]
         self.assertTrue(eem.requires_coordinates)
+        self.assertEqual(eem.time_complexity, "O(n^3)")
+        self.assertEqual(eem.memory_complexity, "O(n^2)")
         self.assertTrue(eem.supports_cutoff)
         self.assertTrue(eem.supports_cover)
         self.assertEqual(

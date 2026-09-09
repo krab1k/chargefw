@@ -32,6 +32,10 @@ auto method_descriptors() -> nb::list {
                                         : nb::none();
         descriptor["priority"] = metadata.priority;
         descriptor["requires_coordinates"] = requirements.coordinates;
+        descriptor["time_complexity"] =
+            std::string{methods::complexity_notation(requirements.resources.time)};
+        descriptor["memory_complexity"] =
+            std::string{methods::complexity_notation(requirements.resources.memory)};
         descriptor["supports_cutoff"] = requirements.resources.supports_cutoff;
         descriptor["supports_cover"] = requirements.resources.supports_cover;
         auto options = nb::list{};

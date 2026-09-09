@@ -65,6 +65,8 @@ class Method:
     publication: str | None
     priority: int
     requires_coordinates: bool
+    time_complexity: str
+    memory_complexity: str
     supports_cutoff: bool
     supports_cover: bool
     options: MethodOptionCatalog
@@ -93,6 +95,8 @@ def _method_descriptor(
         publication=value["publication"],
         priority=value["priority"],
         requires_coordinates=value["requires_coordinates"],
+        time_complexity=value["time_complexity"],
+        memory_complexity=value["memory_complexity"],
         supports_cutoff=value["supports_cutoff"],
         supports_cover=value["supports_cover"],
         options=MethodOptionCatalog(

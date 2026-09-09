@@ -123,6 +123,8 @@ class MethodDescriptorPayload(TypedDict):
     publication: str | None
     priority: int
     requires_coordinates: bool
+    time_complexity: str
+    memory_complexity: str
     supports_cutoff: bool
     supports_cover: bool
     options: list[MethodOptionDescriptorPayload]
