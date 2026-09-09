@@ -126,6 +126,7 @@ auto run(std::span<char*> arguments) -> int {
     chargefw::cli::SelectionArguments calculate_selection;
     chargefw::cli::SelectionArguments applicability_selection;
     std::string output_directory;
+    std::string method_info;
     std::string parameter_method;
     bool progress = false;
     auto* calculate = app.add_subcommand("calculate", "Calculate and write partial charges");
@@ -142,6 +143,7 @@ auto run(std::span<char*> arguments) -> int {
     chargefw::cli::add_input_options(*inspect, inspect_input);
     chargefw::cli::add_input_options(*applicability, applicability_input);
     chargefw::cli::add_selection_options(*applicability, applicability_selection);
+    methods->add_option("method", method_info, "Show details for a method ID");
     parameters->add_option("method", parameter_method, "Limit results to a method ID");
     const auto argc = static_cast<int>(arguments.size());
     auto* const argv = arguments.data();
@@ -152,7 +154,7 @@ auto run(std::span<char*> arguments) -> int {
     }
 
     if (*methods) {
-        chargefw::cli::print_methods();
+        chargefw::cli::print_methods(method_info);
         return 0;
     }
     if (*parameters) {

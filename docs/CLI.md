@@ -35,7 +35,7 @@ _install/bin/chargefw --help
 chargefw calculate [options] INPUT OUTPUT_DIRECTORY
 chargefw inspect [input-options] INPUT
 chargefw applicability [options] INPUT
-chargefw methods
+chargefw methods [METHOD]
 chargefw parameters [METHOD]
 ```
 
@@ -173,13 +173,19 @@ Report runnable plans, rejected alternatives, and the selected plan without calc
 chargefw applicability --method eem molecule.sdf
 ```
 
-List methods and their option schemas, or list bundled parameter sets:
+List method IDs and full names, inspect one method, or list bundled parameter sets:
 
 ```bash
 chargefw methods
+chargefw methods eem
 chargefw parameters
 chargefw parameters eem
 ```
+
+`chargefw methods METHOD` reports the selected method's identity, publication, priority, coordinate
+requirement, time and memory complexity, cutoff and cover support, and option schema. Complexity uses
+Big-O notation with `n` for atoms and `m` for bonds, as defined in the
+[project design](PROJECT.md#methods-and-parameters).
 
 ## Exit statuses
 

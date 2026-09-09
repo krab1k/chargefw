@@ -81,7 +81,7 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments);
 
 void print_inspection(const ImportedCollection& imported);
 void print_applicability(const calculation::AssessmentResult& assessment);
-void print_methods();
+void print_methods(const std::string& method_id);
 void print_parameter_sets(const std::string& method_id);
 
 [[nodiscard]] auto

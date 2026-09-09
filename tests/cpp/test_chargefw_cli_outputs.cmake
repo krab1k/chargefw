@@ -446,9 +446,26 @@ if(NOT rejected_applicability_result EQUAL 0 OR
 endif()
 
 execute_process(COMMAND "${CHARGEFW_CLI}" methods OUTPUT_VARIABLE methods_output)
-if(NOT methods_output MATCHES "formal" OR NOT methods_output MATCHES "minimum>=1" OR
-   NOT methods_output MATCHES "minimum>0")
-    message(FATAL_ERROR "methods output does not list formal")
+if(NOT methods_output MATCHES "formal.*Formal atomic charges" OR
+   methods_output MATCHES "default=")
+    message(FATAL_ERROR "method summary output is incorrect: ${methods_output}")
+endif()
+
+execute_process(COMMAND "${CHARGEFW_CLI}" methods eem OUTPUT_VARIABLE eem_method_output)
+string(FIND "${eem_method_output}" "time complexity: O(n^3)" eem_time_complexity)
+string(FIND "${eem_method_output}" "memory complexity: O(n^2)" eem_memory_complexity)
+if(NOT eem_method_output MATCHES "full name: Electronegativity Equalization Method" OR
+   NOT eem_method_output MATCHES "requires coordinates: yes" OR
+   eem_time_complexity EQUAL -1 OR eem_memory_complexity EQUAL -1 OR
+   NOT eem_method_output MATCHES "supports cutoff: yes" OR
+   NOT eem_method_output MATCHES "supports cover: yes")
+    message(FATAL_ERROR "EEM method details are incomplete: ${eem_method_output}")
+endif()
+
+execute_process(COMMAND "${CHARGEFW_CLI}" methods denr OUTPUT_VARIABLE denr_method_output)
+if(NOT denr_method_output MATCHES "minimum>=0" OR
+   NOT denr_method_output MATCHES "minimum>0")
+    message(FATAL_ERROR "method option details are incomplete: ${denr_method_output}")
 endif()
 
 execute_process(

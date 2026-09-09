@@ -7,6 +7,7 @@
 #include <iostream>
 #include <map>
 #include <print>
+#include <stdexcept>
 #include <variant>
 
 namespace chargefw::cli {
@@ -66,33 +67,57 @@ void print_applicability(const calculation::AssessmentResult& assessment) {
                  calculation::to_string(plan->policy().mode()));
 }
 
-void print_methods() {
-    for (const auto& method : methods::method_registry().methods()) {
-        std::println("{}\t{}", method->id(), method->metadata().name);
-        for (const auto& option : method->option_schema()) {
-            std::print("  {} (default=", option.id);
-            std::visit([](const auto& value) { std::print("{}", value); }, option.default_value);
-            std::print(")");
-            if (!option.choices.empty()) {
-                std::print(" choices=");
-                for (std::size_t index = 0; index < option.choices.size(); ++index) {
-                    if (index != 0) {
-                        std::print(",");
-                    }
-                    std::visit([](const auto& value) { std::print("{}", value); },
-                               option.choices[index]);
-                }
-            }
-            if (option.minimum.has_value()) {
-                std::print("{}", option.minimum_inclusive ? " minimum>=" : " minimum>");
-                std::visit([](const auto& value) { std::print("{}", value); }, *option.minimum);
-            }
-            if (option.maximum.has_value()) {
-                std::print("{}", option.maximum_inclusive ? " maximum<=" : " maximum<");
-                std::visit([](const auto& value) { std::print("{}", value); }, *option.maximum);
-            }
-            std::println();
+void print_methods(const std::string& method_id) {
+    const auto& registry = methods::method_registry();
+    if (method_id.empty()) {
+        for (const auto& method : registry.methods()) {
+            std::println("{}\t{}", method->id(), method->metadata().full_name);
         }
+        return;
+    }
+
+    const auto* method = registry.find(method_id);
+    if (method == nullptr) {
+        throw std::invalid_argument{"method '" + method_id + "' is not registered"};
+    }
+
+    const auto& metadata = method->metadata();
+    const auto requirements = method->requirements();
+    std::println("id: {}", metadata.id);
+    std::println("name: {}", metadata.name);
+    std::println("full name: {}", metadata.full_name);
+    std::println("publication: {}", metadata.publication.value_or("-"));
+    std::println("priority: {}", metadata.priority);
+    std::println("requires coordinates: {}", requirements.coordinates ? "yes" : "no");
+    std::println("time complexity: {}", methods::complexity_notation(requirements.resources.time));
+    std::println("memory complexity: {}",
+                 methods::complexity_notation(requirements.resources.memory));
+    std::println("supports cutoff: {}", requirements.resources.supports_cutoff ? "yes" : "no");
+    std::println("supports cover: {}", requirements.resources.supports_cover ? "yes" : "no");
+    std::println("options:{}", method->option_schema().empty() ? " none" : "");
+    for (const auto& option : method->option_schema()) {
+        std::print("  {} (default=", option.id);
+        std::visit([](const auto& value) { std::print("{}", value); }, option.default_value);
+        std::print(")");
+        if (!option.choices.empty()) {
+            std::print(" choices=");
+            for (std::size_t index = 0; index < option.choices.size(); ++index) {
+                if (index != 0) {
+                    std::print(",");
+                }
+                std::visit([](const auto& value) { std::print("{}", value); },
+                           option.choices[index]);
+            }
+        }
+        if (option.minimum.has_value()) {
+            std::print("{}", option.minimum_inclusive ? " minimum>=" : " minimum>");
+            std::visit([](const auto& value) { std::print("{}", value); }, *option.minimum);
+        }
+        if (option.maximum.has_value()) {
+            std::print("{}", option.maximum_inclusive ? " maximum<=" : " maximum<");
+            std::visit([](const auto& value) { std::print("{}", value); }, *option.maximum);
+        }
+        std::println();
     }
 }
 

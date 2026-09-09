@@ -14,6 +14,7 @@ endfunction()
 expect_argument_error(missing_required_argument calculate "${CHARGEFW_INPUT}")
 expect_argument_error(invalid_threads calculate --threads not-a-count "${CHARGEFW_INPUT}" output)
 expect_argument_error(unknown_option calculate --unknown-option "${CHARGEFW_INPUT}" output)
+expect_argument_error(unknown_method methods not-a-method)
 
 execute_process(
         COMMAND "${CHARGEFW_CLI}" --help
