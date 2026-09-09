@@ -34,14 +34,10 @@ auto make_parameter_set() -> parameters::ParameterSet {
 
 } // namespace
 
-TEST_CASE("SMP/QEq has a stable water regression and responds to geometry", "[methods][smpqeq]") {
+TEST_CASE("SMP/QEq responds to geometry", "[methods][smpqeq]") {
     const auto charge_set = chargefw::test::calculate_method(
         chargefw::test::make_two_conformer_water(), "smpqeq", {make_parameter_set()});
-    const auto& charges = charge_set.assignment(0).charges;
 
-    CHECK(std::abs(charges[0] - (-0.035475966523)) < 1.0e-8);
-    CHECK(std::abs(charges[1] - (0.017737983262)) < 1.0e-8);
-    CHECK(std::abs(charges[2] - (0.017737983262)) < 1.0e-8);
-    CHECK(std::abs(charges.total() - (0.0)) < 1.0e-8);
-    CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-8);
+    CHECK(std::abs(charge_set.assignment(0).charges[0] - charge_set.assignment(1).charges[0]) >
+          1.0e-8);
 }

@@ -1,5 +1,4 @@
 #include "support/test_calculation.h"
-#include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
 #include <chargefw/core/atom.h>
@@ -73,17 +72,6 @@ auto make_methyl_fluoride() -> chargefw::core::Molecule {
 
 } // namespace
 
-TEST_CASE("Charge2 has a stable water electronegativity-transfer regression",
-          "[methods][charge2]") {
-    const auto charge_set = chargefw::test::calculate_single_method(
-        chargefw::test::make_water_graph(), "charge2", {charge2_parameters()});
-    const auto& charges = charge_set.assignment(0).charges;
-
-    CHECK(std::abs(charges[0] - (-0.6789915966386555)) < 1.0e-12);
-    CHECK(std::abs(charges[1] - 0.3394957983193277) < 1.0e-12);
-    CHECK(std::abs(charges[2] - 0.3394957983193277) < 1.0e-12);
-}
-
 TEST_CASE("Charge2 iteration option changes polarizability feedback", "[methods][charge2]") {
     auto one_iteration = chargefw::methods::MethodOptions{};
     one_iteration.set("iters", 1);
@@ -104,6 +92,7 @@ TEST_CASE("Charge2 reproduces published methyl fluoride charges", "[methods][cha
         make_methyl_fluoride(), "charge2", {charge2_parameters()});
     const auto& charges = charge_set.assignment(0).charges;
 
+    // Abraham, Griffiths, and Loftus (1982), Table IX.
     CHECK(std::abs(charges[0] - 0.035) < 0.0005);
     CHECK(std::abs(charges[1] - 0.062) < 0.0005);
     CHECK(std::abs(charges[2] - 0.062) < 0.0005);

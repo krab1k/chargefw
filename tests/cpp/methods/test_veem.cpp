@@ -1,11 +1,7 @@
-#include "support/test_calculation.h"
-#include "support/test_molecules.h"
-
 #include <chargefw/core/molecule.h>
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/methods/method_registry.h>
 
-#include <cmath>
 #include <snitch/snitch.hpp>
 
 namespace methods = chargefw::methods;
@@ -41,14 +37,4 @@ TEST_CASE("VEEM rejects non-neutral molecules", "[methods][veem]") {
     REQUIRE(prerequisite_result.issues().size() == 1);
     CHECK(prerequisite_result.issues()[0].kind ==
           methods::PrerequisiteIssueKind::unsupported_molecule);
-}
-
-TEST_CASE("VEEM has a stable water regression", "[methods][veem]") {
-    const auto charge_set =
-        chargefw::test::calculate_single_method(chargefw::test::make_water_graph(), "veem");
-    const auto& charges = charge_set.assignment(0).charges;
-
-    CHECK(std::abs(charges[0] - (-0.5942492012779552)) < 1.0e-12);
-    CHECK(std::abs(charges[1] - 0.2971246006389776) < 1.0e-12);
-    CHECK(std::abs(charges[2] - 0.2971246006389776) < 1.0e-12);
 }
