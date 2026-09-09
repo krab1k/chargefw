@@ -20,6 +20,8 @@ enum class ComplexityTerm : std::uint8_t {
     atoms_plus_bonds_cubed,   // (N + M)^3
 };
 
+[[nodiscard]] auto complexity_notation(ComplexityTerm value) -> std::string_view;
+
 enum class FragmentTargetChargePolicy : std::uint8_t {
     unsupported,
     proportional_to_atom_count,

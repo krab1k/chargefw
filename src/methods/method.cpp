@@ -5,6 +5,7 @@
 #include <chargefw/features/conformer_features.h>
 
 #include <exception>
+#include <stdexcept>
 #include <string>
 
 namespace chargefw::methods {
@@ -48,6 +49,32 @@ auto add_coordinate_prerequisite_issues(const Method& method, const core::Molecu
 }
 
 } // namespace
+
+auto complexity_notation(const ComplexityTerm value) -> std::string_view {
+    switch (value) {
+    case ComplexityTerm::constant:
+        return "O(1)";
+    case ComplexityTerm::atoms:
+        return "O(n)";
+    case ComplexityTerm::bonds:
+        return "O(m)";
+    case ComplexityTerm::atoms_plus_bonds:
+        return "O(n + m)";
+    case ComplexityTerm::atoms_squared:
+        return "O(n^2)";
+    case ComplexityTerm::atoms_cubed:
+        return "O(n^3)";
+    case ComplexityTerm::bonds_squared:
+        return "O(m^2)";
+    case ComplexityTerm::bonds_cubed:
+        return "O(m^3)";
+    case ComplexityTerm::atoms_plus_bonds_squared:
+        return "O((n + m)^2)";
+    case ComplexityTerm::atoms_plus_bonds_cubed:
+        return "O((n + m)^3)";
+    }
+    throw std::invalid_argument{"unknown complexity term"};
+}
 
 auto Method::requires_parameters() const -> bool {
     return requirements().requires_parameters();

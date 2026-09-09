@@ -14,6 +14,7 @@
 #include <chargefw/methods/method_applicability.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
+#include <chargefw/methods/method_requirements.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
 #include <array>
@@ -257,6 +258,13 @@ TEST_CASE("built-in method registry matches the conformance manifest",
         CHECK(requirements.resources.fragment_target_charge_policy ==
               expected.fragment_target_charge_policy);
     }
+}
+
+TEST_CASE("method complexity terms have Big-O notation", "[methods]") {
+    CHECK(methods::complexity_notation(Complexity::constant) == "O(1)");
+    CHECK(methods::complexity_notation(Complexity::atoms_cubed) == "O(n^3)");
+    CHECK(methods::complexity_notation(Complexity::bonds_squared) == "O(m^2)");
+    CHECK(methods::complexity_notation(Complexity::atoms_plus_bonds_cubed) == "O((n + m)^3)");
 }
 
 TEST_CASE("DENR exposes its step and iteration defaults", "[methods][builtin-methods]") {
