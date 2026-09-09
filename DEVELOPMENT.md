@@ -69,6 +69,15 @@ cmake --build build/clang-asan --parallel 1
 ctest --test-dir build/clang-asan --output-on-failure -E '^cpptest$'
 ```
 
+On systemd-based Linux, an optional memory scope can protect an interactive workstation; adjust the
+limits and parallelism for the machine:
+
+```bash
+systemd-run --user --scope \
+    -p MemoryHigh=24G -p MemoryMax=32G -p MemorySwapMax=1G \
+    cmake --build build/clang-asan --parallel 8
+```
+
 The expected validation depth for different changes is listed in
 [AGENTS.md](AGENTS.md#validation-cadence).
 
