@@ -22,10 +22,12 @@ enum class ComplexityTerm : std::uint8_t {
 
 [[nodiscard]] auto complexity_notation(ComplexityTerm value) -> std::string_view;
 
-enum class FragmentTargetChargePolicy : std::uint8_t {
+enum class ReducedChargePolicy : std::uint8_t {
     unsupported,
-    proportional_to_atom_count,
-    zero,
+    uniform_target_global,
+    zero_components,
+    formal_charge_components,
+    parameterized_charge_components,
 };
 
 struct ResourceRequirements {
@@ -36,8 +38,7 @@ struct ResourceRequirements {
     // coordinates and has a tested executor for the corresponding radius-based approximation.
     bool supports_cutoff = false;
     bool supports_cover = false;
-    FragmentTargetChargePolicy fragment_target_charge_policy =
-        FragmentTargetChargePolicy::unsupported;
+    ReducedChargePolicy reduced_charge_policy = ReducedChargePolicy::unsupported;
 };
 
 struct MethodRequirements {

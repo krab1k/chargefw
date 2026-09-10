@@ -198,11 +198,11 @@ class DirectTestMethod final : public methods::Method {
     }
 
     [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        return {.coordinates = true,
-                .resources = {.supports_cutoff = true,
-                              .supports_cover = true,
-                              .fragment_target_charge_policy =
-                                  methods::FragmentTargetChargePolicy::zero}};
+        return {
+            .coordinates = true,
+            .resources = {.supports_cutoff = true,
+                          .supports_cover = true,
+                          .reduced_charge_policy = methods::ReducedChargePolicy::zero_components}};
     }
 
     [[nodiscard]] auto option_schema() const noexcept

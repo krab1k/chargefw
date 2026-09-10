@@ -48,12 +48,12 @@ struct MethodManifest {
     methods::ComplexityTerm memory;
     bool supports_cutoff;
     bool supports_cover;
-    methods::FragmentTargetChargePolicy fragment_target_charge_policy;
+    methods::ReducedChargePolicy reduced_charge_policy;
     bool uses_bundled_parameters = true;
 };
 
 using Complexity = methods::ComplexityTerm;
-using FragmentCharge = methods::FragmentTargetChargePolicy;
+using ReducedCharge = methods::ReducedChargePolicy;
 
 #ifndef CHARGEFW_TEST_PARAMETER_DIR
 #error "CHARGEFW_TEST_PARAMETER_DIR must be defined"
@@ -63,72 +63,72 @@ constexpr std::array method_manifest{
     MethodManifest{"abeem", "ABEEM", "Atom-Bond Electronegativity Equalization Method", true, 190,
                    true, 1, 3, 4, 0, Complexity::atoms_plus_bonds_cubed,
                    Complexity::atoms_plus_bonds_squared, true, true,
-                   FragmentCharge::proportional_to_atom_count},
+                   ReducedCharge::uniform_target_global},
     MethodManifest{"charge2", "Charge2", "Charge2", true, 30, false, 6, 3, 0, 1,
                    Complexity::atoms_plus_bonds, Complexity::atoms, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"delre", "DelRe", "Method of Del Re", true, 130, false, 0, 1, 3, 0,
                    Complexity::atoms_cubed, Complexity::atoms_squared, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"denr", "DENR", "Dynamical Electronegativity Relaxation", true, 50, false, 0, 2,
                    0, 2, Complexity::atoms_cubed, Complexity::atoms_squared, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"dummy", "Dummy method", "Dummy zero charges", false, 0, false, 0, 0, 0, 0,
                    Complexity::atoms, Complexity::constant, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"eem", "EEM", "Electronegativity Equalization Method", true, 200, true, 1, 2, 0,
                    0, Complexity::atoms_cubed, Complexity::atoms_squared, true, true,
-                   FragmentCharge::proportional_to_atom_count},
+                   ReducedCharge::uniform_target_global},
     MethodManifest{"eqeq", "EQeq", "Extended Charge Equilibration Method", true, 150, true, 0, 0, 0,
                    0, Complexity::atoms_cubed, Complexity::atoms_squared, true, true,
-                   FragmentCharge::proportional_to_atom_count},
+                   ReducedCharge::uniform_target_global},
     MethodManifest{"eqeqc", "EQeq+C", "Bond-Order-Corrected Extended Charge Equilibration Method",
                    true, 140, true, 1, 1, 0, 0, Complexity::atoms_cubed, Complexity::atoms_squared,
-                   true, true, FragmentCharge::proportional_to_atom_count},
+                   true, true, ReducedCharge::uniform_target_global},
     MethodManifest{"formal", "Formal", "Formal atomic charges", false, 10, false, 0, 0, 0, 0,
                    Complexity::atoms, Complexity::constant, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"gdac", "GDAC", "Geometry-Dependent Net Atomic Charges", true, 100, true, 0, 2,
                    0, 1, Complexity::atoms_plus_bonds, Complexity::atoms, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"kcm", "KCM", "Kirchhoff Charge Model", true, 60, false, 0, 2, 0, 0,
                    Complexity::atoms_cubed, Complexity::atoms_squared, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"mgc", "MGC", "Molecular Graph Charge", true, 70, false, 0, 0, 0, 0,
                    Complexity::atoms_cubed, Complexity::atoms_squared, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"mpeoe", "MPEOE", "Modified Partial Equalization of Atomic Electronegativity",
                    true, 110, false, 1, 2, 1, 2, Complexity::atoms_plus_bonds, Complexity::atoms,
-                   false, false, FragmentCharge::unsupported},
+                   false, false, ReducedCharge::unsupported},
     MethodManifest{"peoe", "PEOE", "Partial Equalization of Atomic Electronegativity", true, 120,
                    false, 1, 3, 0, 2, Complexity::atoms_plus_bonds, Complexity::atoms, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"qeq", "QEq", "Charge Equilibration", true, 170, true, 0, 2, 0, 1,
                    Complexity::atoms_cubed, Complexity::atoms_squared, true, true,
-                   FragmentCharge::proportional_to_atom_count},
+                   ReducedCharge::uniform_target_global},
     MethodManifest{"sfkeem", "SFKEEM",
                    "Selfconsistent Functional Kernel Equalized Electronegativity Method", true, 180,
                    true, 1, 2, 0, 0, Complexity::atoms_cubed, Complexity::atoms_squared, true, true,
-                   FragmentCharge::proportional_to_atom_count},
+                   ReducedCharge::uniform_target_global},
     MethodManifest{"smpqeq", "SMP/QEq", "Self-Consistent Charge Equilibration Method", true, 160,
                    true, 0, 4, 0, 0, Complexity::atoms_cubed, Complexity::atoms_squared, false,
-                   false, FragmentCharge::unsupported, false},
+                   false, ReducedCharge::unsupported, false},
     MethodManifest{"sqe", "SQE", "Split-charge Equilibration", true, 90, true, 0, 3, 1, 0,
                    Complexity::bonds_cubed, Complexity::bonds_squared, true, true,
-                   FragmentCharge::zero},
+                   ReducedCharge::zero_components},
     MethodManifest{"sqeq0", "SQE+q0", "Split-charge Equilibration with Initial Formal Charges",
                    true, 80, true, 0, 3, 1, 0, Complexity::bonds_cubed, Complexity::bonds_squared,
-                   true, true, FragmentCharge::proportional_to_atom_count},
+                   true, true, ReducedCharge::formal_charge_components},
     MethodManifest{"sqeqp", "SQE+qp",
                    "Split-charge Equilibration with Parameterized Initial Charges", true, 210, true,
                    0, 4, 1, 0, Complexity::bonds_cubed, Complexity::bonds_squared, true, true,
-                   FragmentCharge::proportional_to_atom_count},
+                   ReducedCharge::parameterized_charge_components},
     MethodManifest{"tsef", "TSEF", "Topologically Symmetrical Energy Function", true, 55, false, 0,
                    2, 0, 0, Complexity::atoms_cubed, Complexity::atoms_squared, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
     MethodManifest{"veem", "VEEM", "Valence Electrons Equalization Method", true, 20, false, 0, 0,
                    0, 0, Complexity::atoms, Complexity::constant, false, false,
-                   FragmentCharge::unsupported},
+                   ReducedCharge::unsupported},
 };
 
 auto calculate(const methods::Method& method, const chargefw::core::Molecule& molecule)
@@ -259,8 +259,7 @@ TEST_CASE("built-in method registry matches the conformance manifest",
         CHECK(requirements.resources.memory == expected.memory);
         CHECK(requirements.resources.supports_cutoff == expected.supports_cutoff);
         CHECK(requirements.resources.supports_cover == expected.supports_cover);
-        CHECK(requirements.resources.fragment_target_charge_policy ==
-              expected.fragment_target_charge_policy);
+        CHECK(requirements.resources.reduced_charge_policy == expected.reduced_charge_policy);
     }
 }
 

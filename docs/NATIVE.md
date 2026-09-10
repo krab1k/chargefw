@@ -139,7 +139,6 @@ the concrete `ExecutionMode` values full, cutoff, or cover.
 - Full execution requires no radius.
 - Explicit cutoff and cover require a finite radius of at least 8 Å.
 - Automatic reduced execution uses 12 Å.
-- Reduced execution uniformly corrects the final molecular charge to the method target.
 - The default full-to-cutoff and cutoff-to-cover thresholds are 20,000 and 80,000 atoms.
 - `std::nullopt` disables the corresponding resource threshold.
 
@@ -155,6 +154,10 @@ auto parallel = calculation::calculate(assessment, 4);
 Automatic policy does not turn missing scientific requirements into warnings. Explicit unsupported
 execution produces no runnable plan, and explicit full execution above a threshold remains runnable with
 a resource warning.
+
+Method implementations declare reduced-execution support through
+`ResourceRequirements::reduced_charge_policy` and `ReducedChargePolicy`. The
+[project design](PROJECT.md#assessment-and-execution) owns the policy semantics.
 
 ## Results, errors, and mapping
 

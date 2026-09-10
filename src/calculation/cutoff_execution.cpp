@@ -25,7 +25,8 @@ namespace {
     const detail::ProgressContext& progress_ctx) -> charges::AtomicCharges {
     const auto& source_molecule = source.molecule();
     auto values = std::vector<double>(source_molecule.atom_count());
-    const auto requirements = selected.method->requirements();
+    const auto charge_context =
+        detail::prepare_reduced_charge_context(selected, source, source_classification);
     const features::ConformerFeatures source_geometry{source_molecule, conformer_index};
     const features::SpatialFragmentBuilder fragment_builder{source, source_geometry};
 
@@ -35,7 +36,7 @@ namespace {
             try {
                 const auto fragment = fragment_builder.build(center_source_atom_index, radius);
                 const auto fragment_charges = detail::calculate_fragment_charges(
-                    selected, source_molecule, source_classification, fragment);
+                    selected, source_classification, fragment, charge_context);
                 values[center_source_atom_index] =
                     fragment_charges[fragment.center_local_atom_index()];
             } catch (const std::exception& error) {
@@ -45,9 +46,7 @@ namespace {
             }
         });
 
-    detail::enforce_target_charge(
-        values, detail::final_target_charge(requirements.resources.fragment_target_charge_policy,
-                                            source_molecule));
+    detail::enforce_conserved_charges(values, charge_context);
     return charges::AtomicCharges{std::move(values)};
 }
 

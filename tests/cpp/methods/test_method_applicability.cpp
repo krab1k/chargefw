@@ -461,8 +461,7 @@ TEST_CASE("reduced execution applicability requires geometry and declared suppor
     const ResourceMethod spatial_reduced_method{
         {.supports_cutoff = true,
          .supports_cover = true,
-         .fragment_target_charge_policy =
-             methods::FragmentTargetChargePolicy::proportional_to_atom_count},
+         .reduced_charge_policy = methods::ReducedChargePolicy::uniform_target_global},
         true};
     const std::vector<const methods::Method*> spatial_reduced_methods{&spatial_reduced_method};
     const core::MoleculeCollection spatial_collection{std::vector{chargefw::test::make_water()}};

@@ -29,7 +29,8 @@ inline constexpr double cover_retained_radius = 3.0;
     const detail::ProgressContext& progress_ctx) -> charges::AtomicCharges {
     const auto& source_molecule = source.molecule();
     auto values = std::vector<double>(source_molecule.atom_count());
-    const auto requirements = selected.method->requirements();
+    const auto charge_context =
+        detail::prepare_reduced_charge_context(selected, source, source_classification);
     const features::ConformerFeatures source_geometry{source_molecule, conformer_index};
     const features::SpatialFragmentBuilder fragment_builder{source, source_geometry};
 
@@ -76,7 +77,7 @@ inline constexpr double cover_retained_radius = 3.0;
             try {
                 const auto fragment = fragment_builder.build(pivot_source_atom_index, radius);
                 const auto fragment_charges = detail::calculate_fragment_charges(
-                    selected, source_molecule, source_classification, fragment);
+                    selected, source_classification, fragment, charge_context);
                 const auto local_to_source = fragment.local_to_source_atom_indices();
                 auto assigned_count = std::size_t{0};
                 for (std::size_t local_atom_index = 0; local_atom_index < local_to_source.size();
@@ -98,9 +99,7 @@ inline constexpr double cover_retained_radius = 3.0;
             }
         });
 
-    detail::enforce_target_charge(
-        values, detail::final_target_charge(requirements.resources.fragment_target_charge_policy,
-                                            source_molecule));
+    detail::enforce_conserved_charges(values, charge_context);
     return charges::AtomicCharges{std::move(values)};
 }
 

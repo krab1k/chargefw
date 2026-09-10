@@ -44,8 +44,8 @@ class FragmentSizeMethod final : public methods::Method {
         auto requirements = methods::MethodRequirements{};
         requirements.coordinates = true;
         requirements.resources.supports_cover = true;
-        requirements.resources.fragment_target_charge_policy =
-            methods::FragmentTargetChargePolicy::proportional_to_atom_count;
+        requirements.resources.reduced_charge_policy =
+            methods::ReducedChargePolicy::uniform_target_global;
         return requirements;
     }
 
@@ -79,8 +79,8 @@ class TargetChargeMethod final : public methods::Method {
         auto requirements = methods::MethodRequirements{};
         requirements.coordinates = true;
         requirements.resources.supports_cover = true;
-        requirements.resources.fragment_target_charge_policy =
-            methods::FragmentTargetChargePolicy::proportional_to_atom_count;
+        requirements.resources.reduced_charge_policy =
+            methods::ReducedChargePolicy::uniform_target_global;
         return requirements;
     }
 

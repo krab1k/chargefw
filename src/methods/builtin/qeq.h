@@ -29,8 +29,7 @@ class QEqMethod final : public Method {
         requirements.resources.memory = ComplexityTerm::atoms_squared;
         requirements.resources.supports_cutoff = true;
         requirements.resources.supports_cover = true;
-        requirements.resources.fragment_target_charge_policy =
-            FragmentTargetChargePolicy::proportional_to_atom_count;
+        requirements.resources.reduced_charge_policy = ReducedChargePolicy::uniform_target_global;
         return requirements;
     }
 

@@ -149,9 +149,28 @@ Cutoff and cover are implemented for:
 abeem, eem, eqeq, eqeqc, qeq, sfkeem, sqe, sqeq0, sqeqp
 ```
 
-Reduced execution uniformly corrects the final molecular charge to its method target. Reduced calculations
-are approximations; the empirical radius guidance is not a general accuracy guarantee across methods and
-molecular systems.
+Before spatial cutting, reduced execution assigns every source atom a method-specific reference charge.
+Each fragment inherits the sum of its source atoms' references as its target charge. After fragment
+results have been assembled, a uniform correction restores the reference total separately in each group
+whose charge the full method preserves:
+
+| Methods | Source atom reference | Conserved group |
+| --- | --- | --- |
+| ABEEM, EEM, EQeq, EQeq+C, QEq, SFKEEM | Molecular formal-charge total divided by atom count | Entire calculation target |
+| SQE | Zero | Each connected component in the original bond graph |
+| SQE+q0 | Atomic formal charge | Each connected component in the original bond graph |
+| SQE+qp | Parameterized charge, normalized once to the original target's formal-charge total | Each connected component in the original bond graph |
+
+The component labels always come from the original graph, not from pieces disconnected by an individual
+spatial cut. Components remain together in a fragment when they are spatially nearby, allowing their
+electrostatic interactions to alter atomic charges without changing the component reference totals.
+SQE+qp retains its global normalization convention, so a component's preserved reference total need not
+equal that component's formal charge.
+
+Reduced calculations remain approximations. Cutting a bond removes transfers through the omitted region,
+and omitted atoms no longer contribute their interactions to a fragment. Restoring conserved totals does
+not reconstruct either effect, and the empirical radius guidance is not a general accuracy guarantee
+across methods and molecular systems.
 
 ## Results and provenance
 

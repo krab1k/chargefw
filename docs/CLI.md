@@ -109,10 +109,6 @@ Automatic planning prefers full execution. For methods with cubic-time or quadra
 collections containing a molecule above the cutoff threshold use supported cutoff execution. Above the
 cover threshold, supported cover execution is preferred. Automatic reduced execution uses a 12 Å radius.
 
-Cutoff and cover assemble fragment-derived charges and uniformly correct the final molecular charge to the
-method target. This maintains the net-charge constraint while retaining the reduced execution
-approximation.
-
 Explicit `full`, `cutoff`, or `cover` filters plans to that mode. Explicit full execution can exceed the
 resource threshold and reports a warning rather than silently changing mode.
 

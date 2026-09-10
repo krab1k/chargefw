@@ -32,8 +32,8 @@ auto SQEqpMethod::calculate(const CalculationInput& input) const -> charges::Ato
             initial_charge_parameter[atom_index];
     }
 
-    initial_charges.array() -= (initial_charges.sum() - core::total_formal_charge(molecule)) /
-                               static_cast<double>(atom_count);
+    initial_charges.array() -=
+        (initial_charges.sum() - input.target_charge()) / static_cast<double>(atom_count);
 
     return charges::AtomicCharges{sqe_core::calculate(input, {initial_charges.data(), atom_count})};
 }

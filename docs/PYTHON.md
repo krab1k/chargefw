@@ -243,9 +243,8 @@ Direct `calculate()` accepts keyword-only policy arguments:
 
 Flat `options` require an explicit method. `options` and `options_by_method` cannot be combined. Automatic
 execution accepts an optional radius override. Explicit full execution rejects a radius; explicit cutoff
-and cover require one. Reduced execution uniformly corrects the final molecular charge to the method
-target. Direct calculation performs assessment internally, executes the selected default plan, and
-returns its effective policy and warnings in the result.
+and cover require one. Direct calculation performs assessment internally, executes the selected default
+plan, and returns its effective policy and warnings in the result.
 
 ```python
 result = chargefw.calculate(
