@@ -8,8 +8,8 @@
 
 namespace chargefw::methods {
 
-auto to_string(const MethodOptionType type) -> std::string_view {
-    switch (type) {
+auto to_string(const MethodOptionType value) -> std::string_view {
+    switch (value) {
     case MethodOptionType::boolean:
         return "boolean";
     case MethodOptionType::integer:

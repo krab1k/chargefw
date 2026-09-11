@@ -369,14 +369,12 @@ TEST_CASE("observer emits ordered computation and target phases", "[calculation]
 
         // Between computation_started and computation_finished there must be at least
         // target_started and target_finished.
-        const auto computation_start_it =
-            std::find_if(events.begin(), events.end(), [](const auto& e) {
-                return e.phase == calculation::CalculationPhase::computation_started;
-            });
-        const auto computation_end_it =
-            std::find_if(events.begin(), events.end(), [](const auto& e) {
-                return e.phase == calculation::CalculationPhase::computation_finished;
-            });
+        const auto computation_start_it = std::ranges::find_if(events, [](const auto& e) {
+            return e.phase == calculation::CalculationPhase::computation_started;
+        });
+        const auto computation_end_it = std::ranges::find_if(events, [](const auto& e) {
+            return e.phase == calculation::CalculationPhase::computation_finished;
+        });
 
         const auto target_started_it =
             std::find_if(computation_start_it, computation_end_it, [](const auto& e) {
@@ -474,7 +472,7 @@ TEST_CASE("validation failures finish observation and propagate unchanged",
 
         const auto calculate_with_invalid_thread_count = [&] -> void {
             static_cast<void>(calculation::calculate(
-                std::move(assessment), std::numeric_limits<std::size_t>::max(), observer));
+                assessment, std::numeric_limits<std::size_t>::max(), observer));
         };
         CHECK_THROWS_AS(calculate_with_invalid_thread_count(), std::invalid_argument);
 
@@ -805,10 +803,10 @@ TEST_CASE("reduced execution observes cancellation after fragment progress",
 
             const auto events = observer.events();
             REQUIRE(!events.empty());
-            CHECK(std::any_of(events.begin(), events.end(), [](const auto& event) {
+            CHECK(std::ranges::any_of(events, [](const auto& event) {
                 return event.phase == calculation::CalculationPhase::fragment_progress;
             }));
-            CHECK(std::none_of(events.begin(), events.end(), [](const auto& event) {
+            CHECK(std::ranges::none_of(events, [](const auto& event) {
                 return event.phase == calculation::CalculationPhase::target_finished;
             }));
             CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
