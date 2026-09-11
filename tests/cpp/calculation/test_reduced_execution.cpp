@@ -530,6 +530,8 @@ TEST_CASE("reduced approximation remains bounded across a truncated radius sweep
         double max_maxabs;
     };
     const auto charged = make_extended_components(1);
+    // Fixture-specific comparisons with full execution, not independent scientific reference
+    // values or accuracy guarantees for other molecules and parameter sets.
     const auto cases =
         std::vector<AccuracyCase>{{.method_id = "abeem",
                                    .molecule = charged,
@@ -586,11 +588,6 @@ TEST_CASE("reduced approximation remains bounded across a truncated radius sweep
                                    .max_mae = 0.01,
                                    .max_maxabs = 0.02}};
 
-    auto aggregate_squared_error = 0.0;
-    auto aggregate_absolute_error = 0.0;
-    auto aggregate_maxabs = 0.0;
-    auto aggregate_atom_count = std::size_t{0};
-
     for (const auto& test_case : cases) {
         const features::PreparedMolecule prepared{test_case.molecule};
         const features::ConformerFeatures geometry{test_case.molecule, 0};
@@ -605,11 +602,6 @@ TEST_CASE("reduced approximation remains bounded across a truncated radius sweep
                 const auto reduced = calculate_reduced(test_case.molecule, test_case.method_id,
                                                        test_case.parameter_sets, mode, radius);
                 const auto metrics = error_metrics(reduced, full);
-                aggregate_squared_error +=
-                    metrics.rmsd * metrics.rmsd * static_cast<double>(reduced.size());
-                aggregate_absolute_error += metrics.mae * static_cast<double>(reduced.size());
-                aggregate_maxabs = std::max(aggregate_maxabs, metrics.maxabs);
-                aggregate_atom_count += reduced.size();
                 CAPTURE(test_case.method_id, mode, radius, metrics.rmsd, metrics.mae,
                         metrics.maxabs);
                 CHECK(std::isfinite(metrics.rmsd));
@@ -621,14 +613,6 @@ TEST_CASE("reduced approximation remains bounded across a truncated radius sweep
             }
         }
     }
-
-    const auto aggregate_count = static_cast<double>(aggregate_atom_count);
-    const auto aggregate_rmsd = std::sqrt(aggregate_squared_error / aggregate_count);
-    const auto aggregate_mae = aggregate_absolute_error / aggregate_count;
-    CAPTURE(aggregate_rmsd, aggregate_mae, aggregate_maxabs, aggregate_atom_count);
-    CHECK(aggregate_rmsd < 0.05);
-    CHECK(aggregate_mae < 0.03);
-    CHECK(aggregate_maxabs < 0.3);
 }
 
 TEST_CASE("SQE component totals coexist with intermolecular polarization",

@@ -33,15 +33,21 @@ auto make_peoe_parameters() -> parameters::ParameterSet {
 
 } // namespace
 
-TEST_CASE("PEOE iteration option changes water charges", "[methods][peoe]") {
+TEST_CASE("PEOE one-step water charges obey damped bond transfer", "[methods][peoe]") {
     auto one_iteration = chargefw::methods::MethodOptions{};
     one_iteration.set("iters", 1);
 
-    const auto default_charges = chargefw::test::calculate_single_method(
-        chargefw::test::make_water_graph(), "peoe", {make_peoe_parameters()});
     const auto one_iteration_charges = chargefw::test::calculate_single_method(
         chargefw::test::make_water_graph(), "peoe", {make_peoe_parameters()}, &one_iteration);
 
-    CHECK(std::abs(default_charges.assignment(0).charges[0] -
-                   one_iteration_charges.assignment(0).charges[0]) > 1.0e-6);
+    // Starting from zero, chi = A. Each O-H bond transfers
+    // 0.5^1 * (chi_O-chi_H)/dampH from O to the less electronegative H.
+    // Both bonds use the same initial chi, so q_O = -2*q_H.
+    const auto hydrogen_charge = 0.5 * (12.06 - 7.17) / 20.02;
+    const auto& charges = one_iteration_charges.assignment(0).charges;
+    REQUIRE(charges.size() == 3);
+    CHECK(std::abs(charges[0] + 2.0 * hydrogen_charge) < 1.0e-12);
+    CHECK(std::abs(charges[1] - hydrogen_charge) < 1.0e-12);
+    CHECK(std::abs(charges[2] - hydrogen_charge) < 1.0e-12);
+    CHECK(std::abs(charges.total()) < 1.0e-12);
 }

@@ -63,11 +63,11 @@ class MoleculeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             readonly.setflags(write=True)
         with self.assertRaises(ValueError):
-            molecule._formal_charges[0] = 2
+            molecule.formal_charges[0] = 2
         with self.assertRaises(ValueError):
-            molecule._bonds[0, 0] = 1
+            molecule.bonds[0, 0] = 1
         with self.assertRaises(ValueError):
-            molecule._coordinates[0, 0, 0] = 1.0
+            molecule.coordinates[0, 0, 0] = 1.0
         with self.assertRaises(AttributeError):
             setattr(molecule, "name", "changed")
         self.assertEqual(
@@ -85,7 +85,6 @@ class MoleculeTests(unittest.TestCase):
         self.assertEqual(tuple(collection), (molecule,))
         self.assertEqual(collection.molecules, (molecule,))
         self.assertEqual(collection.name, "fixture")
-        self.assertEqual(collection._native_molecules, (molecule._native,))
         self.assertEqual(repr(collection), "MoleculeCollection(molecules=1, name='fixture')")
 
     def test_coordinate_defaults_and_empty_molecule(self) -> None:

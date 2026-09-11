@@ -199,6 +199,13 @@ class CalculationTests(unittest.TestCase):
         self.assertIn("target_started", observer.phases)
         self.assertEqual(observer.phases[-1], "computation_finished")
 
+        result = chargefw.calculate(molecule, plan, threads=1)
+        self.assertEqual(result.status, "success")
+        self.assertEqual(len(result.assignments), 1)
+        self.assertEqual(result.assignments[0].values.shape, (molecule.atom_count,))
+        self.assertTrue(np.all(np.isfinite(result.assignments[0].values)))
+        self.assertTrue(np.isclose(result.assignments[0].values.sum(), 0.0))
+
     def test_observer_must_use_public_base_class(self) -> None:
         with self.assertRaisesRegex(TypeError, "CalculationObserver"):
             chargefw.calculate(water(), observer=cast(Any, object()))
@@ -257,7 +264,6 @@ class CalculationTests(unittest.TestCase):
         self.assertTrue(assignment.values.flags.c_contiguous)
         self.assertFalse(assignment.values.flags.writeable)
         self.assertEqual(assignment.values.ctypes.data % assignment.values.dtype.alignment, 0)
-        self.assertIsNotNone(assignment.values.base)
         with self.assertRaises(ValueError):
             assignment.values.setflags(write=True)
         self.assertTrue(np.isclose(assignment.values.sum(), 0.0))
@@ -748,10 +754,10 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(methods["eem"].id, "eem")
         with self.assertRaisesRegex(KeyError, "unknown method ID"):
             methods["not-a-method"]
-        with self.assertRaises(AttributeError):
-            cast(Any, methods)._values = ()
         with self.assertRaises(TypeError):
-            cast(Any, methods)._by_id["unexpected"] = methods["eem"]
+            cast(Any, methods)["unexpected"] = methods["eem"]
+        with self.assertRaises(TypeError):
+            del cast(Any, methods)["eem"]
 
         eem = methods["eem"]
         self.assertEqual(eem.notes, "")

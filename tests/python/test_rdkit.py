@@ -42,10 +42,13 @@ class FakeConformer:
 
 
 class FakeAtom:
-    def __init__(self, index: int, atomic_number: int, symbol: str) -> None:
+    def __init__(
+        self, index: int, atomic_number: int, symbol: str, *, formal_charge: int = 0
+    ) -> None:
         self.index = index
         self.atomic_number = atomic_number
         self.symbol = symbol
+        self.formal_charge = formal_charge
         self.properties: dict[str, float] = {}
 
     def GetIdx(self) -> int:
@@ -55,7 +58,7 @@ class FakeAtom:
         return self.atomic_number
 
     def GetFormalCharge(self) -> int:
-        return 0
+        return self.formal_charge
 
     def GetSymbol(self) -> str:
         return self.symbol
@@ -240,13 +243,21 @@ class RdkitAdapterTests(unittest.TestCase):
 
     def test_attachment_accepts_index_compatible_atom_ids(self) -> None:
         target = FakeMol()
-        molecule = chargefw.Molecule([1, 8], atom_ids=[np.int64(1), np.int64(0)])
+        target.atoms = (
+            FakeAtom(0, 8, "O", formal_charge=-1),
+            FakeAtom(1, 1, "H", formal_charge=1),
+        )
+        molecule = chargefw.Molecule(
+            [1, 8], formal_charges=[1, -1], atom_ids=[np.int64(1), np.int64(0)]
+        )
         result = chargefw.calculate(molecule, method="formal")
+        np.testing.assert_array_equal(result.assignments[0].values, [1.0, -1.0])
 
         with patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry):
             chargefw_rdkit.attach_charges(target, result)
 
-        self.assertTrue(all(atom.HasProp("ChargeFWPartialCharge") for atom in target.atoms))
+        self.assertEqual(target.atoms[0].properties["ChargeFWPartialCharge"], -1.0)
+        self.assertEqual(target.atoms[1].properties["ChargeFWPartialCharge"], 1.0)
 
     def test_missing_dependency_is_actionable(self) -> None:
         error = ModuleNotFoundError("No module named 'rdkit'")

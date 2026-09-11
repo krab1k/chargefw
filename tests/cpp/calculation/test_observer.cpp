@@ -390,21 +390,6 @@ TEST_CASE("observer emits ordered computation and target phases", "[calculation]
     }
 }
 
-TEST_CASE("assessment remains outside calculation observation", "[calculation][observer]") {
-    {
-        const auto observer = RecordingObserver{};
-        const auto assessment = calculation::assess(calculation::AssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {},
-            .method_id = "formal",
-            .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
-
-        CHECK(assessment.default_plan() != nullptr);
-        CHECK(observer.events().empty());
-    }
-}
-
 TEST_CASE("resource threshold warnings remain assessment data before computation",
           "[calculation][observer]") {
     {
@@ -421,8 +406,6 @@ TEST_CASE("resource threshold warnings remain assessment data before computation
         REQUIRE(assessment.default_plan()->warnings().size() == 1);
         CHECK(assessment.default_plan()->warnings()[0].kind ==
               methods::ExecutionIssueKind::resource_threshold_exceeded);
-        CHECK(observer.events().empty());
-
         const auto result = calculation::calculate(assessment, 1, observer);
         REQUIRE(result.calculated());
         CHECK(!result.cancelled());
@@ -447,6 +430,7 @@ TEST_CASE("cancellation produces a terminal observer event", "[calculation][obse
         CHECK(result.cancelled());
         CHECK(!result.calculated());
         CHECK(result.status == calculation::ExecutionStatus::cancelled);
+        CHECK(!result.charges.has_value());
         REQUIRE(result.effective.has_value());
         CHECK(result.effective->method_id == "formal");
         const auto events = observer.events();

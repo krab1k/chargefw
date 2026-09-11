@@ -79,23 +79,36 @@ TEST_CASE("spatial fragment projects parameter classification to local indices",
     const features::PreparedMolecule prepared{molecule};
     const features::ConformerFeatures first_geometry{molecule, 0};
     const features::SpatialFragmentBuilder first_builder{prepared, first_geometry};
-    const auto fragment = first_builder.build(1, 1.0);
+    const auto fragment = first_builder.build(2, 1.0);
+
+    REQUIRE(fragment.molecule().atom_count() == 2);
+    REQUIRE(fragment.molecule().bond_count() == 1);
+    CHECK(std::ranges::equal(fragment.local_to_source_atom_indices(),
+                             std::vector<std::size_t>{1, 2}));
+    CHECK(std::ranges::equal(fragment.local_to_source_bond_indices(), std::vector<std::size_t>{1}));
+    CHECK(fragment.center_local_atom_index() == 1);
+    CHECK(fragment.molecule().bond(0).first_atom_index() == 0);
+    CHECK(fragment.molecule().bond(0).second_atom_index() == 1);
+    CHECK(fragment.molecule().atom(0).name() == "O1");
+    CHECK(fragment.molecule().atom(1).name() == "N2");
+    CHECK(fragment.molecule().conformer(0)[0].x == 1.0);
+    CHECK(fragment.molecule().conformer(0)[1].x == 2.0);
 
     const parameters::ParameterClassification classification{
         parameters::AtomParameterClassification{{10, 11, 12, 13}},
         parameters::BondParameterClassification{{20, 21, 22}}};
     const auto projected = features::project_classification(classification, fragment);
     CHECK(std::ranges::equal(projected.atom().parameter_entry_indices(),
-                             std::vector<std::size_t>{10, 11, 12}));
+                             std::vector<std::size_t>{11, 12}));
     CHECK(std::ranges::equal(projected.bond().parameter_entry_indices(),
-                             std::vector<std::size_t>{20, 21}));
+                             std::vector<std::size_t>{21}));
 
     const auto atom_only_projected = features::project_classification(
         parameters::ParameterClassification{
             parameters::AtomParameterClassification{{10, 11, 12, 13}}},
         fragment);
     CHECK(std::ranges::equal(atom_only_projected.atom().parameter_entry_indices(),
-                             std::vector<std::size_t>{10, 11, 12}));
+                             std::vector<std::size_t>{11, 12}));
     CHECK(atom_only_projected.bond().empty());
 
     const auto bond_only_projected = features::project_classification(
@@ -104,7 +117,7 @@ TEST_CASE("spatial fragment projects parameter classification to local indices",
         fragment);
     CHECK(bond_only_projected.atom().empty());
     CHECK(std::ranges::equal(bond_only_projected.bond().parameter_entry_indices(),
-                             std::vector<std::size_t>{20, 21}));
+                             std::vector<std::size_t>{21}));
 }
 
 TEST_CASE("spatial fragment includes all atoms within boundary radius",

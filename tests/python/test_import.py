@@ -60,7 +60,6 @@ def test_import_surface() -> None:
     assert not hasattr(chargefw, "ParameterSetCatalog")
     assert chargefw.calculate is chargefw.calculation.calculate
     assert chargefw.assess is chargefw.calculation.assess
-    assert chargefw.io is chargefw.io
     assert chargefw.io.__all__ == [
         "InputFormat",
         "OutputFormat",
