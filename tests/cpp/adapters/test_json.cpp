@@ -103,3 +103,17 @@ TEST_CASE("JSON input preserves identity, graph, and conformer mapping", "[adapt
         CHECK(rejected);
     }
 }
+
+TEST_CASE("JSON input rejects integers outside the native integer range", "[adapters][json]") {
+    const auto input = R"json(
+{
+  "schema_version": "1.0",
+  "molecules": [
+    {"atoms": [{"atomic_number": 4294967297, "formal_charge": 0}]}
+  ]
+}
+)json";
+    std::istringstream stream{input};
+    auto reader = json::JsonReader{stream};
+    CHECK_THROWS_AS(reader.next(), std::runtime_error);
+}

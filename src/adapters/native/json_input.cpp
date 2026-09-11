@@ -13,7 +13,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <istream>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -72,7 +74,20 @@ auto require_array(const Json& value, const std::string& context) -> void {
         throw std::runtime_error{context + " must be an integer, got " + type_name(value)};
     }
 
-    return value.get<int>();
+    if (value.is_number_unsigned()) {
+        const auto number = value.get<std::uint64_t>();
+        if (number > static_cast<std::uint64_t>(std::numeric_limits<int>::max())) {
+            throw std::runtime_error{context + " is outside the supported integer range"};
+        }
+        return static_cast<int>(number);
+    }
+
+    const auto number = value.get<std::int64_t>();
+    if (number < static_cast<std::int64_t>(std::numeric_limits<int>::min()) ||
+        number > static_cast<std::int64_t>(std::numeric_limits<int>::max())) {
+        throw std::runtime_error{context + " is outside the supported integer range"};
+    }
+    return static_cast<int>(number);
 }
 
 [[nodiscard]] auto require_index(const Json& value, const std::string& context) -> std::size_t {

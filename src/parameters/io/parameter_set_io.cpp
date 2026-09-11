@@ -6,8 +6,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <set>
 #include <stdexcept>
@@ -113,9 +115,16 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
         throw_error(context, "expected integer, got " + json_type_name(value));
     }
 
-    const auto number = value.get<int>();
+    if (value.is_number_unsigned()) {
+        const auto number = value.get<std::uint64_t>();
+        if (number > std::numeric_limits<std::uint16_t>::max()) {
+            throw_error(context, "expected integer in range [0, 65535]");
+        }
+        return static_cast<std::uint16_t>(number);
+    }
 
-    if (number < 0 || number > 65535) {
+    const auto number = value.get<std::int64_t>();
+    if (number < 0 || number > std::numeric_limits<std::uint16_t>::max()) {
         throw_error(context, "expected integer in range [0, 65535]");
     }
 

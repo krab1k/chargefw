@@ -243,6 +243,21 @@ TEST_CASE("parameter set rejects malformed JSON", "[parameters][io]") {
     CHECK_THROWS_AS(load_unknown_classification(), std::invalid_argument);
 }
 
+TEST_CASE("parameter set rejects priorities outside uint16 range", "[parameters][io]") {
+    const auto load = [](const std::string_view priority) {
+        std::istringstream input{"{\"metadata\":{\"id\":\"test\",\"name\":\"Test\","
+                                 "\"method\":\"peoe\",\"priority\":" +
+                                 std::string{priority} + "}}"};
+        static_cast<void>(parameters::load_parameter_set_json(input));
+    };
+
+    CHECK_THROWS_AS(load("-1"), std::invalid_argument);
+    CHECK_THROWS_AS(load("65536"), std::invalid_argument);
+    CHECK_THROWS_AS(load("4294967297"), std::invalid_argument);
+    CHECK_NOTHROW(load("0"));
+    CHECK_NOTHROW(load("65535"));
+}
+
 TEST_CASE("parameter set loads named unordered bond keys", "[parameters][io]") {
     std::istringstream input{named_bond_key_json()};
     const auto parameter_set = parameters::load_parameter_set_json(input);
