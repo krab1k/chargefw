@@ -198,21 +198,6 @@ TEST_CASE("result-owned mmCIF rejects failed results geometry and out-of-range c
     CHECK(output.str().empty());
 }
 
-TEST_CASE("legacy generated mmCIF remains available until generated dispatch removal",
-          "[adapters][mmcif]") {
-    auto records = std::vector<adapters::ImportedMoleculeRecord>{generated_record()};
-    const auto charge_set = charges::ChargeSet{
-        "formal",
-        {{.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{{0.25, -0.25}}}}};
-    auto output = std::ostringstream{};
-    mmcif_output::MmcifWriter{output}.write_generated(records, charge_set);
-    auto document = ::gemmi::cif::read_string(output.str());
-    REQUIRE(document.blocks.size() == 1);
-    auto charge_rows =
-        document.sole_block().find("_sb_ncbr_partial_atomic_charges.", {"atom_id", "charge"});
-    REQUIRE(charge_rows.length() == 4);
-}
-
 TEST_CASE("strict mmCIF attachment preserves an unchanged source document", "[adapters][mmcif]") {
     const auto source_text = std::string{R"cif(data_source
 _audit.creation_method 'attachment-test'

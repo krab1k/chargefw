@@ -18,8 +18,7 @@ namespace chargefw::cli {
 namespace {
 
 template <typename Reader>
-auto read_collection(Reader& reader, const std::string& input_path,
-                     const ImportedExportContext::Format format) -> ImportedCollection {
+auto read_collection(Reader& reader, const std::string& input_path) -> ImportedCollection {
     std::vector<core::Molecule> molecules;
     std::vector<adapters::ImportedMoleculeRecord> records;
 
@@ -35,7 +34,7 @@ auto read_collection(Reader& reader, const std::string& input_path,
 
     return ImportedCollection{.molecules =
                                   core::MoleculeCollection{std::move(molecules), input_path},
-                              .export_context = {.records = std::move(records), .format = format}};
+                              .records = std::move(records)};
 }
 
 [[nodiscard]] auto parse_atom_threshold(const std::string& value, const std::string_view name)
@@ -134,7 +133,7 @@ auto read_collection(const std::string& input_path,
                 "Structural input options are only supported for PDB and mmCIF input"};
         }
         adapters::native::sdf_input::SdfReader reader{input, input_path};
-        return read_collection(reader, input_path, ImportedExportContext::Format::sdf);
+        return read_collection(reader, input_path);
     }
     if (extension == ".mol") {
         if (structural_options_requested) {
@@ -142,7 +141,7 @@ auto read_collection(const std::string& input_path,
                 "Structural input options are only supported for PDB and mmCIF input"};
         }
         adapters::native::mol_input::MolReader reader{input, input_path};
-        return read_collection(reader, input_path, ImportedExportContext::Format::mol);
+        return read_collection(reader, input_path);
     }
     if (extension == ".mol2") {
         if (structural_options_requested) {
@@ -150,7 +149,7 @@ auto read_collection(const std::string& input_path,
                 "Structural input options are only supported for PDB and mmCIF input"};
         }
         adapters::native::mol2_input::Mol2Reader reader{input, input_path};
-        return read_collection(reader, input_path, ImportedExportContext::Format::mol2);
+        return read_collection(reader, input_path);
     }
     if (extension == ".json") {
         if (structural_options_requested) {
@@ -159,15 +158,15 @@ auto read_collection(const std::string& input_path,
         }
         adapters::native::json_input::JsonReader reader{input, input_path,
                                                         structural_options.conformers};
-        return read_collection(reader, input_path, ImportedExportContext::Format::json);
+        return read_collection(reader, input_path);
     }
     if (extension == ".pdb") {
         adapters::gemmi::pdb_input::PdbReader reader{input, input_path, structural_options};
-        return read_collection(reader, input_path, ImportedExportContext::Format::pdb);
+        return read_collection(reader, input_path);
     }
     if (extension == ".cif" || extension == ".mmcif") {
         adapters::gemmi::mmcif_input::MmcifReader reader{input, input_path, structural_options};
-        return read_collection(reader, input_path, ImportedExportContext::Format::mmcif);
+        return read_collection(reader, input_path);
     }
 
     throw std::runtime_error{"Unsupported input file type: " + extension +

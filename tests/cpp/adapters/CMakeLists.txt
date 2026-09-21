@@ -10,16 +10,8 @@ chargefw_add_snitch_test(test_json_output
         test_json_output.cpp
 )
 
-chargefw_add_snitch_test(test_generated_output
-        test_generated_output.cpp
-)
-
 chargefw_add_snitch_test(test_mol2_output
         test_mol2_output.cpp
-)
-
-chargefw_add_snitch_test(test_sdf_output
-        test_sdf_output.cpp
 )
 
 chargefw_add_snitch_test(test_pdb
@@ -35,11 +27,6 @@ chargefw_add_snitch_test(test_mmcif_output
 )
 
 target_compile_definitions(test_mol
-        PRIVATE
-        CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
-)
-
-target_compile_definitions(test_mol2_output
         PRIVATE
         CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )

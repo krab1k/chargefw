@@ -27,18 +27,13 @@ def water(*, conformers: int = 1) -> chargefw.Molecule:
     )
 
 
-class GeneratedOutputTests(unittest.TestCase):
-    def test_generated_formats_use_native_writers(self) -> None:
+class OutputTests(unittest.TestCase):
+    def test_formats_use_native_writers(self) -> None:
         molecule = water()
         result = chargefw.calculate(molecule, method="formal")
 
-        sdf = chargefw.io.dumps(result, format="sdf")
-        self.assertIn("V3000", sdf)
-        self.assertIn("CHARGEFW_CHARGES_1", sdf)
-        self.assertIn("method=formal", sdf)
-
         mol2 = chargefw.io.dumps(result, format="mol2")
-        self.assertIn("@<TRIPOS>MOLECULE\nwater", mol2)
+        self.assertIn("@<TRIPOS>MOLECULE\nwater-1", mol2)
         self.assertIn("USER_CHARGES", mol2)
 
         mmcif = chargefw.io.dumps(result, format="mmcif")
@@ -58,13 +53,6 @@ class GeneratedOutputTests(unittest.TestCase):
             path = Path(directory) / "charges.data"
             chargefw.io.write(path, result, format="mol2")
             self.assertIn("@<TRIPOS>MOLECULE", path.read_text(encoding="utf-8"))
-
-    def test_single_geometry_output_uses_first_conformer(self) -> None:
-        result = chargefw.calculate(water(conformers=2), method="formal")
-        selected = chargefw.io.dumps(result, format="sdf")
-        self.assertIn("M  V30 1 O 0 0 0", selected)
-        self.assertNotIn("M  V30 1 O 0.1 0 0", selected)
-        self.assertIn("_atom_site.pdbx_PDB_model_num", chargefw.io.dumps(result, format="mmcif"))
 
     def test_mmcif_applies_geometry_independent_charges_to_selected_conformers(self) -> None:
         contents = json.dumps(
@@ -132,8 +120,12 @@ class GeneratedOutputTests(unittest.TestCase):
         self.assertEqual(len(imported["atom_mapping"]), 3)
         self.assertEqual(imported["conformer_mapping"], [])
         self.assertTrue(encoded["results"][0]["diagnostics"])
-        with self.assertRaisesRegex(ValueError, "successful calculation"):
-            chargefw.io.dumps(failed_result, format="mmcif")
+        for format_name in ("mol2", "mmcif"):
+            with (
+                self.subTest(format=format_name),
+                self.assertRaisesRegex(ValueError, "successful calculation"),
+            ):
+                chargefw.io.dumps(failed_result, format=cast(Any, format_name))
 
     def test_result_json_preserves_import_diagnostics(self) -> None:
         path = Path(__file__).parents[1] / "fixtures" / "synthetic" / "mol2" / "aromatic.mol2"
@@ -204,29 +196,35 @@ class GeneratedOutputTests(unittest.TestCase):
     def test_molecular_output_requires_finite_coordinates(self) -> None:
         missing = chargefw.calculate(chargefw.Molecule([1]), method="formal")
         result_json = chargefw.io.dumps(missing, format="result-json")
-        with self.assertRaisesRegex(ValueError, "conformer|coordinates"):
-            chargefw.io.dumps(missing, format="sdf")
-        with self.assertRaisesRegex(ValueError, "coordinates"):
-            chargefw.io.dumps(missing, format="mmcif")
+        for format_name in ("mol2", "mmcif"):
+            with (
+                self.subTest(format=format_name),
+                self.assertRaisesRegex(ValueError, "coordinates"),
+            ):
+                chargefw.io.dumps(missing, format=cast(Any, format_name))
         self.assertEqual(chargefw.io.dumps(missing, format="result-json"), result_json)
 
         nonfinite = chargefw.calculate(
             chargefw.Molecule([1], coordinates=[[float("nan"), 0.0, 0.0]]),
             method="formal",
         )
-        with self.assertRaisesRegex(ValueError, "must be finite"):
-            chargefw.io.dumps(nonfinite, format="mol2")
-        with self.assertRaisesRegex(ValueError, "must be finite"):
-            chargefw.io.dumps(nonfinite, format="mmcif")
+        for format_name in ("mol2", "mmcif"):
+            with (
+                self.subTest(format=format_name),
+                self.assertRaisesRegex(ValueError, "must be finite"),
+            ):
+                chargefw.io.dumps(nonfinite, format=cast(Any, format_name))
 
     def test_output_arguments_are_explicit(self) -> None:
         result = chargefw.calculate(water(), method="formal")
         with self.assertRaises(TypeError):
             chargefw.io.dumps(result)  # type: ignore[call-arg]
-        with self.assertRaisesRegex(ValueError, "unsupported calculation output format"):
-            chargefw.io.dumps(result, format=cast(Any, "pdb"))
-        with self.assertRaisesRegex(ValueError, "only supported for SDF"):
-            chargefw.io.dumps(result, format="mol2", sdf_version="v2000")
+        for format_name in ("pdb", "sdf"):
+            with (
+                self.subTest(format=format_name),
+                self.assertRaisesRegex(ValueError, "unsupported calculation output format"),
+            ):
+                chargefw.io.dumps(result, format=cast(Any, format_name))
 
     def test_manual_molecules_do_not_claim_import_provenance(self) -> None:
         result = chargefw.calculate(water(), method="formal")
@@ -241,8 +239,7 @@ class GeneratedOutputTests(unittest.TestCase):
         molecule = chargefw.Molecule([1], coordinates=[[0, 0, 0]], name="hydrogen", record_id=7)
         result = chargefw.calculate(molecule, method="formal")
 
-        self.assertIn("V3000", chargefw.io.dumps(result, format="sdf"))
-        self.assertIn("@<TRIPOS>MOLECULE", chargefw.io.dumps(result, format="mol2"))
+        self.assertIn("\n7\n", chargefw.io.dumps(result, format="mol2"))
         self.assertIn("data_7", chargefw.io.dumps(result, format="mmcif"))
         encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
         self.assertEqual(encoded["results"][0]["input"]["record_id"], 7)

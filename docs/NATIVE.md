@@ -202,15 +202,16 @@ Public headers are provided under `chargefw/adapters`, with format-specific APIs
 - `MolReader`, `SdfReader`, and `Mol2Reader` import native molecular formats.
 - `JsonReader` imports ChargeFW molecule JSON 1.0.
 - `PdbReader` and `MmcifReader` import Gemmi structures with explicit record, bond, and conformer policy.
-- Native writers emit ChargeFW JSON, SDF, and MOL2.
+- Native writers emit ChargeFW result JSON and fresh generated MOL2.
+- `native::mol2_output::Mol2Writer::write(const ChargeCalculationResult&)` writes one generated record per
+  retained conformer, joining conformer-specific assignments or repeating molecule-scoped charges without
+  retaining source MOL2 text or typing.
 - The Gemmi writer emits one fresh generated mmCIF representation from the owned calculation result.
 - `gemmi::mmcif_output::MmcifWriter::write(const ChargeCalculationResult&)` builds a fresh minimal mmCIF
   document from the owned result, retaining known hierarchy labels across every conformer and joining
   charges to newly generated site IDs during construction.
 - `MmcifWriter::write_attached()` strictly annotates an unchanged imported mmCIF document after validating
   its block/model/site identity; it has reject-or-overwrite behavior and no append mode.
-- `generated_output::write()` applies shared coordinate validation and writes the first retained conformer
-  to generated SDF or MOL2 and all retained conformers to generated mmCIF.
 - `JsonWriter` serializes `ChargeCalculationResult` directly; application-specific execution metrics are
   optional. `PortableId` retains absent, string, or signed 64-bit integer record IDs without implicit
   stringification.
@@ -222,5 +223,5 @@ policy, source format, and the small `SourceConnectivity` summary. Structural re
 `SourceStructuralLabels` with separate author and label hierarchy namespaces, model identity, alternate
 location, entity, insertion code, and segment where available. These values own their source tokens and
 remain valid after reader destruction; they do not retain parser documents or normalized verification
-snapshots. The [molecular format reference](FORMATS.md) documents supported subsets, reader policy, source
-preservation, generated output, charge fields, and mapping requirements independently of the C++ API.
+snapshots. The [molecular format reference](FORMATS.md) documents supported subsets, reader policy,
+generated output, charge fields, and mapping requirements independently of the C++ API.

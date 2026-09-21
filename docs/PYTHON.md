@@ -420,10 +420,10 @@ except chargefw.ChargeFWError as error:
     raise
 ```
 
-## Generated output
+## Output
 
-`chargefw.io.dumps()` serializes a `CalculationResult` to generated molecular or result text, while
-`chargefw.io.write()` writes it to a UTF-8 file. Both require an explicit `format`: `"sdf"`, `"mol2"`,
+`chargefw.io.dumps()` serializes a `CalculationResult` to generated MOL2, generated mmCIF, or result JSON,
+while `chargefw.io.write()` writes it to a UTF-8 file. Both require an explicit `format`: `"mol2"`,
 `"mmcif"`, or `"result-json"`. The supported values are also available as
 `chargefw.io.OUTPUT_FORMATS` for discovery and argument validation.
 
@@ -435,14 +435,16 @@ result = chargefw.calculate(
     execution="full",
 )
 chargefw.io.write("charged.cif", result, format="mmcif")
+chargefw.io.write("charged.mol2", result, format="mol2")
 ```
 
-Molecular output is generated only from the calculation result. It does not preserve SDF properties,
-Tripos typing or substructures, crystallographic metadata, unrelated mmCIF categories, lexical formatting,
-or other source content that the owned record does not contain. Generated mmCIF creates a fresh block per
-record, retains known author/label hierarchy and model-specific alternate locations, emits all conformers,
-and uses deterministic `UNL`/generated-name fallbacks only where labels are unavailable. The source format
-does not restrict the output format.
+MOL2 and mmCIF output are generated only from the calculation result. Neither preserves SDF properties,
+Tripos typing or substructures, crystallographic metadata, lexical formatting, or other source content that
+the owned record does not contain. MOL2 creates one `SMALL`/`USER_CHARGES` record per conformer with
+element-only atom types and generated `UNL` substructure fields; it is intended primarily for small
+molecules. mmCIF creates a fresh block per record, retains known author/label hierarchy and model-specific
+alternate locations, emits all conformers, and uses deterministic `UNL`/generated-name fallbacks only where
+labels are unavailable. The source format does not restrict either output; SDF remains input-only.
 
 Native calculation results own the exact ordered input records used for assessment, including source
 mapping, diagnostics, and record-local import policy. This ownership survives reader and caller collection
@@ -452,20 +454,21 @@ are valid and serialize their policies independently. Molecules constructed dire
 import mapping, so `input.import` is omitted for those records.
 
 Result JSON retains full native charge precision and identifies each assignment's molecule or conformer
-scope, target, and elementary-charge unit. Molecular charge formats use their documented decimal
-representation instead.
+scope, target, and elementary-charge unit. Generated MOL2 and mmCIF use round-trip floating-point
+formatting.
 
-mmCIF generation validates coordinates and charge-dictionary limits before serialization. An mmCIF output
-error raises `ValueError` without changing the calculation result; result JSON remains available from the
-same object.
+MOL2 and mmCIF generation validate coordinates before serialization; mmCIF additionally validates charge
+dictionary limits. An output error raises `ValueError` without changing the calculation result; result JSON
+remains available from the same object.
 
 Record and atom IDs are normalized to strings or signed 64-bit integers. NumPy integer scalars are accepted
 and converted to Python `int`; booleans, arbitrary hashable objects, and out-of-range integers are rejected.
-Result JSON preserves integer record IDs as JSON numbers rather than stringifying them. Generated molecular
-outputs use their decimal representation where a textual record or block name is required.
+Result JSON preserves integer record IDs as JSON numbers rather than stringifying them. Generated MOL2 and
+mmCIF use their decimal representation where a textual record or block name is required.
 
 The language-independent conformer, mapping, and schema rules are defined in
-[Charge output](FORMATS.md#charge-output). Python output is generated rather than source-preserving.
+[Charge output](FORMATS.md#charge-output). Fresh Python MOL2 and mmCIF output is generated rather than
+source-preserving.
 
 ## Toolkit integrations
 

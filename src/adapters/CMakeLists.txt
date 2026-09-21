@@ -1,16 +1,13 @@
 target_sources(chargefw_core
         PRIVATE
         charge_result.cpp
-        generated_output.cpp
         native/json_output.cpp
         native/common_input.cpp
-        native/common_output.cpp
         native/json_input.cpp
         native/mol_input.cpp
         native/mol2_input.cpp
         native/mol2_output.cpp
         native/sdf_input.cpp
-        native/sdf_output.cpp
         input_options.cpp
         gemmi/bonds.cpp
         gemmi/structure_import.cpp
@@ -26,7 +23,6 @@ target_sources(chargefw_core
         FILES
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/molecule_record.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/charge_result.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/generated_output.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/conformer_selection.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/all.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/gemmi/input_options.h
@@ -40,5 +36,4 @@ target_sources(chargefw_core
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol2_input.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/mol2_output.h
         ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/sdf_input.h
-        ${PROJECT_SOURCE_DIR}/include/chargefw/adapters/native/sdf_output.h
 )

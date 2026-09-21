@@ -186,7 +186,7 @@ diagnostics, timings, timestamps, and peak resident memory in its JSON result.
 ## Molecular data scope
 
 The native adapters support MOL/SDF, MOL2, ChargeFW molecule JSON 1.0, PDB, and mmCIF input and write
-ChargeFW result JSON 1.0, SDF, MOL2, and mmCIF charge data. The language-independent
+ChargeFW result JSON 1.0, generated MOL2, and mmCIF charge data. The language-independent
 [molecular format reference](FORMATS.md) defines exactly what each reader imports and how each writer
 preserves or generates molecular data.
 

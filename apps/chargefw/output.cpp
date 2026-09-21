@@ -1,25 +1,18 @@
 #include "cli_support.h"
 
-#include <chargefw/adapters/generated_output.h>
-#include <chargefw/charges/charge_collection.h>
 #include <chargefw/config.h>
 
-#include <array>
 #include <chrono>
 #include <ctime>
 #include <filesystem>
-#include <format>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <memory>
 #include <print>
-#include <ranges>
 #include <set>
 #include <sstream>
 #include <stdexcept>
 #include <sys/resource.h>
-#include <variant>
 
 namespace chargefw::cli {
 namespace {
@@ -59,36 +52,6 @@ void finalize_output(std::ofstream& output, const std::filesystem::path& path) {
     }
 }
 
-[[nodiscard]] auto assignments_by_molecule(const charges::ChargeSet& charge_set,
-                                           const std::size_t molecule_count)
-    -> std::vector<charges::ChargeAssignment> {
-    auto result = std::vector<charges::ChargeAssignment>{};
-    result.reserve(molecule_count);
-    for (std::size_t molecule_index = 0; molecule_index < molecule_count; ++molecule_index) {
-        const auto found =
-            std::ranges::find_if(charge_set.assignments(),
-                                 [molecule_index](const charges::ChargeAssignment& assignment) {
-                                     return assignment.target.molecule_index == molecule_index;
-                                 });
-        if (found == charge_set.assignments().end()) {
-            throw std::runtime_error{"No charge assignment for molecule " +
-                                     std::to_string(molecule_index + 1)};
-        }
-        const auto remaining = charge_set.assignments().subspan(
-            static_cast<std::size_t>(std::distance(charge_set.assignments().begin(), found)) + 1);
-        const auto duplicate = std::ranges::find_if(
-            remaining, [molecule_index](const charges::ChargeAssignment& assignment) {
-                return assignment.target.molecule_index == molecule_index;
-            });
-        if (duplicate != remaining.end()) {
-            throw std::runtime_error{
-                "Molecular output does not support multiple conformer assignments per molecule"};
-        }
-        result.push_back(*found);
-    }
-    return result;
-}
-
 void write_json(const std::filesystem::path& path, const adapters::ChargeCalculationResult& result,
                 const adapters::ExecutionMetrics& metrics) {
     auto output = std::ofstream{path};
@@ -111,44 +74,14 @@ void write_mmcif(const std::filesystem::path& path,
     finalize_output(output, path);
 }
 
-void write_mol2(const std::filesystem::path& path, const std::string& input_path,
-                const ImportedExportContext& export_context, const charges::ChargeSet& charge_set) {
-    auto output = std::ofstream{path, std::ios::binary};
+void write_mol2(const std::filesystem::path& path,
+                const adapters::ChargeCalculationResult& result) {
+    auto output = std::ofstream{path};
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
-    if (export_context.format == ImportedExportContext::Format::mol2) {
-        const auto assignments = assignments_by_molecule(charge_set, export_context.records.size());
-        adapters::native::mol2_output::Mol2Writer{output}.write_preserving_source(input_path,
-                                                                                  assignments);
-    } else {
-        adapters::generated_output::write(output, export_context.records, charge_set,
-                                          adapters::generated_output::Format::mol2);
-    }
-    finalize_output(output, path);
-}
-
-void write_sdf(const std::filesystem::path& path, const std::string& input_path,
-               const ImportedExportContext& export_context, const charges::ChargeSet& charge_set) {
-    auto output = std::ofstream{path, std::ios::binary};
-    if (!output) {
-        throw std::runtime_error{"Unable to open output file: " + path.string()};
-    }
-    if (export_context.format == ImportedExportContext::Format::sdf) {
-        const auto properties = std::array{adapters::native::sdf_output::ChargeProperty{
-            .charge_type_id = 1,
-            .assignments = charge_set.assignments(),
-            .method = charge_set.method_id(),
-            .parameter_set = charge_set.parameter_set_id().value_or(""),
-            .software_name = "ChargeFW",
-            .software_version = CHARGEFW_VERSION_STRING}};
-        adapters::native::sdf_output::SdfWriter{output}.write_preserving_source(input_path,
-                                                                                properties);
-    } else {
-        adapters::generated_output::write(output, export_context.records, charge_set,
-                                          adapters::generated_output::Format::sdf_v2000, "ChargeFW",
-                                          CHARGEFW_VERSION_STRING);
-    }
+    adapters::native::mol2_output::Mol2Writer{output}.write(result, "ChargeFW",
+                                                            CHARGEFW_VERSION_STRING);
     finalize_output(output, path);
 }
 
@@ -194,12 +127,11 @@ auto make_requested_provenance(const calculation::AssessmentRequest& request,
 }
 
 auto write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
-                               const ImportedExportContext& export_context,
+                               const std::vector<adapters::ImportedMoleculeRecord>& records,
                                const adapters::RequestedCalculationProvenance& requested,
                                const calculation::ExecutionResult& result, CalculationRun& run)
     -> int {
-    const auto owned_result =
-        adapters::make_charge_calculation_result(export_context.records, requested, result);
+    const auto owned_result = adapters::make_charge_calculation_result(records, requested, result);
     run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
     const auto directory = std::filesystem::path{output_directory};
     std::error_code directory_error;
@@ -233,18 +165,12 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
         }
     }
 
-    const auto structural_output = export_context.format == ImportedExportContext::Format::pdb ||
-                                   export_context.format == ImportedExportContext::Format::mmcif;
-    const auto* charges = result.charges ? std::addressof(*result.charges) : nullptr;
-    if (charges == nullptr) {
+    if (!result.charges.has_value()) {
         throw std::runtime_error{"calculation result is missing charges"};
     }
     const auto writing_started = std::chrono::steady_clock::now();
+    write_mol2(prefix.string() + ".mol2", owned_result);
     write_mmcif(prefix.string() + ".cif", owned_result);
-    if (!structural_output) {
-        write_sdf(prefix.string() + ".sdf", input_path, export_context, *charges);
-        write_mol2(prefix.string() + ".mol2", input_path, export_context, *charges);
-    }
     run.metrics.writing_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - writing_started}.count();
     run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
@@ -253,12 +179,8 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
         std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
     write_json(prefix.string() + ".json", owned_result, run.metrics);
     report_diagnostics(owned_result);
-    if (structural_output) {
-        std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
-    } else {
-        std::println("Wrote {}, {}, {}, and {}", prefix.string() + ".json",
-                     prefix.string() + ".sdf", prefix.string() + ".mol2", prefix.string() + ".cif");
-    }
+    std::println("Wrote {}, {}, and {}", prefix.string() + ".json", prefix.string() + ".mol2",
+                 prefix.string() + ".cif");
     return 0;
 }
 

@@ -7,23 +7,15 @@
 #include <chargefw/core/molecule_collection.h>
 
 #include <chrono>
-#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace chargefw::cli {
 
-struct ImportedExportContext {
-    enum class Format : std::uint8_t { sdf, mol, mol2, json, pdb, mmcif };
-
-    std::vector<adapters::ImportedMoleculeRecord> records;
-    Format format;
-};
-
 struct ImportedCollection {
     core::MoleculeCollection molecules;
-    ImportedExportContext export_context;
+    std::vector<adapters::ImportedMoleculeRecord> records;
 };
 
 struct InputArguments {
@@ -76,7 +68,7 @@ void print_parameter_sets(const std::string& parameter_set_id, const std::string
 
 [[nodiscard]] auto
 write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
-                          const ImportedExportContext& export_context,
+                          const std::vector<adapters::ImportedMoleculeRecord>& records,
                           const adapters::RequestedCalculationProvenance& requested,
                           const calculation::ExecutionResult& result, CalculationRun& run) -> int;
 

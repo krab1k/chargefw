@@ -14,9 +14,9 @@ order is retained in charge assignments and in every output mapping.
 
 | Format | Input | Charge output | Record model |
 | --- | --- | --- | --- |
-| MOL V2000/V3000 | Yes | Through generated SDF | One molecule, one conformer |
-| SDF V2000/V3000 | Yes | Preserved or generated SDF | One molecule per record, one conformer each |
-| Tripos MOL2 | Yes | Preserved or generated MOL2 | One molecule per `MOLECULE` record, one conformer each |
+| MOL V2000/V3000 | Yes | No | One molecule, one conformer |
+| SDF V2000/V3000 | Yes | No | One molecule per record, one conformer each |
+| Tripos MOL2 | Yes | Fresh generated MOL2 | One molecule per `MOLECULE` record, one conformer each |
 | ChargeFW molecule JSON 1.0 | Yes | No; result JSON uses a different schema | `molecules` array, zero or more conformers each |
 | PDB | Yes, through Gemmi | Fresh generated mmCIF | One molecule, models become conformers |
 | mmCIF | Yes, through Gemmi | Fresh generated mmCIF | One molecule per coordinate-bearing block |
@@ -161,39 +161,26 @@ Component Dictionary. No distance-based bond perception is performed.
 
 ## Charge output
 
-Serialized molecular charge fields are rounded to four decimal places. ChargeFW result JSON retains
-native floating-point precision, as do native and Python result objects. Writers validate assignment
-order, cardinality, targets, scope, and source references where the output representation provides them
-rather than silently reordering assignments.
-
-### SDF
-
-Preservation-oriented output copies every source record and its unrelated fields. In the default
-`replace` mode, existing numbered `CHARGEFW_CHARGES_*` and `CHARGEFW_CHARGE_METADATA_*` fields are removed;
-`append` mode retains them. Each charge set is written as:
-
-```text
-> <CHARGEFW_CHARGES_1>
--0.8000 0.4000 0.4000
-
-> <CHARGEFW_CHARGE_METADATA_1>
-type=empirical; method=eem; parameter_set=example; software_name=ChargeFW; software_version=...
-```
-
-Generated output can use V2000 or V3000. It writes the native atom order, formal charges, supported bond
-orders, first retained conformer, and its conformer-specific or molecule-level charge assignment. V2000
-generation is limited to 999 atoms and 999 bonds. Generation requires coordinates.
+ChargeFW result JSON retains native floating-point precision, as do native and Python result objects.
+Writers validate assignment order, cardinality, targets, scope, and source references where the output
+representation provides them rather than silently reordering assignments. SDF remains input-only.
 
 ### MOL2
 
-Preservation-oriented output retains source text and replaces the ninth atom field with each calculated
-charge. If source atom rows omit it, only the missing fields are added: six-field rows receive `1 UNL`
-before the charge, seven-field rows receive `UNL`, and eight-field rows receive only the charge.
+Generated MOL2 is intended primarily for small molecules. It writes one `SMALL`/`USER_CHARGES` record for
+each retained conformer, preserving native atom and bond order and joining the corresponding conformer
+assignment during construction. Molecule-scoped charges are repeated for each conformer; conformer-scoped
+charges are written only to their selected conformer. Record names use the caller or imported record ID,
+the molecule name, or a generated fallback, with a conformer suffix when needed.
 
-Generated output writes a `SMALL` molecule with `USER_CHARGES`, native atom and bond order, the first
-retained conformer, and its conformer-specific or molecule-level charge assignment. Generated atom types
-are element symbols only; ChargeFW does not infer Tripos atom types or substructures. Preserved output
-requires exactly one assignment for each molecule.
+Atom and bond IDs are generated one-based values. Known atom names are retained when representable;
+otherwise names are generated from the element and atom position. Atom types are element symbols, bond
+types are numeric single/double/triple orders, and the generated substructure fields are `1 UNL` because
+ChargeFW does not infer Tripos atom types or chemical substructures. The writer declares the generated
+`UNL` substructure, but its element-only atom types are deliberately generic and may not suit consumers
+that require fully classified SYBYL types. Coordinates and charges use round-trip floating-point formatting.
+Output rejects unsuccessful results, empty molecules, and missing or non-finite coordinates before writing.
+It does not preserve source MOL2 fields, typing, substructures, comments, IDs, or lexical format.
 
 ### mmCIF
 

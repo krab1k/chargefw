@@ -71,7 +71,6 @@ def test_import_surface() -> None:
         "OutputFormat",
         "INPUT_FORMATS",
         "OUTPUT_FORMATS",
-        "SdfVersion",
         "RecordSelection",
         "BondStrategy",
         "ConformerSelection",
@@ -88,7 +87,7 @@ def test_import_surface() -> None:
         "pdb",
         "mmcif",
     )
-    assert chargefw.io.OUTPUT_FORMATS == ("sdf", "mol2", "mmcif", "result-json")
+    assert chargefw.io.OUTPUT_FORMATS == ("mol2", "mmcif", "result-json")
     assert chargefw.io.gemmi.__all__ == [
         "from_structure",
         "from_document",

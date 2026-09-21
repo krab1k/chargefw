@@ -1,213 +1,209 @@
 #include <chargefw/adapters/native/mol2_output.h>
 
-#include "common_output.h"
+#include <chargefw/core/periodic_table.h>
 
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <charconv>
+#include <cmath>
 #include <cstddef>
-#include <optional>
+#include <limits>
+#include <memory>
 #include <ostream>
 #include <print>
-#include <sstream>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace chargefw::adapters::native::mol2_output {
 namespace {
 
-constexpr std::string_view molecule_marker{"@<TRIPOS>MOLECULE"};
-constexpr std::string_view atom_marker{"@<TRIPOS>ATOM"};
-constexpr std::string_view bond_marker{"@<TRIPOS>BOND"};
-
-[[nodiscard]] auto field_range(const std::string_view value, const std::size_t field_index)
-    -> std::optional<std::pair<std::size_t, std::size_t>> {
-    std::size_t position = 0;
-    for (std::size_t index = 0; index <= field_index; ++index) {
-        position = value.find_first_not_of(" \t", position);
-        if (position == std::string_view::npos) {
-            return std::nullopt;
-        }
-        const auto end = value.find_first_of(" \t", position);
-        if (index == field_index) {
-            return std::pair{position, end == std::string_view::npos ? value.size() : end};
-        }
-        position = end;
+[[nodiscard]] auto round_trip_number(const double value) -> std::string {
+    auto buffer = std::array<char, 64>{};
+    const auto [end, error] =
+        std::to_chars(buffer.data(), buffer.data() + buffer.size(), value,
+                      std::chars_format::general, std::numeric_limits<double>::max_digits10);
+    if (error != std::errc{}) {
+        throw std::runtime_error{"cannot serialize floating-point MOL2 value"};
     }
-    return std::nullopt;
+    return std::string{buffer.data(), end};
 }
 
-[[nodiscard]] auto patch_atom_line(const std::string_view content, const double charge,
-                                   const std::string_view ending) -> std::string {
-    if (!field_range(content, 5).has_value()) {
-        throw std::runtime_error{"invalid MOL2 atom record while writing charges"};
+[[nodiscard]] auto bond_type(const core::BondOrder order) -> std::string_view {
+    switch (order) {
+    case core::BondOrder::SINGLE:
+        return "1";
+    case core::BondOrder::DOUBLE:
+        return "2";
+    case core::BondOrder::TRIPLE:
+        return "3";
     }
+    throw std::invalid_argument{"cannot write unsupported bond order to MOL2"};
+}
 
-    auto result = std::string{content};
-    const auto formatted = common_output::formatted_charge(charge);
-    if (const auto range = field_range(content, 8); range.has_value()) {
-        result.replace(range->first, range->second - range->first, formatted);
-    } else {
-        if (!field_range(content, 6).has_value()) {
-            result += " 1";
-        }
-        if (!field_range(content, 7).has_value()) {
-            result += " UNL";
-        }
-        result += ' ';
-        result += formatted;
+[[nodiscard]] auto safe_line(std::string value) -> std::string {
+    std::ranges::replace_if(
+        value, [](const char character) { return character == '\r' || character == '\n'; }, '_');
+    return value;
+}
+
+[[nodiscard]] auto record_name(const ImportedMoleculeRecord& record,
+                               const std::size_t molecule_index, const std::size_t conformer_index)
+    -> std::string {
+    auto result = record.identity.record_id.empty() ? std::string{record.molecule.name()}
+                                                    : record.identity.record_id.display_string();
+    if (result.empty()) {
+        result = "molecule_" + std::to_string(molecule_index + 1);
     }
-    result += ending;
+    result = safe_line(std::move(result));
+    if (record.molecule.conformer_count() > 1) {
+        result += "_conformer_" + std::to_string(conformer_index + 1);
+    }
     return result;
 }
 
-[[nodiscard]] auto line_content(const std::string_view line) -> std::string_view {
-    if (line.ends_with("\r\n")) {
-        return line.substr(0, line.size() - 2);
+[[nodiscard]] auto atom_name(const core::Atom& atom, const std::size_t atom_index) -> std::string {
+    const auto name = atom.name();
+    if (!name.empty() && std::ranges::none_of(name, [](const unsigned char character) {
+            return std::isspace(character) != 0;
+        })) {
+        return std::string{name};
     }
-    if (line.ends_with('\n')) {
-        return line.substr(0, line.size() - 1);
-    }
-    return line;
+    return std::string{core::element_symbol(atom.atomic_number())} + std::to_string(atom_index + 1);
 }
 
-[[nodiscard]] auto line_ending(const std::string_view line) -> std::string_view {
-    if (line.ends_with("\r\n")) {
-        return "\r\n";
+[[nodiscard]] auto assignment_for(const charges::ChargeSet& charge_set,
+                                  const std::size_t molecule_index,
+                                  const std::size_t conformer_index)
+    -> const charges::ChargeAssignment& {
+    const auto found = std::ranges::find_if(
+        charge_set.assignments(), [molecule_index, conformer_index](const auto& assignment) {
+            return assignment.target.molecule_index == molecule_index &&
+                   (!assignment.target.conformer_index.has_value() ||
+                    *assignment.target.conformer_index == conformer_index);
+        });
+    if (found == charge_set.assignments().end()) {
+        throw std::invalid_argument{"MOL2 output has no charge assignment for molecule " +
+                                    std::to_string(molecule_index + 1) + ", conformer " +
+                                    std::to_string(conformer_index + 1)};
     }
-    return line.ends_with('\n') ? "\n" : "";
+    return *found;
 }
 
-[[nodiscard]] auto next_line(std::istream& input) -> std::optional<std::string> {
-    std::string line;
-    if (!std::getline(input, line)) {
-        return std::nullopt;
+auto validate_result(const ChargeCalculationResult& result) -> void {
+    if (!result.execution().calculated() || !result.execution().charges.has_value()) {
+        throw std::invalid_argument{"MOL2 output requires a successful calculation"};
     }
-    line += '\n';
-    return line;
-}
-
-auto write_record(const std::string_view record, const charges::ChargeAssignment* assignment,
-                  std::ostream& output) -> void {
-    if (assignment == nullptr) {
-        std::print(output, "{}", record);
-        return;
+    if (result.inputs().empty()) {
+        throw std::invalid_argument{"MOL2 output requires at least one molecule record"};
     }
 
-    bool in_atom_section = false;
-    std::size_t atom_index = 0;
-    std::size_t start = 0;
-    while (start < record.size()) {
-        const auto newline = record.find('\n', start);
-        const auto end = newline == std::string_view::npos ? record.size() : newline + 1;
-        const auto line = record.substr(start, end - start);
-        const auto content = line_content(line);
-
-        if (content == atom_marker) {
-            in_atom_section = true;
-        } else if (content == bond_marker) {
-            if (atom_index != assignment->charges.size()) {
-                throw std::runtime_error{"MOL2 atom count does not match charge assignment"};
-            }
-            in_atom_section = false;
+    const auto& charge_set = *result.execution().charges;
+    for (std::size_t molecule_index = 0; molecule_index < result.inputs().size();
+         ++molecule_index) {
+        const auto& molecule = result.inputs()[molecule_index].molecule;
+        if (molecule.atom_count() == 0) {
+            throw std::invalid_argument{"MOL2 output requires at least one atom per molecule"};
         }
-
-        if (in_atom_section && !content.empty() && content.front() != '@') {
-            if (atom_index == assignment->charges.size()) {
-                throw std::runtime_error{"MOL2 atom count exceeds charge assignment"};
-            }
-            std::print(
-                output, "{}",
-                patch_atom_line(content, assignment->charges[atom_index++], line_ending(line)));
-        } else {
-            std::print(output, "{}", line);
+        if (molecule.conformer_count() == 0) {
+            throw std::invalid_argument{"MOL2 output requires coordinates for molecule " +
+                                        std::to_string(molecule_index + 1)};
         }
-        start = end;
-    }
-
-    if (atom_index != assignment->charges.size()) {
-        throw std::runtime_error{"MOL2 atom count does not match charge assignment"};
+        for (std::size_t conformer_index = 0; conformer_index < molecule.conformer_count();
+             ++conformer_index) {
+            const auto& conformer = molecule.conformer(conformer_index);
+            const auto& assignment = assignment_for(charge_set, molecule_index, conformer_index);
+            if (assignment.charges.size() != molecule.atom_count()) {
+                throw std::invalid_argument{
+                    "MOL2 charge assignment size does not match molecule atom count"};
+            }
+            for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
+                const auto& position = conformer[atom_index];
+                if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
+                    !std::isfinite(position.z)) {
+                    throw std::invalid_argument{"MOL2 coordinates must be finite"};
+                }
+                if (!std::isfinite(assignment.charges[atom_index])) {
+                    throw std::invalid_argument{"MOL2 charges must be finite"};
+                }
+            }
+        }
     }
 }
 
-auto write_preserving_records(std::istream& input, std::ostream& output,
-                              const std::span<const charges::ChargeAssignment> assignments)
+auto write_record(std::ostream& output, const ImportedMoleculeRecord& record,
+                  const std::size_t molecule_index, const std::size_t conformer_index,
+                  const charges::ChargeAssignment& assignment, const charges::ChargeSet& charge_set,
+                  const std::string_view generator_name, const std::string_view generator_version)
     -> void {
-    std::size_t record_index = 0;
-    auto pending = next_line(input);
-
-    while (pending.has_value()) {
-        if (line_content(*pending) != molecule_marker) {
-            std::print(output, "{}", *pending);
-            pending = next_line(input);
-            continue;
-        }
-
-        auto record = std::move(*pending);
-        pending.reset();
-        while (const auto line = next_line(input)) {
-            if (line_content(*line) == molecule_marker) {
-                pending = *line;
-                break;
-            }
-            record += *line;
-        }
-
-        if (record_index >= assignments.size()) {
-            throw std::invalid_argument{"MOL2 source has more records than charge assignments"};
-        }
-
-        const auto& assignment = assignments[record_index];
-        if (assignment.target.molecule_index != record_index) {
-            throw std::invalid_argument{"MOL2 assignment order does not match source record order"};
-        }
-        write_record(record, std::addressof(assignment), output);
-        ++record_index;
+    const auto& molecule = record.molecule;
+    const auto& conformer = molecule.conformer(conformer_index);
+    const auto name = record_name(record, molecule_index, conformer_index);
+    std::println(output, "@<TRIPOS>MOLECULE");
+    std::println(output, "{}", name);
+    std::println(output, "{} {} 1 0 0", molecule.atom_count(), molecule.bond_count());
+    std::println(output, "SMALL");
+    std::println(output, "USER_CHARGES");
+    std::println(output, "****");
+    std::print(output, "Generated by {}",
+               safe_line(generator_name.empty() ? "unknown" : std::string{generator_name}));
+    if (!generator_version.empty()) {
+        std::print(output, " {}", safe_line(std::string{generator_version}));
+    }
+    std::print(output, "; method={}", safe_line(std::string{charge_set.method_id()}));
+    if (const auto parameter_set_id = charge_set.parameter_set_id(); parameter_set_id.has_value()) {
+        std::print(output, "; parameter_set={}", safe_line(std::string{*parameter_set_id}));
+    }
+    std::println(output);
+    std::println(output, "@<TRIPOS>ATOM");
+    for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
+        const auto& atom = molecule.atom(atom_index);
+        const auto& position = conformer[atom_index];
+        std::println(output, "{} {} {} {} {} {} 1 UNL {}", atom_index + 1,
+                     atom_name(atom, atom_index), round_trip_number(position.x),
+                     round_trip_number(position.y), round_trip_number(position.z),
+                     core::element_symbol(atom.atomic_number()),
+                     round_trip_number(assignment.charges[atom_index]));
     }
 
-    if (record_index != assignments.size()) {
-        throw std::invalid_argument{"MOL2 source has fewer records than charge assignments"};
+    std::println(output, "@<TRIPOS>BOND");
+    for (std::size_t bond_index = 0; bond_index < molecule.bond_count(); ++bond_index) {
+        const auto& bond = molecule.bond(bond_index);
+        std::println(output, "{} {} {} {}", bond_index + 1, bond.first_atom_index() + 1,
+                     bond.second_atom_index() + 1, bond_type(bond.order()));
     }
+    std::println(output, "@<TRIPOS>SUBSTRUCTURE");
+    std::println(output, "1 UNL 1");
 }
 
 } // namespace
 
 Mol2Writer::Mol2Writer(std::ostream& output) : output_{std::addressof(output)} {}
 
-auto Mol2Writer::write_preserving_source(
-    const std::string& source_path,
-    const std::span<const charges::ChargeAssignment> assignments) const -> void {
-    auto input = common_output::open_source_file(source_path, "MOL2");
-    write_preserving_records(input, *output_, assignments);
-}
-
-auto Mol2Writer::write_preserving_buffer(
-    const std::string_view source,
-    const std::span<const charges::ChargeAssignment> assignments) const -> void {
-    auto input = std::istringstream{std::string{source}};
-    write_preserving_records(input, *output_, assignments);
-}
-
-auto Mol2Writer::write_generated(const core::Molecule& molecule,
-                                 const charges::ChargeAssignment& assignment) const -> void {
-    const auto& conformer = common_output::assignment_conformer(molecule, assignment, "MOL2");
-
-    std::print(*output_,
-               "@<TRIPOS>MOLECULE\n{}\n{} {} 0 0 0\nSMALL\nUSER_CHARGES\n\n@<TRIPOS>ATOM\n",
-               molecule.name().empty() ? "chargefw" : molecule.name(), molecule.atom_count(),
-               molecule.bond_count());
-    for (std::size_t index = 0; index < molecule.atom_count(); ++index) {
-        const auto& atom = molecule.atom(index);
-        const auto& position = conformer[index];
-        std::print(*output_, "{} {} {} {} {} {} 1 UNL {}\n", index + 1,
-                   common_output::generated_atom_name(atom, index), position.x, position.y,
-                   position.z, common_output::atom_element_symbol(atom),
-                   common_output::formatted_charge(assignment.charges[index]));
+auto Mol2Writer::write(const ChargeCalculationResult& result, const std::string_view generator_name,
+                       const std::string_view generator_version) const -> void {
+    validate_result(result);
+    const auto& charge_set = *result.execution().charges;
+    bool first = true;
+    for (std::size_t molecule_index = 0; molecule_index < result.inputs().size();
+         ++molecule_index) {
+        const auto& record = result.inputs()[molecule_index];
+        for (std::size_t conformer_index = 0; conformer_index < record.molecule.conformer_count();
+             ++conformer_index) {
+            if (!first) {
+                std::println(*output_);
+            }
+            first = false;
+            write_record(*output_, record, molecule_index, conformer_index,
+                         assignment_for(charge_set, molecule_index, conformer_index), charge_set,
+                         generator_name, generator_version);
+        }
     }
-
-    std::print(*output_, "@<TRIPOS>BOND\n");
-    for (std::size_t index = 0; index < molecule.bond_count(); ++index) {
-        const auto& bond = molecule.bond(index);
-        std::print(*output_, "{} {} {} {}\n", index + 1, bond.first_atom_index() + 1,
-                   bond.second_atom_index() + 1, common_output::bond_type(bond.order()));
+    if (!*output_) {
+        throw std::runtime_error{"failed to write MOL2 output"};
     }
 }
 

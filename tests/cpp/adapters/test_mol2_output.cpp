@@ -1,3 +1,4 @@
+#include <chargefw/adapters/charge_result.h>
 #include <chargefw/adapters/native/mol2_input.h>
 #include <chargefw/adapters/native/mol2_output.h>
 #include <chargefw/charges/atomic_charges.h>
@@ -6,232 +7,176 @@
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
-#include <chargefw/core/position.h>
 #include <snitch/snitch.hpp>
 
-#include <filesystem>
-#include <fstream>
-#include <print>
+#include <limits>
 #include <sstream>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
-
-namespace mol2_output = chargefw::adapters::native::mol2_output;
-namespace mol2_input = chargefw::adapters::native::mol2_input;
-namespace charges = chargefw::charges;
 
 namespace {
 
-[[nodiscard]] auto fixture(const std::string_view name) -> std::filesystem::path {
-    return std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "tests" / "fixtures" / name;
+namespace adapters = chargefw::adapters;
+namespace charges = chargefw::charges;
+namespace core = chargefw::core;
+namespace mol2_input = chargefw::adapters::native::mol2_input;
+namespace mol2_output = chargefw::adapters::native::mol2_output;
+
+auto generated_record() -> adapters::ImportedMoleculeRecord {
+    return {.molecule =
+                core::Molecule{{core::Atom{6, 0, "C1"}, core::Atom{8, -1, "O1"}},
+                               {core::Bond{0, 1, core::BondOrder::DOUBLE}},
+                               {core::Conformer{{core::Position{0.0, 0.0, 0.0},
+                                                 core::Position{1.23456789012345, 0.0, 0.0}}},
+                                core::Conformer{{core::Position{0.1, 0.0, 0.0},
+                                                 core::Position{1.33456789012345, 0.0, 0.0}}}},
+                               "carbonyl"},
+            .identity = {.source = "input", .record_id = "record"}};
 }
 
-[[nodiscard]] auto assignment(std::vector<double> values) -> charges::ChargeAssignment {
-    return {.target = {.molecule_index = 0, .conformer_index = 0},
-            .charges = charges::AtomicCharges{std::move(values)}};
+auto calculation_result(std::vector<adapters::ImportedMoleculeRecord> records,
+                        charges::ChargeSet charge_set) -> adapters::ChargeCalculationResult {
+    const auto method_id = std::string{charge_set.method_id()};
+    const auto parameter_set_id = charge_set.parameter_set_id().transform(
+        [](const std::string_view value) { return std::string{value}; });
+    return adapters::make_charge_calculation_result(
+        std::move(records), {},
+        {.charges = std::move(charge_set),
+         .effective = chargefw::calculation::EffectiveCalculation{
+             .method_id = method_id,
+             .parameter_set_id = parameter_set_id,
+             .execution_policy = chargefw::calculation::ExecutionPolicy{}}});
 }
 
-[[nodiscard]] auto assignment(const std::size_t molecule_index, std::vector<double> values)
-    -> charges::ChargeAssignment {
-    return {.target = {.molecule_index = molecule_index, .conformer_index = 0},
-            .charges = charges::AtomicCharges{std::move(values)}};
-}
-
-[[nodiscard]] auto geometry_independent_assignment(std::vector<double> values)
-    -> charges::ChargeAssignment {
-    return {.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{std::move(values)}};
+[[nodiscard]] auto occurrences(const std::string_view text, const std::string_view value)
+    -> std::size_t {
+    std::size_t result = 0;
+    for (auto position = text.find(value); position != std::string_view::npos;
+         position = text.find(value, position + value.size())) {
+        ++result;
+    }
+    return result;
 }
 
 } // namespace
 
-TEST_CASE("MOL2 input treats LF and CRLF records equivalently", "[adapters][mol2]") {
-    constexpr auto lf_source = "@<TRIPOS>MOLECULE\nminimal\n2 1 0 0 0\nSMALL\nNO_CHARGES\n\n"
-                               "@<TRIPOS>ATOM\n1 C1 0 0 0 C.3\n2 H1 1 0 0 H\n"
-                               "@<TRIPOS>BOND\n1 1 2 1\n";
-    constexpr auto crlf_source =
-        "@<TRIPOS>MOLECULE\r\nminimal\r\n2 1 0 0 0\r\nSMALL\r\nNO_CHARGES\r\n\r\n"
-        "@<TRIPOS>ATOM\r\n1 C1 0 0 0 C.3\r\n2 H1 1 0 0 H\r\n"
-        "@<TRIPOS>BOND\r\n1 1 2 1\r\n";
-
-    auto lf_input = std::istringstream{lf_source};
-    auto crlf_input = std::istringstream{crlf_source};
-    auto lf_reader = mol2_input::Mol2Reader{lf_input, "lf.mol2"};
-    auto crlf_reader = mol2_input::Mol2Reader{crlf_input, "crlf.mol2"};
-    const auto lf_record = lf_reader.next();
-    const auto crlf_record = crlf_reader.next();
-
-    REQUIRE(lf_record.has_value());
-    REQUIRE(crlf_record.has_value());
-    CHECK(crlf_record->identity.record_id == lf_record->identity.record_id);
-    CHECK(crlf_record->molecule.atom_count() == lf_record->molecule.atom_count());
-    CHECK(crlf_record->molecule.bond_count() == lf_record->molecule.bond_count());
-    CHECK(crlf_record->molecule.atom(0).name() == lf_record->molecule.atom(0).name());
-    CHECK_FALSE(crlf_reader.next().has_value());
-
+TEST_CASE("result-owned MOL2 writes every conformer with its charges", "[adapters][mol2]") {
+    const auto result = calculation_result(
+        {generated_record()},
+        charges::ChargeSet{
+            "qeq",
+            {{.target = {.molecule_index = 0, .conformer_index = 0},
+              .charges = charges::AtomicCharges{{0.123456789012345, -0.123456789012345}}},
+             {.target = {.molecule_index = 0, .conformer_index = 1},
+              .charges = charges::AtomicCharges{{0.25, -0.25}}}},
+            "qeq-default"});
     auto output = std::ostringstream{};
-    const auto assignments = std::vector{assignment({-0.1, 0.1})};
-    mol2_output::Mol2Writer{output}.write_preserving_buffer(crlf_source, assignments);
-    CHECK(output.str().contains("@<TRIPOS>ATOM\r\n"));
+    mol2_output::Mol2Writer{output}.write(result, "ChargeFW", "test");
+    const auto text = output.str();
 
-    auto round_trip_input = std::istringstream{output.str()};
-    auto round_trip_reader = mol2_input::Mol2Reader{round_trip_input, "round_trip.mol2"};
-    const auto round_trip_record = round_trip_reader.next();
-    REQUIRE(round_trip_record.has_value());
-    CHECK(round_trip_record->molecule.atom_count() == lf_record->molecule.atom_count());
-    CHECK(round_trip_record->molecule.bond_count() == lf_record->molecule.bond_count());
+    CHECK(occurrences(text, "@<TRIPOS>MOLECULE") == 2);
+    CHECK(text.contains("record_conformer_1"));
+    CHECK(text.contains("record_conformer_2"));
+    CHECK(text.contains("1.23456789012345"));
+    CHECK(text.contains("; method=qeq; parameter_set=qeq-default"));
+    CHECK(text.contains("@<TRIPOS>BOND\n1 1 2 2"));
+    CHECK(occurrences(text, "@<TRIPOS>SUBSTRUCTURE\n1 UNL 1") == 2);
+    const auto second_record = text.find("@<TRIPOS>MOLECULE", 1);
+    REQUIRE(second_record != std::string::npos);
+    const auto first_text = std::string_view{text}.substr(0, second_record);
+    const auto second_text = std::string_view{text}.substr(second_record);
+    CHECK(first_text.contains(" 0.123456789012345\n"));
+    CHECK_FALSE(first_text.contains(" 0.25\n"));
+    CHECK(second_text.contains(" 0.25\n"));
+    CHECK_FALSE(second_text.contains(" 0.123456789012345\n"));
+
+    auto round_trip_stream = std::istringstream{text};
+    auto reader = mol2_input::Mol2Reader{round_trip_stream};
+    const auto first = reader.next();
+    const auto second = reader.next();
+    REQUIRE(first.has_value());
+    REQUIRE(second.has_value());
+    CHECK(first->identity.record_id == "record_conformer_1");
+    CHECK(second->identity.record_id == "record_conformer_2");
+    CHECK(first->molecule.atom_count() == 2);
+    CHECK(second->molecule.bond_count() == 1);
+    CHECK(first->molecule.conformer(0)[1].x == 1.23456789012345);
+    CHECK(second->molecule.conformer(0)[1].x == 1.33456789012345);
+    CHECK_FALSE(reader.next().has_value());
 }
 
-TEST_CASE("MOL2 output preserves source structure and replaces atom charges", "[adapters][mol2]") {
-    {
-        auto output = std::ostringstream{};
-        auto input = std::ifstream{fixture("synthetic/mol2/aromatic.mol2"), std::ios::binary};
-        const auto source = std::string{std::istreambuf_iterator<char>{input}, {}};
-        const auto assignments = std::vector{assignment({-0.87654, 0.43827, 0.43827})};
-        mol2_output::Mol2Writer{output}.write_preserving_buffer(source, assignments);
-        const auto text = output.str();
-        CHECK(text.contains("7 N1 0.0000 0.0000 0.0000 N.4 1 LIG -0.8765"));
-        CHECK(text.contains("9 C1 1.0000 0.0000 0.0000 C.ar 1 LIG 0.4383"));
-        CHECK(text.contains("11 O1 2.0000 0.0000 0.0000 O.2 1 LIG 0.4383"));
-        CHECK(text.contains("@<TRIPOS>BOND\n1 7 9 ar\n2 9 11 2\n"));
+TEST_CASE("result-owned MOL2 broadcasts molecule charges to retained conformers",
+          "[adapters][mol2]") {
+    auto second = generated_record();
+    second.identity.record_id = "second";
+    const auto result = calculation_result(
+        {generated_record(), std::move(second)},
+        charges::ChargeSet{
+            "formal",
+            {{.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{{0.25, -0.25}}},
+             {.target = {.molecule_index = 1}, .charges = charges::AtomicCharges{{0.5, -0.5}}}}});
+    auto output = std::ostringstream{};
+    mol2_output::Mol2Writer{output}.write(result);
 
-        auto expected = source;
-        const auto first_charge = expected.find("0.2500", expected.find("1 LIG"));
-        expected.replace(first_charge, std::string_view{"0.2500"}.size(), "-0.8765");
-        const auto second_charge =
-            expected.find("0.0000", expected.find("1 LIG", first_charge + 1));
-        expected.replace(second_charge, std::string_view{"0.0000"}.size(), "0.4383");
-        const auto third_charge =
-            expected.find("0.0000", expected.find("1 LIG", second_charge + 1));
-        expected.replace(third_charge, std::string_view{"0.0000"}.size(), "0.4383");
-        CHECK(text == expected);
+    CHECK(occurrences(output.str(), " 0.25\n") == 2);
+    CHECK(occurrences(output.str(), " -0.25\n") == 2);
+    CHECK(occurrences(output.str(), " 0.5\n") == 2);
+    CHECK(occurrences(output.str(), " -0.5\n") == 2);
+}
+
+TEST_CASE("result-owned MOL2 rejects failed results and invalid values before output",
+          "[adapters][mol2]") {
+    {
+        const auto cancelled = adapters::make_charge_calculation_result(
+            {generated_record()}, {},
+            {.status = chargefw::calculation::ExecutionStatus::cancelled});
+        auto output = std::ostringstream{};
+        CHECK_THROWS_AS(mol2_output::Mol2Writer{output}.write(cancelled), std::invalid_argument);
+        CHECK(output.str().empty());
     }
 
     {
-        const auto source =
-            std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "build" / "mol2_without_charges.mol2";
-        auto input = std::ofstream{source};
-        std::print(input, "@<TRIPOS>MOLECULE\nminimal\n2 0 0 0 0\nSMALL\n"
-                          "NO_CHARGES\n\n@<TRIPOS>ATOM\n1 C1 0 0 0 C.3\n"
-                          "2 H1 1 0 0 H\n@<TRIPOS>BOND\n");
-        input.close();
-
+        auto record = generated_record();
+        record.molecule = core::Molecule{{core::Atom{6}, core::Atom{8}}};
+        const auto missing = calculation_result(
+            {std::move(record)},
+            charges::ChargeSet{"formal",
+                               {{.target = {.molecule_index = 0},
+                                 .charges = charges::AtomicCharges{{0.0, 0.0}}}}});
         auto output = std::ostringstream{};
-        const auto assignments = std::vector{assignment({-0.1, 0.1})};
-        mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), assignments);
-        const auto text = output.str();
-        CHECK(text.contains("1 C1 0 0 0 C.3 1 UNL -0.1000"));
-        CHECK(text.contains("2 H1 1 0 0 H 1 UNL 0.1000"));
-        std::filesystem::remove(source);
+        CHECK_THROWS_AS(mol2_output::Mol2Writer{output}.write(missing), std::invalid_argument);
+        CHECK(output.str().empty());
     }
 
     {
-        constexpr auto source = "@<TRIPOS>MOLECULE\nmissing charges\n3 0 0 0 0\nSMALL\n"
-                                "NO_CHARGES\n\n@<TRIPOS>ATOM\n"
-                                "1 C1 0 0 0 C.3\n"
-                                "2 N1 1 0 0 N.3 7\n"
-                                "3 O1 2 0 0 O.2 8 RES\n"
-                                "@<TRIPOS>BOND\n";
+        auto record = generated_record();
+        record.molecule = core::Molecule{{}, {}, {core::Conformer{{}}}};
+        const auto empty = calculation_result(
+            {std::move(record)}, charges::ChargeSet{"formal",
+                                                    {{.target = {.molecule_index = 0},
+                                                      .charges = charges::AtomicCharges{{}}}}});
         auto output = std::ostringstream{};
-        const auto assignments = std::vector{assignment({-0.1, 0.2, -0.3})};
-        mol2_output::Mol2Writer{output}.write_preserving_buffer(source, assignments);
-        const auto text = output.str();
-
-        auto round_trip_input = std::istringstream{text};
-        auto reader = mol2_input::Mol2Reader{round_trip_input, "missing_charges.mol2"};
-        const auto record = reader.next();
-        REQUIRE(record.has_value());
-        CHECK(record->molecule.atom_count() == 3);
-        CHECK_FALSE(reader.next().has_value());
-
-        constexpr auto atom_marker = std::string_view{"@<TRIPOS>ATOM\n"};
-        auto atom_lines =
-            std::istringstream{text.substr(text.find(atom_marker) + atom_marker.size())};
-        const auto expected_substructures = std::vector<std::pair<std::string, std::string>>{
-            {"1", "UNL"}, {"7", "UNL"}, {"8", "RES"}};
-        const auto expected_charges = std::vector<std::string>{"-0.1000", "0.2000", "-0.3000"};
-        for (std::size_t index = 0; index < expected_charges.size(); ++index) {
-            std::string line;
-            REQUIRE(std::getline(atom_lines, line));
-            auto fields = std::istringstream{line};
-            auto tokens = std::vector<std::string>{};
-            for (std::string token; fields >> token;) {
-                tokens.push_back(std::move(token));
-            }
-            REQUIRE(tokens.size() == 9);
-            CHECK(tokens[6] == expected_substructures[index].first);
-            CHECK(tokens[7] == expected_substructures[index].second);
-            CHECK(tokens[8] == expected_charges[index]);
-        }
+        CHECK_THROWS_AS(mol2_output::Mol2Writer{output}.write(empty), std::invalid_argument);
+        CHECK(output.str().empty());
     }
 
     {
-        const auto source = std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "build" /
-                            "mol2_batch_preserving.mol2";
-        auto input = std::ofstream{source};
-        std::print(input, "preamble\n@<TRIPOS>MOLECULE\nfirst\n1 0 0 0 0\nSMALL\nNO_CHARGES\n"
-                          "@<TRIPOS>ATOM\n1 C1 0 0 0 C.3\n@<TRIPOS>BOND\n"
-                          "@<TRIPOS>MOLECULE\nsecond\n1 0 0 0 0\nSMALL\nUSER_CHARGES\n"
-                          "@<TRIPOS>ATOM\n1 O1 0 0 0 O.3 1 UNL 0.0000\n@<TRIPOS>BOND\n");
-        input.close();
-
+        auto record = generated_record();
+        record.molecule = core::Molecule{
+            {core::Atom{6}, core::Atom{8}},
+            {},
+            {core::Conformer{{{.x = std::numeric_limits<double>::infinity(), .y = 0.0, .z = 0.0},
+                              {.x = 1.0, .y = 0.0, .z = 0.0}}}}};
+        const auto nonfinite_coordinates = calculation_result(
+            {std::move(record)},
+            charges::ChargeSet{"formal",
+                               {{.target = {.molecule_index = 0, .conformer_index = 0},
+                                 .charges = charges::AtomicCharges{{0.0, 0.0}}}}});
         auto output = std::ostringstream{};
-        const auto assignments = std::vector{assignment(0, {-0.1}), assignment(1, {0.2})};
-        mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), assignments);
-        CHECK(output.str().contains("1 C1 0 0 0 C.3 1 UNL -0.1000"));
-        CHECK(output.str().contains("1 O1 0 0 0 O.3 1 UNL 0.2000"));
-        CHECK(output.str().contains("preamble\n"));
-        std::filesystem::remove(source);
-    }
-
-    {
-        const auto source = std::filesystem::path{CHARGEFW_TEST_SOURCE_DIR} / "build" /
-                            "mol2_preserved_spacing.mol2";
-        auto input = std::ofstream{source, std::ios::binary};
-        std::print(input, "@<TRIPOS>MOLECULE\r\nminimal\r\n1 0 0 0 0\r\nSMALL\r\n"
-                          "USER_CHARGES\r\n\r\n@<TRIPOS>ATOM\r\n"
-                          "  1\tC1   0.0  0.0\t0.0  C.3  1 LIG   0.1234   # retained\r\n"
-                          "@<TRIPOS>BOND\r\n");
-        input.close();
-
-        auto output = std::ostringstream{};
-        const auto assignments = std::vector{assignment({-0.1})};
-        mol2_output::Mol2Writer{output}.write_preserving_source(source.string(), assignments);
-        CHECK(output.str() == "@<TRIPOS>MOLECULE\r\nminimal\r\n1 0 0 0 0\r\nSMALL\r\n"
-                              "USER_CHARGES\r\n\r\n@<TRIPOS>ATOM\r\n"
-                              "  1\tC1   0.0  0.0\t0.0  C.3  1 LIG   -0.1000   # retained\r\n"
-                              "@<TRIPOS>BOND\r\n");
-        std::filesystem::remove(source);
-    }
-
-    {
-        const auto molecule = chargefw::core::Molecule{
-            {chargefw::core::Atom{8}, chargefw::core::Atom{1}, chargefw::core::Atom{1}},
-            {chargefw::core::Bond{0, 1}, chargefw::core::Bond{0, 2}},
-            {chargefw::core::Conformer{{{.x = 0.0, .y = 0.0, .z = 0.0},
-                                        {.x = 0.9, .y = 0.0, .z = 0.0},
-                                        {.x = -0.2, .y = 0.9, .z = 0.0}}}},
-            "water"};
-        auto output = std::ostringstream{};
-        mol2_output::Mol2Writer{output}.write_generated(molecule,
-                                                        assignment({-0.97533, 0.48766, 0.48767}));
-        const auto text = output.str();
-        CHECK(text.contains("@<TRIPOS>MOLECULE\nwater\n3 2 0 0 0\nSMALL\nUSER_CHARGES\n"));
-        CHECK(text.contains("1 O1 0 0 0 O 1 UNL -0.9753"));
-        CHECK(text.contains("2 H2 0.9 0 0 H 1 UNL 0.4877"));
-        CHECK(text.contains("@<TRIPOS>BOND\n1 1 2 1\n2 1 3 1\n"));
-    }
-
-    {
-        const auto molecule = chargefw::core::Molecule{
-            {chargefw::core::Atom{8}, chargefw::core::Atom{1}, chargefw::core::Atom{1}},
-            {chargefw::core::Bond{0, 1}, chargefw::core::Bond{0, 2}},
-            {chargefw::core::Conformer{{{.x = 0.0, .y = 0.0, .z = 0.0},
-                                        {.x = 0.9, .y = 0.0, .z = 0.0},
-                                        {.x = -0.2, .y = 0.9, .z = 0.0}}}},
-            "water"};
-        auto output = std::ostringstream{};
-        mol2_output::Mol2Writer{output}.write_generated(
-            molecule, geometry_independent_assignment({-0.97533, 0.48766, 0.48767}));
-        CHECK(output.str().contains("1 O1 0 0 0 O 1 UNL -0.9753"));
+        CHECK_THROWS_AS(mol2_output::Mol2Writer{output}.write(nonfinite_coordinates),
+                        std::invalid_argument);
+        CHECK(output.str().empty());
     }
 }

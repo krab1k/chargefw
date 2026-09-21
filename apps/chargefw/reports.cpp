@@ -43,8 +43,7 @@ void print_inspection(const ImportedCollection& imported) {
         }
         std::print("record {} ({}) atoms={} bonds={} conformers={} coordinates={} formal_charge={} "
                    "elements=",
-                   index,
-                   imported.export_context.records[index].identity.record_id.display_string(),
+                   index, imported.records[index].identity.record_id.display_string(),
                    molecule.atom_count(), molecule.bond_count(), molecule.conformer_count(),
                    molecule.has_coordinates(), core::total_formal_charge(molecule));
         bool first = true;

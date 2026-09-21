@@ -24,8 +24,11 @@ function(run_structural_input extension contents input_stem expected_selection e
     if(NOT EXISTS "${output_prefix}.cif")
         message(FATAL_ERROR "mmCIF output was not created for .${extension}")
     endif()
-    if(EXISTS "${output_prefix}.sdf" OR EXISTS "${output_prefix}.mol2")
-        message(FATAL_ERROR "Structural input must not produce SDF or MOL2 output")
+    if(NOT EXISTS "${output_prefix}.mol2")
+        message(FATAL_ERROR "MOL2 output was not created for .${extension}")
+    endif()
+    if(EXISTS "${output_prefix}.sdf")
+        message(FATAL_ERROR "Structural input must not produce SDF output")
     endif()
 
     file(READ "${output_prefix}.json" json_output)

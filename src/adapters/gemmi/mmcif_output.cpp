@@ -11,12 +11,12 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
-#include <format>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <ostream>
 #include <ranges>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -97,18 +97,6 @@ auto ensure_dictionary(::gemmi::cif::Block& block) -> void;
         result.push_back(std::move(candidate));
     }
     return result;
-}
-
-[[nodiscard]] auto bond_order(const core::BondOrder order) -> std::string {
-    switch (order) {
-    case core::BondOrder::SINGLE:
-        return "sing";
-    case core::BondOrder::DOUBLE:
-        return "doub";
-    case core::BondOrder::TRIPLE:
-        return "trip";
-    }
-    throw std::runtime_error{"cannot write unsupported bond order to generated mmCIF"};
 }
 
 [[nodiscard]] auto round_trip_number(const double value) -> std::string {
@@ -447,119 +435,6 @@ auto write_result_block(::gemmi::cif::Block& block, const ImportedMoleculeRecord
     }
 }
 
-[[nodiscard]] auto write_generated_block(::gemmi::cif::Block& block, const core::Molecule& molecule)
-    -> BlockMapping {
-    if (molecule.conformer_count() == 0) {
-        throw std::runtime_error{"mmCIF output requires coordinates"};
-    }
-
-    const auto ids = atom_ids(molecule);
-    block.set_pair("_entry.id", quote(block.name));
-
-    auto& entity = block.init_loop("_entity.", {"id", "type", "src_method", "pdbx_description"});
-    entity.add_row({"1", "non-polymer", "syn", quote(molecule.name())});
-    auto& asym = block.init_loop("_struct_asym.", {"id", "entity_id"});
-    asym.add_row({"A", "1"});
-    auto& nonpoly = block.init_loop("_pdbx_entity_nonpoly.", {"entity_id", "name", "comp_id"});
-    nonpoly.add_row({"1", quote(molecule.name()), "UNL"});
-
-    auto& component =
-        block.init_loop("_chem_comp.", {"id", "name", "type", "formula", "formula_weight"});
-    component.add_row({"UNL", quote(molecule.name()), "NON-POLYMER", "?", "?"});
-
-    auto& atom_types = block.init_loop("_atom_type.", {"symbol"});
-    std::vector<std::string> atom_type_symbols;
-    atom_type_symbols.reserve(molecule.atom_count());
-    for (std::size_t index = 0; index < molecule.atom_count(); ++index) {
-        auto symbol = std::string{core::element_symbol(molecule.atom(index).atomic_number())};
-        if (std::ranges::find(atom_type_symbols, symbol) == atom_type_symbols.end()) {
-            atom_type_symbols.push_back(std::move(symbol));
-        }
-    }
-    for (const auto& symbol : atom_type_symbols) {
-        atom_types.add_row({symbol});
-    }
-
-    auto& component_atoms =
-        block.init_loop("_chem_comp_atom.", {"comp_id", "atom_id", "type_symbol", "charge"});
-    for (std::size_t index = 0; index < molecule.atom_count(); ++index) {
-        const auto& atom = molecule.atom(index);
-        component_atoms.add_row({"UNL", quote(ids[index]),
-                                 std::string{core::element_symbol(atom.atomic_number())},
-                                 std::to_string(atom.formal_charge())});
-    }
-
-    if (molecule.bond_count() != 0) {
-        auto& component_bonds = block.init_loop(
-            "_chem_comp_bond.", {"comp_id", "atom_id_1", "atom_id_2", "value_order"});
-        for (const auto& bond : molecule.bonds()) {
-            component_bonds.add_row({"UNL", quote(ids[bond.first_atom_index()]),
-                                     quote(ids[bond.second_atom_index()]),
-                                     bond_order(bond.order())});
-        }
-    }
-
-    auto& atom_sites = block.init_loop("_atom_site.", {"group_PDB",
-                                                       "id",
-                                                       "type_symbol",
-                                                       "label_atom_id",
-                                                       "label_alt_id",
-                                                       "label_comp_id",
-                                                       "label_asym_id",
-                                                       "label_entity_id",
-                                                       "label_seq_id",
-                                                       "Cartn_x",
-                                                       "Cartn_y",
-                                                       "Cartn_z",
-                                                       "occupancy",
-                                                       "B_iso_or_equiv",
-                                                       "pdbx_formal_charge",
-                                                       "auth_seq_id",
-                                                       "auth_comp_id",
-                                                       "auth_asym_id",
-                                                       "auth_atom_id",
-                                                       "pdbx_PDB_model_num"});
-
-    BlockMapping mapping;
-    mapping.atom_site_ids.resize(molecule.conformer_count());
-    mapping.model_ids.reserve(molecule.conformer_count());
-    std::size_t site_id = 1;
-    for (std::size_t conformer_index = 0; conformer_index < molecule.conformer_count();
-         ++conformer_index) {
-        const auto model_id = std::to_string(conformer_index + 1);
-        mapping.model_ids.push_back(model_id);
-        auto& site_ids = mapping.atom_site_ids[conformer_index];
-        site_ids.reserve(molecule.atom_count());
-        for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
-            const auto& atom = molecule.atom(atom_index);
-            const auto& position = molecule.conformer(conformer_index)[atom_index];
-            const auto current_site_id = std::to_string(site_id++);
-            site_ids.push_back(current_site_id);
-            atom_sites.add_row({"HETATM",
-                                current_site_id,
-                                std::string{core::element_symbol(atom.atomic_number())},
-                                quote(ids[atom_index]),
-                                ".",
-                                "UNL",
-                                "A",
-                                "1",
-                                ".",
-                                std::format("{:.6f}", position.x),
-                                std::format("{:.6f}", position.y),
-                                std::format("{:.6f}", position.z),
-                                "1.0",
-                                "0.0",
-                                std::to_string(atom.formal_charge()),
-                                "1",
-                                "UNL",
-                                "A",
-                                quote(ids[atom_index]),
-                                quote(model_id)});
-        }
-    }
-    return mapping;
-}
-
 auto erase_category(::gemmi::cif::Block& block, const std::string_view category) -> void {
     if (block.has_mmcif_category(std::string{category})) {
         block.find_mmcif_category(std::string{category}).erase();
@@ -689,31 +564,6 @@ auto MmcifWriter::write_attached(const ChargeCalculationResult& result,
                       assignments_for(*result.execution().charges, index),
                       *result.execution().charges, generator_name, generator_version);
     }
-    ::gemmi::cif::write_cif_to_stream(*output_, document);
-    if (!*output_) {
-        throw std::runtime_error{"failed to write mmCIF output"};
-    }
-}
-
-auto MmcifWriter::write_generated(const std::span<const ImportedMoleculeRecord> records,
-                                  const charges::ChargeSet& charge_set,
-                                  const std::string_view generator_name,
-                                  const std::string_view generator_version) const -> void {
-    if (records.empty()) {
-        throw std::invalid_argument{"mmCIF output requires at least one molecule record"};
-    }
-
-    ::gemmi::cif::Document document;
-    for (std::size_t record_index = 0; record_index < records.size(); ++record_index) {
-        const auto& record = records[record_index];
-        const auto assignments = assignments_for(charge_set, record_index);
-        auto& block =
-            document.add_new_block(unique_block_name(document, block_name(record, record_index)));
-        const auto mapping = write_generated_block(block, record.molecule);
-        write_charges(block, mapping, record.molecule, assignments, charge_set, generator_name,
-                      generator_version);
-    }
-
     ::gemmi::cif::write_cif_to_stream(*output_, document);
     if (!*output_) {
         throw std::runtime_error{"failed to write mmCIF output"};

@@ -1,34 +1,19 @@
 #pragma once
 
-#include <chargefw/charges/charge_collection.h>
-#include <chargefw/core/molecule.h>
+#include <chargefw/adapters/charge_result.h>
 
 #include <iosfwd>
-#include <span>
-#include <string>
+#include <string_view>
 
 namespace chargefw::adapters::native::mol2_output {
 
-// Copies a MOL2 source record while replacing or adding partial-charge fields. All unrelated source
-// bytes are retained.
+// Writes fresh MOL2 records generated from the exact inputs retained by a calculation result.
 class Mol2Writer {
   public:
     explicit Mol2Writer(std::ostream& output);
 
-    // Streams a MOL2 file once, preserving every record and patching assignments by molecule index.
-    auto write_preserving_source(const std::string& source_path,
-                                 std::span<const charges::ChargeAssignment> assignments) const
-        -> void;
-
-    // Preserves MOL2 source bytes while patching assignments by molecule index.
-    auto write_preserving_buffer(std::string_view source,
-                                 std::span<const charges::ChargeAssignment> assignments) const
-        -> void;
-
-    // Generates a MOL2 record from native graph and conformer data. Generated atom types are
-    // element symbols only; no Tripos typing or substructure inference is performed.
-    auto write_generated(const core::Molecule& molecule,
-                         const charges::ChargeAssignment& assignment) const -> void;
+    auto write(const ChargeCalculationResult& result, std::string_view generator_name = "ChargeFW",
+               std::string_view generator_version = {}) const -> void;
 
   private:
     std::ostream* output_;

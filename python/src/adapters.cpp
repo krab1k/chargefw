@@ -8,11 +8,11 @@
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 #include <chargefw/adapters/gemmi/mmcif_output.h>
 #include <chargefw/adapters/gemmi/pdb_input.h>
-#include <chargefw/adapters/generated_output.h>
 #include <chargefw/adapters/molecule_record.h>
 #include <chargefw/adapters/native/json_input.h>
 #include <chargefw/adapters/native/json_output.h>
 #include <chargefw/adapters/native/mol2_input.h>
+#include <chargefw/adapters/native/mol2_output.h>
 #include <chargefw/adapters/native/mol_input.h>
 #include <chargefw/adapters/native/sdf_input.h>
 #include <chargefw/calculation/calculation.h>
@@ -267,8 +267,7 @@ auto parse(std::string contents, std::string source, const std::string& format,
     return as_python(payloads);
 }
 
-auto dumps(const NativeExecutionResult& native_result, const std::string& format,
-           const std::string& sdf_version) -> std::string {
+auto dumps(const NativeExecutionResult& native_result, const std::string& format) -> std::string {
     const auto& result = native_result.result();
     auto output = std::ostringstream{};
     {
@@ -276,25 +275,14 @@ auto dumps(const NativeExecutionResult& native_result, const std::string& format
         if (format == "result-json") {
             adapters::native::json_output::JsonWriter{output}.write(result, "ChargeFW",
                                                                     CHARGEFW_VERSION_STRING);
+        } else if (format == "mol2") {
+            adapters::native::mol2_output::Mol2Writer{output}.write(result, "ChargeFW",
+                                                                    CHARGEFW_VERSION_STRING);
         } else if (format == "mmcif") {
             adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, "ChargeFW",
                                                                      CHARGEFW_VERSION_STRING);
         } else {
-            if (!result.execution().calculated()) {
-                throw std::invalid_argument{"molecular output requires a successful calculation"};
-            }
-            const auto output_format = [&format, &sdf_version] {
-                if (format == "sdf") {
-                    return sdf_version == "v2000" ? adapters::generated_output::Format::sdf_v2000
-                                                  : adapters::generated_output::Format::sdf_v3000;
-                }
-                if (format == "mol2") {
-                    return adapters::generated_output::Format::mol2;
-                }
-                throw std::invalid_argument{"unsupported calculation output format: " + format};
-            }();
-            adapters::generated_output::write(output, result.inputs(), *result.execution().charges,
-                                              output_format, "ChargeFW", CHARGEFW_VERSION_STRING);
+            throw std::invalid_argument{"unsupported calculation output format: " + format};
         }
     }
     return output.str();
@@ -320,7 +308,7 @@ void bind_adapters(nb::module_& module) {
         nb::class_<NativeInputMetadata>(module, "_NativeInputMetadata");
     module.def("_parse", &parse, nb::arg("contents"), nb::arg("source"), nb::arg("format"),
                nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
-    module.def("_dumps", &dumps, nb::arg("result"), nb::arg("format"), nb::arg("sdf_version"));
+    module.def("_dumps", &dumps, nb::arg("result"), nb::arg("format"));
     module.def("_attach_mmcif", &attach_mmcif, nb::arg("contents"), nb::arg("result"),
                nb::arg("overwrite"));
 }

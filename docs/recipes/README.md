@@ -40,8 +40,8 @@ does not silently choose a separate model per record.
 python docs/recipes/calculate_sdf_collection.py input.sdf result.json
 ```
 
-Python molecular output is generated from normalized molecules and does not preserve SDF data fields.
-Result JSON is used here because it retains the complete calculation record.
+SDF data fields are not imported. Result JSON is used here because it retains the complete calculation
+record.
 
 For independent automatic policies, use an ordinary per-record loop instead. Each call performs a separate
 assessment, so the selected method, parameter set, or execution mode can differ between records:

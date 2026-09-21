@@ -190,7 +190,7 @@ auto run(std::span<char*> arguments) -> int {
     auto imported = chargefw::cli::import_input(calculate_input);
     run.metrics.parsing_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - parsing_started}.count();
-    auto export_context = std::move(imported.export_context);
+    auto records = std::move(imported.records);
     auto request = chargefw::cli::make_request(std::move(imported.molecules), calculate_selection);
     const auto requested_provenance =
         chargefw::cli::make_requested_provenance(request, calculate_selection.max_threads);
@@ -224,8 +224,8 @@ auto run(std::span<char*> arguments) -> int {
     }();
     run.metrics.applicability_seconds = result.metrics.applicability_seconds;
     run.metrics.computation_seconds = result.metrics.computation_seconds;
-    return chargefw::cli::write_calculation_outputs(
-        output_directory, calculate_input.path, export_context, requested_provenance, result, run);
+    return chargefw::cli::write_calculation_outputs(output_directory, calculate_input.path, records,
+                                                    requested_provenance, result, run);
 }
 
 } // namespace

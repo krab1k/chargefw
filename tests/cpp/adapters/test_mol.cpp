@@ -145,7 +145,7 @@ TEST_CASE("native molecular mappings retain original atom tokens", "[adapters][m
     CHECK(mol2_record->import_metadata->atoms[1].id == "10");
 }
 
-TEST_CASE("native MOL and SDF input accepts CRLF", "[adapters][native]") {
+TEST_CASE("native MOL, SDF, and MOL2 input accepts CRLF", "[adapters][native]") {
     constexpr auto v2000 = "minimal\nchargefw\n\n"
                            "  1  0  0  0  0  0  0  0  0  0999 V2000\n"
                            "    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n"
@@ -172,6 +172,25 @@ TEST_CASE("native MOL and SDF input accepts CRLF", "[adapters][native]") {
         REQUIRE(reader.next().has_value());
         REQUIRE(reader.next().has_value());
         CHECK_FALSE(reader.next().has_value());
+    }
+
+    {
+        constexpr auto source = "@<TRIPOS>MOLECULE\nminimal\n2 1 0 0 0\nSMALL\nNO_CHARGES\n\n"
+                                "@<TRIPOS>ATOM\n1 C1 0 0 0 C.3\n2 H1 1 0 0 H\n"
+                                "@<TRIPOS>BOND\n1 1 2 1\n";
+        auto lf_input = std::istringstream{source};
+        auto crlf_input = std::istringstream{with_crlf(source)};
+        auto lf_reader = mol2::Mol2Reader{lf_input, "lf.mol2"};
+        auto crlf_reader = mol2::Mol2Reader{crlf_input, "crlf.mol2"};
+        const auto lf_record = lf_reader.next();
+        const auto crlf_record = crlf_reader.next();
+        REQUIRE(lf_record.has_value());
+        REQUIRE(crlf_record.has_value());
+        CHECK(crlf_record->identity.record_id == lf_record->identity.record_id);
+        CHECK(crlf_record->molecule.atom_count() == lf_record->molecule.atom_count());
+        CHECK(crlf_record->molecule.bond_count() == lf_record->molecule.bond_count());
+        CHECK(crlf_record->molecule.atom(0).name() == lf_record->molecule.atom(0).name());
+        CHECK_FALSE(crlf_reader.next().has_value());
     }
 }
 

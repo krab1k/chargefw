@@ -22,14 +22,13 @@ if TYPE_CHECKING:
     from ..calculation import CalculationResult
 
 InputFormat: TypeAlias = Literal["mol", "sdf", "mol2", "molecule-json", "pdb", "mmcif"]
-OutputFormat: TypeAlias = Literal["sdf", "mol2", "mmcif", "result-json"]
-SdfVersion: TypeAlias = Literal["v2000", "v3000"]
+OutputFormat: TypeAlias = Literal["mol2", "mmcif", "result-json"]
 RecordSelection: TypeAlias = Literal["all", "polymers-and-ligands", "polymers"]
 BondStrategy: TypeAlias = Literal["none", "explicit", "templates", "hybrid"]
 ConformerSelection: TypeAlias = Literal["first", "all"]
 
 INPUT_FORMATS: tuple[InputFormat, ...] = ("mol", "sdf", "mol2", "molecule-json", "pdb", "mmcif")
-OUTPUT_FORMATS: tuple[OutputFormat, ...] = ("sdf", "mol2", "mmcif", "result-json")
+OUTPUT_FORMATS: tuple[OutputFormat, ...] = ("mol2", "mmcif", "result-json")
 _STRUCTURAL_FORMATS = frozenset(("pdb", "mmcif"))
 _MULTI_CONFORMER_FORMATS = frozenset(("molecule-json", "pdb", "mmcif"))
 
@@ -207,9 +206,8 @@ def dumps(
     result: CalculationResult,
     *,
     format: OutputFormat,
-    sdf_version: SdfVersion | None = None,
 ) -> str:
-    """Serialize a calculation result through a native generated-output writer."""
+    """Serialize a calculation result through a native output writer."""
 
     from ..calculation import CalculationResult
 
@@ -219,15 +217,7 @@ def dumps(
         raise TypeError("format must be a string")
     if format not in OUTPUT_FORMATS:
         raise ValueError(f"unsupported calculation output format: {format}")
-    if sdf_version is not None and format != "sdf":
-        raise ValueError("sdf_version is only supported for SDF output")
-    if sdf_version is not None and sdf_version not in ("v2000", "v3000"):
-        raise ValueError("sdf_version must be 'v2000', 'v3000', or None")
-    return _native_adapters._dumps(
-        result._native,
-        format,
-        sdf_version or "v3000",
-    )
+    return _native_adapters._dumps(result._native, format)
 
 
 def write(
@@ -235,7 +225,6 @@ def write(
     result: CalculationResult,
     *,
     format: OutputFormat,
-    sdf_version: SdfVersion | None = None,
 ) -> None:
     """Serialize a calculation result to a UTF-8 text file."""
 
@@ -245,7 +234,6 @@ def write(
         dumps(
             result,
             format=format,
-            sdf_version=sdf_version,
         ),
         encoding="utf-8",
     )
@@ -256,7 +244,6 @@ __all__ = [
     "OutputFormat",
     "INPUT_FORMATS",
     "OUTPUT_FORMATS",
-    "SdfVersion",
     "RecordSelection",
     "BondStrategy",
     "ConformerSelection",
