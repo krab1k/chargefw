@@ -11,9 +11,13 @@
 #include <gemmi/to_mmcif.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
+#include <charconv>
+#include <cmath>
 #include <cstddef>
 #include <format>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <ostream>
@@ -41,6 +45,8 @@ struct BlockMapping {
     std::vector<std::vector<std::string>> atom_site_ids;
     std::vector<std::string> model_ids;
 };
+
+auto ensure_dictionary(::gemmi::cif::Block& block) -> void;
 
 [[nodiscard]] auto imported_structure_mapping(const ImportedMoleculeRecord& record)
     -> BlockMapping {
@@ -174,6 +180,283 @@ struct BlockMapping {
         return "trip";
     }
     throw std::runtime_error{"cannot write unsupported bond order to generated mmCIF"};
+}
+
+[[nodiscard]] auto round_trip_number(const double value) -> std::string {
+    auto buffer = std::array<char, 64>{};
+    const auto [end, error] =
+        std::to_chars(buffer.data(), buffer.data() + buffer.size(), value,
+                      std::chars_format::general, std::numeric_limits<double>::max_digits10);
+    if (error != std::errc{}) {
+        throw std::runtime_error{"cannot serialize floating-point mmCIF value"};
+    }
+    return std::string{buffer.data(), end};
+}
+
+[[nodiscard]] auto known_label(const std::optional<std::string>& value)
+    -> std::optional<std::string_view> {
+    if (!value.has_value() || value->empty() || *value == "." || *value == "?") {
+        return std::nullopt;
+    }
+    return *value;
+}
+
+[[nodiscard]] auto label_or(const std::optional<std::string>& preferred,
+                            const std::optional<std::string>& alternate,
+                            const std::string_view fallback) -> std::string {
+    if (const auto value = known_label(preferred); value.has_value()) {
+        return std::string{*value};
+    }
+    if (const auto value = known_label(alternate); value.has_value()) {
+        return std::string{*value};
+    }
+    return std::string{fallback};
+}
+
+struct OutputAssignments {
+    const charges::ChargeAssignment* molecule = nullptr;
+    std::vector<const charges::ChargeAssignment*> conformers;
+};
+
+[[nodiscard]] auto assignments_for_result(const ChargeCalculationResult& result,
+                                          const std::size_t molecule_index) -> OutputAssignments {
+    const auto& molecule = result.inputs()[molecule_index].molecule;
+    auto assignments = OutputAssignments{
+        .molecule = nullptr,
+        .conformers = std::vector<const charges::ChargeAssignment*>(molecule.conformer_count())};
+    for (const auto& assignment : result.execution().charges->assignments()) {
+        if (assignment.target.molecule_index != molecule_index) {
+            continue;
+        }
+        if (assignment.target.conformer_index.has_value()) {
+            assignments.conformers[*assignment.target.conformer_index] = std::addressof(assignment);
+        } else {
+            assignments.molecule = std::addressof(assignment);
+        }
+    }
+    return assignments;
+}
+
+[[nodiscard]] auto structural_labels(const ImportedMoleculeRecord& record,
+                                     const std::size_t conformer_index,
+                                     const std::size_t atom_index)
+    -> const SourceStructuralLabels* {
+    if (!record.import_metadata.has_value()) {
+        return nullptr;
+    }
+    const auto& reference = record.import_metadata->conformers[conformer_index].sites[atom_index];
+    return reference.structural_labels.has_value() ? std::addressof(*reference.structural_labels)
+                                                   : nullptr;
+}
+
+auto validate_result_output(const ChargeCalculationResult& result) -> void {
+    if (!result.execution().calculated() || !result.execution().charges.has_value()) {
+        throw std::invalid_argument{"mmCIF output requires a successful calculation"};
+    }
+    if (result.inputs().empty()) {
+        throw std::invalid_argument{"mmCIF output requires at least one molecule record"};
+    }
+    for (const auto& record : result.inputs()) {
+        const auto& molecule = record.molecule;
+        if (molecule.atom_count() == 0) {
+            throw std::invalid_argument{"mmCIF output requires at least one atom per record"};
+        }
+        if (molecule.conformer_count() == 0) {
+            throw std::invalid_argument{"mmCIF output requires coordinates"};
+        }
+        if (molecule.atom_count() != 0 &&
+            molecule.conformer_count() >
+                static_cast<std::size_t>(std::numeric_limits<int>::max()) / molecule.atom_count()) {
+            throw std::invalid_argument{"mmCIF output contains too many atom sites"};
+        }
+        for (const auto& conformer : molecule.conformers()) {
+            for (const auto& position : conformer.positions()) {
+                if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
+                    !std::isfinite(position.z)) {
+                    throw std::invalid_argument{"mmCIF output coordinates must be finite"};
+                }
+            }
+        }
+    }
+    for (const auto& assignment : result.execution().charges->assignments()) {
+        for (const auto charge : assignment.charges.values()) {
+            if (charge < -5.0 || charge > 5.0) {
+                throw std::invalid_argument{"mmCIF charge is outside the dictionary range [-5, 5]"};
+            }
+        }
+    }
+}
+
+auto append_charge_metadata(::gemmi::cif::Table& metadata, const std::string_view id,
+                            const charges::ChargeSet& charge_set,
+                            const std::string_view generator_name,
+                            const std::string_view generator_version) -> void {
+    const auto parameter_set = charge_set.parameter_set_id();
+    metadata.append_row({std::string{id}, "empirical", quote(charge_set.method_id()),
+                         parameter_set.has_value() ? quote(*parameter_set) : ".",
+                         quote(generator_name.empty() ? "unknown" : generator_name),
+                         quote(generator_version.empty() ? "unknown" : generator_version)});
+}
+
+auto write_result_block(::gemmi::cif::Block& block, const ImportedMoleculeRecord& record,
+                        const OutputAssignments& assignments, const charges::ChargeSet& charge_set,
+                        const std::string_view generator_name,
+                        const std::string_view generator_version) -> void {
+    const auto& molecule = record.molecule;
+    const auto generated_atom_ids = atom_ids(molecule);
+    block.set_pair("_entry.id", quote(block.name));
+    ensure_dictionary(block);
+
+    block.init_loop("_atom_site.", {"id",
+                                    "type_symbol",
+                                    "label_atom_id",
+                                    "label_alt_id",
+                                    "label_comp_id",
+                                    "label_asym_id",
+                                    "label_entity_id",
+                                    "label_seq_id",
+                                    "pdbx_PDB_ins_code",
+                                    "Cartn_x",
+                                    "Cartn_y",
+                                    "Cartn_z",
+                                    "occupancy",
+                                    "B_iso_or_equiv",
+                                    "pdbx_formal_charge",
+                                    "auth_seq_id",
+                                    "auth_comp_id",
+                                    "auth_asym_id",
+                                    "auth_atom_id",
+                                    "pdbx_PDB_model_num"});
+    block.init_loop(metadata_category,
+                    {"id", "type", "method", "parameter_set", "software_name", "software_version"});
+    block.init_loop(charges_category, {"type_id", "atom_id", "charge"});
+
+    auto atom_sites = block.find("_atom_site.", {"id",
+                                                 "type_symbol",
+                                                 "label_atom_id",
+                                                 "label_alt_id",
+                                                 "label_comp_id",
+                                                 "label_asym_id",
+                                                 "label_entity_id",
+                                                 "label_seq_id",
+                                                 "pdbx_PDB_ins_code",
+                                                 "Cartn_x",
+                                                 "Cartn_y",
+                                                 "Cartn_z",
+                                                 "occupancy",
+                                                 "B_iso_or_equiv",
+                                                 "pdbx_formal_charge",
+                                                 "auth_seq_id",
+                                                 "auth_comp_id",
+                                                 "auth_asym_id",
+                                                 "auth_atom_id",
+                                                 "pdbx_PDB_model_num"});
+    auto metadata = block.find(metadata_category, {"id", "type", "method", "parameter_set",
+                                                   "software_name", "software_version"});
+    auto charge_rows = block.find(charges_category, {"type_id", "atom_id", "charge"});
+
+    auto molecule_type_id = std::optional<std::string>{};
+    auto conformer_type_ids = std::vector<std::optional<std::string>>(molecule.conformer_count());
+    auto next_type_id = std::size_t{1};
+    if (assignments.molecule != nullptr) {
+        molecule_type_id = std::to_string(next_type_id++);
+        append_charge_metadata(metadata, *molecule_type_id, charge_set, generator_name,
+                               generator_version);
+    } else {
+        for (std::size_t index = 0; index < assignments.conformers.size(); ++index) {
+            conformer_type_ids[index] = std::to_string(next_type_id++);
+            append_charge_metadata(metadata, *conformer_type_ids[index], charge_set, generator_name,
+                                   generator_version);
+        }
+    }
+
+    auto next_site_id = std::size_t{1};
+    for (std::size_t conformer_index = 0; conformer_index < molecule.conformer_count();
+         ++conformer_index) {
+        const auto model_id = std::to_string(conformer_index + 1);
+        const auto* assignment = assignments.molecule != nullptr
+                                     ? assignments.molecule
+                                     : assignments.conformers[conformer_index];
+        const auto& type_id =
+            molecule_type_id.has_value() ? *molecule_type_id : *conformer_type_ids[conformer_index];
+        for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
+            const auto& atom = molecule.atom(atom_index);
+            const auto& position = molecule.conformer(conformer_index)[atom_index];
+            const auto* labels = structural_labels(record, conformer_index, atom_index);
+            const auto& fallback_atom = generated_atom_ids[atom_index];
+            const auto label_atom =
+                labels == nullptr
+                    ? fallback_atom
+                    : label_or(labels->label.atom, labels->author.atom, fallback_atom);
+            const auto author_atom =
+                labels == nullptr
+                    ? fallback_atom
+                    : label_or(labels->author.atom, labels->label.atom, fallback_atom);
+            const auto label_residue =
+                labels == nullptr ? std::string{"UNL"}
+                                  : label_or(labels->label.residue, labels->author.residue, "UNL");
+            const auto author_residue =
+                labels == nullptr ? std::string{"UNL"}
+                                  : label_or(labels->author.residue, labels->label.residue, "UNL");
+            const auto label_chain = labels == nullptr
+                                         ? std::string{"A"}
+                                         : label_or(labels->label.chain, labels->author.chain, "A");
+            const auto author_chain =
+                labels == nullptr ? std::string{"A"}
+                                  : label_or(labels->author.chain, labels->label.chain, "A");
+            const auto label_sequence =
+                labels == nullptr || !known_label(labels->label.sequence).has_value()
+                    ? std::string{"."}
+                    : std::string{*known_label(labels->label.sequence)};
+            const auto author_sequence =
+                labels == nullptr
+                    ? std::string{"1"}
+                    : known_label(labels->author.sequence)
+                          .transform([](const auto value) { return std::string{value}; })
+                          .value_or(".");
+            const auto entity =
+                labels == nullptr
+                    ? std::string{"1"}
+                    : known_label(labels->entity)
+                          .transform([](const auto value) { return std::string{value}; })
+                          .value_or("1");
+            const auto alternate_location =
+                labels == nullptr
+                    ? std::string{"."}
+                    : known_label(labels->alternate_location)
+                          .transform([](const auto value) { return std::string{value}; })
+                          .value_or(".");
+            const auto insertion_code =
+                labels == nullptr
+                    ? std::string{"."}
+                    : known_label(labels->insertion_code)
+                          .transform([](const auto value) { return std::string{value}; })
+                          .value_or(".");
+            const auto site_id = std::to_string(next_site_id++);
+            atom_sites.append_row({site_id,
+                                   std::string{core::element_symbol(atom.atomic_number())},
+                                   quote(label_atom),
+                                   alternate_location == "." ? "." : quote(alternate_location),
+                                   quote(label_residue),
+                                   quote(label_chain),
+                                   quote(entity),
+                                   label_sequence == "." ? "." : quote(label_sequence),
+                                   insertion_code == "." ? "." : quote(insertion_code),
+                                   round_trip_number(position.x),
+                                   round_trip_number(position.y),
+                                   round_trip_number(position.z),
+                                   "?",
+                                   "?",
+                                   std::to_string(atom.formal_charge()),
+                                   author_sequence == "." ? "." : quote(author_sequence),
+                                   quote(author_residue),
+                                   quote(author_chain),
+                                   quote(author_atom),
+                                   model_id});
+            charge_rows.append_row(
+                {type_id, site_id, round_trip_number(assignment->charges[atom_index])});
+        }
+    }
 }
 
 [[nodiscard]] auto write_generated_block(::gemmi::cif::Block& block, const core::Molecule& molecule)
@@ -463,6 +746,24 @@ auto add_selected_conect_connections(::gemmi::Structure& structure) -> void {
 } // namespace
 
 MmcifWriter::MmcifWriter(std::ostream& output) : output_{std::addressof(output)} {}
+
+auto MmcifWriter::write(const ChargeCalculationResult& result,
+                        const std::string_view generator_name,
+                        const std::string_view generator_version) const -> void {
+    validate_result_output(result);
+    auto document = ::gemmi::cif::Document{};
+    for (std::size_t index = 0; index < result.inputs().size(); ++index) {
+        const auto& record = result.inputs()[index];
+        auto& block =
+            document.add_new_block(unique_block_name(document, block_name(record, index)));
+        write_result_block(block, record, assignments_for_result(result, index),
+                           *result.execution().charges, generator_name, generator_version);
+    }
+    ::gemmi::cif::write_cif_to_stream(*output_, document);
+    if (!*output_) {
+        throw std::runtime_error{"failed to write mmCIF output"};
+    }
+}
 
 auto MmcifWriter::write_generated(const std::span<const ImportedMoleculeRecord> records,
                                   const charges::ChargeSet& charge_set,

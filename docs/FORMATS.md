@@ -213,6 +213,17 @@ single/double/triple bonds, and all native conformers. Block and atom IDs are ma
 Conformer-independent assignments are attached to every retained conformer; conformer-specific
 assignments are attached only to their corresponding model. Coordinates are required.
 
+The result-owned native mmCIF path instead creates a fresh minimal block for every record occurrence. It
+emits `_entry`, `_audit_conform`, `_atom_site`, and the charge dictionary categories without copying source
+categories or inventing component topology. Known author and label atom/residue/chain identities are kept
+separate for every conformer site; unavailable names fall back deterministically to generated atom names,
+`UNL`, chain `A`, and entity `1`. Output site IDs and model numbers are newly generated per block, while
+original IDs remain result-JSON provenance. Charge rows are joined to each site as it is created:
+molecule-scoped charges cover every conformer and conformer-scoped charges never broadcast. Coordinates
+and charges use round-trip floating-point formatting. Output rejects missing or non-finite coordinates,
+empty records, unsuccessful results, and charges outside the dictionary's inclusive `[-5, 5]` range before
+serializing the document.
+
 ### ChargeFW result JSON 1.0
 
 Result JSON is the complete machine-readable calculation record. Its top level contains:

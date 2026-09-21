@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chargefw/adapters/charge_result.h>
 #include <chargefw/adapters/gemmi/input_options.h>
 #include <chargefw/adapters/molecule_record.h>
 #include <chargefw/charges/charge_collection.h>
@@ -35,6 +36,9 @@ struct PdbSource {
 class MmcifWriter {
   public:
     explicit MmcifWriter(std::ostream& output);
+
+    auto write(const ChargeCalculationResult& result, std::string_view generator_name = "ChargeFW",
+               std::string_view generator_version = {}) const -> void;
 
     auto write_generated(std::span<const ImportedMoleculeRecord> records,
                          const charges::ChargeSet& charge_set,

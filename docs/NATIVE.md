@@ -204,6 +204,9 @@ Public headers are provided under `chargefw/adapters`, with format-specific APIs
 - `PdbReader` and `MmcifReader` import Gemmi structures with explicit record, bond, and conformer policy.
 - Native writers emit ChargeFW JSON, SDF, and MOL2.
 - The Gemmi writer emits preservation-oriented or generated mmCIF charge data.
+- `gemmi::mmcif_output::MmcifWriter::write(const ChargeCalculationResult&)` builds a fresh minimal mmCIF
+  document from the owned result, retaining known hierarchy labels across every conformer and joining
+  charges to newly generated site IDs during construction.
 - `generated_output::write()` applies shared coordinate validation and writes the first retained conformer
   to generated SDF or MOL2 and all retained conformers to generated mmCIF.
 - `JsonWriter` serializes `ChargeCalculationResult` directly; application-specific execution metrics are
