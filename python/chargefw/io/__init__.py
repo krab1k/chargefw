@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
 from .._chargefw import adapters as _native_adapters
@@ -227,28 +226,12 @@ def write(
     *,
     format: OutputFormat,
 ) -> None:
-    """Serialize and atomically publish a calculation result as UTF-8 text."""
+    """Serialize a calculation result as UTF-8 text."""
 
     if not isinstance(path, (str, PathLike)):
         raise TypeError("path must be a string or path-like value")
     contents = dumps(result, format=format)
-    destination = Path(path)
-    temporary_path: Path | None = None
-    try:
-        with NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=destination.parent,
-            prefix=f".{destination.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as output:
-            temporary_path = Path(output.name)
-            output.write(contents)
-        temporary_path.replace(destination)
-    finally:
-        if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
+    Path(path).write_text(contents, encoding="utf-8")
 
 
 __all__ = [

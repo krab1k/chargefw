@@ -2,7 +2,6 @@
 
 #include <chargefw/config.h>
 
-#include <atomic>
 #include <chrono>
 #include <ctime>
 #include <filesystem>
@@ -14,7 +13,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <sys/resource.h>
-#include <unistd.h>
 
 namespace chargefw::cli {
 namespace {
@@ -54,35 +52,18 @@ void finalize_output(std::ofstream& output, const std::filesystem::path& path) {
     }
 }
 
-template <typename Writer> void write_atomically(const std::filesystem::path& path, Writer writer) {
-    static auto sequence = std::atomic_size_t{};
-    auto temporary_path = path;
-    temporary_path += ".tmp." + std::to_string(getpid()) + "." +
-                      std::to_string(sequence.fetch_add(1, std::memory_order_relaxed));
-    try {
-        auto output = std::ofstream{temporary_path};
-        if (!output) {
-            throw std::runtime_error{"Unable to open output file: " + path.string()};
-        }
-        writer(output);
-        finalize_output(output, path);
-
-        std::error_code rename_error;
-        std::filesystem::rename(temporary_path, path, rename_error);
-        if (rename_error) {
-            throw std::runtime_error{"Unable to publish output file: " + path.string() + ": " +
-                                     rename_error.message()};
-        }
-    } catch (...) {
-        std::error_code remove_error;
-        std::filesystem::remove(temporary_path, remove_error);
-        throw;
+template <typename Writer> void write_output(const std::filesystem::path& path, Writer writer) {
+    auto output = std::ofstream{path};
+    if (!output) {
+        throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
+    writer(output);
+    finalize_output(output, path);
 }
 
 void write_json(const std::filesystem::path& path, const adapters::ChargeCalculationResult& result,
                 const adapters::ExecutionMetrics& metrics) {
-    write_atomically(path, [&result, &metrics](auto& output) {
+    write_output(path, [&result, &metrics](auto& output) {
         adapters::native::json_output::JsonWriter{output}.write(result, "ChargeFW",
                                                                 CHARGEFW_VERSION_STRING, metrics);
     });
@@ -90,7 +71,7 @@ void write_json(const std::filesystem::path& path, const adapters::ChargeCalcula
 
 void write_mmcif(const std::filesystem::path& path,
                  const adapters::ChargeCalculationResult& result) {
-    write_atomically(path, [&result](auto& output) {
+    write_output(path, [&result](auto& output) {
         adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, "ChargeFW",
                                                                  CHARGEFW_VERSION_STRING);
     });
@@ -98,7 +79,7 @@ void write_mmcif(const std::filesystem::path& path,
 
 void write_mol2(const std::filesystem::path& path,
                 const adapters::ChargeCalculationResult& result) {
-    write_atomically(path, [&result](auto& output) {
+    write_output(path, [&result](auto& output) {
         adapters::native::mol2_output::Mol2Writer{output}.write(result, "ChargeFW",
                                                                 CHARGEFW_VERSION_STRING);
     });

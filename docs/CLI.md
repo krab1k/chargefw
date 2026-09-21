@@ -152,13 +152,12 @@ never copy unselected source models or unrelated source content. SDF is input-on
 [molecular format reference](FORMATS.md#charge-output) describes the generated structures, charge fields,
 precision, and mapping checks.
 
-Once import and request construction succeed, normal calculation outcomes atomically publish
-`<basename>.json`. On success, ChargeFW publishes JSON before attempting requested molecular exports. Each
-file is independently written to a same-directory temporary file and atomically replaces its destination
-only after serialization completes. A molecular export failure reports `Export error`, exits with status 6,
-and leaves JSON and any earlier completed export intact; the JSON calculation status remains `success`.
-Import, request-construction, primary JSON publication, and other filesystem failures are reported on
-standard error and can occur before a result document is published.
+Once import and request construction succeed, normal calculation outcomes write `<basename>.json`. On
+success, ChargeFW writes JSON before attempting requested molecular exports. A molecular export failure
+reports `Export error`, exits with status 6, and leaves JSON and any earlier completed export intact; the
+JSON calculation status remains `success`. Files are written directly to their destinations, so a write
+failure can leave that destination incomplete. Import, request-construction, primary JSON output, and other
+filesystem failures are reported on standard error and can occur before a result document is published.
 
 During calculation, press `Ctrl+C` once to request cooperative cancellation. ChargeFW stops at its next
 cancellation check point, writes `<basename>.json` with status `cancelled` and no charge assignments, and

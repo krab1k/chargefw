@@ -14,11 +14,10 @@ execute_process(
         OUTPUT_VARIABLE json_failure_output
         ERROR_VARIABLE json_failure_error
 )
-file(GLOB json_failure_temporary_files "${json_failure_output_prefix}.json.tmp.*")
 if(NOT json_failure_result EQUAL 2 OR
-   NOT json_failure_error MATCHES "Unable to publish output file: ${json_failure_output_prefix}.json" OR
-   json_failure_output MATCHES "Wrote" OR json_failure_temporary_files)
-    message(FATAL_ERROR "atomic JSON publication failure was not reported correctly: ${json_failure_error}")
+   NOT json_failure_error MATCHES "Unable to open output file: ${json_failure_output_prefix}.json" OR
+   json_failure_output MATCHES "Wrote")
+    message(FATAL_ERROR "JSON output failure was not reported correctly: ${json_failure_error}")
 endif()
 file(REMOVE_RECURSE "${json_failure_output_directory}")
 
@@ -33,13 +32,11 @@ execute_process(
         OUTPUT_VARIABLE export_failure_output
         ERROR_VARIABLE export_failure_error
 )
-file(GLOB export_failure_temporary_files "${export_failure_output_prefix}.mol2.tmp.*")
 if(NOT export_failure_result EQUAL 6 OR
-   NOT export_failure_error MATCHES "Export error: Unable to publish output file: ${export_failure_output_prefix}.mol2" OR
+   NOT export_failure_error MATCHES "Export error: Unable to open output file: ${export_failure_output_prefix}.mol2" OR
    NOT EXISTS "${export_failure_output_prefix}.json" OR
-   NOT export_failure_output MATCHES "Wrote ${export_failure_output_prefix}.json" OR
-   export_failure_temporary_files)
-    message(FATAL_ERROR "atomic molecular export failure was not reported correctly: ${export_failure_error}")
+   NOT export_failure_output MATCHES "Wrote ${export_failure_output_prefix}.json")
+    message(FATAL_ERROR "molecular export failure was not reported correctly: ${export_failure_error}")
 endif()
 file(READ "${export_failure_output_prefix}.json" export_failure_json)
 string(JSON export_failure_status GET "${export_failure_json}" status)
@@ -208,7 +205,6 @@ file(WRITE "${coordinate_free_input}" [=[
 ]=])
 file(REMOVE_RECURSE "${coordinate_free_output_directory}")
 file(MAKE_DIRECTORY "${coordinate_free_output_directory}")
-file(WRITE "${coordinate_free_output_prefix}.mol2" "existing export\n")
 execute_process(
         COMMAND "${CHARGEFW_CLI}" calculate --method formal --output-mol2
                 "${coordinate_free_input}"
@@ -220,11 +216,8 @@ if(NOT coordinate_free_result EQUAL 6 OR
    NOT coordinate_free_error MATCHES "Export error: MOL2 output requires coordinates")
     message(FATAL_ERROR "coordinate-free MOL2 failure was not reported as an export error: ${coordinate_free_error}")
 endif()
-file(READ "${coordinate_free_output_prefix}.mol2" coordinate_free_mol2)
-file(GLOB coordinate_free_temporary_files "${coordinate_free_output_prefix}.mol2.tmp.*")
-if(NOT coordinate_free_mol2 STREQUAL "existing export\n" OR
-   NOT EXISTS "${coordinate_free_output_prefix}.json" OR coordinate_free_temporary_files)
-    message(FATAL_ERROR "failed MOL2 generation changed a published file or left a temporary file")
+if(NOT EXISTS "${coordinate_free_output_prefix}.json")
+    message(FATAL_ERROR "failed MOL2 generation did not write JSON")
 endif()
 file(REMOVE "${coordinate_free_input}")
 file(REMOVE_RECURSE "${coordinate_free_output_directory}")
@@ -247,11 +240,9 @@ if(NOT range_result EQUAL 6 OR
    NOT range_error MATCHES "Export error: mmCIF charge is outside the dictionary range")
     message(FATAL_ERROR "mmCIF range failure was not reported as an export error: ${range_error}")
 endif()
-file(GLOB range_temporary_files "${range_output_prefix}.*.tmp.*")
 if(NOT EXISTS "${range_output_prefix}.json" OR
-   NOT EXISTS "${range_output_prefix}.mol2" OR
-   EXISTS "${range_output_prefix}.cif" OR range_temporary_files)
-    message(FATAL_ERROR "second export failure discarded an earlier output or left a temporary file")
+   NOT EXISTS "${range_output_prefix}.mol2")
+    message(FATAL_ERROR "second export failure discarded an earlier output")
 endif()
 file(REMOVE "${range_input}")
 file(REMOVE_RECURSE "${range_output_directory}")
