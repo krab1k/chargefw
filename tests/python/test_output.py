@@ -203,10 +203,12 @@ class GeneratedOutputTests(unittest.TestCase):
 
     def test_molecular_output_requires_finite_coordinates(self) -> None:
         missing = chargefw.calculate(chargefw.Molecule([1]), method="formal")
+        result_json = chargefw.io.dumps(missing, format="result-json")
         with self.assertRaisesRegex(ValueError, "conformer|coordinates"):
             chargefw.io.dumps(missing, format="sdf")
         with self.assertRaisesRegex(ValueError, "coordinates"):
             chargefw.io.dumps(missing, format="mmcif")
+        self.assertEqual(chargefw.io.dumps(missing, format="result-json"), result_json)
 
         nonfinite = chargefw.calculate(
             chargefw.Molecule([1], coordinates=[[float("nan"), 0.0, 0.0]]),
@@ -214,6 +216,8 @@ class GeneratedOutputTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "must be finite"):
             chargefw.io.dumps(nonfinite, format="mol2")
+        with self.assertRaisesRegex(ValueError, "must be finite"):
+            chargefw.io.dumps(nonfinite, format="mmcif")
 
     def test_output_arguments_are_explicit(self) -> None:
         result = chargefw.calculate(water(), method="formal")

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from .._chargefw import adapters as _native_adapters
 from ..core import MoleculeCollection
@@ -12,6 +12,7 @@ from . import (
     ConformerSelection,
     RecordSelection,
     _ImportedMolecule,
+    dumps,
     parse,
 )
 
@@ -79,6 +80,17 @@ def from_document(
     )
 
 
+def to_document(result: CalculationResult) -> _gemmi.cif.Document:
+    """Create a fresh Gemmi mmCIF document from a calculation result."""
+
+    from ..calculation import CalculationResult
+
+    gemmi = _require_gemmi()
+    if not isinstance(result, CalculationResult):
+        raise TypeError("result must be a CalculationResult")
+    return cast("_gemmi.cif.Document", gemmi.cif.read_string(dumps(result, format="mmcif")))
+
+
 def attach_charges(
     document: _gemmi.cif.Document,
     result: CalculationResult,
@@ -118,4 +130,4 @@ def attach_charges(
         document.add_copied_block(block)
 
 
-__all__ = ["from_structure", "from_document", "attach_charges"]
+__all__ = ["from_structure", "from_document", "to_document", "attach_charges"]

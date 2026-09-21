@@ -437,10 +437,12 @@ result = chargefw.calculate(
 chargefw.io.write("charged.cif", result, format="mmcif")
 ```
 
-Molecular output is generated only from ChargeFW's normalized molecule model. It does not preserve SDF
-properties, Tripos typing or substructures, polymer hierarchy, crystallographic metadata, or other source
-content that the model does not contain. Generated mmCIF represents each molecule as a separate `UNL`
-data block. The source format does not restrict the output format.
+Molecular output is generated only from the calculation result. It does not preserve SDF properties,
+Tripos typing or substructures, crystallographic metadata, unrelated mmCIF categories, lexical formatting,
+or other source content that the owned record does not contain. Generated mmCIF creates a fresh block per
+record, retains known author/label hierarchy and model-specific alternate locations, emits all conformers,
+and uses deterministic `UNL`/generated-name fallbacks only where labels are unavailable. The source format
+does not restrict the output format.
 
 Native calculation results own the exact ordered input records used for assessment, including source
 mapping, diagnostics, and record-local import policy. This ownership survives reader and caller collection
@@ -453,15 +455,17 @@ Result JSON retains full native charge precision and identifies each assignment'
 scope, target, and elementary-charge unit. Molecular charge formats use their documented decimal
 representation instead.
 
+mmCIF generation validates coordinates and charge-dictionary limits before serialization. An mmCIF output
+error raises `ValueError` without changing the calculation result; result JSON remains available from the
+same object.
+
 Record and atom IDs are normalized to strings or signed 64-bit integers. NumPy integer scalars are accepted
 and converted to Python `int`; booleans, arbitrary hashable objects, and out-of-range integers are rejected.
 Result JSON preserves integer record IDs as JSON numbers rather than stringifying them. Generated molecular
 outputs use their decimal representation where a textual record or block name is required.
 
-The language-independent preservation, conformer, rounding, and schema rules are defined in
-[Charge output](FORMATS.md#charge-output). In particular, generic Python output is generated rather than
-source-preserving. Use the Gemmi document integration below when an original mmCIF document must retain
-unrelated categories.
+The language-independent conformer, mapping, and schema rules are defined in
+[Charge output](FORMATS.md#charge-output). Python output is generated rather than source-preserving.
 
 ## Toolkit integrations
 
@@ -481,11 +485,16 @@ import chargefw.io.gemmi
 
 structure_molecules = chargefw.io.gemmi.from_structure(structure, bonds="hybrid")
 document_molecules = chargefw.io.gemmi.from_document(document, bonds="hybrid")
+fresh_document = chargefw.io.gemmi.to_document(result)
 ```
 
 The Gemmi integration serializes upstream objects through mmCIF text and then uses ChargeFW's compiled
 reader. This keeps selection and bond behavior aligned with serialized input without sharing C++ objects
 between extension modules.
+
+`to_document(result)` returns a fresh `gemmi.cif.Document` through the same native writer used by
+`chargefw.io.dumps(..., format="mmcif")`. It never mutates or retains an input document, and source-only
+categories and original site IDs are not copied.
 
 `attach_charges()` enriches a caller-owned `gemmi.cif.Document` in place using ChargeFW's native mmCIF
 writer. ChargeFW reads the target afresh and retains no imported source document. Target molecules and

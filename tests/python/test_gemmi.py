@@ -341,6 +341,36 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         self.assertEqual(encoded_labels["author"]["atom"], "AUTHOR")
         self.assertEqual(encoded_labels["label"]["atom"], "LABEL")
 
+    def test_to_document_creates_fresh_mapped_mmcif(self) -> None:
+        source = gemmi.cif.read_string(MMCIF_TEXT)
+        source[0].set_pair("_audit.creation_method", "source-only")
+        molecules = chargefw.io.gemmi.from_document(source)
+        result = calculate(molecules, method="formal")
+
+        generated = chargefw.io.gemmi.to_document(result)
+
+        self.assertEqual(len(generated), 2)
+        self.assertEqual(source[0].find_value("_audit.creation_method"), "source-only")
+        self.assertNotIn("_sb_ncbr_partial_atomic_charges.", source[0].get_mmcif_category_names())
+        self.assertFalse(generated[0].find_value("_audit.creation_method"))
+        sites = generated[0].find(
+            "_atom_site.",
+            ["id", "label_atom_id", "auth_atom_id", "label_alt_id", "pdbx_PDB_model_num"],
+        )
+        self.assertEqual(len(sites), 4)
+        self.assertEqual([gemmi.cif.as_string(row[0]) for row in sites], ["1", "2", "3", "4"])
+        self.assertEqual(gemmi.cif.as_string(sites[0][1]), "CA")
+        self.assertEqual(gemmi.cif.as_string(sites[0][2]), "CA")
+        self.assertEqual(gemmi.cif.as_string(sites[0][4]), "1")
+        self.assertEqual(gemmi.cif.as_string(sites[2][4]), "2")
+        charges = generated[0].find(
+            "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id", "charge"]
+        )
+        self.assertEqual(len(charges), 4)
+        self.assertEqual([gemmi.cif.as_string(row[1]) for row in charges], ["1", "2", "3", "4"])
+        with self.assertRaises(TypeError):
+            chargefw.io.gemmi.to_document(cast(Any, object()))
+
     def test_attach_charges_enriches_document_in_place(self) -> None:
         import gemmi
 

@@ -274,6 +274,9 @@ auto dumps(const NativeExecutionResult& native_result, const std::string& format
         if (format == "result-json") {
             adapters::native::json_output::JsonWriter{output}.write(result, "ChargeFW",
                                                                     CHARGEFW_VERSION_STRING);
+        } else if (format == "mmcif") {
+            adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, "ChargeFW",
+                                                                     CHARGEFW_VERSION_STRING);
         } else {
             if (!result.execution().calculated()) {
                 throw std::invalid_argument{"molecular output requires a successful calculation"};
@@ -285,9 +288,6 @@ auto dumps(const NativeExecutionResult& native_result, const std::string& format
                 }
                 if (format == "mol2") {
                     return adapters::generated_output::Format::mol2;
-                }
-                if (format == "mmcif") {
-                    return adapters::generated_output::Format::mmcif;
                 }
                 throw std::invalid_argument{"unsupported calculation output format: " + format};
             }();
