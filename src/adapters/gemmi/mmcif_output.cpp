@@ -163,6 +163,33 @@ struct OutputAssignments {
            std::to_string(id) == value;
 }
 
+[[nodiscard]] auto source_value(const ::gemmi::cif::Table::Row& row, const std::size_t index)
+    -> std::optional<std::string> {
+    if (!row.has(index)) {
+        return std::nullopt;
+    }
+    const auto& token = row[index];
+    if (token == "." || token == "?") {
+        return token;
+    }
+    return ::gemmi::cif::as_string(token);
+}
+
+[[nodiscard]] auto source_labels(const ::gemmi::cif::Table::Row& row) -> SourceStructuralLabels {
+    return SourceStructuralLabels{.author = SourceHierarchyLabels{.atom = source_value(row, 6),
+                                                                  .residue = source_value(row, 7),
+                                                                  .chain = source_value(row, 8),
+                                                                  .sequence = source_value(row, 9)},
+                                  .label = SourceHierarchyLabels{.atom = source_value(row, 2),
+                                                                 .residue = source_value(row, 3),
+                                                                 .chain = source_value(row, 4),
+                                                                 .sequence = source_value(row, 5)},
+                                  .entity = source_value(row, 12),
+                                  .insertion_code = source_value(row, 10),
+                                  .alternate_location = source_value(row, 11),
+                                  .segment = std::nullopt};
+}
+
 [[nodiscard]] auto attached_mapping(::gemmi::cif::Block& block,
                                     const ImportedMoleculeRecord& record) -> BlockMapping {
     if (!record.import_metadata.has_value() ||
@@ -175,7 +202,11 @@ struct OutputAssignments {
         throw std::invalid_argument{
             "Gemmi target block identity does not match the calculation input"};
     }
-    auto atom_sites = block.find("_atom_site.", {"id", "?pdbx_PDB_model_num"});
+    auto atom_sites = block.find(
+        "_atom_site.",
+        {"id", "type_symbol", "?label_atom_id", "?label_comp_id", "?label_asym_id", "?label_seq_id",
+         "?auth_atom_id", "?auth_comp_id", "?auth_asym_id", "?auth_seq_id", "?pdbx_PDB_ins_code",
+         "?label_alt_id", "?label_entity_id", "?pdbx_PDB_model_num"});
     if (atom_sites.length() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
         throw std::invalid_argument{"Gemmi target contains too many atom sites"};
     }
@@ -189,7 +220,8 @@ struct OutputAssignments {
         result.model_ids.push_back(model_id);
         auto& ids = result.atom_site_ids.emplace_back();
         ids.reserve(conformer.sites.size());
-        for (const auto& site : conformer.sites) {
+        for (std::size_t atom_index = 0; atom_index < conformer.sites.size(); ++atom_index) {
+            const auto& site = conformer.sites[atom_index];
             if (!site.id.has_value() || site.position >= atom_sites.length()) {
                 throw std::invalid_argument{
                     "Gemmi target site mapping does not match the calculation input"};
@@ -204,8 +236,18 @@ struct OutputAssignments {
                 throw std::invalid_argument{
                     "Gemmi target atom IDs are not representable by the charge dictionary"};
             }
-            if (atom_sites[row_index].has(1) &&
-                ::gemmi::cif::as_string(atom_sites[row_index][1]) != model_id) {
+            const auto& target_site = atom_sites[row_index];
+            if (::gemmi::cif::as_string(target_site[1]) !=
+                core::element_symbol(record.molecule.atom(atom_index).atomic_number())) {
+                throw std::invalid_argument{
+                    "Gemmi target site mapping does not match the calculation input"};
+            }
+            if (!site.structural_labels.has_value() ||
+                source_labels(target_site) != *site.structural_labels) {
+                throw std::invalid_argument{
+                    "Gemmi target site mapping does not match the calculation input"};
+            }
+            if (target_site.has(13) && ::gemmi::cif::as_string(target_site[13]) != model_id) {
                 throw std::invalid_argument{
                     "Gemmi target model mapping does not match the calculation input"};
             }
