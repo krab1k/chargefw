@@ -31,8 +31,11 @@ namespace {
     ids.reserve(atom_sites.length());
     auto position = std::size_t{0};
     for (auto row : atom_sites) {
+        if (::gemmi::cif::is_null(row[0])) {
+            throw std::runtime_error{"mmCIF _atom_site.id must not be missing or unknown"};
+        }
         const auto source_id = ::gemmi::cif::as_string(row[0]);
-        if (source_id.empty() || source_id == "." || source_id == "?") {
+        if (source_id.empty()) {
             throw std::runtime_error{"mmCIF _atom_site.id must not be missing or unknown"};
         }
         if (!ids.insert(source_id).second) {

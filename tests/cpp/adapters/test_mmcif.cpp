@@ -41,16 +41,20 @@ _atom_site.pdbx_PDB_model_num
         std::string{header} +
         "HETATM Csite C L1 . LIG LA 7 ? 0 0 0 1 20 0 17 AUTH AC A1 E1 1\n"
         "HETATM 001 O L2 B LIG LA 7 ? 1 0 0 1 20 0 17 AUTH AC A2 E1 1\n"
-        "HETATM 9223372036854775808 N L3 . LIG LA 7 ? 2 0 0 1 20 0 17 AUTH AC A3 E1 1\n#\n"};
+        "HETATM 9223372036854775808 N L3 . LIG LA 7 ? 2 0 0 1 20 0 17 AUTH AC A3 E1 1\n"
+        "HETATM '.' C L4 . LIG LA 7 ? 3 0 0 1 20 0 17 AUTH AC A4 E1 1\n"
+        "HETATM '?' O L5 . LIG LA 7 ? 4 0 0 1 20 0 17 AUTH AC A5 E1 1\n#\n"};
     auto reader = mmcif::MmcifReader{input};
     const auto record = reader.next();
     REQUIRE(record.has_value());
     REQUIRE(record->import_metadata.has_value());
     const auto& mapping = *record->import_metadata;
-    REQUIRE(mapping.atoms.size() == 3);
+    REQUIRE(mapping.atoms.size() == 5);
     CHECK(mapping.atoms[0].id == "Csite");
     CHECK(mapping.atoms[1].id == "001");
     CHECK(mapping.atoms[2].id == "9223372036854775808");
+    CHECK(mapping.atoms[3].id == ".");
+    CHECK(mapping.atoms[4].id == "?");
     REQUIRE(mapping.atoms[0].structural_labels.has_value());
     CHECK(mapping.atoms[0].structural_labels->author.atom == "A1");
     CHECK(mapping.atoms[0].structural_labels->author.chain == "AC");
