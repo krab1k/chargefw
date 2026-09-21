@@ -172,7 +172,7 @@ molecule = chargefw.Molecule(
 - `coordinates`: `(N, 3)` for one conformer or `(C, N, 3)` for multiple conformers;
 - optional molecule, atom, and conformer names;
 - a `SourceIdentity` or its `source_name`, `record_index`, and `record_id` fields; and
-- optional hashable `atom_ids` for round-trip mapping.
+- optional string or signed 64-bit integer `atom_ids` for round-trip mapping.
 
 Inputs are validated, normalized to C-contiguous `int64` or `float64` arrays, and copied. Public arrays
 are read-only, so later mutation or destruction of the caller's arrays cannot change the molecule.
@@ -453,8 +453,10 @@ Result JSON retains full native charge precision and identifies each assignment'
 scope, target, and elementary-charge unit. Molecular charge formats use their documented decimal
 representation instead.
 
-Result JSON requires source record IDs to be strings or `None`. In-memory identities may use other
-hashable values; generated SDF, MOL2, and mmCIF output omit such IDs rather than rejecting the result.
+Record and atom IDs are normalized to strings or signed 64-bit integers. NumPy integer scalars are accepted
+and converted to Python `int`; booleans, arbitrary hashable objects, and out-of-range integers are rejected.
+Result JSON preserves integer record IDs as JSON numbers rather than stringifying them. Generated molecular
+outputs use their decimal representation where a textual record or block name is required.
 
 The language-independent preservation, conformer, rounding, and schema rules are defined in
 [Charge output](FORMATS.md#charge-output). In particular, generic Python output is generated rather than

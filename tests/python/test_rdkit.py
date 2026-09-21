@@ -3,6 +3,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any, cast
 from unittest.mock import patch
 
 import chargefw
@@ -248,7 +249,9 @@ class RdkitAdapterTests(unittest.TestCase):
             FakeAtom(1, 1, "H", formal_charge=1),
         )
         molecule = chargefw.Molecule(
-            [1, 8], formal_charges=[1, -1], atom_ids=[np.int64(1), np.int64(0)]
+            [1, 8],
+            formal_charges=[1, -1],
+            atom_ids=cast(Any, [np.int64(1), np.int64(0)]),
         )
         result = chargefw.calculate(molecule, method="formal")
         np.testing.assert_array_equal(result.assignments[0].values, [1.0, -1.0])

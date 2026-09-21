@@ -113,7 +113,7 @@ struct BlockMapping {
 [[nodiscard]] auto block_name(const ImportedMoleculeRecord& record, const std::size_t index)
     -> std::string {
     auto candidate = record.identity.record_id.empty() ? std::string{record.molecule.name()}
-                                                       : record.identity.record_id;
+                                                       : record.identity.record_id.display_string();
     if (candidate.empty()) {
         candidate = "molecule_" + std::to_string(index + 1);
     }

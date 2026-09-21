@@ -261,7 +261,7 @@ def assess(
             (
                 molecule.source_name,
                 molecule.record_index,
-                molecule.record_id if isinstance(molecule.record_id, str) else "",
+                molecule.record_id,
             )
             for molecule in collection
         ),

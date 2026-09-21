@@ -23,6 +23,7 @@ def test_import_surface() -> None:
         "__version__",
         "Molecule",
         "MoleculeCollection",
+        "PortableId",
         "SourceIdentity",
         "SourceAtomReference",
         "SourceConformerReference",

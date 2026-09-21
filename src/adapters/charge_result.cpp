@@ -1,4 +1,4 @@
-#include <chargefw/adapters/charge_result_document.h>
+#include <chargefw/adapters/charge_result.h>
 
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/methods/method_prerequisites.h>
@@ -232,108 +232,71 @@ auto ChargeCalculationResult::execution() const noexcept -> const calculation::E
     return execution_;
 }
 
-auto make_charge_result_document(const ChargeCalculationResult& result,
-                                 const std::string_view generator_name,
-                                 const std::string_view generator_version,
-                                 std::optional<ExecutionMetrics> execution_metrics)
-    -> ChargeResultDocument {
+auto charge_result_diagnostics(const ChargeCalculationResult& result)
+    -> std::vector<ResultDiagnostic> {
     const auto& execution = result.execution();
-    const auto records = result.inputs();
     const auto diagnostic = calculation_diagnostic(execution);
-    auto effective = EffectiveCalculationProvenance{};
-    if (execution.effective.has_value()) {
-        const auto& calculation = *execution.effective;
-        effective.method_id = calculation.method_id;
-        effective.parameter_set_id = calculation.parameter_set_id;
-        effective.execution_mode =
-            std::string{calculation::to_string(calculation.execution_policy.mode())};
-        effective.execution_radius = calculation.execution_policy.radius();
-        effective.warnings.reserve(calculation.execution_issues.size());
-        for (const auto& issue : calculation.execution_issues) {
-            effective.warnings.push_back(issue.message);
-        }
-        effective.method_options.emplace(calculation.method_id, calculation.method_options);
+    return diagnostic.has_value() ? std::vector{*diagnostic} : std::vector<ResultDiagnostic>{};
+}
+
+auto charge_record_diagnostics(const ChargeCalculationResult& result,
+                               const std::size_t molecule_index) -> std::vector<ResultDiagnostic> {
+    const auto records = result.inputs();
+    if (molecule_index >= records.size()) {
+        throw std::out_of_range{"result diagnostic molecule index is outside the input"};
     }
-    auto document = ChargeResultDocument{
-        .generator_name = std::string{generator_name},
-        .generator_version = std::string{generator_version},
-        .status = execution.status,
-        .diagnostics =
-            diagnostic.has_value() ? std::vector{*diagnostic} : std::vector<ResultDiagnostic>{},
-        .records = {},
-        .calculation_provenance =
-            CalculationProvenance{.requested = result.requested(),
-                                  .effective = std::move(effective),
-                                  .execution_metrics = std::move(execution_metrics)}};
-    document.records.reserve(records.size());
-    for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
-        const auto& record = records[molecule_index];
-        auto assignments = std::vector<charges::ChargeAssignment>{};
-        if (execution.charges.has_value()) {
-            for (const auto& assignment : execution.charges->assignments()) {
-                if (assignment.target.molecule_index == molecule_index) {
-                    assignments.push_back(assignment);
+    const auto& execution = result.execution();
+    auto diagnostics = std::vector<ResultDiagnostic>{};
+    for (const auto& import_diagnostic : records[molecule_index].diagnostics) {
+        auto imported = ResultDiagnostic{};
+        imported.severity = DiagnosticSeverity::warning;
+        imported.code = import_diagnostic.code;
+        imported.message = import_diagnostic.message;
+        imported.molecule_index = molecule_index;
+        imported.line = import_diagnostic.line;
+        append_unique(diagnostics, std::move(imported));
+    }
+    if (const auto diagnostic = calculation_diagnostic(execution); diagnostic.has_value()) {
+        append_unique(diagnostics, *diagnostic);
+    }
+    if (execution.status != calculation::ExecutionStatus::no_executable_plan) {
+        return diagnostics;
+    }
+    for (const auto& rejected : execution.rejections) {
+        for (const auto& issue_value : rejected.issues) {
+            auto candidate = "method '" + rejected.method_id + "'";
+            if (rejected.parameter_set_id.has_value()) {
+                candidate += ", parameter set '" + *rejected.parameter_set_id + "'";
+            }
+            if (const auto* issue = std::get_if<methods::PrerequisiteIssue>(&issue_value)) {
+                if (issue->molecule_index.has_value() && *issue->molecule_index != molecule_index) {
+                    continue;
                 }
+                auto diagnostic = ResultDiagnostic{};
+                diagnostic.severity = DiagnosticSeverity::error;
+                diagnostic.code = prerequisite_code(issue->kind);
+                diagnostic.message = candidate + ": " + issue->message;
+                diagnostic.molecule_index = issue->molecule_index;
+                diagnostic.atom_index = issue->atom_index;
+                diagnostic.bond_index = issue->bond_index;
+                diagnostic.conformer_index = issue->conformer_index;
+                append_unique(diagnostics, std::move(diagnostic));
+            } else {
+                const auto& execution_issue = std::get<methods::ExecutionIssue>(issue_value);
+                if (execution_issue.molecule_index.has_value() &&
+                    *execution_issue.molecule_index != molecule_index) {
+                    continue;
+                }
+                auto diagnostic = ResultDiagnostic{};
+                diagnostic.severity = DiagnosticSeverity::error;
+                diagnostic.code = methods::to_string(execution_issue.kind);
+                diagnostic.message = candidate + ": " + execution_issue.message;
+                diagnostic.molecule_index = execution_issue.molecule_index;
+                append_unique(diagnostics, std::move(diagnostic));
             }
         }
-        auto record_diagnostics = std::vector<ResultDiagnostic>{};
-        for (const auto& import_diagnostic : record.diagnostics) {
-            auto imported = ResultDiagnostic{};
-            imported.severity = DiagnosticSeverity::warning;
-            imported.code = import_diagnostic.code;
-            imported.message = import_diagnostic.message;
-            imported.molecule_index = molecule_index;
-            imported.line = import_diagnostic.line;
-            append_unique(record_diagnostics, std::move(imported));
-        }
-        if (diagnostic.has_value()) {
-            append_unique(record_diagnostics, *diagnostic);
-        }
-        if (execution.status == calculation::ExecutionStatus::no_executable_plan) {
-            for (const auto& rejected : execution.rejections) {
-                for (const auto& issue_value : rejected.issues) {
-                    auto candidate = "method '" + rejected.method_id + "'";
-                    if (rejected.parameter_set_id.has_value()) {
-                        candidate += ", parameter set '" + *rejected.parameter_set_id + "'";
-                    }
-                    if (const auto* issue = std::get_if<methods::PrerequisiteIssue>(&issue_value)) {
-                        if (issue->molecule_index.has_value() &&
-                            *issue->molecule_index != molecule_index) {
-                            continue;
-                        }
-                        auto rejected_issue = ResultDiagnostic{};
-                        rejected_issue.severity = DiagnosticSeverity::error;
-                        rejected_issue.code = prerequisite_code(issue->kind);
-                        rejected_issue.message = candidate + ": " + issue->message;
-                        rejected_issue.molecule_index = issue->molecule_index;
-                        rejected_issue.atom_index = issue->atom_index;
-                        rejected_issue.bond_index = issue->bond_index;
-                        rejected_issue.conformer_index = issue->conformer_index;
-                        append_unique(record_diagnostics, std::move(rejected_issue));
-                    } else {
-                        const auto& execution_issue =
-                            std::get<methods::ExecutionIssue>(issue_value);
-                        if (execution_issue.molecule_index.has_value() &&
-                            *execution_issue.molecule_index != molecule_index) {
-                            continue;
-                        }
-                        auto rejected_issue = ResultDiagnostic{};
-                        rejected_issue.severity = DiagnosticSeverity::error;
-                        rejected_issue.code = methods::to_string(execution_issue.kind);
-                        rejected_issue.message = candidate + ": " + execution_issue.message;
-                        rejected_issue.molecule_index = execution_issue.molecule_index;
-                        append_unique(record_diagnostics, std::move(rejected_issue));
-                    }
-                }
-            }
-        }
-        document.records.push_back(
-            ChargeResultRecord{.input = record,
-                               .assignments = std::move(assignments),
-                               .status = execution.status,
-                               .diagnostics = std::move(record_diagnostics)});
     }
-    return document;
+    return diagnostics;
 }
 
 } // namespace chargefw::adapters

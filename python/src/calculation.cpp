@@ -3,7 +3,7 @@
 #include "native_input_metadata.h"
 #include "native_parameter_catalog.h"
 
-#include <chargefw/adapters/charge_result_document.h>
+#include <chargefw/adapters/charge_result.h>
 #include <chargefw/calculation/assessment.h>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/calculation/execution_policy.h>
@@ -20,6 +20,7 @@
 #include <nanobind/stl/vector.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
@@ -62,6 +63,19 @@ auto method_options(const nb::dict& values)
         result.emplace(method_id, methods::MethodOptions{std::move(native_values)});
     }
     return result;
+}
+
+[[nodiscard]] auto portable_id(const nb::handle value) -> adapters::PortableId {
+    if (value.is_none()) {
+        return {};
+    }
+    if (nb::isinstance<nb::str>(value)) {
+        return adapters::PortableId{nb::cast<std::string>(value)};
+    }
+    if (nb::isinstance<nb::bool_>(value) || !nb::isinstance<nb::int_>(value)) {
+        throw std::invalid_argument{"record ID must be a string, integer, or None"};
+    }
+    return adapters::PortableId{nb::cast<std::int64_t>(value)};
 }
 
 auto prerequisite_issue(const methods::PrerequisiteIssue& issue) -> nb::dict {
@@ -404,7 +418,7 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
         source_identities.push_back(
             adapters::MoleculeRecordIdentity{.source = nb::cast<std::string>(identity[0]),
                                              .record_index = nb::cast<std::size_t>(identity[1]),
-                                             .record_id = nb::cast<std::string>(identity[2])});
+                                             .record_id = portable_id(identity[2])});
     }
     auto native_method_options = method_options(options);
     auto requested_options = std::map<std::string, methods::MethodOptions>{};

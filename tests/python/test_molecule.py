@@ -69,7 +69,7 @@ NO_CHARGES
         formal = np.array([0, 0, 0, -1], dtype=np.int8)
         bonds = np.array([[0, 1, 1], [0, 2, 1], [0, 3, 2]], dtype=np.int32)
         coordinates_source = np.arange(24, dtype=np.float32).reshape(2, 4, 3)
-        atom_ids = ["O", 17, ("C", 1), "H"]
+        atom_ids = ["O", 17, np.int64(23), "H"]
 
         molecule = chargefw.Molecule(
             atomic_source,
@@ -82,7 +82,7 @@ NO_CHARGES
             source_name="fixture.sdf",
             record_index=3,
             record_id="record-4",
-            atom_ids=atom_ids,
+            atom_ids=cast(Any, atom_ids),
         )
 
         atomic_source[:] = 1
@@ -96,7 +96,7 @@ NO_CHARGES
         self.assertEqual(molecule.coordinates.shape, (2, 4, 3))
         self.assertEqual(molecule.coordinates[0, 0].tolist(), [2.0, 1.0, 0.0])
         self.assertEqual(molecule.source, chargefw.SourceIdentity("fixture.sdf", 3, "record-4"))
-        self.assertEqual(molecule.atom_ids, tuple(atom_ids))
+        self.assertEqual(molecule.atom_ids, ("O", 17, 23, "H"))
         self.assertEqual(len(molecule), 4)
 
         readonly = molecule.atomic_numbers
@@ -174,11 +174,14 @@ NO_CHARGES
                 ValueError,
                 lambda: chargefw.Molecule([1], coordinates=np.empty((0, 1, 2))),
             ),
-            (ValueError, lambda: chargefw.Molecule([1], atom_ids=cast(Any, [[]]))),
+            (TypeError, lambda: chargefw.Molecule([1], atom_ids=cast(Any, [[]]))),
+            (TypeError, lambda: chargefw.Molecule([1], atom_ids=cast(Any, [True]))),
+            (ValueError, lambda: chargefw.Molecule([1], atom_ids=[2**100])),
             (TypeError, lambda: chargefw.Molecule([1], atom_names="H")),
             (ValueError, lambda: chargefw.SourceIdentity(record_index=-1)),
             (TypeError, lambda: chargefw.SourceIdentity(record_index=cast(Any, 1.5))),
             (TypeError, lambda: chargefw.SourceIdentity(record_index=True)),
+            (TypeError, lambda: chargefw.SourceIdentity(record_id=cast(Any, ("record", 1)))),
             (
                 TypeError,
                 lambda: chargefw.Molecule([1], record_index=cast(Any, np.bool_(True))),

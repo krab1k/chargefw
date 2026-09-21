@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
 from operator import index as as_index
 from typing import Any
 
 import numpy as np
 
-from ._arrays import immutable_array
+from ._arrays import as_ids, immutable_array
+from ._types import PortableId
 from .core import SourceIdentity
 
 
@@ -43,23 +43,6 @@ def _nonnegative_index(value: Any, name: str) -> int:
     return result
 
 
-def _hashable_ids(values: Iterable[Hashable], count: int) -> tuple[Hashable, ...]:
-    if isinstance(values, (str, bytes)):
-        raise TypeError("atom_ids must be an iterable of hashable values")
-    try:
-        result = tuple(values)
-    except TypeError as error:
-        raise TypeError("atom_ids must be an iterable of hashable values") from error
-    if len(result) != count:
-        raise ValueError("atom_ids must have the same length as values")
-    for value in result:
-        try:
-            hash(value)
-        except TypeError as error:
-            raise ValueError("atom_ids must contain only hashable values") from error
-    return result
-
-
 @dataclass(frozen=True, slots=True, eq=False)
 class ChargeAssignment:
     """Source-mapped, owned charges for one molecule or conformer."""
@@ -68,7 +51,7 @@ class ChargeAssignment:
     molecule_index: int
     conformer_index: int | None
     source: SourceIdentity
-    atom_ids: tuple[Hashable, ...]
+    atom_ids: tuple[PortableId, ...]
 
     def __post_init__(self) -> None:
         values = _charge_values(self.values)
@@ -80,7 +63,7 @@ class ChargeAssignment:
         )
         if not isinstance(self.source, SourceIdentity):
             raise TypeError("source must be a SourceIdentity")
-        atom_ids = _hashable_ids(self.atom_ids, len(values))
+        atom_ids = as_ids(self.atom_ids, len(values), "atom_ids")
 
         object.__setattr__(self, "values", values)
         object.__setattr__(self, "molecule_index", molecule_index)
@@ -114,7 +97,7 @@ class ChargeAssignment:
         molecule_index: int,
         conformer_index: int | None,
         source: SourceIdentity,
-        atom_ids: tuple[Hashable, ...],
+        atom_ids: tuple[PortableId, ...],
     ) -> ChargeAssignment:
         """Build an assignment from an extension-owned, one-dimensional NumPy array."""
         if values.dtype != np.float64 or values.ndim != 1 or not values.flags.c_contiguous:

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import numbers
-from collections.abc import Hashable, Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from operator import index as as_index
 from typing import Any
 
 import numpy as np
+
+from ._types import PortableId
 
 
 def as_integer_array(
@@ -101,23 +104,32 @@ def as_names(value: Sequence[str] | None, count: int, field: str) -> tuple[str, 
     return result
 
 
-def as_ids(value: Iterable[Hashable] | None, count: int, field: str) -> tuple[Hashable, ...]:
+def as_portable_id(value: Any, field: str) -> PortableId:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (bool, np.bool_)):
+        raise TypeError(f"{field} must be a string or integer")
+    try:
+        result = as_index(value)
+    except TypeError as error:
+        raise TypeError(f"{field} must be a string or integer") from error
+    if result < np.iinfo(np.int64).min or result > np.iinfo(np.int64).max:
+        raise ValueError(f"{field} is outside the portable integer range")
+    return int(result)
+
+
+def as_ids(value: Iterable[PortableId] | None, count: int, field: str) -> tuple[PortableId, ...]:
     if value is None:
         return tuple(range(count))
     if isinstance(value, (str, bytes)):
-        raise TypeError(f"{field} must be a sequence of hashable values")
+        raise TypeError(f"{field} must be a sequence of string or integer values")
     try:
         result = tuple(value)
     except TypeError as error:
-        raise TypeError(f"{field} must be a sequence of hashable values") from error
+        raise TypeError(f"{field} must be a sequence of string or integer values") from error
     if len(result) != count:
         raise ValueError(f"{field} must contain {count} values")
-    for item in result:
-        try:
-            hash(item)
-        except TypeError as error:
-            raise ValueError(f"{field} must contain only hashable values") from error
-    return result
+    return tuple(as_portable_id(item, field) for item in result)
 
 
 def immutable_array(array: np.ndarray) -> np.ndarray:

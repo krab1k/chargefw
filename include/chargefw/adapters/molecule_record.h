@@ -7,9 +7,68 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <utility>
+#include <variant>
 #include <vector>
 
 namespace chargefw::adapters {
+
+class PortableId {
+  public:
+    using Value = std::variant<std::int64_t, std::string>;
+
+    PortableId() = default;
+    PortableId(std::int64_t value) : value_{value} {}
+    PortableId(std::string value) : value_{std::move(value)} {}
+    PortableId(const char* value) : value_{std::string{value}} {}
+
+    [[nodiscard]] auto empty() const noexcept -> bool {
+        return !value_.has_value();
+    }
+    [[nodiscard]] auto value() const noexcept -> const std::optional<Value>& {
+        return value_;
+    }
+    [[nodiscard]] auto display_string() const -> std::string {
+        if (!value_.has_value()) {
+            return {};
+        }
+        return std::visit(
+            [](const auto& value) -> std::string {
+                using T = std::decay_t<decltype(value)>;
+                if constexpr (std::is_same_v<T, std::string>) {
+                    return value;
+                } else {
+                    return std::to_string(value);
+                }
+            },
+            *value_);
+    }
+
+    [[nodiscard]] auto operator==(const PortableId&) const -> bool = default;
+    [[nodiscard]] friend auto operator==(const PortableId& id, const std::string_view value)
+        -> bool {
+        return id.value_.has_value() && std::holds_alternative<std::string>(*id.value_) &&
+               std::get<std::string>(*id.value_) == value;
+    }
+    [[nodiscard]] friend auto operator==(const std::string_view value, const PortableId& id)
+        -> bool {
+        return id == value;
+    }
+    [[nodiscard]] friend auto operator==(const PortableId& id, const char* value) -> bool {
+        return id == std::string_view{value};
+    }
+    [[nodiscard]] friend auto operator==(const char* value, const PortableId& id) -> bool {
+        return id == std::string_view{value};
+    }
+    [[nodiscard]] friend auto operator==(const PortableId& id, const std::int64_t value) -> bool {
+        return id.value_.has_value() && std::holds_alternative<std::int64_t>(*id.value_) &&
+               std::get<std::int64_t>(*id.value_) == value;
+    }
+
+  private:
+    std::optional<Value> value_;
+};
 
 enum class MolecularSourceFormat : std::uint8_t {
     molecule_json,
@@ -81,7 +140,7 @@ struct MoleculeImportMetadata {
 struct MoleculeRecordIdentity {
     std::string source;
     std::size_t record_index = 0;
-    std::string record_id;
+    PortableId record_id;
 };
 
 struct MoleculeRecordDiagnostic {

@@ -3,6 +3,7 @@
 from typing import Literal, TypeAlias
 
 MethodOptionValue: TypeAlias = bool | int | float | str
+PortableId: TypeAlias = str | int
 Execution: TypeAlias = Literal["auto", "full", "cutoff", "cover"]
 ParameterMatching: TypeAlias = Literal["strict", "permissive"]
 ExecutionMode: TypeAlias = Literal["full", "cutoff", "cover"]

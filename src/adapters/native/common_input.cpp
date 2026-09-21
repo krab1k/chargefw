@@ -101,7 +101,7 @@ auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
                  std::string name, std::vector<MoleculeRecordDiagnostic> diagnostics,
                  std::optional<MoleculeImportMetadata> import_metadata) -> ImportedMoleculeRecord {
     if (name.empty()) {
-        name = identity.record_id;
+        name = identity.record_id.display_string();
     }
 
     return ImportedMoleculeRecord{.molecule =

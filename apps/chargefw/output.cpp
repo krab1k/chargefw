@@ -24,7 +24,7 @@
 namespace chargefw::cli {
 namespace {
 
-void report_diagnostics(const adapters::ChargeResultDocument& document) {
+void report_diagnostics(const adapters::ChargeCalculationResult& result) {
     auto reported = std::set<std::pair<std::string, std::string>>{};
     const auto report = [&reported](const adapters::ResultDiagnostic& diagnostic) {
         if (!reported.emplace(diagnostic.code, diagnostic.message).second) {
@@ -35,11 +35,11 @@ void report_diagnostics(const adapters::ChargeResultDocument& document) {
                                                                                         : "Error";
         std::println(std::cerr, "{}: {}", label, diagnostic.message);
     };
-    for (const auto& diagnostic : document.diagnostics) {
+    for (const auto& diagnostic : adapters::charge_result_diagnostics(result)) {
         report(diagnostic);
     }
-    for (const auto& record : document.records) {
-        for (const auto& diagnostic : record.diagnostics) {
+    for (std::size_t index = 0; index < result.inputs().size(); ++index) {
+        for (const auto& diagnostic : adapters::charge_record_diagnostics(result, index)) {
             report(diagnostic);
         }
     }
@@ -89,12 +89,14 @@ void finalize_output(std::ofstream& output, const std::filesystem::path& path) {
     return result;
 }
 
-void write_json(const std::filesystem::path& path, const adapters::ChargeResultDocument& document) {
+void write_json(const std::filesystem::path& path, const adapters::ChargeCalculationResult& result,
+                const adapters::ExecutionMetrics& metrics) {
     auto output = std::ofstream{path};
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
-    adapters::native::json_output::JsonWriter{output}.write(document);
+    adapters::native::json_output::JsonWriter{output}.write(result, "ChargeFW",
+                                                            CHARGEFW_VERSION_STRING, metrics);
     finalize_output(output, path);
 }
 
@@ -226,10 +228,8 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
         run.metrics.ended_at = utc_timestamp();
         run.metrics.runtime_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
-        const auto document = adapters::make_charge_result_document(
-            owned_result, "ChargeFW", CHARGEFW_VERSION_STRING, run.metrics);
-        write_json(prefix.string() + ".json", document);
-        report_diagnostics(document);
+        write_json(prefix.string() + ".json", owned_result, run.metrics);
+        report_diagnostics(owned_result);
         switch (result.status) {
         case calculation::ExecutionStatus::invalid_input_or_request:
             return 2;
@@ -262,10 +262,8 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     run.metrics.ended_at = utc_timestamp();
     run.metrics.runtime_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
-    const auto document = adapters::make_charge_result_document(
-        owned_result, "ChargeFW", CHARGEFW_VERSION_STRING, run.metrics);
-    write_json(prefix.string() + ".json", document);
-    report_diagnostics(document);
+    write_json(prefix.string() + ".json", owned_result, run.metrics);
+    report_diagnostics(owned_result);
     if (structural_output) {
         std::println("Wrote {} and {}", prefix.string() + ".json", prefix.string() + ".cif");
     } else {

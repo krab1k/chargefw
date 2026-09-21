@@ -2,7 +2,6 @@
 
 #include <chargefw/adapters/molecule_record.h>
 #include <chargefw/calculation/calculation.h>
-#include <chargefw/charges/charge_collection.h>
 #include <chargefw/methods/method_options.h>
 
 #include <cstddef>
@@ -11,7 +10,6 @@
 #include <optional>
 #include <span>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace chargefw::adapters {
@@ -45,15 +43,6 @@ struct RequestedCalculationProvenance {
     std::map<std::string, methods::MethodOptions> method_options;
 };
 
-struct EffectiveCalculationProvenance {
-    std::optional<std::string> method_id;
-    std::optional<std::string> parameter_set_id;
-    std::optional<std::string> execution_mode;
-    std::optional<double> execution_radius;
-    std::vector<std::string> warnings;
-    std::map<std::string, methods::MethodOptions> method_options;
-};
-
 struct ExecutionMetrics {
     std::string started_at;
     std::string ended_at;
@@ -63,12 +52,6 @@ struct ExecutionMetrics {
     double computation_seconds = 0.0;
     double writing_seconds = 0.0;
     double peak_resident_memory_mb = 0.0;
-};
-
-struct CalculationProvenance {
-    RequestedCalculationProvenance requested;
-    EffectiveCalculationProvenance effective;
-    std::optional<ExecutionMetrics> execution_metrics;
 };
 
 // Application-facing result boundary. It owns the exact normalized records supplied to the
@@ -95,26 +78,11 @@ class ChargeCalculationResult {
                                                   calculation::ExecutionResult execution)
     -> ChargeCalculationResult;
 
-struct ChargeResultRecord {
-    ImportedMoleculeRecord input;
-    std::vector<charges::ChargeAssignment> assignments;
-    calculation::ExecutionStatus status = calculation::ExecutionStatus::success;
-    std::vector<ResultDiagnostic> diagnostics;
-};
+[[nodiscard]] auto charge_result_diagnostics(const ChargeCalculationResult& result)
+    -> std::vector<ResultDiagnostic>;
 
-struct ChargeResultDocument {
-    std::string generator_name;
-    std::string generator_version;
-    calculation::ExecutionStatus status = calculation::ExecutionStatus::success;
-    std::vector<ResultDiagnostic> diagnostics;
-    std::vector<ChargeResultRecord> records;
-    std::optional<CalculationProvenance> calculation_provenance;
-};
-
-[[nodiscard]] auto
-make_charge_result_document(const ChargeCalculationResult& result, std::string_view generator_name,
-                            std::string_view generator_version,
-                            std::optional<ExecutionMetrics> execution_metrics = std::nullopt)
-    -> ChargeResultDocument;
+[[nodiscard]] auto charge_record_diagnostics(const ChargeCalculationResult& result,
+                                             std::size_t molecule_index)
+    -> std::vector<ResultDiagnostic>;
 
 } // namespace chargefw::adapters

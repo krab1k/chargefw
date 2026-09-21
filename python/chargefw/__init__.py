@@ -29,6 +29,7 @@ from .charges import ChargeAssignment
 from .core import (
     Molecule,
     MoleculeCollection,
+    PortableId,
     SourceAtomReference,
     SourceConformerReference,
     SourceHierarchyLabels,
@@ -43,6 +44,7 @@ __all__ = [
     "__version__",
     "Molecule",
     "MoleculeCollection",
+    "PortableId",
     "SourceIdentity",
     "SourceAtomReference",
     "SourceConformerReference",

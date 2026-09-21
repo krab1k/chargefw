@@ -1,6 +1,6 @@
 #pragma once
 
-#include <chargefw/adapters/charge_result_document.h>
+#include <chargefw/adapters/charge_result.h>
 
 #include <utility>
 

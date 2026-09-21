@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Hashable, Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from operator import index as as_index
 from typing import Any, Literal, TypeAlias, overload
 
 import numpy as np
 
-from ._arrays import as_coordinates, as_ids, as_integer_array, as_names, immutable_array
+from ._arrays import (
+    as_coordinates,
+    as_ids,
+    as_integer_array,
+    as_names,
+    as_portable_id,
+    immutable_array,
+)
 from ._chargefw import core as _native_core
+from ._types import PortableId as _PortableId
+
+PortableId: TypeAlias = _PortableId
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,7 +29,7 @@ class SourceIdentity:
 
     source: str = ""
     record_index: int = 0
-    record_id: Hashable | None = None
+    record_id: PortableId | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.source, str):
@@ -32,12 +42,11 @@ class SourceIdentity:
             raise TypeError("record_index must be an integer") from error
         if normalized_record_index < 0:
             raise ValueError("record_index must be non-negative")
-        if self.record_id is not None:
-            try:
-                hash(self.record_id)
-            except TypeError as error:
-                raise ValueError("record_id must be hashable") from error
+        normalized_record_id = (
+            None if self.record_id is None else as_portable_id(self.record_id, "record_id")
+        )
         object.__setattr__(self, "record_index", normalized_record_index)
+        object.__setattr__(self, "record_id", normalized_record_id)
 
     @property
     def source_name(self) -> str:
@@ -128,7 +137,7 @@ class Molecule:
     _conformer_names: tuple[str, ...]
     _source: SourceIdentity
     _source_mapping: SourceMapping | None
-    _atom_ids: tuple[Hashable, ...]
+    _atom_ids: tuple[PortableId, ...]
     _native: _native_core._NativeMolecule
 
     def __init__(
@@ -143,8 +152,8 @@ class Molecule:
         source: SourceIdentity | None = None,
         source_name: str | None = None,
         record_index: int = 0,
-        record_id: Hashable | None = None,
-        atom_ids: Iterable[Hashable] | None = None,
+        record_id: PortableId | None = None,
+        atom_ids: Iterable[PortableId] | None = None,
     ) -> None:
         if name is not None and not isinstance(name, str):
             raise TypeError("name must be a string or None")
@@ -273,11 +282,11 @@ class Molecule:
         return self._source.record_index
 
     @property
-    def record_id(self) -> Hashable | None:
+    def record_id(self) -> PortableId | None:
         return self._source.record_id
 
     @property
-    def atom_ids(self) -> tuple[Hashable, ...]:
+    def atom_ids(self) -> tuple[PortableId, ...]:
         return self._atom_ids
 
     @property

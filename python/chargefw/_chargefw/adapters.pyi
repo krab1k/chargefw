@@ -43,7 +43,7 @@ class MoleculePayload(TypedDict):
     conformer_names: list[str]
     source: str
     record_index: int
-    record_id: str
+    record_id: str | int | None
     diagnostics: list[tuple[str, str, int | None]]
     import_metadata: ImportMetadataPayload | None
     native_input_metadata: _NativeInputMetadata

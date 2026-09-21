@@ -2,7 +2,7 @@
 #include "native_execution_result.h"
 #include "native_input_metadata.h"
 
-#include <chargefw/adapters/charge_result_document.h>
+#include <chargefw/adapters/charge_result.h>
 #include <chargefw/adapters/conformer_selection.h>
 #include <chargefw/adapters/gemmi/input_options.h>
 #include <chargefw/adapters/gemmi/mmcif_input.h>
@@ -136,6 +136,13 @@ struct MoleculePayload {
     return result;
 }
 
+[[nodiscard]] auto portable_id(const adapters::PortableId& id) -> nb::object {
+    if (id.empty()) {
+        return nb::none();
+    }
+    return std::visit([](const auto& value) { return nb::cast(value); }, *id.value());
+}
+
 auto make_payload(adapters::ImportedMoleculeRecord record) -> MoleculePayload {
     MoleculePayload result;
     const auto& molecule = record.molecule;
@@ -186,7 +193,7 @@ auto as_python(const MoleculePayload& payload) -> nb::dict {
     result["conformer_names"] = nb::cast(payload.conformer_names);
     result["source"] = payload.identity.source;
     result["record_index"] = payload.identity.record_index;
-    result["record_id"] = payload.identity.record_id;
+    result["record_id"] = portable_id(payload.identity.record_id);
     auto diagnostics = nb::list{};
     for (const auto& diagnostic : payload.diagnostics) {
         diagnostics.append(nb::make_tuple(diagnostic.code, diagnostic.message, diagnostic.line));

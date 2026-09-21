@@ -169,24 +169,36 @@ constexpr auto metric_scale = 1000.0;
                 {"conformer_mapping", std::move(conformers)}};
 }
 
-[[nodiscard]] auto record_json(const ChargeResultRecord& record) -> Json {
-    Json input{{"source", record.input.identity.source},
-               {"record_index", record.input.identity.record_index}};
-    if (!record.input.identity.record_id.empty()) {
-        input["record_id"] = record.input.identity.record_id;
+[[nodiscard]] auto portable_id_json(const PortableId& id) -> Json {
+    if (id.empty()) {
+        return nullptr;
     }
-    if (record.input.import_metadata.has_value()) {
-        input["import"] = import_metadata_json(*record.input.import_metadata);
+    return std::visit([](const auto& value) -> Json { return value; }, *id.value());
+}
+
+[[nodiscard]] auto record_json(const ImportedMoleculeRecord& record,
+                               const calculation::ExecutionResult& execution,
+                               const std::size_t molecule_index,
+                               const std::vector<ResultDiagnostic>& diagnostics) -> Json {
+    Json input{{"source", record.identity.source}, {"record_index", record.identity.record_index}};
+    if (!record.identity.record_id.empty()) {
+        input["record_id"] = portable_id_json(record.identity.record_id);
+    }
+    if (record.import_metadata.has_value()) {
+        input["import"] = import_metadata_json(*record.import_metadata);
     }
 
-    Json result{{"input", std::move(input)}, {"status", calculation::to_string(record.status)}};
-    if (record.assignments.empty()) {
-        result["diagnostics"] = diagnostics_json(record.diagnostics);
+    Json result{{"input", std::move(input)}, {"status", calculation::to_string(execution.status)}};
+    if (!execution.charges.has_value()) {
+        result["diagnostics"] = diagnostics_json(diagnostics);
         return result;
     }
 
     Json assignments = Json::array();
-    for (const auto& assignment : record.assignments) {
+    for (const auto& assignment : execution.charges->assignments()) {
+        if (assignment.target.molecule_index != molecule_index) {
+            continue;
+        }
         auto encoded_charges = charges_json(assignment.charges);
         auto total_charge = 0.0;
         for (const auto value : assignment.charges.values()) {
@@ -205,11 +217,13 @@ constexpr auto metric_scale = 1000.0;
         assignments.push_back(std::move(encoded_assignment));
     }
     result["assignments"] = std::move(assignments);
-    result["diagnostics"] = diagnostics_json(record.diagnostics);
+    result["diagnostics"] = diagnostics_json(diagnostics);
     return result;
 }
 
-[[nodiscard]] auto provenance_json(const CalculationProvenance& provenance) -> Json {
+[[nodiscard]] auto provenance_json(const ChargeCalculationResult& result,
+                                   const std::optional<ExecutionMetrics>& execution_metrics)
+    -> Json {
     const auto optional_id = [](const std::optional<std::string>& id) -> Json {
         return id.has_value() ? Json{{"id", *id}} : Json(nullptr);
     };
@@ -221,46 +235,55 @@ constexpr auto metric_scale = 1000.0;
     };
     const auto method_options_json =
         [&option_value](const std::map<std::string, methods::MethodOptions>& options) -> Json {
-        Json result = Json::object();
+        Json encoded = Json::object();
         for (const auto& [method_id, values] : options) {
             Json method = Json::object();
             for (const auto& [id, value] : values.values()) {
                 method[id] = option_value(value);
             }
-            result[method_id] = std::move(method);
+            encoded[method_id] = std::move(method);
         }
-        return result;
+        return encoded;
     };
     const auto threshold_value = [](const std::optional<std::size_t>& threshold) -> Json {
         return threshold.has_value() ? Json(*threshold) : Json("unlimited");
     };
 
+    const auto& requested_provenance = result.requested();
     Json requested{
-        {"method", optional_id(provenance.requested.method_id)},
-        {"parameter_set", optional_id(provenance.requested.parameter_set_id)},
-        {"classification", {{"permissive_types", provenance.requested.permissive_types}}},
+        {"method", optional_id(requested_provenance.method_id)},
+        {"parameter_set", optional_id(requested_provenance.parameter_set_id)},
+        {"classification", {{"permissive_types", requested_provenance.permissive_types}}},
         {"resource_policy",
-         {{"cutoff_atom_threshold", threshold_value(provenance.requested.cutoff_atom_threshold)},
-          {"cover_atom_threshold", threshold_value(provenance.requested.cover_atom_threshold)},
-          {"max_threads", provenance.requested.max_threads}}},
+         {{"cutoff_atom_threshold", threshold_value(requested_provenance.cutoff_atom_threshold)},
+          {"cover_atom_threshold", threshold_value(requested_provenance.cover_atom_threshold)},
+          {"max_threads", requested_provenance.max_threads}}},
         {"execution",
-         {{"kind", provenance.requested.execution_kind},
-          {"radius_angstrom", optional_value(provenance.requested.execution_radius)}}}};
-    requested["method_options"] = method_options_json(provenance.requested.method_options);
+         {{"kind", requested_provenance.execution_kind},
+          {"radius_angstrom", optional_value(requested_provenance.execution_radius)}}}};
+    requested["method_options"] = method_options_json(requested_provenance.method_options);
 
-    Json effective{{"method", optional_id(provenance.effective.method_id)},
-                   {"parameter_set", optional_id(provenance.effective.parameter_set_id)},
-                   {"warnings", provenance.effective.warnings}};
-    if (provenance.effective.execution_mode.has_value()) {
+    auto effective = Json{{"method", nullptr},
+                          {"parameter_set", nullptr},
+                          {"warnings", Json::array()},
+                          {"method_options", Json::object()}};
+    if (result.execution().effective.has_value()) {
+        const auto& value = *result.execution().effective;
+        effective["method"] = optional_id(value.method_id);
+        effective["parameter_set"] = optional_id(value.parameter_set_id);
+        for (const auto& issue : value.execution_issues) {
+            effective["warnings"].push_back(issue.message);
+        }
         effective["execution"] = {
-            {"mode", *provenance.effective.execution_mode},
-            {"radius_angstrom", optional_value(provenance.effective.execution_radius)}};
+            {"mode", calculation::to_string(value.execution_policy.mode())},
+            {"radius_angstrom", optional_value(value.execution_policy.radius())}};
+        effective["method_options"] =
+            method_options_json({{value.method_id, value.method_options}});
     }
-    effective["method_options"] = method_options_json(provenance.effective.method_options);
-    Json result{{"requested", std::move(requested)}, {"effective", std::move(effective)}};
-    if (provenance.execution_metrics.has_value()) {
-        const auto& metrics = *provenance.execution_metrics;
-        result["execution_metrics"] = {
+    Json encoded{{"requested", std::move(requested)}, {"effective", std::move(effective)}};
+    if (execution_metrics.has_value()) {
+        const auto& metrics = *execution_metrics;
+        encoded["execution_metrics"] = {
             {"started_at", metrics.started_at},
             {"ended_at", metrics.ended_at},
             {"runtime_seconds", rounded(metrics.runtime_seconds, metric_scale)},
@@ -271,36 +294,30 @@ constexpr auto metric_scale = 1000.0;
               {"writing_seconds", rounded(metrics.writing_seconds, metric_scale)}}},
             {"peak_resident_memory_mb", rounded(metrics.peak_resident_memory_mb, metric_scale)}};
     }
-    return result;
+    return encoded;
 }
 
 } // namespace
 
 JsonWriter::JsonWriter(std::ostream& output) : output_{std::addressof(output)} {}
 
-auto JsonWriter::write(const ChargeResultDocument& document) const -> void {
-    Json records = Json::array();
-    for (const auto& record : document.records) {
-        records.push_back(record_json(record));
-    }
-
-    Json result{
-        {"schema_version", "1.0"},
-        {"generator", {{"name", document.generator_name}, {"version", document.generator_version}}},
-        {"status", calculation::to_string(document.status)},
-        {"diagnostics", diagnostics_json(document.diagnostics)},
-        {"results", std::move(records)}};
-    if (document.calculation_provenance.has_value()) {
-        result["calculation_provenance"] = provenance_json(*document.calculation_provenance);
-    }
-    std::print(*output_, "{}\n", result.dump(2));
-}
-
 auto JsonWriter::write(const ChargeCalculationResult& result, const std::string_view generator_name,
                        const std::string_view generator_version,
-                       std::optional<ExecutionMetrics> execution_metrics) const -> void {
-    write(make_charge_result_document(result, generator_name, generator_version,
-                                      std::move(execution_metrics)));
+                       const std::optional<ExecutionMetrics>& execution_metrics) const -> void {
+    Json records = Json::array();
+    const auto inputs = result.inputs();
+    for (std::size_t index = 0; index < inputs.size(); ++index) {
+        records.push_back(record_json(inputs[index], result.execution(), index,
+                                      charge_record_diagnostics(result, index)));
+    }
+
+    Json document{{"schema_version", "1.0"},
+                  {"generator", {{"name", generator_name}, {"version", generator_version}}},
+                  {"status", calculation::to_string(result.execution().status)},
+                  {"diagnostics", diagnostics_json(charge_result_diagnostics(result))},
+                  {"results", std::move(records)}};
+    document["calculation_provenance"] = provenance_json(result, execution_metrics);
+    std::print(*output_, "{}\n", document.dump(2));
 }
 
 } // namespace chargefw::adapters::native::json_output

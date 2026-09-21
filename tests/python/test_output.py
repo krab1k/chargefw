@@ -9,6 +9,7 @@ from typing import Any, cast
 
 import chargefw
 import gemmi
+import numpy as np
 
 
 def water(*, conformers: int = 1) -> chargefw.Molecule:
@@ -190,6 +191,16 @@ class GeneratedOutputTests(unittest.TestCase):
         self.assertEqual(record["input"]["import"]["atom_mapping"], [{"source_position": 0}])
         self.assertEqual(record["input"]["import"]["conformer_mapping"], [])
 
+    def test_result_json_preserves_integer_caller_ids(self) -> None:
+        molecule = chargefw.Molecule(
+            [1, 1], record_id=42, atom_ids=cast(Any, ["left", np.int64(9)])
+        )
+        result = chargefw.calculate(molecule, method="formal")
+
+        encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
+        self.assertEqual(encoded["results"][0]["input"]["record_id"], 42)
+        self.assertEqual(result.assignments[0].atom_ids, ("left", 9))
+
     def test_molecular_output_requires_finite_coordinates(self) -> None:
         missing = chargefw.calculate(chargefw.Molecule([1]), method="formal")
         with self.assertRaisesRegex(ValueError, "conformer|coordinates"):
@@ -222,15 +233,15 @@ class GeneratedOutputTests(unittest.TestCase):
         self.assertNotIn("input", requested)
         self.assertNotIn("structural_input", requested)
 
-    def test_non_string_record_ids_do_not_block_molecular_output(self) -> None:
+    def test_integer_record_ids_are_preserved_by_outputs(self) -> None:
         molecule = chargefw.Molecule([1], coordinates=[[0, 0, 0]], name="hydrogen", record_id=7)
         result = chargefw.calculate(molecule, method="formal")
 
         self.assertIn("V3000", chargefw.io.dumps(result, format="sdf"))
         self.assertIn("@<TRIPOS>MOLECULE", chargefw.io.dumps(result, format="mol2"))
-        self.assertIn("data_hydrogen", chargefw.io.dumps(result, format="mmcif"))
-        with self.assertRaisesRegex(TypeError, "result JSON record IDs must be strings"):
-            chargefw.io.dumps(result, format="result-json")
+        self.assertIn("data_7", chargefw.io.dumps(result, format="mmcif"))
+        encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
+        self.assertEqual(encoded["results"][0]["input"]["record_id"], 7)
 
 
 if __name__ == "__main__":

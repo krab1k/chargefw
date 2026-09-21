@@ -223,10 +223,6 @@ def dumps(
         raise ValueError("sdf_version is only supported for SDF output")
     if sdf_version is not None and sdf_version not in ("v2000", "v3000"):
         raise ValueError("sdf_version must be 'v2000', 'v3000', or None")
-    for molecule in result.molecules:
-        record_id = molecule.record_id
-        if format == "result-json" and record_id is not None and not isinstance(record_id, str):
-            raise TypeError("result JSON record IDs must be strings or None")
     return _native_adapters._dumps(
         result._native,
         format,

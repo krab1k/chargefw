@@ -206,8 +206,9 @@ Public headers are provided under `chargefw/adapters`, with format-specific APIs
 - The Gemmi writer emits preservation-oriented or generated mmCIF charge data.
 - `generated_output::write()` applies shared coordinate validation and writes the first retained conformer
   to generated SDF or MOL2 and all retained conformers to generated mmCIF.
-- `make_charge_result_document()` assembles result status, diagnostics, assignments, and provenance for
-  `JsonWriter`; application-specific execution metrics are optional.
+- `JsonWriter` serializes `ChargeCalculationResult` directly; application-specific execution metrics are
+  optional. `PortableId` retains absent, string, or signed 64-bit integer record IDs without implicit
+  stringification.
 
 Readers return `ImportedMoleculeRecord`, which keeps the molecule together with source identity, import
 diagnostics, and optional `MoleculeImportMetadata`. All serialized readers populate calculation-ordered
