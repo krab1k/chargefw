@@ -32,18 +32,6 @@ namespace {
     return std::string{buffer.data(), end};
 }
 
-[[nodiscard]] auto bond_type(const core::BondOrder order) -> std::string_view {
-    switch (order) {
-    case core::BondOrder::SINGLE:
-        return "1";
-    case core::BondOrder::DOUBLE:
-        return "2";
-    case core::BondOrder::TRIPLE:
-        return "3";
-    }
-    throw std::invalid_argument{"cannot write unsupported bond order to MOL2"};
-}
-
 [[nodiscard]] auto safe_line(std::string value) -> std::string {
     std::ranges::replace_if(
         value, [](const char character) { return character == '\r' || character == '\n'; }, '_');
@@ -173,7 +161,7 @@ auto write_record(std::ostream& output, const ImportedMoleculeRecord& record,
     for (std::size_t bond_index = 0; bond_index < molecule.bond_count(); ++bond_index) {
         const auto& bond = molecule.bond(bond_index);
         std::println(output, "{} {} {} {}", bond_index + 1, bond.first_atom_index() + 1,
-                     bond.second_atom_index() + 1, bond_type(bond.order()));
+                     bond.second_atom_index() + 1, core::to_string(bond.order()));
     }
     std::println(output, "@<TRIPOS>SUBSTRUCTURE");
     std::println(output, "1 UNL 1");

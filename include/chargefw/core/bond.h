@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace chargefw::core {
 enum class BondOrder : std::uint8_t { SINGLE = 1, DOUBLE = 2, TRIPLE = 3 };
@@ -11,6 +12,7 @@ enum class BondOrder : std::uint8_t { SINGLE = 1, DOUBLE = 2, TRIPLE = 3 };
 }
 
 [[nodiscard]] auto bond_order_from_value(int value) -> BondOrder;
+[[nodiscard]] auto to_string(BondOrder order) -> std::string_view;
 
 class Bond {
   public:

@@ -27,6 +27,18 @@ auto bond_order_from_value(const int value) -> BondOrder {
     }
 }
 
+auto to_string(const BondOrder order) -> std::string_view {
+    switch (order) {
+    case BondOrder::SINGLE:
+        return "1";
+    case BondOrder::DOUBLE:
+        return "2";
+    case BondOrder::TRIPLE:
+        return "3";
+    }
+    throw std::invalid_argument{"unsupported bond order"};
+}
+
 Bond::Bond(const std::size_t first_atom_index, const std::size_t second_atom_index,
            const BondOrder order)
     : first_atom_index_{first_atom_index}, second_atom_index_{second_atom_index}, order_{order} {
