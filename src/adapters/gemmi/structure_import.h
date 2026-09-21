@@ -11,10 +11,17 @@
 
 namespace chargefw::adapters::gemmi::structure_import {
 
+struct SourceModelMapping {
+    SourceConformerReference conformer;
+};
+
 [[nodiscard]] auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                                RecordSelection selection, BondStrategy bond_strategy,
                                ConformerSelection conformer_selection = ConformerSelection::all,
-                               std::vector<core::Bond> explicit_bonds = {}, std::string name = {})
+                               std::vector<core::Bond> explicit_bonds = {}, std::string name = {},
+                               MolecularSourceFormat format = MolecularSourceFormat::pdb,
+                               std::vector<SourceModelMapping> source_models = {},
+                               SourceConnectivity source_connectivity = SourceConnectivity::absent)
     -> ImportedMoleculeRecord;
 
 } // namespace chargefw::adapters::gemmi::structure_import

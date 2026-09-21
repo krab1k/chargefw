@@ -226,11 +226,24 @@ class GemmiAdapterTests(unittest.TestCase):
         self.assertEqual(len(text_collection), 1)
         text_molecule = text_collection[0]
         self.assertEqual(text_molecule.atom_names, ("O", "H1"))
-        self.assertEqual(text_molecule.atom_ids, (0, 1))
+        self.assertEqual(text_molecule.atom_ids, ("1", "2"))
         self.assertEqual(text_molecule.conformer_names, ("1", "2"))
         self.assertEqual(text_molecule.source_name, "water.pdb")
         self.assertEqual(text_molecule.bonds.tolist(), [[0, 1, 1]])
         np.testing.assert_allclose(text_molecule.coordinates[:, 0, 0], [0.0, 0.1])
+        mapping = text_molecule.source_mapping
+        self.assertIsNotNone(mapping)
+        assert mapping is not None
+        self.assertEqual(mapping.format, "pdb")
+        self.assertEqual(mapping.alternate_location_selection, "blank-then-A-then-first")
+        self.assertEqual([value.id for value in mapping.conformers], ["1", "2"])
+        labels = mapping.atoms[1].structural_labels
+        self.assertIsNotNone(labels)
+        assert labels is not None
+        self.assertEqual(labels.author.atom, "H1")
+        self.assertEqual(labels.author.residue, "HOH")
+        self.assertEqual(labels.author.chain, "A")
+        self.assertEqual(labels.alternate_location, "A")
 
         with TemporaryDirectory() as directory:
             path = Path(directory) / "water.pdb"
@@ -254,6 +267,17 @@ class GemmiAdapterTests(unittest.TestCase):
         self.assertEqual([value.record_index for value in collection], [0, 1])
         self.assertEqual([value.record_id for value in collection], ["first", "second"])
         self.assertEqual(collection[0].conformer_names, ("1", "2"))
+        self.assertEqual(collection[0].atom_ids, ("1", "2"))
+        mapping = collection[0].source_mapping
+        self.assertIsNotNone(mapping)
+        assert mapping is not None
+        self.assertEqual([value.id for value in mapping.conformers], ["1", "2"])
+        self.assertEqual([site.id for site in mapping.conformers[1].sites], ["3", "4"])
+        labels = mapping.atoms[0].structural_labels
+        self.assertIsNotNone(labels)
+        assert labels is not None
+        self.assertEqual(labels.author.atom, "CA")
+        self.assertEqual(labels.label.atom, "CA")
 
         with TemporaryDirectory() as directory:
             path = Path(directory) / "models.cif"
@@ -265,6 +289,48 @@ class GemmiAdapterTests(unittest.TestCase):
         from_document = chargefw.io.gemmi.from_document(document, source_name="document")
         self.assertEqual([value.record_id for value in from_document], ["first", "second"])
         np.testing.assert_array_equal(from_document[0].coordinates, collection[0].coordinates)
+
+    def test_mmcif_mapping_exposes_arbitrary_ids_and_label_namespaces(self) -> None:
+        contents = """data_mapping
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.label_entity_id
+_atom_site.pdbx_PDB_model_num
+HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
+#
+"""
+        molecule = chargefw_io.parse(contents, format="mmcif")[0]
+        del contents
+
+        self.assertEqual(molecule.atom_ids, ("001",))
+        mapping = molecule.source_mapping
+        self.assertIsNotNone(mapping)
+        assert mapping is not None
+        labels = mapping.atoms[0].structural_labels
+        self.assertIsNotNone(labels)
+        assert labels is not None
+        self.assertEqual(labels.author.atom, "AUTHOR")
+        self.assertEqual(labels.author.chain, "AC")
+        self.assertEqual(labels.label.atom, "LABEL")
+        self.assertEqual(labels.label.chain, "LC")
 
     def test_attach_charges_enriches_document_in_place(self) -> None:
         import gemmi
@@ -404,7 +470,7 @@ class GemmiAdapterTests(unittest.TestCase):
             format="pdb",
         )[0]
         self.assertEqual(molecule.atom_names, ("CA", "CA"))
-        self.assertEqual(molecule.atom_ids, (0, 1))
+        self.assertEqual(molecule.atom_ids, ("1", "2"))
 
     def test_generic_input_requires_explicit_compatible_format_options(self) -> None:
         with self.assertRaises(TypeError):

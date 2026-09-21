@@ -49,11 +49,34 @@ SourceConnectivity: TypeAlias = Literal["absent", "explicitly-empty", "present"]
 
 
 @dataclass(frozen=True, slots=True)
+class SourceHierarchyLabels:
+    """Atom, residue, chain, and sequence labels in one structural namespace."""
+
+    atom: str | None = None
+    residue: str | None = None
+    chain: str | None = None
+    sequence: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SourceStructuralLabels:
+    """Author and label identities retained for a structural atom site."""
+
+    author: SourceHierarchyLabels
+    label: SourceHierarchyLabels
+    entity: str | None = None
+    insertion_code: str | None = None
+    alternate_location: str | None = None
+    segment: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class SourceAtomReference:
     """Location of one calculation atom in its source record."""
 
     position: int
     id: str | None = None
+    structural_labels: SourceStructuralLabels | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +97,7 @@ class SourceMapping:
     conformers: tuple[SourceConformerReference, ...]
     source_connectivity: SourceConnectivity
     record_selection: str | None = None
+    alternate_location_selection: str | None = None
     conformer_selection: str | None = None
     bond_strategy: str | None = None
 

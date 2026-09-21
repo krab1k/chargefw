@@ -121,7 +121,8 @@ auto read_to_atom_section(std::istream& input, std::size_t& line) -> void {
         atom_indices.emplace(source_id, atoms.size());
         atoms.emplace_back(element.atomic_number, 0, std::move(atom_name));
         atom_references.push_back(SourceAtomReference{.position = static_cast<std::size_t>(index),
-                                                      .id = std::move(source_id_text)});
+                                                      .id = std::move(source_id_text),
+                                                      .structural_labels = std::nullopt});
         positions.push_back(core::Position{.x = common::parse_double(x_text, "MOL2 x coordinate"),
                                            .y = common::parse_double(y_text, "MOL2 y coordinate"),
                                            .z = common::parse_double(z_text, "MOL2 z coordinate")});
@@ -179,6 +180,7 @@ auto read_to_atom_section(std::istream& input, std::size_t& line) -> void {
         .conformers = {SourceConformerReference{
             .position = 0, .id = std::nullopt, .sites = std::move(sites)}},
         .record_selection = std::nullopt,
+        .alternate_location_selection = std::nullopt,
         .conformer_selection = "all",
         .bond_strategy = std::nullopt,
         .source_connectivity =

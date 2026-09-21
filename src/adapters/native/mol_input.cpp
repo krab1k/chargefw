@@ -84,7 +84,9 @@ auto parse_v2000(std::istream& input, const std::string_view counts, std::size_t
         result.atoms.push_back(atom_from_symbol(symbol, 0));
         result.positions.push_back(core::Position{.x = x, .y = y, .z = z});
         result.atom_references.push_back(
-            SourceAtomReference{.position = static_cast<std::size_t>(index), .id = std::nullopt});
+            SourceAtomReference{.position = static_cast<std::size_t>(index),
+                                .id = std::nullopt,
+                                .structural_labels = std::nullopt});
     }
 
     for (int index = 0; index < bond_count; ++index) {
@@ -260,7 +262,9 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
         atom_indices.emplace(source_id, result.atoms.size());
         result.atoms.push_back(atom_from_symbol(atom[1], formal_charge));
         result.atom_references.push_back(
-            SourceAtomReference{.position = static_cast<std::size_t>(index), .id = atom[0]});
+            SourceAtomReference{.position = static_cast<std::size_t>(index),
+                                .id = atom[0],
+                                .structural_labels = std::nullopt});
         result.positions.push_back(
             core::Position{.x = common::parse_double(atom[2], "V3000 x coordinate"),
                            .y = common::parse_double(atom[3], "V3000 y coordinate"),
@@ -329,6 +333,7 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
         .conformers = {SourceConformerReference{
             .position = 0, .id = std::nullopt, .sites = std::move(sites)}},
         .record_selection = std::nullopt,
+        .alternate_location_selection = std::nullopt,
         .conformer_selection = "all",
         .bond_strategy = std::nullopt,
         .source_connectivity = parsed.source_connectivity,

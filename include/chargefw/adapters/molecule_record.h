@@ -26,11 +26,32 @@ enum class SourceConnectivity : std::uint8_t {
     present,
 };
 
+struct SourceHierarchyLabels {
+    std::optional<std::string> atom;
+    std::optional<std::string> residue;
+    std::optional<std::string> chain;
+    std::optional<std::string> sequence;
+
+    [[nodiscard]] auto operator==(const SourceHierarchyLabels&) const -> bool = default;
+};
+
+struct SourceStructuralLabels {
+    SourceHierarchyLabels author;
+    SourceHierarchyLabels label;
+    std::optional<std::string> entity;
+    std::optional<std::string> insertion_code;
+    std::optional<std::string> alternate_location;
+    std::optional<std::string> segment;
+
+    [[nodiscard]] auto operator==(const SourceStructuralLabels&) const -> bool = default;
+};
+
 // Source positions are zero-based within one record. IDs retain explicit source tokens when the
 // format provides them; position remains authoritative when no portable ID exists.
 struct SourceAtomReference {
     std::size_t position = 0;
     std::optional<std::string> id;
+    std::optional<SourceStructuralLabels> structural_labels;
 
     [[nodiscard]] auto operator==(const SourceAtomReference&) const -> bool = default;
 };
@@ -50,6 +71,7 @@ struct MoleculeImportMetadata {
     std::vector<SourceAtomReference> atoms;
     std::vector<SourceConformerReference> conformers;
     std::optional<std::string> record_selection;
+    std::optional<std::string> alternate_location_selection;
     std::optional<std::string> conformer_selection;
     std::optional<std::string> bond_strategy;
     SourceConnectivity source_connectivity = SourceConnectivity::absent;

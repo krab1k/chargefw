@@ -10,7 +10,9 @@
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/position.h>
 
+#include <algorithm>
 #include <cstddef>
+#include <numeric>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -25,6 +27,36 @@ struct ModelAtoms {
     std::vector<core::Atom> atoms;
     std::vector<core::Position> positions;
 };
+
+[[nodiscard]] auto source_order(const std::span<const SourceAtomReference> references)
+    -> std::vector<std::size_t> {
+    auto result = std::vector<std::size_t>(references.size());
+    std::ranges::iota(result, std::size_t{0});
+    std::ranges::sort(result, {}, [&](const auto index) { return references[index].position; });
+    for (std::size_t index = 1; index < result.size(); ++index) {
+        if (references[result[index - 1]].position == references[result[index]].position) {
+            throw std::runtime_error{"structural source mapping contains duplicate atom positions"};
+        }
+    }
+    return result;
+}
+
+template <typename T>
+[[nodiscard]] auto reordered(std::vector<T> values, const std::span<const std::size_t> order)
+    -> std::vector<T> {
+    if (values.size() != order.size()) {
+        throw std::runtime_error{"structural source mapping size does not match selected atoms"};
+    }
+    auto result = std::vector<T>{};
+    result.reserve(values.size());
+    for (const auto index : order) {
+        if (index >= values.size()) {
+            throw std::runtime_error{"structural source mapping contains an invalid atom index"};
+        }
+        result.push_back(std::move(values[index]));
+    }
+    return result;
+}
 
 [[nodiscard]] auto import_reference(const selection::SelectedModel& model) -> ModelAtoms {
     ModelAtoms result;
@@ -50,9 +82,13 @@ struct ModelAtoms {
 }
 
 [[nodiscard]] auto conformer_positions(const selection::SelectedModel& model,
-                                       const std::span<const core::Atom> reference)
+                                       const std::span<const core::Atom> reference,
+                                       const std::span<const SourceAtomReference> reference_mapping,
+                                       const std::span<const SourceAtomReference> source_mapping,
+                                       const std::span<const std::size_t> order)
     -> std::vector<core::Position> {
-    if (reference.size() != model.atoms().size()) {
+    if (reference.size() != model.atoms().size() || reference.size() != reference_mapping.size() ||
+        reference.size() != source_mapping.size() || reference.size() != order.size()) {
         throw std::runtime_error{
             "structural models do not contain the same selected atom sequence"};
     }
@@ -60,12 +96,40 @@ struct ModelAtoms {
     std::vector<core::Position> positions;
     positions.reserve(reference.size());
     for (std::size_t index = 0; index < reference.size(); ++index) {
-        const auto& source = *model.atoms()[index];
+        const auto source_index = order[index];
+        if (source_index >= model.atoms().size()) {
+            throw std::runtime_error{"structural source mapping contains an invalid atom index"};
+        }
+        const auto& source = *model.atoms()[source_index];
         if (reference[index].atomic_number() != source.element.atomic_number() ||
             reference[index].formal_charge() != source.charge ||
             reference[index].name() != source.name) {
             throw std::runtime_error{
                 "structural models do not contain the same selected atom sequence"};
+        }
+
+        const auto& reference_labels = reference_mapping[index].structural_labels;
+        const auto& source_labels = source_mapping[index].structural_labels;
+        const auto same_hierarchy = [&] {
+            if (!reference_labels.has_value() || !source_labels.has_value()) {
+                return reference_labels.has_value() == source_labels.has_value();
+            }
+            const auto& first = *reference_labels;
+            const auto& second = *source_labels;
+            return first.author.atom == second.author.atom &&
+                   first.author.residue == second.author.residue &&
+                   first.author.chain == second.author.chain &&
+                   first.author.sequence == second.author.sequence &&
+                   first.label.atom == second.label.atom &&
+                   first.label.residue == second.label.residue &&
+                   first.label.chain == second.label.chain &&
+                   first.label.sequence == second.label.sequence && first.entity == second.entity &&
+                   first.insertion_code == second.insertion_code && first.segment == second.segment;
+        }();
+        if (!same_hierarchy) {
+            throw std::runtime_error{
+                "structural models do not contain the same selected atom identity at atom " +
+                std::to_string(index)};
         }
 
         positions.push_back(
@@ -75,13 +139,32 @@ struct ModelAtoms {
     return positions;
 }
 
+[[nodiscard]] auto remap_bonds(std::vector<core::Bond> bonds,
+                               const std::span<const std::size_t> order)
+    -> std::vector<core::Bond> {
+    auto old_to_new = std::vector<std::size_t>(order.size());
+    for (std::size_t new_index = 0; new_index < order.size(); ++new_index) {
+        old_to_new[order[new_index]] = new_index;
+    }
+    for (auto& bond : bonds) {
+        if (bond.first_atom_index() >= old_to_new.size() ||
+            bond.second_atom_index() >= old_to_new.size()) {
+            throw std::runtime_error{"structural bond endpoint is outside selected atom mapping"};
+        }
+        bond = core::Bond{old_to_new[bond.first_atom_index()], old_to_new[bond.second_atom_index()],
+                          bond.order()};
+    }
+    return bonds;
+}
+
 } // namespace
 
 auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
                  const RecordSelection selection, const BondStrategy bond_strategy,
                  const ConformerSelection conformer_selection,
-                 std::vector<core::Bond> explicit_bonds, std::string name)
-    -> ImportedMoleculeRecord {
+                 std::vector<core::Bond> explicit_bonds, std::string name,
+                 const MolecularSourceFormat format, std::vector<SourceModelMapping> source_models,
+                 const SourceConnectivity source_connectivity) -> ImportedMoleculeRecord {
     if (structure.models.empty()) {
         throw std::runtime_error{"structural input contains no models"};
     }
@@ -89,9 +172,25 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
     const auto selected_model =
         ::chargefw::adapters::gemmi::selection::SelectedModel{structure.models.front(), selection};
     auto first = import_reference(selected_model);
+    const auto retained_model_count =
+        conformer_selection == ConformerSelection::all ? structure.models.size() : std::size_t{1};
+    if (source_models.size() != retained_model_count || source_models.empty() ||
+        source_models.front().conformer.sites.size() != first.atoms.size()) {
+        throw std::runtime_error{"structural source mapping does not match selected models"};
+    }
+
+    auto source_orders = std::vector<std::vector<std::size_t>>{};
+    source_orders.reserve(source_models.size());
+    for (auto& source_model : source_models) {
+        auto order = source_order(source_model.conformer.sites);
+        source_model.conformer.sites = reordered(std::move(source_model.conformer.sites), order);
+        source_orders.push_back(std::move(order));
+    }
+    first.atoms = reordered(std::move(first.atoms), source_orders.front());
+    first.positions = reordered(std::move(first.positions), source_orders.front());
+
     std::vector<core::Conformer> conformers;
-    conformers.reserve(conformer_selection == ConformerSelection::all ? structure.models.size()
-                                                                      : 1);
+    conformers.reserve(retained_model_count);
     conformers.emplace_back(std::move(first.positions),
                             std::to_string(structure.models.front().num));
 
@@ -100,7 +199,9 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
          ++index) {
         const auto selected = ::chargefw::adapters::gemmi::selection::SelectedModel{
             structure.models[index], selection};
-        auto positions = conformer_positions(selected, first.atoms);
+        auto positions =
+            conformer_positions(selected, first.atoms, source_models.front().conformer.sites,
+                                source_models[index].conformer.sites, source_orders[index]);
         conformers.emplace_back(std::move(positions), std::to_string(structure.models[index].num));
     }
 
@@ -108,11 +209,30 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
         name = structure.name;
     }
 
-    auto bonds = ::chargefw::adapters::gemmi::bonds::assign(selected_model, bond_strategy,
-                                                            std::move(explicit_bonds));
+    auto bonds = remap_bonds(::chargefw::adapters::gemmi::bonds::assign(
+                                 selected_model, bond_strategy, std::move(explicit_bonds)),
+                             source_orders.front());
+
+    auto atom_references = source_models.front().conformer.sites;
+    auto conformer_references = std::vector<SourceConformerReference>{};
+    conformer_references.reserve(source_models.size());
+    for (auto& source_model : source_models) {
+        conformer_references.push_back(std::move(source_model.conformer));
+    }
+    auto metadata = MoleculeImportMetadata{
+        .format = format,
+        .atoms = std::move(atom_references),
+        .conformers = std::move(conformer_references),
+        .record_selection = std::string{::chargefw::adapters::gemmi::to_string(selection)},
+        .alternate_location_selection = "blank-then-A-then-first",
+        .conformer_selection = std::string{::chargefw::adapters::to_string(conformer_selection)},
+        .bond_strategy = std::string{::chargefw::adapters::gemmi::to_string(bond_strategy)},
+        .source_connectivity = source_connectivity,
+    };
 
     return native_common::make_record(std::move(first.atoms), std::move(bonds),
-                                      std::move(conformers), std::move(identity), std::move(name));
+                                      std::move(conformers), std::move(identity), std::move(name),
+                                      {}, std::move(metadata));
 }
 
 } // namespace chargefw::adapters::gemmi::structure_import

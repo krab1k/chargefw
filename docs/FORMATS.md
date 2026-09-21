@@ -117,13 +117,22 @@ errors.
 
 PDB and mmCIF are parsed through Gemmi. PDB produces one molecule record. Each mmCIF data block containing
 `_atom_site.id` produces one molecule record; blocks without coordinate data are skipped. The source block
-name is retained as the mmCIF record ID. Atom-site IDs must be unique canonical integers representable by
-Gemmi atom serials; string IDs and noncanonical forms such as `001` are rejected.
+name is retained as the mmCIF record ID. Atom-site IDs must be present and unique, but may be arbitrary
+strings or integers; values such as `Csite`, `001`, and integers wider than 64 bits are retained exactly.
+ChargeFW gives a private copy of the block sequential parser IDs for Gemmi without changing the source
+document or exposed mapping.
 
-The first selected model defines atom order, elements, formal charges, names, topology, and source
-mapping. Later models become conformers only when they have the same selected atom count, element, formal
-charge, and atom-name sequence. Readers may retain the first model or all models. Unknown elements, empty
-selections, absent models, and incompatible model sequences are errors.
+The first selected model defines elements, formal charges, names, topology, and source mapping. Selected
+atoms are restored to source row order even when Gemmi groups noncontiguous rows by hierarchy; later models
+are reordered independently. Later models become conformers only when they have the same selected atom
+count, element, formal charge, atom name, and author/label hierarchy identity. The selected alternate
+location may differ between corresponding models and is retained per site. Readers may retain the first
+model or all models. Unknown elements, empty selections, absent models, and incompatible model sequences
+are errors.
+
+Structural mappings retain original atom/site IDs, model identity, selected alternate locations, entity,
+insertion code, segment where available, and distinct mmCIF author and label atom/residue/chain/sequence
+identities. PDB populates its known author hierarchy and leaves unavailable label identity absent.
 
 ### Structural selection
 

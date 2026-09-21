@@ -13,7 +13,9 @@ from ..core import (
     MoleculeCollection,
     SourceAtomReference,
     SourceConformerReference,
+    SourceHierarchyLabels,
     SourceMapping,
+    SourceStructuralLabels,
 )
 
 if TYPE_CHECKING:
@@ -52,28 +54,43 @@ def _molecule(
 ) -> Molecule:
     coordinates = payload["coordinates"] or None
     import_metadata = payload["import_metadata"]
+
+    def atom_reference(
+        value: _native_adapters.AtomReferencePayload,
+    ) -> SourceAtomReference:
+        position, source_id, labels = value
+        return SourceAtomReference(
+            position,
+            source_id,
+            None
+            if labels is None
+            else SourceStructuralLabels(
+                author=SourceHierarchyLabels(**labels["author"]),
+                label=SourceHierarchyLabels(**labels["label"]),
+                entity=labels["entity"],
+                insertion_code=labels["insertion_code"],
+                alternate_location=labels["alternate_location"],
+                segment=labels["segment"],
+            ),
+        )
+
     source_mapping = (
         None
         if import_metadata is None
         else SourceMapping(
             format=import_metadata["format"],
-            atoms=tuple(
-                SourceAtomReference(position, source_id)
-                for position, source_id in import_metadata["atoms"]
-            ),
+            atoms=tuple(atom_reference(value) for value in import_metadata["atoms"]),
             conformers=tuple(
                 SourceConformerReference(
                     position,
                     source_id,
-                    tuple(
-                        SourceAtomReference(site_position, site_id)
-                        for site_position, site_id in sites
-                    ),
+                    tuple(atom_reference(value) for value in sites),
                 )
                 for position, source_id, sites in import_metadata["conformers"]
             ),
             source_connectivity=import_metadata["source_connectivity"],
             record_selection=import_metadata["record_selection"],
+            alternate_location_selection=import_metadata["alternate_location_selection"],
             conformer_selection=import_metadata["conformer_selection"],
             bond_strategy=import_metadata["bond_strategy"],
         )

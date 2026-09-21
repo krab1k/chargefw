@@ -11,20 +11,66 @@
 namespace mmcif = chargefw::adapters::gemmi::mmcif_input;
 namespace gemmi_adapter = chargefw::adapters::gemmi;
 
-TEST_CASE("mmCIF input rejects unsupported atom-site IDs", "[adapters][mmcif]") {
-    for (const auto& [id_rows, expected_message] :
-         {std::pair{"Csite\n", "unsupported value 'Csite'"},
-          std::pair{"001\n", "unsupported value '001'"},
-          std::pair{"1\n1\n", "duplicate value '1'"}}) {
-        std::istringstream input{"data_ids\nloop_\n_atom_site.id\n" + std::string{id_rows}};
-        auto reader = mmcif::MmcifReader{input};
-        try {
-            static_cast<void>(reader.next());
-            CHECK(false);
-        } catch (const std::runtime_error& error) {
-            CHECK(std::string_view{error.what()}.contains(expected_message));
-        }
+TEST_CASE("mmCIF input preserves arbitrary atom-site IDs and label namespaces",
+          "[adapters][mmcif]") {
+    const auto header = R"cif(data_ids
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.label_entity_id
+_atom_site.pdbx_PDB_model_num
+)cif";
+    std::istringstream input{
+        std::string{header} +
+        "HETATM Csite C L1 . LIG LA 7 ? 0 0 0 1 20 0 17 AUTH AC A1 E1 1\n"
+        "HETATM 001 O L2 B LIG LA 7 ? 1 0 0 1 20 0 17 AUTH AC A2 E1 1\n"
+        "HETATM 9223372036854775808 N L3 . LIG LA 7 ? 2 0 0 1 20 0 17 AUTH AC A3 E1 1\n#\n"};
+    auto reader = mmcif::MmcifReader{input};
+    const auto record = reader.next();
+    REQUIRE(record.has_value());
+    REQUIRE(record->import_metadata.has_value());
+    const auto& mapping = *record->import_metadata;
+    REQUIRE(mapping.atoms.size() == 3);
+    CHECK(mapping.atoms[0].id == "Csite");
+    CHECK(mapping.atoms[1].id == "001");
+    CHECK(mapping.atoms[2].id == "9223372036854775808");
+    REQUIRE(mapping.atoms[0].structural_labels.has_value());
+    CHECK(mapping.atoms[0].structural_labels->author.atom == "A1");
+    CHECK(mapping.atoms[0].structural_labels->author.chain == "AC");
+    CHECK(mapping.atoms[0].structural_labels->label.atom == "L1");
+    CHECK(mapping.atoms[0].structural_labels->label.chain == "LA");
+    CHECK(mapping.atoms[1].structural_labels->alternate_location == "B");
+
+    for (const auto missing : {".", "?"}) {
+        std::istringstream missing_input{"data_missing\nloop_\n_atom_site.id\n" +
+                                         std::string{missing} + "\n"};
+        auto missing_reader = mmcif::MmcifReader{missing_input};
+        CHECK_THROWS_AS(missing_reader.next(), std::runtime_error);
     }
+
+    std::istringstream duplicate{
+        std::string{header} +
+        "HETATM duplicate C C1 . LIG A 1 ? 0 0 0 1 20 0 1 LIG A C1 E1 1\n"
+        "HETATM 'duplicate' O O1 . LIG A 1 ? 1 0 0 1 20 0 1 LIG A O1 E1 1\n#\n"};
+    auto duplicate_reader = mmcif::MmcifReader{duplicate};
+    CHECK_THROWS_AS(duplicate_reader.next(), std::runtime_error);
 }
 
 TEST_CASE("mmCIF input preserves records, models, selection, and bond strategy",
@@ -315,6 +361,67 @@ _chem_comp_bond.value_order
         CHECK(quoted.order() == unquoted.order());
         CHECK(quoted.order() == chargefw::core::BondOrder::DOUBLE);
     }
+}
+
+TEST_CASE("mmCIF input restores source order across residues and models", "[adapters][mmcif]") {
+    std::istringstream input{R"cif(data_order
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+HETATM Csite C C1 . LIG A 1 ? 0 0 0 1 20 0 1 LIG A C1 1
+HETATM Osite O O1 . LIG A 2 ? 1 0 0 1 20 0 2 LIG A O1 1
+HETATM Nsite N N1 . LIG A 1 ? 2 0 0 1 20 0 1 LIG A N1 1
+HETATM Csite2 C C1 . LIG A 1 ? 10 0 0 1 20 0 1 LIG A C1 2
+HETATM Osite2 O O1 . LIG A 2 ? 11 0 0 1 20 0 2 LIG A O1 2
+HETATM Nsite2 N N1 . LIG A 1 ? 12 0 0 1 20 0 1 LIG A N1 2
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+LIG C1 N1 SING
+#
+)cif"};
+    auto reader = mmcif::MmcifReader{
+        input, {}, {.bond_strategy = gemmi_adapter::BondStrategy::explicit_bonds}};
+    const auto record = reader.next();
+    REQUIRE(record.has_value());
+    REQUIRE(record->molecule.atom_count() == 3);
+    CHECK(record->molecule.atom(0).name() == "C1");
+    CHECK(record->molecule.atom(1).name() == "O1");
+    CHECK(record->molecule.atom(2).name() == "N1");
+    CHECK(record->molecule.conformer(0)[1].x == 1.0);
+    CHECK(record->molecule.conformer(1)[0].x == 10.0);
+    CHECK(record->molecule.conformer(1)[1].x == 11.0);
+    CHECK(record->molecule.conformer(1)[2].x == 12.0);
+    REQUIRE(record->molecule.bond_count() == 1);
+    CHECK(record->molecule.bond(0).first_atom_index() == 0);
+    CHECK(record->molecule.bond(0).second_atom_index() == 2);
+    REQUIRE(record->import_metadata.has_value());
+    CHECK(record->import_metadata->source_connectivity ==
+          chargefw::adapters::SourceConnectivity::present);
+    CHECK(record->import_metadata->atoms[0].id == "Csite");
+    CHECK(record->import_metadata->atoms[1].id == "Osite");
+    CHECK(record->import_metadata->atoms[2].id == "Nsite");
 }
 
 TEST_CASE("mmCIF input rejects incompatible conformer atom sequences", "[adapters][mmcif]") {

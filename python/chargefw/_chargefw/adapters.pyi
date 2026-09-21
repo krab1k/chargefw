@@ -4,7 +4,21 @@ from typing import Literal, TypedDict
 from .calculation import _NativeExecutionResult
 from .core import _NativeMolecule
 
-type AtomReferencePayload = tuple[int, str | None]
+class HierarchyLabelsPayload(TypedDict):
+    atom: str | None
+    residue: str | None
+    chain: str | None
+    sequence: str | None
+
+class StructuralLabelsPayload(TypedDict):
+    author: HierarchyLabelsPayload
+    label: HierarchyLabelsPayload
+    entity: str | None
+    insertion_code: str | None
+    alternate_location: str | None
+    segment: str | None
+
+type AtomReferencePayload = tuple[int, str | None, StructuralLabelsPayload | None]
 type ConformerReferencePayload = tuple[int, str | None, list[AtomReferencePayload]]
 
 class ImportMetadataPayload(TypedDict):
@@ -12,6 +26,7 @@ class ImportMetadataPayload(TypedDict):
     atoms: list[AtomReferencePayload]
     conformers: list[ConformerReferencePayload]
     record_selection: str | None
+    alternate_location_selection: str | None
     conformer_selection: str | None
     bond_strategy: str | None
     source_connectivity: Literal["absent", "explicitly-empty", "present"]

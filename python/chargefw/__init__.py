@@ -31,8 +31,10 @@ from .core import (
     MoleculeCollection,
     SourceAtomReference,
     SourceConformerReference,
+    SourceHierarchyLabels,
     SourceIdentity,
     SourceMapping,
+    SourceStructuralLabels,
 )
 
 __version__ = _native_version()
@@ -44,6 +46,8 @@ __all__ = [
     "SourceIdentity",
     "SourceAtomReference",
     "SourceConformerReference",
+    "SourceHierarchyLabels",
+    "SourceStructuralLabels",
     "SourceMapping",
     "ChargeAssignment",
     "CalculationResult",

@@ -91,7 +91,27 @@ struct MoleculePayload {
     -> nb::list {
     auto result = nb::list{};
     for (const auto& reference : references) {
-        result.append(nb::make_tuple(reference.position, reference.id));
+        if (!reference.structural_labels.has_value()) {
+            result.append(nb::make_tuple(reference.position, reference.id, nb::none()));
+            continue;
+        }
+        const auto hierarchy = [](const adapters::SourceHierarchyLabels& labels) {
+            auto value = nb::dict{};
+            value["atom"] = labels.atom;
+            value["residue"] = labels.residue;
+            value["chain"] = labels.chain;
+            value["sequence"] = labels.sequence;
+            return value;
+        };
+        const auto& labels = *reference.structural_labels;
+        auto encoded = nb::dict{};
+        encoded["author"] = hierarchy(labels.author);
+        encoded["label"] = hierarchy(labels.label);
+        encoded["entity"] = labels.entity;
+        encoded["insertion_code"] = labels.insertion_code;
+        encoded["alternate_location"] = labels.alternate_location;
+        encoded["segment"] = labels.segment;
+        result.append(nb::make_tuple(reference.position, reference.id, std::move(encoded)));
     }
     return result;
 }
@@ -107,6 +127,7 @@ struct MoleculePayload {
     result["atoms"] = atom_references(metadata.atoms);
     result["conformers"] = std::move(conformers);
     result["record_selection"] = metadata.record_selection;
+    result["alternate_location_selection"] = metadata.alternate_location_selection;
     result["conformer_selection"] = metadata.conformer_selection;
     result["bond_strategy"] = metadata.bond_strategy;
     result["source_connectivity"] = std::string{connectivity_name(metadata.source_connectivity)};

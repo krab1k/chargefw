@@ -42,6 +42,38 @@ struct BlockMapping {
     std::vector<std::string> model_ids;
 };
 
+[[nodiscard]] auto imported_structure_mapping(const ImportedMoleculeRecord& record)
+    -> BlockMapping {
+    if (!record.import_metadata.has_value() ||
+        record.import_metadata->format != MolecularSourceFormat::mmcif) {
+        throw std::runtime_error{"mmCIF source mapping is not available"};
+    }
+    const auto& metadata = *record.import_metadata;
+    if (record.molecule.conformer_count() > metadata.conformers.size()) {
+        throw std::runtime_error{"structural source has fewer models than calculated conformers"};
+    }
+
+    auto result = BlockMapping{};
+    result.atom_site_ids.reserve(record.molecule.conformer_count());
+    result.model_ids.reserve(record.molecule.conformer_count());
+    for (const auto& conformer :
+         metadata.conformers | std::views::take(record.molecule.conformer_count())) {
+        if (conformer.sites.size() != record.molecule.atom_count()) {
+            throw std::runtime_error{"structural atom count does not match calculated atoms"};
+        }
+        result.model_ids.push_back(conformer.id.value_or("1"));
+        auto& ids = result.atom_site_ids.emplace_back();
+        ids.reserve(conformer.sites.size());
+        for (const auto& site : conformer.sites) {
+            if (!site.id.has_value() || site.id->empty()) {
+                throw std::runtime_error{"mmCIF source atom ID is not available"};
+            }
+            ids.push_back(*site.id);
+        }
+    }
+    return result;
+}
+
 [[nodiscard]] auto selected_structure_mapping(const ::gemmi::Structure& structure,
                                               const RecordSelection selection,
                                               const core::Molecule& molecule) -> BlockMapping {
@@ -495,9 +527,7 @@ auto MmcifWriter::write_mmcif(const std::span<const ImportedMoleculeRecord> reco
         const auto& record = records[record_index];
         const auto assignments = assignments_for(charge_set, record_index);
         auto& block = document.blocks[block_index];
-        const auto structure = ::gemmi::make_structure_from_block(block);
-        const auto mapping =
-            selected_structure_mapping(structure, source.selection, record.molecule);
+        const auto mapping = imported_structure_mapping(record);
         write_charges(block, mapping, record.molecule, assignments, charge_set, generator_name,
                       generator_version, mode);
     }

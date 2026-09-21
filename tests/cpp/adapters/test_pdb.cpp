@@ -39,6 +39,7 @@ ATOM      1  O   HOH A   1       0.100   0.000   0.000  1.00 20.00           O
 ATOM      2  H1 AHOH A   1       1.057   0.000   0.000  1.00 20.00           H  
 ATOM      3  H1 BHOH A   1       9.100   0.000   0.000  1.00 20.00           H  
 ENDMDL
+CONECT    1    2
 END
 )pdb"};
 
@@ -59,6 +60,21 @@ END
     CHECK(first->molecule.conformer(1).name() == "2");
     CHECK(first->molecule.conformer(1)[0].x == 0.1);
     CHECK(first->molecule.conformer(1)[1].x == 1.057);
+    REQUIRE(first->import_metadata.has_value());
+    const auto& mapping = *first->import_metadata;
+    CHECK(mapping.format == chargefw::adapters::MolecularSourceFormat::pdb);
+    CHECK(mapping.source_connectivity == chargefw::adapters::SourceConnectivity::present);
+    CHECK(mapping.alternate_location_selection == "blank-then-A-then-first");
+    REQUIRE(mapping.conformers.size() == 2);
+    CHECK(mapping.conformers[0].id == "1");
+    CHECK(mapping.conformers[1].id == "2");
+    CHECK(mapping.conformers[0].sites[0].position == 0);
+    CHECK(mapping.conformers[1].sites[0].position == 3);
+    REQUIRE(mapping.atoms[1].structural_labels.has_value());
+    CHECK(mapping.atoms[1].structural_labels->author.atom == "H1");
+    CHECK(mapping.atoms[1].structural_labels->author.residue == "HOH");
+    CHECK(mapping.atoms[1].structural_labels->author.chain == "A");
+    CHECK(mapping.atoms[1].structural_labels->alternate_location == "A");
     CHECK_FALSE(reader.next().has_value());
 
     {
@@ -169,6 +185,33 @@ END
     CHECK(record->molecule.atom(1).name() == "C1");
     CHECK(record->molecule.conformer(0)[0].x == 1.0);
     CHECK(record->molecule.conformer(0)[1].x == 2.0);
+    REQUIRE(record->import_metadata.has_value());
+    CHECK_FALSE(record->import_metadata->conformers[0].id.has_value());
+    CHECK(record->import_metadata->atoms[0].position == 1);
+    CHECK(record->import_metadata->atoms[0].id == "2");
+    CHECK(record->import_metadata->atoms[1].position == 2);
+    CHECK(record->import_metadata->atoms[1].id == "3");
+}
+
+TEST_CASE("PDB mapping retains model-specific alternate locations", "[adapters][pdb]") {
+    std::istringstream input{R"pdb(MODEL        1
+ATOM      1  C1 ALIG A   1       0.000   0.000   0.000  1.00 20.00           C
+ENDMDL
+MODEL        2
+ATOM      1  C1 BLIG A   1       0.100   0.000   0.000  1.00 20.00           C
+ENDMDL
+END
+)pdb"};
+    auto reader = pdb::PdbReader{input};
+    const auto record = reader.next();
+    REQUIRE(record.has_value());
+    REQUIRE(record->import_metadata.has_value());
+    const auto& conformers = record->import_metadata->conformers;
+    REQUIRE(conformers.size() == 2);
+    REQUIRE(conformers[0].sites[0].structural_labels.has_value());
+    REQUIRE(conformers[1].sites[0].structural_labels.has_value());
+    CHECK(conformers[0].sites[0].structural_labels->alternate_location == "A");
+    CHECK(conformers[1].sites[0].structural_labels->alternate_location == "B");
 }
 
 TEST_CASE("PDB input rejects empty and incompatible selected models", "[adapters][pdb]") {
@@ -199,6 +242,18 @@ END
             rejected = true;
         }
         CHECK(rejected);
+    }
+
+    {
+        std::istringstream input{R"pdb(MODEL        1
+ATOM      1  C1  UNL A   1       0.000   0.000   0.000  1.00 20.00           C
+ENDMDL
+MODEL        2
+ATOM      1  C1  UNL B   1       0.100   0.000   0.000  1.00 20.00           C
+ENDMDL
+END
+)pdb"};
+        CHECK_THROWS_AS(pdb::PdbReader{input}, std::runtime_error);
     }
 }
 

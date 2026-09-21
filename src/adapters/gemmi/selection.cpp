@@ -67,6 +67,7 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
         }
     }
     atoms_.reserve(atom_count);
+    sites_.reserve(atom_count);
     residues_.reserve(model.chains.size());
     atom_indices_.reserve(atom_count);
     serial_indices_.reserve(atom_count);
@@ -95,6 +96,9 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
 
                 const auto& atom = residue.atoms[index];
                 atoms_.push_back(std::addressof(atom));
+                sites_.push_back(SelectedSite{.atom = std::addressof(atom),
+                                              .residue = std::addressof(residue),
+                                              .chain_name = chain.name});
                 selected.atom_indices.emplace_back(atom.name, atom_index);
                 atom_indices_.emplace(std::addressof(atom), atom_index);
                 serial_indices_.emplace(atom.serial, atom_index++);
@@ -106,6 +110,10 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
 
 auto SelectedModel::atoms() const -> const std::vector<const ::gemmi::Atom*>& {
     return atoms_;
+}
+
+auto SelectedModel::sites() const -> const std::vector<SelectedSite>& {
+    return sites_;
 }
 
 auto SelectedModel::residues() const -> const std::vector<SelectedResidue>& {

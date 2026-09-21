@@ -26,6 +26,8 @@ def test_import_surface() -> None:
         "SourceIdentity",
         "SourceAtomReference",
         "SourceConformerReference",
+        "SourceHierarchyLabels",
+        "SourceStructuralLabels",
         "SourceMapping",
         "ChargeAssignment",
         "CalculationResult",

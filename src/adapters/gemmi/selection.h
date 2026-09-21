@@ -22,18 +22,26 @@ struct SelectedResidue {
     [[nodiscard]] auto find_atom(std::string_view name) const -> std::optional<std::size_t>;
 };
 
+struct SelectedSite {
+    const ::gemmi::Atom* atom;
+    const ::gemmi::Residue* residue;
+    std::string_view chain_name;
+};
+
 // Borrows a Gemmi model and its atoms. The model must outlive this view and remain unmodified.
 class SelectedModel {
   public:
     explicit SelectedModel(const ::gemmi::Model& model, RecordSelection selection);
 
     [[nodiscard]] auto atoms() const -> const std::vector<const ::gemmi::Atom*>&;
+    [[nodiscard]] auto sites() const -> const std::vector<SelectedSite>&;
     [[nodiscard]] auto residues() const -> const std::vector<SelectedResidue>&;
     [[nodiscard]] auto atom_index(const ::gemmi::Atom* atom) const -> std::optional<std::size_t>;
     [[nodiscard]] auto atom_index_by_serial(int serial) const -> std::optional<std::size_t>;
 
   private:
     std::vector<const ::gemmi::Atom*> atoms_;
+    std::vector<SelectedSite> sites_;
     std::vector<SelectedResidue> residues_;
     std::unordered_map<const ::gemmi::Atom*, std::size_t> atom_indices_;
     std::unordered_map<int, std::size_t> serial_indices_;
