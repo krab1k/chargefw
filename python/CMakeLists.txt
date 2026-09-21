@@ -114,6 +114,7 @@ set_target_properties(chargefw_python PROPERTIES
     INSTALL_RPATH "$ORIGIN"
 )
 target_link_libraries(chargefw_python PRIVATE chargefw::core)
+target_include_directories(chargefw_python PRIVATE "${PROJECT_SOURCE_DIR}/src")
 target_link_options(chargefw_python PRIVATE "LINKER:--disable-new-dtags")
 
 if(CHARGEFW_ENABLE_WARNINGS)

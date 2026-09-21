@@ -1,5 +1,7 @@
 #include <chargefw/adapters/gemmi/mmcif_output.h>
 
+#include "adapters/gemmi/mmcif_attachment.h"
+
 #include <chargefw/core/periodic_table.h>
 
 #include <gemmi/cif.hpp>
@@ -537,10 +539,10 @@ auto MmcifWriter::write(const ChargeCalculationResult& result,
     }
 }
 
-auto MmcifWriter::write_attached(const ChargeCalculationResult& result,
-                                 const ::gemmi::cif::Document& source, const bool overwrite,
-                                 const std::string_view generator_name,
-                                 const std::string_view generator_version) const -> void {
+auto write_attached(std::ostream& output, const ChargeCalculationResult& result,
+                    const ::gemmi::cif::Document& source, const bool overwrite,
+                    const std::string_view generator_name, const std::string_view generator_version)
+    -> void {
     validate_result_output(result);
     auto document = source;
     auto blocks = std::vector<::gemmi::cif::Block*>{};
@@ -564,8 +566,8 @@ auto MmcifWriter::write_attached(const ChargeCalculationResult& result,
                       assignments_for(*result.execution().charges, index),
                       *result.execution().charges, generator_name, generator_version);
     }
-    ::gemmi::cif::write_cif_to_stream(*output_, document);
-    if (!*output_) {
+    ::gemmi::cif::write_cif_to_stream(output, document);
+    if (!output) {
         throw std::runtime_error{"failed to write mmCIF output"};
     }
 }

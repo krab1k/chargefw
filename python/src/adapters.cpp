@@ -2,6 +2,8 @@
 #include "native_execution_result.h"
 #include "native_input_metadata.h"
 
+#include "adapters/gemmi/mmcif_attachment.h"
+
 #include <chargefw/adapters/charge_result.h>
 #include <chargefw/adapters/conformer_selection.h>
 #include <chargefw/adapters/gemmi/input_options.h>
@@ -295,8 +297,9 @@ auto attach_mmcif(std::string contents, const NativeExecutionResult& native_resu
         nb::gil_scoped_release release;
         const auto document =
             ::gemmi::cif::read_memory(contents.data(), contents.size(), "<Gemmi document>");
-        adapters::gemmi::mmcif_output::MmcifWriter{output}.write_attached(
-            native_result.result(), document, overwrite, "ChargeFW", CHARGEFW_VERSION_STRING);
+        adapters::gemmi::mmcif_output::write_attached(output, native_result.result(), document,
+                                                      overwrite, "ChargeFW",
+                                                      CHARGEFW_VERSION_STRING);
     }
     return output.str();
 }

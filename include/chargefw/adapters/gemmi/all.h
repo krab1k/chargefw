@@ -1,6 +1,6 @@
 #pragma once
 
-// Convenience umbrella for consumers that want every Gemmi-backed input format.
+// Convenience umbrella for consumers that want every Gemmi-backed adapter.
 // Prefer including only the individual headers in library code.
 
 #include <chargefw/adapters/gemmi/input_options.h>

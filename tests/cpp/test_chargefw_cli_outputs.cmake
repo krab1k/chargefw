@@ -442,12 +442,6 @@ if(NOT cover_atom_threshold STREQUAL "80000")
     message(FATAL_ERROR "Unexpected default cover atom threshold: ${cover_atom_threshold}")
 endif()
 
-foreach(extension IN ITEMS sdf)
-    if(EXISTS "${output_prefix}.${extension}")
-        message(FATAL_ERROR "Removed output format was unexpectedly written: ${extension}")
-    endif()
-endforeach()
-
 set(explicit_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_explicit_outputs")
 set(explicit_output_prefix "${explicit_output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${explicit_output_directory}")

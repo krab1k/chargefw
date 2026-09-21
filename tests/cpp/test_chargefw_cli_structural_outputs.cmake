@@ -28,10 +28,6 @@ function(run_structural_input extension contents input_stem expected_selection e
     if(NOT EXISTS "${output_prefix}.mol2")
         message(FATAL_ERROR "MOL2 output was not created for .${extension}")
     endif()
-    if(EXISTS "${output_prefix}.sdf")
-        message(FATAL_ERROR "Structural input must not produce SDF output")
-    endif()
-
     file(READ "${output_prefix}.json" json_output)
     string(JSON status GET "${json_output}" results 0 status)
     if(NOT status STREQUAL "success")

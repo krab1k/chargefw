@@ -210,8 +210,6 @@ Public headers are provided under `chargefw/adapters`, with format-specific APIs
 - `gemmi::mmcif_output::MmcifWriter::write(const ChargeCalculationResult&)` builds a fresh minimal mmCIF
   document from the owned result, retaining known hierarchy labels across every conformer and joining
   charges to newly generated site IDs during construction.
-- `MmcifWriter::write_attached()` strictly annotates an unchanged imported mmCIF document after validating
-  its block/model/site identity; it has reject-or-overwrite behavior and no append mode.
 - `JsonWriter` serializes `ChargeCalculationResult` directly; application-specific execution metrics are
   optional. `PortableId` retains absent, string, or signed 64-bit integer record IDs without implicit
   stringification.

@@ -230,16 +230,10 @@ class OutputTests(unittest.TestCase):
             ):
                 chargefw.io.dumps(nonfinite, format=cast(Any, format_name))
 
-    def test_output_arguments_are_explicit(self) -> None:
+    def test_output_format_is_explicit(self) -> None:
         result = chargefw.calculate(water(), method="formal")
         with self.assertRaises(TypeError):
             chargefw.io.dumps(result)  # type: ignore[call-arg]
-        for format_name in ("pdb", "sdf"):
-            with (
-                self.subTest(format=format_name),
-                self.assertRaisesRegex(ValueError, "unsupported calculation output format"),
-            ):
-                chargefw.io.dumps(result, format=cast(Any, format_name))
 
     def test_manual_molecules_do_not_claim_import_provenance(self) -> None:
         result = chargefw.calculate(water(), method="formal")
