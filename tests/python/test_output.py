@@ -6,6 +6,7 @@ from gc import collect
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, cast
+from unittest.mock import patch
 
 import chargefw
 import gemmi
@@ -53,6 +54,20 @@ class OutputTests(unittest.TestCase):
             path = Path(directory) / "charges.data"
             chargefw.io.write(path, result, format="mol2")
             self.assertIn("@<TRIPOS>MOLECULE", path.read_text(encoding="utf-8"))
+
+    def test_write_publishes_atomically(self) -> None:
+        result = chargefw.calculate(water(), method="formal")
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "charges.json"
+            path.write_text("existing\n", encoding="utf-8")
+            with (
+                patch.object(Path, "replace", side_effect=OSError("replace failed")),
+                self.assertRaisesRegex(OSError, "replace failed"),
+            ):
+                chargefw.io.write(path, result, format="result-json")
+
+            self.assertEqual(path.read_text(encoding="utf-8"), "existing\n")
+            self.assertEqual(list(Path(directory).iterdir()), [path])
 
     def test_mmcif_applies_geometry_independent_charges_to_selected_conformers(self) -> None:
         contents = json.dumps(

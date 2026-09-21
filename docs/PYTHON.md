@@ -423,9 +423,9 @@ except chargefw.ChargeFWError as error:
 ## Output
 
 `chargefw.io.dumps()` serializes a `CalculationResult` to generated MOL2, generated mmCIF, or result JSON,
-while `chargefw.io.write()` writes it to a UTF-8 file. Both require an explicit `format`: `"mol2"`,
-`"mmcif"`, or `"result-json"`. The supported values are also available as
-`chargefw.io.OUTPUT_FORMATS` for discovery and argument validation.
+while `chargefw.io.write()` atomically publishes it as a UTF-8 file in the destination directory. Both
+require an explicit `format`: `"mol2"`, `"mmcif"`, or `"result-json"`. The supported values are also
+available as `chargefw.io.OUTPUT_FORMATS` for discovery and argument validation.
 
 ```python
 result = chargefw.calculate(
