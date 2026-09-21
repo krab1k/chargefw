@@ -432,8 +432,14 @@ content that the model does not contain. Generated mmCIF represents each molecul
 data block. The source format does not restrict the output format.
 
 Result JSON preserves non-fatal reader diagnostics and the conformer and structural import options for
-collections returned by `parse()` or `read()`. Collections constructed directly have no import policy,
-so those provenance fields are omitted.
+molecules returned by `parse()` or `read()`, including after those molecules are selected, reordered, or
+combined in a new collection. A collection containing mixed import histories is valid; invocation-wide
+input policy is omitted when no single policy describes every record. Molecules constructed directly have
+no import policy, so those provenance fields are omitted.
+
+Result JSON retains full native charge precision and identifies each assignment's molecule or conformer
+scope, target, and elementary-charge unit. Molecular charge formats use their documented decimal
+representation instead.
 
 Result JSON requires source record IDs to be strings or `None`. In-memory identities may use other
 hashable values; generated SDF, MOL2, and mmCIF output omit such IDs rather than rejecting the result.

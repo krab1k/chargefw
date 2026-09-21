@@ -2,6 +2,9 @@
 #include <chargefw/adapters/native/json_output.h>
 #include <chargefw/charges/atomic_charges.h>
 #include <chargefw/charges/charge_collection.h>
+#include <chargefw/core/atom.h>
+#include <chargefw/core/conformer.h>
+#include <chargefw/core/molecule.h>
 #include <snitch/snitch.hpp>
 
 #include <nlohmann/json.hpp>
@@ -108,11 +111,15 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     const auto& calculated = result.at("results").at(0);
     CHECK(calculated.at("status") == "success");
     CHECK_FALSE(calculated.at("input").contains("atom_mapping"));
-    CHECK(calculated.at("assignments").at(0).at("conformer_index") == 0);
-    REQUIRE(calculated.at("assignments").at(0).at("charges").size() == 3);
-    CHECK(calculated.at("assignments").at(0).at("charges").at(0) == -0.8765);
-    CHECK(calculated.at("assignments").at(0).at("charges").at(1) == 0.4383);
-    CHECK(calculated.at("assignments").at(0).at("total_charge") == 0.0001);
+    const auto& assignment = calculated.at("assignments").at(0);
+    CHECK(assignment.at("scope") == "conformer");
+    CHECK(assignment.at("target").at("molecule_index") == 0);
+    CHECK(assignment.at("target").at("conformer_index") == 0);
+    CHECK(assignment.at("charge_unit") == "e");
+    REQUIRE(assignment.at("charges").size() == 3);
+    CHECK(assignment.at("charges").at(0) == -0.87654);
+    CHECK(assignment.at("charges").at(1) == 0.43827);
+    CHECK(assignment.at("total_charge") == 0.0);
 
     const auto& unavailable = result.at("results").at(1);
     CHECK(unavailable.at("status") == "no_executable_plan");
@@ -146,4 +153,59 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
     const auto& record = result.at("results").at(0);
     CHECK(record.at("status") == "cancelled");
     CHECK_FALSE(record.contains("assignments"));
+}
+
+TEST_CASE("result assembly validates assignment dimensions targets and scope", "[adapters][json]") {
+    const auto records = std::vector{adapters::ImportedMoleculeRecord{
+        .molecule =
+            chargefw::core::Molecule{
+                std::vector{chargefw::core::Atom{1}, chargefw::core::Atom{1}},
+                {},
+                std::vector{chargefw::core::Conformer{{chargefw::core::Position{0.0, 0.0, 0.0},
+                                                       chargefw::core::Position{1.0, 0.0, 0.0}}}},
+                "hydrogen"},
+        .identity = {.source = "hydrogen.json", .record_id = "hydrogen"}}};
+    const auto make_document = [&records](calculation::ExecutionResult result) {
+        if (result.status == calculation::ExecutionStatus::success &&
+            !result.effective.has_value()) {
+            result.effective = calculation::EffectiveCalculation{
+                .method_id = "formal", .execution_policy = calculation::ExecutionPolicy{}};
+        }
+        return adapters::make_charge_result_document(records, {}, result, "ChargeFW", "test");
+    };
+
+    CHECK_THROWS_AS(make_document(calculation::ExecutionResult{}), std::invalid_argument);
+    CHECK_THROWS_AS(
+        make_document(calculation::ExecutionResult{
+            .charges = charges::ChargeSet{"formal",
+                                          {{.target = {.molecule_index = 0},
+                                            .charges = charges::AtomicCharges{{0.0}}}}}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        make_document(calculation::ExecutionResult{
+            .charges = charges::ChargeSet{"formal",
+                                          {{.target = {.molecule_index = 1},
+                                            .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        make_document(calculation::ExecutionResult{
+            .charges = charges::ChargeSet{"formal",
+                                          {{.target = {.molecule_index = 0, .conformer_index = 1},
+                                            .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        make_document(calculation::ExecutionResult{
+            .charges = charges::ChargeSet{"formal",
+                                          {{.target = {.molecule_index = 0},
+                                            .charges = charges::AtomicCharges{{0.0, 0.0}}},
+                                           {.target = {.molecule_index = 0, .conformer_index = 0},
+                                            .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}),
+        std::invalid_argument);
+    CHECK_THROWS_AS(
+        make_document(calculation::ExecutionResult{
+            .status = calculation::ExecutionStatus::numerical_failure,
+            .charges = charges::ChargeSet{"formal",
+                                          {{.target = {.molecule_index = 0},
+                                            .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}),
+        std::invalid_argument);
 }

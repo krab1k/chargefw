@@ -143,9 +143,10 @@ Component Dictionary. No distance-based bond perception is performed.
 
 ## Charge output
 
-All serialized partial charges are rounded to four decimal places. Internal native and Python result
-objects retain calculation precision. Writers validate assignment order, cardinality, and source
-references where the output representation provides them rather than silently reordering assignments.
+Serialized molecular charge fields are rounded to four decimal places. ChargeFW result JSON retains
+native floating-point precision, as do native and Python result objects. Writers validate assignment
+order, cardinality, targets, scope, and source references where the output representation provides them
+rather than silently reordering assignments.
 
 ### SDF
 
@@ -204,10 +205,11 @@ Result JSON is the complete machine-readable calculation record. Its top level c
 - optional `calculation_provenance` containing requested and effective calculation policy and execution
   metrics.
 
-Each assignment declares `atom_order: "source"`, contains a source-ordered `charges` array and its
-serialized `total_charge`, and includes a zero-based `conformer_index` when the calculation is
-conformer-specific. Failed or cancelled records omit assignments. Diagnostics have stable severity, code,
-and message fields and may include zero-based molecule, atom, bond, or conformer indices and a one-based
+Each assignment declares its `molecule` or `conformer` scope, charge unit `e`, and a `target` containing
+the zero-based molecule index and, for conformer-specific calculations, the zero-based conformer index.
+Its full-precision `charges` array follows calculation atom order and includes a full-precision
+`total_charge`. Failed or cancelled records omit assignments. Diagnostics have stable severity, code, and
+message fields and may include zero-based molecule, atom, bond, or conformer indices and a one-based
 source line number.
 
 Requested provenance records method and parameter selection, classification mode, method options,

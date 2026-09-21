@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from gc import collect
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, cast
@@ -121,6 +122,27 @@ class GeneratedOutputTests(unittest.TestCase):
         diagnostics = encoded["results"][0]["diagnostics"]
         self.assertEqual([value["code"] for value in diagnostics], ["partial_charges_ignored"])
 
+    def test_import_metadata_follows_reordered_and_recombined_molecules(self) -> None:
+        path = Path(__file__).parents[1] / "fixtures" / "synthetic" / "mol2" / "aromatic.mol2"
+        imported = chargefw.io.read(path, format="mol2")
+        imported_molecule = imported[0]
+        del imported
+        collect()
+
+        manual = chargefw.Molecule([1], source_name="manual")
+        result = chargefw.calculate([manual, imported_molecule], method="formal")
+        encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
+
+        self.assertEqual(encoded["results"][0]["input"]["source"], "manual")
+        self.assertEqual(encoded["results"][0]["diagnostics"], [])
+        self.assertEqual(
+            [value["code"] for value in encoded["results"][1]["diagnostics"]],
+            ["partial_charges_ignored"],
+        )
+        requested = encoded["calculation_provenance"]["requested"]
+        self.assertNotIn("input", requested)
+        self.assertNotIn("structural_input", requested)
+
     def test_molecular_output_requires_finite_coordinates(self) -> None:
         missing = chargefw.calculate(chargefw.Molecule([1]), method="formal")
         with self.assertRaisesRegex(ValueError, "conformer|coordinates"):
@@ -154,9 +176,7 @@ class GeneratedOutputTests(unittest.TestCase):
         self.assertNotIn("structural_input", requested)
 
     def test_non_string_record_ids_do_not_block_molecular_output(self) -> None:
-        molecule = chargefw.Molecule(
-            [1], coordinates=[[0, 0, 0]], name="hydrogen", record_id=7
-        )
+        molecule = chargefw.Molecule([1], coordinates=[[0, 0, 0]], name="hydrogen", record_id=7)
         result = chargefw.calculate(molecule, method="formal")
 
         self.assertIn("V3000", chargefw.io.dumps(result, format="sdf"))

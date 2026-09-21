@@ -11,7 +11,7 @@ from . import (
     BondStrategy,
     ConformerSelection,
     RecordSelection,
-    _ImportedMoleculeCollection,
+    _ImportedMolecule,
     parse,
 )
 
@@ -98,8 +98,11 @@ def attach_charges(
     if not isinstance(overwrite, bool):
         raise TypeError("overwrite must be a bool")
     conformers: ConformerSelection = "all"
-    if isinstance(result.molecules, _ImportedMoleculeCollection):
-        conformers = result.molecules._input_metadata.conformers
+    if result.molecules and all(
+        isinstance(molecule, _ImportedMolecule) and molecule._input_metadata.conformers == "first"
+        for molecule in result.molecules
+    ):
+        conformers = "first"
     charged = gemmi.cif.read_string(
         _native_adapters._attach_mmcif(
             document.as_string(),

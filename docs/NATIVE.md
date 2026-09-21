@@ -164,6 +164,10 @@ Method implementations declare reduced-execution support through
 `calculation::ExecutionResult` reports an `ExecutionStatus`, optional `charges::ChargeSet`, rejections,
 effective calculation provenance, optional failure text, and applicability/computation timings.
 
+Result-document assembly validates successful assignment coverage, canonical molecule/conformer order,
+uniform scope, atom dimensions, target bounds, and agreement with effective method and parameter-set
+provenance. Failed and cancelled results must not contain charge assignments.
+
 The status is one of `success`, `invalid_input_or_request`, `no_executable_plan`, `numerical_failure`, or
 `cancelled`. Invalid native API inputs generally throw `std::invalid_argument`; the owned facade converts
 calculation failures and cooperative cancellation into result statuses. The lower-level

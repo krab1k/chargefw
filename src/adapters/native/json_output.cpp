@@ -15,7 +15,6 @@ namespace {
 
 using Json = nlohmann::json;
 
-constexpr auto charge_scale = 10000.0;
 constexpr auto metric_scale = 1000.0;
 
 [[nodiscard]] auto diagnostics_json(const std::span<const ResultDiagnostic> diagnostics) -> Json {
@@ -58,7 +57,7 @@ constexpr auto metric_scale = 1000.0;
 [[nodiscard]] auto charges_json(const charges::AtomicCharges& charges) -> Json {
     Json values = Json::array();
     for (const auto value : charges.values()) {
-        values.push_back(rounded(value, charge_scale));
+        values.push_back(value);
     }
     return values;
 }
@@ -83,16 +82,21 @@ constexpr auto metric_scale = 1000.0;
         }
 
         auto encoded_charges = charges_json(assignment.charges);
-        auto serialized_total = 0.0;
-        for (const auto& value : encoded_charges) {
-            serialized_total += value.get<double>();
+        auto total_charge = 0.0;
+        for (const auto value : assignment.charges.values()) {
+            total_charge += value;
         }
-        Json encoded_assignment{{"atom_order", "source"},
-                                {"charges", std::move(encoded_charges)},
-                                {"total_charge", rounded(serialized_total, charge_scale)}};
+        Json target{{"molecule_index", assignment.target.molecule_index}};
         if (assignment.target.conformer_index.has_value()) {
-            encoded_assignment["conformer_index"] = *assignment.target.conformer_index;
+            target["conformer_index"] = *assignment.target.conformer_index;
         }
+        Json encoded_assignment{
+            {"scope", assignment.target.conformer_index.has_value() ? "conformer" : "molecule"},
+            {"target", std::move(target)},
+            {"atom_order", "source"},
+            {"charge_unit", "e"},
+            {"charges", std::move(encoded_charges)},
+            {"total_charge", total_charge}};
         assignments.push_back(std::move(encoded_assignment));
     }
     if (assignments.empty()) {

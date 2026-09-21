@@ -28,29 +28,24 @@ _MULTI_CONFORMER_FORMATS = frozenset(("molecule-json", "pdb", "mmcif"))
 
 @dataclass(frozen=True, slots=True)
 class _InputMetadata:
-    diagnostics: tuple[tuple[tuple[str, str, int | None], ...], ...]
+    diagnostics: tuple[tuple[str, str, int | None], ...]
     structural_input: tuple[RecordSelection, BondStrategy] | None
     conformers: ConformerSelection
 
 
-class _ImportedMoleculeCollection(MoleculeCollection):
+class _ImportedMolecule(Molecule):
     __slots__ = ("_input_metadata",)
 
     _input_metadata: _InputMetadata
 
-    def __init__(
-        self, molecules: tuple[Molecule, ...], name: str, metadata: _InputMetadata
-    ) -> None:
-        super().__init__(molecules, name=name)
-        object.__setattr__(self, "_input_metadata", metadata)
 
-    def __repr__(self) -> str:
-        return f"MoleculeCollection(molecules={len(self)}, name={self.name!r})"
-
-
-def _molecule(payload: _native_adapters.MoleculePayload) -> Molecule:
+def _molecule(
+    payload: _native_adapters.MoleculePayload,
+    structural_input: tuple[RecordSelection, BondStrategy] | None,
+    conformers: ConformerSelection,
+) -> Molecule:
     coordinates = payload["coordinates"] or None
-    return Molecule(
+    result = _ImportedMolecule(
         atomic_numbers=payload["atomic_numbers"],
         formal_charges=payload["formal_charges"],
         bonds=payload["bonds"],
@@ -62,6 +57,16 @@ def _molecule(payload: _native_adapters.MoleculePayload) -> Molecule:
         record_index=payload["record_index"],
         record_id=payload["record_id"],
     )
+    object.__setattr__(
+        result,
+        "_input_metadata",
+        _InputMetadata(
+            diagnostics=tuple(payload["diagnostics"]),
+            structural_input=structural_input,
+            conformers=conformers,
+        ),
+    )
+    return result
 
 
 def _collection(
@@ -70,13 +75,8 @@ def _collection(
     structural_input: tuple[RecordSelection, BondStrategy] | None,
     conformers: ConformerSelection,
 ) -> MoleculeCollection:
-    molecules = tuple(_molecule(payload) for payload in payloads)
-    metadata = _InputMetadata(
-        diagnostics=tuple(tuple(payload["diagnostics"]) for payload in payloads),
-        structural_input=structural_input,
-        conformers=conformers,
-    )
-    return _ImportedMoleculeCollection(molecules, source_name, metadata)
+    molecules = tuple(_molecule(payload, structural_input, conformers) for payload in payloads)
+    return MoleculeCollection(molecules, source_name)
 
 
 def _validate_options(
@@ -169,19 +169,32 @@ def dumps(
             raise TypeError("result JSON record IDs must be strings or None")
         serialized_id = record_id if isinstance(record_id, str) else ""
         identities.append((molecule.source_name, molecule.record_index, serialized_id))
-    metadata = (
-        result.molecules._input_metadata
-        if isinstance(result.molecules, _ImportedMoleculeCollection)
+    metadata = tuple(
+        molecule._input_metadata if isinstance(molecule, _ImportedMolecule) else None
+        for molecule in result.molecules
+    )
+    imported_metadata = tuple(value for value in metadata if value is not None)
+    shared_metadata = (
+        imported_metadata[0]
+        if imported_metadata
+        and len(imported_metadata) == len(metadata)
+        and all(
+            value.structural_input == imported_metadata[0].structural_input
+            and value.conformers == imported_metadata[0].conformers
+            for value in imported_metadata
+        )
         else None
     )
     requested = dict(result._requested_payload)
-    requested["structural_input"] = None if metadata is None else metadata.structural_input
-    requested["conformers"] = None if metadata is None else metadata.conformers
+    requested["structural_input"] = (
+        None if shared_metadata is None else shared_metadata.structural_input
+    )
+    requested["conformers"] = None if shared_metadata is None else shared_metadata.conformers
     return _native_adapters._dumps(
         result._native,
         result.molecules._native_molecules,
         identities,
-        ((),) * len(result.molecules) if metadata is None else metadata.diagnostics,
+        tuple(() if value is None else value.diagnostics for value in metadata),
         requested,
         format,
         sdf_version or "v3000",

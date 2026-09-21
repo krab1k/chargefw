@@ -4,6 +4,7 @@
 #include <chargefw/methods/method_prerequisites.h>
 
 #include <algorithm>
+#include <functional>
 #include <optional>
 #include <ranges>
 #include <stdexcept>
@@ -46,6 +47,113 @@ auto append_unique(std::vector<ResultDiagnostic>& diagnostics, ResultDiagnostic 
     }
 }
 
+auto validate_assignments(const std::span<const ImportedMoleculeRecord> records,
+                          const calculation::ExecutionResult& result) -> void {
+    if (result.status != calculation::ExecutionStatus::success) {
+        if (!result.charges.has_value()) {
+            return;
+        }
+        throw std::invalid_argument{"unsuccessful calculation result contains charge assignments"};
+    }
+    if (!result.charges.has_value()) {
+        throw std::invalid_argument{"successful calculation result has no charge assignments"};
+    }
+    if (!result.effective.has_value()) {
+        throw std::invalid_argument{"successful calculation result has no effective provenance"};
+    }
+    if (result.charges->method_id() != result.effective->method_id) {
+        throw std::invalid_argument{"charge assignment method does not match effective provenance"};
+    }
+    const auto charge_parameter_set = result.charges->parameter_set_id();
+    if (charge_parameter_set.has_value() != result.effective->parameter_set_id.has_value() ||
+        (charge_parameter_set.has_value() &&
+         *charge_parameter_set != *result.effective->parameter_set_id)) {
+        throw std::invalid_argument{
+            "charge assignment parameter set does not match effective provenance"};
+    }
+
+    struct AssignmentCoverage {
+        bool molecule = false;
+        std::vector<bool> conformers;
+    };
+
+    auto coverage = std::vector<AssignmentCoverage>{};
+    coverage.reserve(records.size());
+    for (const auto& record : records) {
+        coverage.push_back(
+            AssignmentCoverage{.conformers = std::vector<bool>(record.molecule.conformer_count())});
+    }
+
+    auto conformer_scope = std::optional<bool>{};
+    auto actual_order = std::vector<std::pair<std::size_t, std::optional<std::size_t>>>{};
+    actual_order.reserve(result.charges->size());
+    for (const auto& assignment : result.charges->assignments()) {
+        const auto molecule_index = assignment.target.molecule_index;
+        if (molecule_index >= records.size()) {
+            throw std::invalid_argument{"charge assignment molecule index is outside the input"};
+        }
+        const auto& molecule = records[molecule_index].molecule;
+        if (assignment.charges.size() != molecule.atom_count()) {
+            throw std::invalid_argument{
+                "charge assignment size does not match molecule atom count"};
+        }
+
+        const auto assignment_conformer_scope = assignment.target.conformer_index.has_value();
+        if (conformer_scope.has_value() && *conformer_scope != assignment_conformer_scope) {
+            throw std::invalid_argument{
+                "calculation result mixes molecule and conformer assignment scopes"};
+        }
+        conformer_scope = assignment_conformer_scope;
+        actual_order.emplace_back(molecule_index, assignment.target.conformer_index);
+
+        auto& assigned = coverage[molecule_index];
+        if (!assignment.target.conformer_index.has_value()) {
+            if (assigned.molecule || std::ranges::any_of(assigned.conformers, std::identity{})) {
+                throw std::invalid_argument{
+                    "duplicate or mixed-scope charge assignments for one molecule"};
+            }
+            assigned.molecule = true;
+            continue;
+        }
+
+        const auto conformer_index = *assignment.target.conformer_index;
+        if (conformer_index >= molecule.conformer_count()) {
+            throw std::invalid_argument{
+                "charge assignment conformer index is outside the molecule"};
+        }
+        if (assigned.molecule || assigned.conformers[conformer_index]) {
+            throw std::invalid_argument{
+                "duplicate or mixed-scope charge assignments for one molecule"};
+        }
+        assigned.conformers[conformer_index] = true;
+    }
+
+    for (const auto& assigned : coverage) {
+        if (!assigned.molecule && (assigned.conformers.empty() ||
+                                   !std::ranges::all_of(assigned.conformers, std::identity{}))) {
+            throw std::invalid_argument{"calculation result does not cover every input molecule"};
+        }
+    }
+
+    auto expected_order = std::vector<std::pair<std::size_t, std::optional<std::size_t>>>{};
+    if (conformer_scope.value_or(false)) {
+        for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
+            for (std::size_t conformer_index = 0;
+                 conformer_index < records[molecule_index].molecule.conformer_count();
+                 ++conformer_index) {
+                expected_order.emplace_back(molecule_index, conformer_index);
+            }
+        }
+    } else {
+        for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
+            expected_order.emplace_back(molecule_index, std::nullopt);
+        }
+    }
+    if (actual_order != expected_order) {
+        throw std::invalid_argument{"charge assignments are not in canonical input order"};
+    }
+}
+
 [[nodiscard]] auto calculation_diagnostic(const calculation::ExecutionResult& result)
     -> std::optional<ResultDiagnostic> {
     const auto make = [](const DiagnosticSeverity severity, std::string code, std::string message) {
@@ -83,6 +191,7 @@ auto make_charge_result_document(const std::span<const ImportedMoleculeRecord> r
                                  const std::string_view generator_version,
                                  std::optional<ExecutionMetrics> execution_metrics)
     -> ChargeResultDocument {
+    validate_assignments(records, result);
     const auto diagnostic = calculation_diagnostic(result);
     auto effective = EffectiveCalculationProvenance{};
     if (result.effective.has_value()) {
