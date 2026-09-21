@@ -75,6 +75,18 @@ _atom_site.pdbx_PDB_model_num
         "HETATM 'duplicate' O O1 . LIG A 1 ? 1 0 0 1 20 0 1 LIG A O1 E1 1\n#\n"};
     auto duplicate_reader = mmcif::MmcifReader{duplicate};
     CHECK_THROWS_AS(duplicate_reader.next(), std::runtime_error);
+
+    for (const auto model_id : {"+1", ".", "?"}) {
+        std::istringstream model_input{
+            std::string{header} + "HETATM source C L1 . LIG LA 7 ? 0 0 0 1 20 0 17 AUTH AC A1 E1 " +
+            model_id + "\n#\n"};
+        auto model_reader = mmcif::MmcifReader{model_input};
+        const auto model_record = model_reader.next();
+        REQUIRE(model_record.has_value());
+        REQUIRE(model_record->import_metadata.has_value());
+        REQUIRE(model_record->import_metadata->conformers.size() == 1);
+        CHECK(model_record->import_metadata->conformers[0].id == model_id);
+    }
 }
 
 TEST_CASE("mmCIF input preserves records, models, selection, and bond strategy",

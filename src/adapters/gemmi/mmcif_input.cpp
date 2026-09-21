@@ -8,7 +8,6 @@
 #include <gemmi/mmcif.hpp>
 
 #include <algorithm>
-#include <charconv>
 #include <istream>
 #include <iterator>
 #include <limits>
@@ -60,7 +59,6 @@ namespace {
 }
 
 struct MmcifSourceSite {
-    int model_number = 1;
     std::optional<std::string> model_id;
     SourceAtomReference reference;
 };
@@ -77,16 +75,7 @@ struct MmcifSourceSite {
     for (const auto row : atom_sites) {
         const auto id = ::gemmi::cif::as_string(row[0]);
         const auto model_id = source_value(row, 12);
-        auto model_number = 1;
-        if (model_id.has_value()) {
-            const auto [end, error] = std::from_chars(
-                model_id->data(), model_id->data() + model_id->size(), model_number);
-            if (error != std::errc{} || end != model_id->data() + model_id->size()) {
-                throw std::runtime_error{"mmCIF model IDs must be integers"};
-            }
-        }
         result.push_back(MmcifSourceSite{
-            .model_number = model_number,
             .model_id = model_id,
             .reference = SourceAtomReference{
                 .position = position++,
@@ -129,14 +118,10 @@ struct MmcifSourceSite {
                 throw std::runtime_error{"mmCIF source mapping does not match selected atoms"};
             }
             const auto& source = sites[static_cast<std::size_t>(atom->serial) - 1];
-            if (source.model_number != model.num) {
-                throw std::runtime_error{"mmCIF source mapping does not match selected atoms"};
+            if (!model_id_initialized) {
+                model_id = source.model_id;
+                model_id_initialized = true;
             }
-            if (model_id_initialized && model_id != source.model_id) {
-                throw std::runtime_error{"mmCIF model contains inconsistent source model IDs"};
-            }
-            model_id = source.model_id;
-            model_id_initialized = true;
             mapped.push_back(source.reference);
         }
         result.push_back(structure_import::SourceModelMapping{
