@@ -192,8 +192,8 @@ auto run(std::span<char*> arguments) -> int {
         std::chrono::duration<double>{std::chrono::steady_clock::now() - parsing_started}.count();
     auto export_context = std::move(imported.export_context);
     auto request = chargefw::cli::make_request(std::move(imported.molecules), calculate_selection);
-    const auto requested_provenance = chargefw::cli::make_requested_provenance(
-        export_context, request, calculate_selection.max_threads);
+    const auto requested_provenance =
+        chargefw::cli::make_requested_provenance(request, calculate_selection.max_threads);
     const auto max_threads = calculate_selection.max_threads;
     const auto progress_observer = TerminalProgressObserver{};
     const auto interrupt_handler = ScopedInterruptHandler{};

@@ -332,6 +332,15 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         self.assertEqual(labels.label.atom, "LABEL")
         self.assertEqual(labels.label.chain, "LC")
 
+        result = calculate(molecule, method="formal")
+        imported = json.loads(chargefw_io.dumps(result, format="result-json"))["results"][0][
+            "input"
+        ]["import"]
+        self.assertEqual(imported["atom_mapping"][0]["source_id"], "001")
+        encoded_labels = imported["atom_mapping"][0]["structural_labels"]
+        self.assertEqual(encoded_labels["author"]["atom"], "AUTHOR")
+        self.assertEqual(encoded_labels["label"]["atom"], "LABEL")
+
     def test_attach_charges_enriches_document_in_place(self) -> None:
         import gemmi
 
@@ -429,11 +438,14 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         self.assertEqual(polymers[0].atom_names, ("CA",))
         self.assertEqual(polymers[0].conformer_count, 1)
         result = calculate(polymers, method="formal")
-        requested = json.loads(chargefw_io.dumps(result, format="result-json"))[
-            "calculation_provenance"
-        ]["requested"]
-        self.assertEqual(requested["input"], {"conformers": "first"})
-        self.assertEqual(requested["structural_input"], {"selection": "polymers", "bonds": "none"})
+        encoded = json.loads(chargefw_io.dumps(result, format="result-json"))
+        policy = encoded["results"][0]["input"]["import"]["policy"]
+        self.assertEqual(policy["conformer_selection"], "first")
+        self.assertEqual(policy["record_selection"], "polymers")
+        self.assertEqual(policy["bond_strategy"], "none")
+        requested = encoded["calculation_provenance"]["requested"]
+        self.assertNotIn("input", requested)
+        self.assertNotIn("structural_input", requested)
 
         with self.assertRaises(TypeError):
             chargefw.io.gemmi.from_structure(cast(Any, object()))

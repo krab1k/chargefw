@@ -1,5 +1,6 @@
 #include "bindings.h"
 #include "native_execution_result.h"
+#include "native_input_metadata.h"
 
 #include <chargefw/adapters/charge_result_document.h>
 #include <chargefw/adapters/conformer_selection.h>
@@ -18,23 +19,23 @@
 #include <chargefw/config.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/molecule.h>
-#include <chargefw/methods/method_options.h>
 
 #include <nanobind/stl/array.h>
 #include <nanobind/stl/optional.h>
+#include <nanobind/stl/shared_ptr.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 
 #include <array>
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -54,6 +55,7 @@ struct MoleculePayload {
     adapters::MoleculeRecordIdentity identity;
     std::vector<adapters::MoleculeRecordDiagnostic> diagnostics;
     std::optional<adapters::MoleculeImportMetadata> import_metadata;
+    std::shared_ptr<NativeInputMetadata> native_input_metadata;
 };
 
 [[nodiscard]] auto format_name(const adapters::MolecularSourceFormat format) -> std::string_view {
@@ -165,6 +167,8 @@ auto make_payload(adapters::ImportedMoleculeRecord record) -> MoleculePayload {
     }
 
     result.name = molecule.name();
+    result.native_input_metadata = std::make_shared<NativeInputMetadata>(
+        record.identity, record.diagnostics, record.import_metadata);
     result.identity = std::move(record.identity);
     result.diagnostics = std::move(record.diagnostics);
     result.import_metadata = std::move(record.import_metadata);
@@ -188,6 +192,7 @@ auto as_python(const MoleculePayload& payload) -> nb::dict {
         diagnostics.append(nb::make_tuple(diagnostic.code, diagnostic.message, diagnostic.line));
     }
     result["diagnostics"] = std::move(diagnostics);
+    result["native_input_metadata"] = payload.native_input_metadata;
     if (payload.import_metadata.has_value()) {
         result["import_metadata"] = import_metadata(*payload.import_metadata);
     } else {
@@ -253,102 +258,17 @@ auto parse(std::string contents, std::string source, const std::string& format,
     return as_python(payloads);
 }
 
-auto output_records(const nb::sequence& molecules, const nb::sequence& identities,
-                    const nb::sequence& diagnostics)
-    -> std::vector<adapters::ImportedMoleculeRecord> {
-    const auto molecule_count = static_cast<std::size_t>(nb::len(molecules));
-    if (static_cast<std::size_t>(nb::len(identities)) != molecule_count ||
-        static_cast<std::size_t>(nb::len(diagnostics)) != molecule_count) {
-        throw std::invalid_argument{"output molecule metadata count does not match molecules"};
-    }
-    auto result = std::vector<adapters::ImportedMoleculeRecord>{};
-    result.reserve(molecule_count);
-    for (std::size_t index = 0; index < molecule_count; ++index) {
-        const auto identity =
-            nb::cast<std::tuple<std::string, std::size_t, std::string>>(identities[index]);
-        auto record_diagnostics = std::vector<adapters::MoleculeRecordDiagnostic>{};
-        for (const auto diagnostic : nb::cast<nb::sequence>(diagnostics[index])) {
-            const auto value =
-                nb::cast<std::tuple<std::string, std::string, std::optional<std::size_t>>>(
-                    diagnostic);
-            record_diagnostics.push_back({.code = std::get<0>(value),
-                                          .message = std::get<1>(value),
-                                          .line = std::get<2>(value)});
-        }
-        result.push_back(adapters::ImportedMoleculeRecord{
-            .molecule = nb::cast<const core::Molecule&>(molecules[index]),
-            .identity = {.source = std::get<0>(identity),
-                         .record_index = std::get<1>(identity),
-                         .record_id = std::get<2>(identity)},
-            .diagnostics = std::move(record_diagnostics),
-            .import_metadata = std::nullopt});
-    }
-    return result;
-}
-
-auto method_option_value(const nb::handle value) -> methods::MethodOptionValue {
-    if (nb::isinstance<nb::bool_>(value)) {
-        return nb::cast<bool>(value);
-    }
-    if (nb::isinstance<nb::int_>(value)) {
-        return nb::cast<int>(value);
-    }
-    if (nb::isinstance<nb::float_>(value)) {
-        return nb::cast<double>(value);
-    }
-    if (nb::isinstance<nb::str>(value)) {
-        return nb::cast<std::string>(value);
-    }
-    throw std::invalid_argument{"unsupported method option value in result provenance"};
-}
-
-auto requested_provenance(const nb::dict& payload) -> adapters::RequestedCalculationProvenance {
-    auto result = adapters::RequestedCalculationProvenance{
-        .method_id = nb::cast<std::optional<std::string>>(payload["method_id"]),
-        .parameter_set_id = nb::cast<std::optional<std::string>>(payload["parameter_set_id"]),
-        .permissive_types = nb::cast<bool>(payload["permissive_types"]),
-        .cutoff_atom_threshold = nb::cast<std::optional<std::size_t>>(payload["cutoff_threshold"]),
-        .cover_atom_threshold = nb::cast<std::optional<std::size_t>>(payload["cover_threshold"]),
-        .max_threads = nb::cast<std::size_t>(payload["max_threads"]),
-        .execution_kind = nb::cast<std::string>(payload["execution"]),
-        .execution_radius = nb::cast<std::optional<double>>(payload["radius"]),
-        .structural_input_policy = std::nullopt,
-        .conformer_selection = nb::cast<std::optional<std::string>>(payload["conformers"]),
-        .method_options = {}};
-    const auto structural_input =
-        nb::cast<std::optional<std::tuple<std::string, std::string>>>(payload["structural_input"]);
-    if (structural_input.has_value()) {
-        result.structural_input_policy = adapters::StructuralInputPolicyProvenance{
-            .selection = std::get<0>(*structural_input), .bonds = std::get<1>(*structural_input)};
-    }
-    const auto options_by_method = nb::cast<nb::dict>(payload["method_options"]);
-    for (const auto& [method_value, options_value] : options_by_method) {
-        auto options = std::unordered_map<std::string, methods::MethodOptionValue>{};
-        for (const auto& [id, value] : nb::cast<nb::dict>(options_value)) {
-            options.emplace(nb::cast<std::string>(id), method_option_value(value));
-        }
-        result.method_options.emplace(nb::cast<std::string>(method_value),
-                                      methods::MethodOptions{std::move(options)});
-    }
-    return result;
-}
-
-auto dumps(const NativeExecutionResult& native_result, const nb::sequence& molecules,
-           const nb::sequence& identities, const nb::sequence& diagnostics,
-           const nb::dict& requested, const std::string& format, const std::string& sdf_version)
-    -> std::string {
-    auto records = output_records(molecules, identities, diagnostics);
-    const auto requested_value = requested_provenance(requested);
+auto dumps(const NativeExecutionResult& native_result, const std::string& format,
+           const std::string& sdf_version) -> std::string {
     const auto& result = native_result.result();
     auto output = std::ostringstream{};
     {
         nb::gil_scoped_release release;
         if (format == "result-json") {
-            adapters::native::json_output::JsonWriter{output}.write(
-                adapters::make_charge_result_document(records, requested_value, result, "ChargeFW",
-                                                      CHARGEFW_VERSION_STRING));
+            adapters::native::json_output::JsonWriter{output}.write(result, "ChargeFW",
+                                                                    CHARGEFW_VERSION_STRING);
         } else {
-            if (!result.calculated()) {
+            if (!result.execution().calculated()) {
                 throw std::invalid_argument{"molecular output requires a successful calculation"};
             }
             const auto output_format = [&format, &sdf_version] {
@@ -364,8 +284,8 @@ auto dumps(const NativeExecutionResult& native_result, const nb::sequence& molec
                 }
                 throw std::invalid_argument{"unsupported calculation output format: " + format};
             }();
-            adapters::generated_output::write(output, records, *result.charges, output_format,
-                                              "ChargeFW", CHARGEFW_VERSION_STRING);
+            adapters::generated_output::write(output, result.inputs(), *result.execution().charges,
+                                              output_format, "ChargeFW", CHARGEFW_VERSION_STRING);
         }
     }
     return output.str();
@@ -381,7 +301,7 @@ auto attach_mmcif(std::string contents, const NativeExecutionResult& native_resu
     }
     const auto native_selection = adapters::gemmi::record_selection_from_string(selection);
     const auto native_conformers = adapters::conformer_selection_from_string(conformers);
-    const auto& result = native_result.result();
+    const auto& result = native_result.result().execution();
     auto output = std::ostringstream{};
     {
         nb::gil_scoped_release release;
@@ -446,11 +366,11 @@ auto attach_mmcif(std::string contents, const NativeExecutionResult& native_resu
 } // namespace
 
 void bind_adapters(nb::module_& module) {
+    [[maybe_unused]] const auto native_input_metadata =
+        nb::class_<NativeInputMetadata>(module, "_NativeInputMetadata");
     module.def("_parse", &parse, nb::arg("contents"), nb::arg("source"), nb::arg("format"),
                nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
-    module.def("_dumps", &dumps, nb::arg("result"), nb::arg("molecules"), nb::arg("identities"),
-               nb::arg("diagnostics"), nb::arg("requested"), nb::arg("format"),
-               nb::arg("sdf_version"));
+    module.def("_dumps", &dumps, nb::arg("result"), nb::arg("format"), nb::arg("sdf_version"));
     module.def("_attach_mmcif", &attach_mmcif, nb::arg("contents"), nb::arg("result"),
                nb::arg("molecules"), nb::arg("selection"), nb::arg("conformers"),
                nb::arg("overwrite"));

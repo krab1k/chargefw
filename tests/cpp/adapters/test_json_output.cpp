@@ -11,6 +11,7 @@
 
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace adapters = chargefw::adapters;
@@ -19,54 +20,67 @@ namespace charges = chargefw::charges;
 namespace json_output = chargefw::adapters::native::json_output;
 
 TEST_CASE("JSON output serializes ordered records and calculation provenance", "[adapters][json]") {
-    const auto document = adapters::ChargeResultDocument{
-        .generator_name = "ChargeFW",
-        .generator_version = "test",
-        .records =
-            {{.identity = {.source = "water.sdf", .record_index = 2, .record_id = "water"},
-              .charges = charges::ChargeSet{"formal",
-                                            {{.target = {.molecule_index = 0, .conformer_index = 0},
-                                              .charges = charges::AtomicCharges{{-0.87654, 0.43827,
-                                                                                 0.43827}}}}}},
-             {.identity = {.source = "water.sdf", .record_index = 3, .record_id = "unavailable"},
-              .charges = std::nullopt,
-              .status = calculation::ExecutionStatus::no_executable_plan,
-              .diagnostics = {{.severity = adapters::DiagnosticSeverity::error,
-                               .code = "no_executable_plan",
-                               .message = "No executable plan.",
-                               .molecule_index = 1,
-                               .atom_index = 4}}}},
-        .calculation_provenance = adapters::CalculationProvenance{
-            .requested = {.method_id = std::nullopt,
-                          .parameter_set_id = std::nullopt,
-                          .permissive_types = true,
-                          .cutoff_atom_threshold = std::nullopt,
-                          .cover_atom_threshold = std::nullopt,
-                          .max_threads = 0,
-                          .execution_kind = "auto",
-                          .execution_radius = std::nullopt,
-                          .structural_input_policy =
-                              adapters::StructuralInputPolicyProvenance{.selection = "polymers",
-                                                                        .bonds = "hybrid"},
-                          .conformer_selection = "all",
-                          .method_options = {{"qeq",
-                                              chargefw::methods::MethodOptions{
-                                                  {{"overlap_term", "Ohno"}}}}}},
-            .effective = {.method_id = "formal",
-                          .parameter_set_id = "test-formal",
-                          .execution_mode = "cutoff",
-                          .execution_radius = 8.0,
-                          .warnings = {"full execution exceeds the shared threshold"},
-                          .method_options = {{"formal", chargefw::methods::MethodOptions{}}}},
-            .execution_metrics =
-                adapters::ExecutionMetrics{.started_at = "2026-08-20T10:00:00.000Z",
-                                           .ended_at = "2026-08-20T10:00:01.250Z",
-                                           .runtime_seconds = 1.23456,
-                                           .parsing_seconds = 0.1004,
-                                           .applicability_seconds = 0.20,
-                                           .computation_seconds = 0.80,
-                                           .writing_seconds = 0.15,
-                                           .peak_resident_memory_mb = 123.4567}}};
+    const auto document =
+        adapters::ChargeResultDocument{
+            .generator_name = "ChargeFW",
+            .generator_version = "test",
+            .records = {{.input = {.molecule = chargefw::core::Molecule{std::vector{
+                                       chargefw::core::Atom{8}, chargefw::core::Atom{1},
+                                       chargefw::core::Atom{1}}},
+                                   .identity = {.source = "water.sdf",
+                                                .record_index = 2,
+                                                .record_id = "water"},
+                                   .import_metadata =
+                                       adapters::MoleculeImportMetadata{
+                                           .format = adapters::MolecularSourceFormat::sdf,
+                                           .atoms = {{.position = 0, .id = "10"},
+                                                     {.position = 1, .id = "20"},
+                                                     {.position = 2, .id = "30"}},
+                                           .conformer_selection = "all",
+                                           .source_connectivity =
+                                               adapters::SourceConnectivity::present}},
+                         .assignments = {{.target = {.molecule_index = 0, .conformer_index = 0},
+                                          .charges = charges::AtomicCharges{{-0.87654, 0.43827,
+                                                                             0.43827}}}}},
+                        {.input = {.molecule = chargefw::core::Molecule{std::vector{
+                                       chargefw::core::Atom{6}}},
+                                   .identity = {.source = "water.sdf",
+                                                .record_index = 3,
+                                                .record_id = "unavailable"}},
+                         .assignments = {},
+                         .status = calculation::ExecutionStatus::no_executable_plan,
+                         .diagnostics = {{.severity = adapters::DiagnosticSeverity::error,
+                                          .code = "no_executable_plan",
+                                          .message = "No executable plan.",
+                                          .molecule_index = 1,
+                                          .atom_index = 4}}}},
+            .calculation_provenance = adapters::CalculationProvenance{
+                .requested = {.method_id = std::nullopt,
+                              .parameter_set_id = std::nullopt,
+                              .permissive_types = true,
+                              .cutoff_atom_threshold = std::nullopt,
+                              .cover_atom_threshold = std::nullopt,
+                              .max_threads = 0,
+                              .execution_kind = "auto",
+                              .execution_radius = std::nullopt,
+                              .method_options = {{"qeq",
+                                                  chargefw::methods::MethodOptions{
+                                                      {{"overlap_term", "Ohno"}}}}}},
+                .effective = {.method_id = "formal",
+                              .parameter_set_id = "test-formal",
+                              .execution_mode = "cutoff",
+                              .execution_radius = 8.0,
+                              .warnings = {"full execution exceeds the shared threshold"},
+                              .method_options = {{"formal", chargefw::methods::MethodOptions{}}}},
+                .execution_metrics =
+                    adapters::ExecutionMetrics{.started_at = "2026-08-20T10:00:00.000Z",
+                                               .ended_at = "2026-08-20T10:00:01.250Z",
+                                               .runtime_seconds = 1.23456,
+                                               .parsing_seconds = 0.1004,
+                                               .applicability_seconds = 0.20,
+                                               .computation_seconds = 0.80,
+                                               .writing_seconds = 0.15,
+                                               .peak_resident_memory_mb = 123.4567}}};
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(document);
@@ -87,9 +101,8 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     CHECK(requested.at("resource_policy").at("cutoff_atom_threshold") == "unlimited");
     CHECK(requested.at("resource_policy").at("cover_atom_threshold") == "unlimited");
     CHECK(requested.at("resource_policy").at("max_threads") == 0);
-    CHECK(requested.at("structural_input").at("selection") == "polymers");
-    CHECK(requested.at("structural_input").at("bonds") == "hybrid");
-    CHECK(requested.at("input").at("conformers") == "all");
+    CHECK_FALSE(requested.contains("structural_input"));
+    CHECK_FALSE(requested.contains("input"));
     CHECK(requested.at("method_options").at("qeq").at("overlap_term") == "Ohno");
     const auto& effective = provenance.at("effective");
     const auto& metrics = provenance.at("execution_metrics");
@@ -110,7 +123,12 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
 
     const auto& calculated = result.at("results").at(0);
     CHECK(calculated.at("status") == "success");
-    CHECK_FALSE(calculated.at("input").contains("atom_mapping"));
+    const auto& imported = calculated.at("input").at("import");
+    CHECK(imported.at("format") == "sdf");
+    CHECK(imported.at("policy").at("conformer_selection") == "all");
+    CHECK(imported.at("source_connectivity") == "present");
+    CHECK(imported.at("atom_mapping").at(0).at("source_id") == "10");
+    CHECK(imported.at("atom_mapping").at(2).at("source_position") == 2);
     const auto& assignment = calculated.at("assignments").at(0);
     CHECK(assignment.at("scope") == "conformer");
     CHECK(assignment.at("target").at("molecule_index") == 0);
@@ -123,7 +141,7 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
 
     const auto& unavailable = result.at("results").at(1);
     CHECK(unavailable.at("status") == "no_executable_plan");
-    CHECK_FALSE(unavailable.at("input").contains("atom_mapping"));
+    CHECK_FALSE(unavailable.at("input").contains("import"));
     CHECK(unavailable.at("diagnostics").at(0).at("code") == "no_executable_plan");
     CHECK(unavailable.at("diagnostics").at(0).at("molecule_index") == 1);
     CHECK(unavailable.at("diagnostics").at(0).at("atom_index") == 4);
@@ -139,10 +157,12 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
         .generator_version = "test",
         .status = calculation::ExecutionStatus::cancelled,
         .diagnostics = {diagnostic},
-        .records = {{.identity = {.source = "water.sdf", .record_index = 0},
-                     .charges = std::nullopt,
-                     .status = calculation::ExecutionStatus::cancelled,
-                     .diagnostics = {diagnostic}}}};
+        .records = {
+            {.input = {.molecule = chargefw::core::Molecule{std::vector{chargefw::core::Atom{8}}},
+                       .identity = {.source = "water.sdf", .record_index = 0}},
+             .assignments = {},
+             .status = calculation::ExecutionStatus::cancelled,
+             .diagnostics = {diagnostic}}}};
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(document);
@@ -172,7 +192,9 @@ TEST_CASE("result assembly validates assignment dimensions targets and scope", "
             result.effective = calculation::EffectiveCalculation{
                 .method_id = "formal", .execution_policy = calculation::ExecutionPolicy{}};
         }
-        return adapters::make_charge_result_document(records, {}, result, "ChargeFW", "test");
+        return adapters::make_charge_result_document(
+            adapters::make_charge_calculation_result(records, {}, std::move(result)), "ChargeFW",
+            "test");
     };
 
     CHECK_THROWS_AS(make_document(calculation::ExecutionResult{}), std::invalid_argument);
@@ -208,5 +230,23 @@ TEST_CASE("result assembly validates assignment dimensions targets and scope", "
             .charges = charges::ChargeSet{"formal",
                                           {{.target = {.molecule_index = 0},
                                             .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}),
+        std::invalid_argument);
+
+    auto invalid_mapping = records;
+    invalid_mapping[0].import_metadata = adapters::MoleculeImportMetadata{
+        .format = adapters::MolecularSourceFormat::molecule_json,
+        .atoms = {{.position = 0}},
+        .conformers = {{.position = 0, .sites = {{.position = 0}}}}};
+    CHECK_THROWS_AS(
+        adapters::make_charge_calculation_result(
+            std::move(invalid_mapping), {},
+            calculation::ExecutionResult{
+                .charges = charges::ChargeSet{"formal",
+                                              {{.target = {.molecule_index = 0},
+                                                .charges = charges::AtomicCharges{{0.0, 0.0}}}}},
+                .effective =
+                    calculation::EffectiveCalculation{.method_id = "formal",
+                                                      .execution_policy =
+                                                          calculation::ExecutionPolicy{}}}),
         std::invalid_argument);
 }

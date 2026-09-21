@@ -17,16 +17,9 @@ namespace chargefw::cli {
 struct ImportedExportContext {
     enum class Format : std::uint8_t { sdf, mol, mol2, json, pdb, mmcif };
 
-    struct StructuralInputPolicy {
-        std::string selection;
-        std::string bonds;
-    };
-
     std::vector<adapters::ImportedMoleculeRecord> records;
     std::optional<adapters::gemmi::mmcif_output::MmcifSource> mmcif_source;
     std::optional<adapters::gemmi::mmcif_output::PdbSource> pdb_source;
-    std::optional<StructuralInputPolicy> structural_input_policy;
-    std::string conformer_selection = "all";
     Format format;
 };
 
@@ -74,8 +67,7 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments);
 [[nodiscard]] auto make_request(core::MoleculeCollection molecules,
                                 const SelectionArguments& arguments)
     -> calculation::AssessmentRequest;
-[[nodiscard]] auto make_requested_provenance(const ImportedExportContext& export_context,
-                                             const calculation::AssessmentRequest& request,
+[[nodiscard]] auto make_requested_provenance(const calculation::AssessmentRequest& request,
                                              std::size_t max_threads)
     -> adapters::RequestedCalculationProvenance;
 

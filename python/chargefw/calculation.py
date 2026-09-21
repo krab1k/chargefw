@@ -256,6 +256,15 @@ def assess(
     collection = _as_collection(molecules)
     native = _native_calculation._make_assessment(
         collection._native_molecules,
+        tuple(getattr(molecule, "_native_input_metadata", None) for molecule in collection),
+        tuple(
+            (
+                molecule.source_name,
+                molecule.record_index,
+                molecule.record_id if isinstance(molecule.record_id, str) else "",
+            )
+            for molecule in collection
+        ),
         collection.name,
         _default_parameter_catalog(),
         requested.method,

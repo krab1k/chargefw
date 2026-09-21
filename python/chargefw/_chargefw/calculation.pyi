@@ -2,6 +2,7 @@ from collections.abc import Sequence
 
 from .._payloads import AssessmentReportPayload, ExecutionPlanPayload, ExecutionResultPayload
 from .._types import Execution
+from .adapters import _NativeInputMetadata
 from .core import _NativeMolecule
 from .parameters import _NativeParameterCatalog
 
@@ -21,6 +22,8 @@ class _NativeAssessment:
 
 def _make_assessment(
     molecules: Sequence[_NativeMolecule],
+    input_metadata: Sequence[_NativeInputMetadata | None],
+    identities: Sequence[tuple[str, int, str]],
     molecule_collection_name: str,
     catalog: _NativeParameterCatalog,
     method_id: str | None,

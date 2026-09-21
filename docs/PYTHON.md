@@ -442,11 +442,12 @@ properties, Tripos typing or substructures, polymer hierarchy, crystallographic 
 content that the model does not contain. Generated mmCIF represents each molecule as a separate `UNL`
 data block. The source format does not restrict the output format.
 
-Result JSON preserves non-fatal reader diagnostics and the conformer and structural import options for
-molecules returned by `parse()` or `read()`, including after those molecules are selected, reordered, or
-combined in a new collection. A collection containing mixed import histories is valid; invocation-wide
-input policy is omitted when no single policy describes every record. Molecules constructed directly have
-no import policy, so those provenance fields are omitted.
+Native calculation results own the exact ordered input records used for assessment, including source
+mapping, diagnostics, and record-local import policy. This ownership survives reader and caller collection
+destruction, reusable plan execution, selection, reordering, and recombination. Result writers consume that
+owned boundary rather than reconstructing records from parallel Python sequences. Mixed import histories
+are valid and serialize their policies independently. Molecules constructed directly have no verified
+import mapping, so `input.import` is omitted for those records.
 
 Result JSON retains full native charge precision and identifies each assignment's molecule or conformer
 scope, target, and elementary-charge unit. Molecular charge formats use their documented decimal

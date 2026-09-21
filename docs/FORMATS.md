@@ -218,8 +218,8 @@ assignments are attached only to their corresponding model. Coordinates are requ
 Result JSON is the complete machine-readable calculation record. Its top level contains:
 
 - `schema_version`, generator identity, overall status, and document diagnostics;
-- source-ordered `results`, each with source identity, record status, diagnostics, and successful charge
-  assignments; and
+- input-ordered `results`, each with source identity, record status, diagnostics, optional import mapping
+  and policy, and successful charge assignments; and
 - optional `calculation_provenance` containing requested and effective calculation policy and execution
   metrics.
 
@@ -230,9 +230,17 @@ Its full-precision `charges` array follows calculation atom order and includes a
 message fields and may include zero-based molecule, atom, bond, or conformer indices and a one-based
 source line number.
 
+For imported molecules, `input.import` records the source format, connectivity summary, record-local
+policy, calculation-ordered `atom_mapping`, and retained `conformer_mapping`. Each mapping entry contains
+its zero-based source position, exact source ID when present, and structural author/label identity when
+available. Array position is the calculation atom or conformer index, so no duplicate calculation-index
+field is stored. Coordinate-free inputs have an empty conformer mapping. Failed and cancelled results keep
+the same input mapping while omitting assignments. Manually constructed molecules have no verified import
+mapping and omit `input.import`.
+
 Requested provenance records method and parameter selection, classification mode, method options,
-available conformer and structural import policy, execution request, resource thresholds, and thread
-limit.
+execution request, resource thresholds, and thread limit. Import policy is record-local under
+`input.import.policy`, so mixed import histories require no invocation-wide fallback.
 Effective provenance records the resolved method, parameter set, complete options, execution policy, and
 warnings. When supplied by the application, metrics include UTC start/end timestamps, parsing,
 applicability, computation, writing and total runtimes, and peak resident memory. Durations and memory are

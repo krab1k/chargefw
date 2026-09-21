@@ -47,6 +47,29 @@ auto append_unique(std::vector<ResultDiagnostic>& diagnostics, ResultDiagnostic 
     }
 }
 
+auto validate_import_metadata(const std::span<const ImportedMoleculeRecord> records) -> void {
+    for (const auto& record : records) {
+        if (!record.import_metadata.has_value()) {
+            continue;
+        }
+        const auto& metadata = *record.import_metadata;
+        if (metadata.atoms.size() != record.molecule.atom_count()) {
+            throw std::invalid_argument{
+                "import atom mapping size does not match molecule atom count"};
+        }
+        if (metadata.conformers.size() != record.molecule.conformer_count()) {
+            throw std::invalid_argument{
+                "import conformer mapping size does not match molecule conformer count"};
+        }
+        for (const auto& conformer : metadata.conformers) {
+            if (conformer.sites.size() != record.molecule.atom_count()) {
+                throw std::invalid_argument{
+                    "import conformer site mapping size does not match molecule atom count"};
+            }
+        }
+    }
+}
+
 auto validate_assignments(const std::span<const ImportedMoleculeRecord> records,
                           const calculation::ExecutionResult& result) -> void {
     if (result.status != calculation::ExecutionStatus::success) {
@@ -184,18 +207,42 @@ auto validate_assignments(const std::span<const ImportedMoleculeRecord> records,
 
 } // namespace
 
-auto make_charge_result_document(const std::span<const ImportedMoleculeRecord> records,
-                                 const RequestedCalculationProvenance& requested,
-                                 const calculation::ExecutionResult& result,
+auto make_charge_calculation_result(std::vector<ImportedMoleculeRecord> inputs,
+                                    RequestedCalculationProvenance requested,
+                                    calculation::ExecutionResult execution)
+    -> ChargeCalculationResult {
+    validate_import_metadata(inputs);
+    validate_assignments(inputs, execution);
+    auto result = ChargeCalculationResult{};
+    result.inputs_ = std::move(inputs);
+    result.requested_ = std::move(requested);
+    result.execution_ = std::move(execution);
+    return result;
+}
+
+auto ChargeCalculationResult::inputs() const noexcept -> std::span<const ImportedMoleculeRecord> {
+    return inputs_;
+}
+
+auto ChargeCalculationResult::requested() const noexcept -> const RequestedCalculationProvenance& {
+    return requested_;
+}
+
+auto ChargeCalculationResult::execution() const noexcept -> const calculation::ExecutionResult& {
+    return execution_;
+}
+
+auto make_charge_result_document(const ChargeCalculationResult& result,
                                  const std::string_view generator_name,
                                  const std::string_view generator_version,
                                  std::optional<ExecutionMetrics> execution_metrics)
     -> ChargeResultDocument {
-    validate_assignments(records, result);
-    const auto diagnostic = calculation_diagnostic(result);
+    const auto& execution = result.execution();
+    const auto records = result.inputs();
+    const auto diagnostic = calculation_diagnostic(execution);
     auto effective = EffectiveCalculationProvenance{};
-    if (result.effective.has_value()) {
-        const auto& calculation = *result.effective;
+    if (execution.effective.has_value()) {
+        const auto& calculation = *execution.effective;
         effective.method_id = calculation.method_id;
         effective.parameter_set_id = calculation.parameter_set_id;
         effective.execution_mode =
@@ -210,17 +257,25 @@ auto make_charge_result_document(const std::span<const ImportedMoleculeRecord> r
     auto document = ChargeResultDocument{
         .generator_name = std::string{generator_name},
         .generator_version = std::string{generator_version},
-        .status = result.status,
+        .status = execution.status,
         .diagnostics =
             diagnostic.has_value() ? std::vector{*diagnostic} : std::vector<ResultDiagnostic>{},
         .records = {},
         .calculation_provenance =
-            CalculationProvenance{.requested = requested,
+            CalculationProvenance{.requested = result.requested(),
                                   .effective = std::move(effective),
                                   .execution_metrics = std::move(execution_metrics)}};
     document.records.reserve(records.size());
     for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
         const auto& record = records[molecule_index];
+        auto assignments = std::vector<charges::ChargeAssignment>{};
+        if (execution.charges.has_value()) {
+            for (const auto& assignment : execution.charges->assignments()) {
+                if (assignment.target.molecule_index == molecule_index) {
+                    assignments.push_back(assignment);
+                }
+            }
+        }
         auto record_diagnostics = std::vector<ResultDiagnostic>{};
         for (const auto& import_diagnostic : record.diagnostics) {
             auto imported = ResultDiagnostic{};
@@ -234,8 +289,8 @@ auto make_charge_result_document(const std::span<const ImportedMoleculeRecord> r
         if (diagnostic.has_value()) {
             append_unique(record_diagnostics, *diagnostic);
         }
-        if (result.status == calculation::ExecutionStatus::no_executable_plan) {
-            for (const auto& rejected : result.rejections) {
+        if (execution.status == calculation::ExecutionStatus::no_executable_plan) {
+            for (const auto& rejected : execution.rejections) {
                 for (const auto& issue_value : rejected.issues) {
                     auto candidate = "method '" + rejected.method_id + "'";
                     if (rejected.parameter_set_id.has_value()) {
@@ -273,9 +328,9 @@ auto make_charge_result_document(const std::span<const ImportedMoleculeRecord> r
             }
         }
         document.records.push_back(
-            ChargeResultRecord{.identity = record.identity,
-                               .charges = result.charges,
-                               .status = result.status,
+            ChargeResultRecord{.input = record,
+                               .assignments = std::move(assignments),
+                               .status = execution.status,
                                .diagnostics = std::move(record_diagnostics)});
     }
     return document;

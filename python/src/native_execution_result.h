@@ -1,6 +1,6 @@
 #pragma once
 
-#include <chargefw/calculation/calculation.h>
+#include <chargefw/adapters/charge_result_document.h>
 
 #include <utility>
 
@@ -8,15 +8,15 @@ namespace chargefw::python {
 
 class NativeExecutionResult {
   public:
-    explicit NativeExecutionResult(calculation::ExecutionResult result)
+    explicit NativeExecutionResult(adapters::ChargeCalculationResult result)
         : result_{std::move(result)} {}
 
-    [[nodiscard]] auto result() const noexcept -> const calculation::ExecutionResult& {
+    [[nodiscard]] auto result() const noexcept -> const adapters::ChargeCalculationResult& {
         return result_;
     }
 
   private:
-    calculation::ExecutionResult result_;
+    adapters::ChargeCalculationResult result_;
 };
 
 } // namespace chargefw::python

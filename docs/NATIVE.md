@@ -164,7 +164,12 @@ Method implementations declare reduced-execution support through
 `calculation::ExecutionResult` reports an `ExecutionStatus`, optional `charges::ChargeSet`, rejections,
 effective calculation provenance, optional failure text, and applicability/computation timings.
 
-Result-document assembly validates successful assignment coverage, canonical molecule/conformer order,
+`adapters::ChargeCalculationResult` is the immutable application-facing boundary. It owns the ordered
+`ImportedMoleculeRecord` values used to build the calculation request, requested provenance, and the
+`ExecutionResult`. JSON and generated molecular writers can therefore consume the result without a
+separately supplied molecule collection, identity list, diagnostics list, or import context.
+
+Result construction validates import-mapping dimensions, successful assignment coverage, canonical molecule/conformer order,
 uniform scope, atom dimensions, target bounds, and agreement with effective method and parameter-set
 provenance. Failed and cancelled results must not contain charge assignments.
 

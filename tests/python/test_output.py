@@ -98,7 +98,24 @@ class GeneratedOutputTests(unittest.TestCase):
                 )
 
     def test_result_json_supports_failed_calculations(self) -> None:
-        molecule = chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]])
+        molecule = chargefw.io.parse(
+            """{
+  "schema_version": "1.0",
+  "molecules": [{
+    "atoms": [
+      {"atomic_number": 8, "formal_charge": 0},
+      {"atomic_number": 1, "formal_charge": 0},
+      {"atomic_number": 1, "formal_charge": 0}
+    ],
+    "bonds": [
+      {"atoms": [0, 1], "order": 1},
+      {"atoms": [0, 2], "order": 1}
+    ]
+  }]
+}""",
+            format="molecule-json",
+            source_name="topology.json",
+        )[0]
         try:
             chargefw.calculate(molecule, method="qeq")
         except chargefw.NoExecutablePlanError as error:
@@ -109,6 +126,10 @@ class GeneratedOutputTests(unittest.TestCase):
 
         self.assertEqual(encoded["status"], "no_executable_plan")
         self.assertNotIn("assignments", encoded["results"][0])
+        imported = encoded["results"][0]["input"]["import"]
+        self.assertEqual(imported["format"], "molecule-json")
+        self.assertEqual(len(imported["atom_mapping"]), 3)
+        self.assertEqual(imported["conformer_mapping"], [])
         self.assertTrue(encoded["results"][0]["diagnostics"])
         with self.assertRaisesRegex(ValueError, "successful calculation"):
             chargefw.io.dumps(failed_result, format="mmcif")
@@ -134,7 +155,14 @@ class GeneratedOutputTests(unittest.TestCase):
         encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
 
         self.assertEqual(encoded["results"][0]["input"]["source"], "manual")
+        self.assertNotIn("import", encoded["results"][0]["input"])
         self.assertEqual(encoded["results"][0]["diagnostics"], [])
+        imported_input = encoded["results"][1]["input"]["import"]
+        self.assertEqual(imported_input["format"], "mol2")
+        self.assertEqual(
+            [value["source_id"] for value in imported_input["atom_mapping"]],
+            list(imported_molecule.atom_ids),
+        )
         self.assertEqual(
             [value["code"] for value in encoded["results"][1]["diagnostics"]],
             ["partial_charges_ignored"],
@@ -142,6 +170,25 @@ class GeneratedOutputTests(unittest.TestCase):
         requested = encoded["calculation_provenance"]["requested"]
         self.assertNotIn("input", requested)
         self.assertNotIn("structural_input", requested)
+
+    def test_coordinate_free_result_json_retains_mapping(self) -> None:
+        molecules = chargefw.io.parse(
+            """{
+  "schema_version": "1.0",
+  "molecules": [{"atoms": [{"atomic_number": 1, "formal_charge": 0}]}]
+}""",
+            format="molecule-json",
+            source_name="hydrogen.json",
+        )
+        result = chargefw.calculate(molecules, method="formal")
+        del molecules
+        collect()
+
+        encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
+        record = encoded["results"][0]
+        self.assertEqual(record["assignments"][0]["scope"], "molecule")
+        self.assertEqual(record["input"]["import"]["atom_mapping"], [{"source_position": 0}])
+        self.assertEqual(record["input"]["import"]["conformer_mapping"], [])
 
     def test_molecular_output_requires_finite_coordinates(self) -> None:
         missing = chargefw.calculate(chargefw.Molecule([1]), method="formal")

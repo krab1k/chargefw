@@ -223,13 +223,6 @@ auto import_input(const InputArguments& arguments) -> ImportedCollection {
     auto imported = read_collection(arguments.path, options,
                                     arguments.structural_selection_option->count() > 0 ||
                                         arguments.structural_bonds_option->count() > 0);
-    imported.export_context.conformer_selection = arguments.conformer_selection;
-    if (imported.export_context.format == ImportedExportContext::Format::pdb ||
-        imported.export_context.format == ImportedExportContext::Format::mmcif) {
-        imported.export_context.structural_input_policy =
-            ImportedExportContext::StructuralInputPolicy{
-                .selection = arguments.structural_selection, .bonds = arguments.structural_bonds};
-    }
     return imported;
 }
 

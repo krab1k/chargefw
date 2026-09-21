@@ -42,9 +42,10 @@ class _InputMetadata:
 
 
 class _ImportedMolecule(Molecule):
-    __slots__ = ("_input_metadata",)
+    __slots__ = ("_input_metadata", "_native_input_metadata")
 
     _input_metadata: _InputMetadata
+    _native_input_metadata: _native_adapters._NativeInputMetadata
 
 
 def _molecule(
@@ -116,6 +117,7 @@ def _molecule(
         ),
     )
     object.__setattr__(result, "_source_mapping", source_mapping)
+    object.__setattr__(result, "_native_input_metadata", payload["native_input_metadata"])
     object.__setattr__(
         result,
         "_input_metadata",
@@ -221,40 +223,12 @@ def dumps(
         raise ValueError("sdf_version is only supported for SDF output")
     if sdf_version is not None and sdf_version not in ("v2000", "v3000"):
         raise ValueError("sdf_version must be 'v2000', 'v3000', or None")
-    identities: list[tuple[str, int, str]] = []
     for molecule in result.molecules:
         record_id = molecule.record_id
         if format == "result-json" and record_id is not None and not isinstance(record_id, str):
             raise TypeError("result JSON record IDs must be strings or None")
-        serialized_id = record_id if isinstance(record_id, str) else ""
-        identities.append((molecule.source_name, molecule.record_index, serialized_id))
-    metadata = tuple(
-        molecule._input_metadata if isinstance(molecule, _ImportedMolecule) else None
-        for molecule in result.molecules
-    )
-    imported_metadata = tuple(value for value in metadata if value is not None)
-    shared_metadata = (
-        imported_metadata[0]
-        if imported_metadata
-        and len(imported_metadata) == len(metadata)
-        and all(
-            value.structural_input == imported_metadata[0].structural_input
-            and value.conformers == imported_metadata[0].conformers
-            for value in imported_metadata
-        )
-        else None
-    )
-    requested = dict(result._requested_payload)
-    requested["structural_input"] = (
-        None if shared_metadata is None else shared_metadata.structural_input
-    )
-    requested["conformers"] = None if shared_metadata is None else shared_metadata.conformers
     return _native_adapters._dumps(
         result._native,
-        result.molecules._native_molecules,
-        identities,
-        tuple(() if value is None else value.diagnostics for value in metadata),
-        requested,
         format,
         sdf_version or "v3000",
     )

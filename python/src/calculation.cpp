@@ -1,7 +1,9 @@
 #include "bindings.h"
 #include "native_execution_result.h"
+#include "native_input_metadata.h"
 #include "native_parameter_catalog.h"
 
+#include <chargefw/adapters/charge_result_document.h>
 #include <chargefw/calculation/assessment.h>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/calculation/execution_policy.h>
@@ -18,6 +20,7 @@
 #include <nanobind/stl/vector.h>
 
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <optional>
 #include <span>
@@ -253,10 +256,16 @@ class PythonCalculationObserver final : public calculation::CalculationObserver 
 
 class NativeAssessmentState {
   public:
-    NativeAssessmentState(calculation::AssessmentResult assessment, const std::size_t max_threads)
-        : assessment_{std::move(assessment)}, max_threads_{max_threads} {}
+    NativeAssessmentState(calculation::AssessmentResult assessment,
+                          std::vector<adapters::ImportedMoleculeRecord> inputs,
+                          adapters::RequestedCalculationProvenance requested,
+                          const std::size_t max_threads)
+        : assessment_{std::move(assessment)}, inputs_{std::move(inputs)},
+          requested_{std::move(requested)}, max_threads_{max_threads} {}
 
     calculation::AssessmentResult assessment_;
+    std::vector<adapters::ImportedMoleculeRecord> inputs_;
+    adapters::RequestedCalculationProvenance requested_;
     std::size_t max_threads_ = 0;
 };
 
@@ -300,7 +309,10 @@ class NativePlan {
                                           max_threads.value_or(state_->max_threads_),
                                           *native_observer);
         }();
-        return NativeExecutionResult{std::move(result)};
+        auto requested = state_->requested_;
+        requested.max_threads = max_threads.value_or(state_->max_threads_);
+        return NativeExecutionResult{adapters::make_charge_calculation_result(
+            state_->inputs_, std::move(requested), std::move(result))};
     }
 
   private:
@@ -310,8 +322,12 @@ class NativePlan {
 
 class NativeAssessment {
   public:
-    NativeAssessment(calculation::AssessmentResult assessment, const std::size_t max_threads)
-        : state_{std::make_shared<NativeAssessmentState>(std::move(assessment), max_threads)} {}
+    NativeAssessment(calculation::AssessmentResult assessment,
+                     std::vector<adapters::ImportedMoleculeRecord> inputs,
+                     adapters::RequestedCalculationProvenance requested,
+                     const std::size_t max_threads)
+        : state_{std::make_shared<NativeAssessmentState>(std::move(assessment), std::move(inputs),
+                                                         std::move(requested), max_threads)} {}
 
     [[nodiscard]] auto report() const -> nb::dict {
         auto result = nb::dict{};
@@ -344,14 +360,16 @@ class NativeAssessment {
             return calculation::calculate(state_->assessment_, state_->max_threads_,
                                           *native_observer);
         }();
-        return NativeExecutionResult{std::move(result)};
+        return NativeExecutionResult{adapters::make_charge_calculation_result(
+            state_->inputs_, state_->requested_, std::move(result))};
     }
 
   private:
     std::shared_ptr<NativeAssessmentState> state_;
 };
 
-auto make_assessment(const nb::sequence& molecules, std::string molecule_collection_name,
+auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_metadata,
+                     const nb::sequence& identities, std::string molecule_collection_name,
                      const NativeParameterCatalog& catalog, std::optional<std::string> method_id,
                      std::optional<std::string> parameter_set_id, const nb::dict& options,
                      const bool permissive_types, const std::string& execution,
@@ -363,17 +381,61 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
     // work copies native-owned input values and prepares the assessment without accessing Python
     // objects.
     const auto molecule_count = static_cast<std::size_t>(nb::len(molecules));
+    if (static_cast<std::size_t>(nb::len(input_metadata)) != molecule_count ||
+        static_cast<std::size_t>(nb::len(identities)) != molecule_count) {
+        throw std::invalid_argument{"input record metadata count does not match molecules"};
+    }
     auto source_molecules = std::vector<const core::Molecule*>{};
+    auto source_metadata = std::vector<const NativeInputMetadata*>{};
+    auto source_identities = std::vector<adapters::MoleculeRecordIdentity>{};
     source_molecules.reserve(molecule_count);
+    source_metadata.reserve(molecule_count);
+    source_identities.reserve(molecule_count);
     for (std::size_t index = 0; index < molecule_count; ++index) {
         source_molecules.push_back(&nb::cast<const core::Molecule&>(molecules[index]));
+        source_metadata.push_back(
+            input_metadata[index].is_none()
+                ? nullptr
+                : &nb::cast<const NativeInputMetadata&>(input_metadata[index]));
+        const auto identity = nb::cast<nb::sequence>(identities[index]);
+        if (static_cast<std::size_t>(nb::len(identity)) != 3) {
+            throw std::invalid_argument{"input record identity must contain three values"};
+        }
+        source_identities.push_back(
+            adapters::MoleculeRecordIdentity{.source = nb::cast<std::string>(identity[0]),
+                                             .record_index = nb::cast<std::size_t>(identity[1]),
+                                             .record_id = nb::cast<std::string>(identity[2])});
     }
     auto native_method_options = method_options(options);
+    auto requested_options = std::map<std::string, methods::MethodOptions>{};
+    for (const auto& [id, values] : native_method_options) {
+        requested_options.emplace(id, values);
+    }
+    auto requested =
+        adapters::RequestedCalculationProvenance{.method_id = method_id,
+                                                 .parameter_set_id = parameter_set_id,
+                                                 .permissive_types = permissive_types,
+                                                 .cutoff_atom_threshold = cutoff_threshold,
+                                                 .cover_atom_threshold = cover_threshold,
+                                                 .max_threads = max_threads,
+                                                 .execution_kind = execution,
+                                                 .execution_radius = radius,
+                                                 .method_options = std::move(requested_options)};
     nb::gil_scoped_release release;
+    auto inputs = std::vector<adapters::ImportedMoleculeRecord>{};
+    inputs.reserve(source_molecules.size());
     auto owned_molecules = std::vector<core::Molecule>{};
     owned_molecules.reserve(source_molecules.size());
-    for (const auto* molecule : source_molecules) {
-        owned_molecules.push_back(*molecule);
+    for (std::size_t index = 0; index < source_molecules.size(); ++index) {
+        auto molecule = *source_molecules[index];
+        inputs.push_back(
+            source_metadata[index] == nullptr
+                ? adapters::ImportedMoleculeRecord{.molecule = molecule,
+                                                   .identity = std::move(source_identities[index]),
+                                                   .diagnostics = {},
+                                                   .import_metadata = std::nullopt}
+                : source_metadata[index]->make_record(molecule));
+        owned_molecules.push_back(std::move(molecule));
     }
     auto request = calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::move(owned_molecules),
@@ -389,15 +451,17 @@ auto make_assessment(const nb::sequence& molecules, std::string molecule_collect
         .resource_policy = {.cutoff_atom_threshold = cutoff_threshold,
                             .cover_atom_threshold = cover_threshold},
     };
-    return NativeAssessment{calculation::assess(std::move(request)), max_threads};
+    return NativeAssessment{calculation::assess(std::move(request)), std::move(inputs),
+                            std::move(requested), max_threads};
 }
 
 } // namespace
 
 void bind_calculation(nb::module_& module) {
     nb::class_<NativeExecutionResult>(module, "_NativeExecutionResult")
-        .def("report",
-             [](const NativeExecutionResult& value) { return execution_result(value.result()); });
+        .def("report", [](const NativeExecutionResult& value) {
+            return execution_result(value.result().execution());
+        });
     nb::class_<NativePlan>(module, "_NativePlan")
         .def("report", &NativePlan::report)
         .def("calculate", &NativePlan::calculate, nb::arg("max_threads") = nb::none(),
@@ -409,6 +473,7 @@ void bind_calculation(nb::module_& module) {
              nb::arg("observer") = nb::none());
 
     module.def("_make_assessment", &make_assessment, nb::arg("molecules"),
+               nb::arg("input_metadata"), nb::arg("identities"),
                nb::arg("molecule_collection_name"), nb::arg("catalog"), nb::arg("method_id"),
                nb::arg("parameter_set_id"), nb::arg("method_options"), nb::arg("permissive_types"),
                nb::arg("execution"), nb::arg("radius"), nb::arg("cutoff_threshold"),

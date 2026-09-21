@@ -9,6 +9,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace chargefw::adapters::native::json_output {
 namespace {
@@ -62,25 +63,130 @@ constexpr auto metric_scale = 1000.0;
     return values;
 }
 
-[[nodiscard]] auto record_json(const ChargeResultRecord& record, const std::size_t molecule_index)
-    -> Json {
-    Json input{{"source", record.identity.source}, {"record_index", record.identity.record_index}};
-    if (!record.identity.record_id.empty()) {
-        input["record_id"] = record.identity.record_id;
+[[nodiscard]] auto source_format_name(const MolecularSourceFormat format) -> std::string_view {
+    switch (format) {
+    case MolecularSourceFormat::molecule_json:
+        return "molecule-json";
+    case MolecularSourceFormat::mol:
+        return "mol";
+    case MolecularSourceFormat::sdf:
+        return "sdf";
+    case MolecularSourceFormat::mol2:
+        return "mol2";
+    case MolecularSourceFormat::pdb:
+        return "pdb";
+    case MolecularSourceFormat::mmcif:
+        return "mmcif";
+    }
+    throw std::invalid_argument{"unknown molecular source format"};
+}
+
+[[nodiscard]] auto connectivity_name(const SourceConnectivity connectivity) -> std::string_view {
+    switch (connectivity) {
+    case SourceConnectivity::absent:
+        return "absent";
+    case SourceConnectivity::explicitly_empty:
+        return "explicitly-empty";
+    case SourceConnectivity::present:
+        return "present";
+    }
+    throw std::invalid_argument{"unknown source connectivity state"};
+}
+
+[[nodiscard]] auto hierarchy_json(const SourceHierarchyLabels& labels) -> Json {
+    auto result = Json::object();
+    const auto add = [&result](const std::string_view name,
+                               const std::optional<std::string>& value) {
+        if (value.has_value()) {
+            result[name] = *value;
+        }
+    };
+    add("atom", labels.atom);
+    add("residue", labels.residue);
+    add("chain", labels.chain);
+    add("sequence", labels.sequence);
+    return result;
+}
+
+[[nodiscard]] auto source_reference_json(const SourceAtomReference& reference) -> Json {
+    auto result = Json{{"source_position", reference.position}};
+    if (reference.id.has_value()) {
+        result["source_id"] = *reference.id;
+    }
+    if (reference.structural_labels.has_value()) {
+        const auto& labels = *reference.structural_labels;
+        auto structural = Json{{"author", hierarchy_json(labels.author)},
+                               {"label", hierarchy_json(labels.label)}};
+        const auto add = [&structural](const std::string_view name,
+                                       const std::optional<std::string>& value) {
+            if (value.has_value()) {
+                structural[name] = *value;
+            }
+        };
+        add("entity", labels.entity);
+        add("insertion_code", labels.insertion_code);
+        add("alternate_location", labels.alternate_location);
+        add("segment", labels.segment);
+        result["structural_labels"] = std::move(structural);
+    }
+    return result;
+}
+
+[[nodiscard]] auto import_metadata_json(const MoleculeImportMetadata& metadata) -> Json {
+    auto atoms = Json::array();
+    for (const auto& reference : metadata.atoms) {
+        atoms.push_back(source_reference_json(reference));
+    }
+    auto conformers = Json::array();
+    for (const auto& conformer : metadata.conformers) {
+        auto sites = Json::array();
+        for (const auto& reference : conformer.sites) {
+            sites.push_back(source_reference_json(reference));
+        }
+        auto encoded = Json{{"source_position", conformer.position}, {"sites", std::move(sites)}};
+        if (conformer.id.has_value()) {
+            encoded["source_id"] = *conformer.id;
+        }
+        conformers.push_back(std::move(encoded));
+    }
+
+    auto policy = Json::object();
+    const auto add_policy = [&policy](const std::string_view name,
+                                      const std::optional<std::string>& value) {
+        if (value.has_value()) {
+            policy[name] = *value;
+        }
+    };
+    add_policy("record_selection", metadata.record_selection);
+    add_policy("alternate_location_selection", metadata.alternate_location_selection);
+    add_policy("conformer_selection", metadata.conformer_selection);
+    add_policy("bond_strategy", metadata.bond_strategy);
+
+    return Json{{"format", source_format_name(metadata.format)},
+                {"policy", std::move(policy)},
+                {"source_connectivity", connectivity_name(metadata.source_connectivity)},
+                {"atom_mapping", std::move(atoms)},
+                {"conformer_mapping", std::move(conformers)}};
+}
+
+[[nodiscard]] auto record_json(const ChargeResultRecord& record) -> Json {
+    Json input{{"source", record.input.identity.source},
+               {"record_index", record.input.identity.record_index}};
+    if (!record.input.identity.record_id.empty()) {
+        input["record_id"] = record.input.identity.record_id;
+    }
+    if (record.input.import_metadata.has_value()) {
+        input["import"] = import_metadata_json(*record.input.import_metadata);
     }
 
     Json result{{"input", std::move(input)}, {"status", calculation::to_string(record.status)}};
-    if (!record.charges.has_value()) {
+    if (record.assignments.empty()) {
         result["diagnostics"] = diagnostics_json(record.diagnostics);
         return result;
     }
 
     Json assignments = Json::array();
-    for (const auto& assignment : record.charges->assignments()) {
-        if (assignment.target.molecule_index != molecule_index) {
-            continue;
-        }
-
+    for (const auto& assignment : record.assignments) {
         auto encoded_charges = charges_json(assignment.charges);
         auto total_charge = 0.0;
         for (const auto value : assignment.charges.values()) {
@@ -93,17 +199,11 @@ constexpr auto metric_scale = 1000.0;
         Json encoded_assignment{
             {"scope", assignment.target.conformer_index.has_value() ? "conformer" : "molecule"},
             {"target", std::move(target)},
-            {"atom_order", "source"},
             {"charge_unit", "e"},
             {"charges", std::move(encoded_charges)},
             {"total_charge", total_charge}};
         assignments.push_back(std::move(encoded_assignment));
     }
-    if (assignments.empty()) {
-        throw std::invalid_argument{"Charge result record has no assignment for molecule index " +
-                                    std::to_string(molecule_index)};
-    }
-
     result["assignments"] = std::move(assignments);
     result["diagnostics"] = diagnostics_json(record.diagnostics);
     return result;
@@ -146,15 +246,7 @@ constexpr auto metric_scale = 1000.0;
         {"execution",
          {{"kind", provenance.requested.execution_kind},
           {"radius_angstrom", optional_value(provenance.requested.execution_radius)}}}};
-    if (provenance.requested.conformer_selection.has_value()) {
-        requested["input"] = {{"conformers", *provenance.requested.conformer_selection}};
-    }
     requested["method_options"] = method_options_json(provenance.requested.method_options);
-    if (provenance.requested.structural_input_policy.has_value()) {
-        requested["structural_input"] = {
-            {"selection", provenance.requested.structural_input_policy->selection},
-            {"bonds", provenance.requested.structural_input_policy->bonds}};
-    }
 
     Json effective{{"method", optional_id(provenance.effective.method_id)},
                    {"parameter_set", optional_id(provenance.effective.parameter_set_id)},
@@ -188,8 +280,8 @@ JsonWriter::JsonWriter(std::ostream& output) : output_{std::addressof(output)} {
 
 auto JsonWriter::write(const ChargeResultDocument& document) const -> void {
     Json records = Json::array();
-    for (std::size_t index = 0; index < document.records.size(); ++index) {
-        records.push_back(record_json(document.records[index], index));
+    for (const auto& record : document.records) {
+        records.push_back(record_json(record));
     }
 
     Json result{
@@ -202,6 +294,13 @@ auto JsonWriter::write(const ChargeResultDocument& document) const -> void {
         result["calculation_provenance"] = provenance_json(*document.calculation_provenance);
     }
     std::print(*output_, "{}\n", result.dump(2));
+}
+
+auto JsonWriter::write(const ChargeCalculationResult& result, const std::string_view generator_name,
+                       const std::string_view generator_version,
+                       std::optional<ExecutionMetrics> execution_metrics) const -> void {
+    write(make_charge_result_document(result, generator_name, generator_version,
+                                      std::move(execution_metrics)));
 }
 
 } // namespace chargefw::adapters::native::json_output

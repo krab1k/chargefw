@@ -33,8 +33,8 @@ function(run_structural_input extension contents input_stem expected_selection e
     if(NOT status STREQUAL "success")
         message(FATAL_ERROR "Expected successful .${extension} calculation, got ${status}")
     endif()
-    string(JSON structural_selection GET "${json_output}" calculation_provenance requested structural_input selection)
-    string(JSON structural_bonds GET "${json_output}" calculation_provenance requested structural_input bonds)
+    string(JSON structural_selection GET "${json_output}" results 0 input import policy record_selection)
+    string(JSON structural_bonds GET "${json_output}" results 0 input import policy bond_strategy)
     if(NOT structural_selection STREQUAL "${expected_selection}" OR
        NOT structural_bonds STREQUAL "${expected_bonds}")
         message(FATAL_ERROR "Unexpected structural provenance: selection=${structural_selection}, bonds=${structural_bonds}")

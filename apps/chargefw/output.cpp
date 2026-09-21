@@ -184,8 +184,7 @@ auto peak_resident_memory_mb() -> double {
     return static_cast<double>(usage.ru_maxrss) / 1024.0;
 }
 
-auto make_requested_provenance(const ImportedExportContext& export_context,
-                               const calculation::AssessmentRequest& request,
+auto make_requested_provenance(const calculation::AssessmentRequest& request,
                                const std::size_t max_threads)
     -> adapters::RequestedCalculationProvenance {
     auto requested = adapters::RequestedCalculationProvenance{
@@ -196,14 +195,7 @@ auto make_requested_provenance(const ImportedExportContext& export_context,
         .cover_atom_threshold = request.resource_policy.cover_atom_threshold,
         .max_threads = max_threads,
         .execution_kind = std::string{calculation::to_string(request.execution_selection.kind())},
-        .execution_radius = request.execution_selection.radius(),
-        .structural_input_policy =
-            export_context.structural_input_policy.has_value()
-                ? std::optional{adapters::StructuralInputPolicyProvenance{
-                      .selection = export_context.structural_input_policy->selection,
-                      .bonds = export_context.structural_input_policy->bonds}}
-                : std::nullopt,
-        .conformer_selection = export_context.conformer_selection};
+        .execution_radius = request.execution_selection.radius()};
     for (const auto& [method_id, options] : request.method_options) {
         requested.method_options.emplace(method_id, options);
     }
@@ -215,6 +207,8 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
                                const adapters::RequestedCalculationProvenance& requested,
                                const calculation::ExecutionResult& result, CalculationRun& run)
     -> int {
+    const auto owned_result =
+        adapters::make_charge_calculation_result(export_context.records, requested, result);
     run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
     const auto directory = std::filesystem::path{output_directory};
     std::error_code directory_error;
@@ -232,9 +226,8 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
         run.metrics.ended_at = utc_timestamp();
         run.metrics.runtime_seconds =
             std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
-        const auto document =
-            adapters::make_charge_result_document(export_context.records, requested, result,
-                                                  "ChargeFW", CHARGEFW_VERSION_STRING, run.metrics);
+        const auto document = adapters::make_charge_result_document(
+            owned_result, "ChargeFW", CHARGEFW_VERSION_STRING, run.metrics);
         write_json(prefix.string() + ".json", document);
         report_diagnostics(document);
         switch (result.status) {
@@ -269,9 +262,8 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     run.metrics.ended_at = utc_timestamp();
     run.metrics.runtime_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
-    const auto document =
-        adapters::make_charge_result_document(export_context.records, requested, result, "ChargeFW",
-                                              CHARGEFW_VERSION_STRING, run.metrics);
+    const auto document = adapters::make_charge_result_document(
+        owned_result, "ChargeFW", CHARGEFW_VERSION_STRING, run.metrics);
     write_json(prefix.string() + ".json", document);
     report_diagnostics(document);
     if (structural_output) {

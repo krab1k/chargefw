@@ -30,11 +30,6 @@ struct ResultDiagnostic {
     std::optional<std::size_t> line;
 };
 
-struct StructuralInputPolicyProvenance {
-    std::string selection;
-    std::string bonds;
-};
-
 // Invocation-wide calculation provenance. The JSON writer serializes the requested inputs and their
 // effective resolution as the primary complete result format; other output formats do not consume
 // it.
@@ -47,8 +42,6 @@ struct RequestedCalculationProvenance {
     std::size_t max_threads = 0;
     std::string execution_kind;
     std::optional<double> execution_radius;
-    std::optional<StructuralInputPolicyProvenance> structural_input_policy;
-    std::optional<std::string> conformer_selection;
     std::map<std::string, methods::MethodOptions> method_options;
 };
 
@@ -78,9 +71,33 @@ struct CalculationProvenance {
     std::optional<ExecutionMetrics> execution_metrics;
 };
 
+// Application-facing result boundary. It owns the exact normalized records supplied to the
+// calculation together with the requested and effective calculation outcome.
+class ChargeCalculationResult {
+  public:
+    [[nodiscard]] auto inputs() const noexcept -> std::span<const ImportedMoleculeRecord>;
+    [[nodiscard]] auto requested() const noexcept -> const RequestedCalculationProvenance&;
+    [[nodiscard]] auto execution() const noexcept -> const calculation::ExecutionResult&;
+
+  private:
+    friend auto make_charge_calculation_result(std::vector<ImportedMoleculeRecord> inputs,
+                                               RequestedCalculationProvenance requested,
+                                               calculation::ExecutionResult execution)
+        -> ChargeCalculationResult;
+
+    std::vector<ImportedMoleculeRecord> inputs_;
+    RequestedCalculationProvenance requested_;
+    calculation::ExecutionResult execution_;
+};
+
+[[nodiscard]] auto make_charge_calculation_result(std::vector<ImportedMoleculeRecord> inputs,
+                                                  RequestedCalculationProvenance requested,
+                                                  calculation::ExecutionResult execution)
+    -> ChargeCalculationResult;
+
 struct ChargeResultRecord {
-    MoleculeRecordIdentity identity;
-    std::optional<charges::ChargeSet> charges;
+    ImportedMoleculeRecord input;
+    std::vector<charges::ChargeAssignment> assignments;
     calculation::ExecutionStatus status = calculation::ExecutionStatus::success;
     std::vector<ResultDiagnostic> diagnostics;
 };
@@ -94,10 +111,10 @@ struct ChargeResultDocument {
     std::optional<CalculationProvenance> calculation_provenance;
 };
 
-[[nodiscard]] auto make_charge_result_document(
-    std::span<const ImportedMoleculeRecord> records,
-    const RequestedCalculationProvenance& requested, const calculation::ExecutionResult& result,
-    std::string_view generator_name, std::string_view generator_version,
-    std::optional<ExecutionMetrics> execution_metrics = std::nullopt) -> ChargeResultDocument;
+[[nodiscard]] auto
+make_charge_result_document(const ChargeCalculationResult& result, std::string_view generator_name,
+                            std::string_view generator_version,
+                            std::optional<ExecutionMetrics> execution_metrics = std::nullopt)
+    -> ChargeResultDocument;
 
 } // namespace chargefw::adapters

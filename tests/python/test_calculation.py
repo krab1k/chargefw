@@ -661,6 +661,8 @@ class CalculationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _native_calculation._make_assessment(
                 [molecule._native],
+                [None],
+                [("", 0, "")],
                 "",
                 chargefw.calculation._default_parameter_catalog(),
                 None,

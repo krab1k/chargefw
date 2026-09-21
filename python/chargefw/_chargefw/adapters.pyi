@@ -1,8 +1,10 @@
 from collections.abc import Sequence
-from typing import Literal, TypedDict
+from typing import Literal, TypeAlias, TypedDict
 
 from .calculation import _NativeExecutionResult
 from .core import _NativeMolecule
+
+class _NativeInputMetadata: ...
 
 class HierarchyLabelsPayload(TypedDict):
     atom: str | None
@@ -18,8 +20,8 @@ class StructuralLabelsPayload(TypedDict):
     alternate_location: str | None
     segment: str | None
 
-type AtomReferencePayload = tuple[int, str | None, StructuralLabelsPayload | None]
-type ConformerReferencePayload = tuple[int, str | None, list[AtomReferencePayload]]
+AtomReferencePayload: TypeAlias = tuple[int, str | None, StructuralLabelsPayload | None]
+ConformerReferencePayload: TypeAlias = tuple[int, str | None, list[AtomReferencePayload]]
 
 class ImportMetadataPayload(TypedDict):
     format: Literal["mol", "sdf", "mol2", "molecule-json", "pdb", "mmcif"]
@@ -44,6 +46,7 @@ class MoleculePayload(TypedDict):
     record_id: str
     diagnostics: list[tuple[str, str, int | None]]
     import_metadata: ImportMetadataPayload | None
+    native_input_metadata: _NativeInputMetadata
 
 def _parse(
     contents: str,
@@ -55,10 +58,6 @@ def _parse(
 ) -> list[MoleculePayload]: ...
 def _dumps(
     result: _NativeExecutionResult,
-    molecules: Sequence[_NativeMolecule],
-    identities: Sequence[tuple[str, int, str]],
-    diagnostics: Sequence[Sequence[tuple[str, str, int | None]]],
-    requested: dict[str, object],
     format: Literal["sdf", "mol2", "mmcif", "result-json"],
     sdf_version: Literal["v2000", "v3000"],
 ) -> str: ...

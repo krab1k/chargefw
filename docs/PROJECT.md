@@ -195,6 +195,10 @@ Imported records keep adapter metadata beside the normalized molecule rather tha
 and a small connectivity summary; it does not retain source documents, parser objects, normalized-value
 snapshots, or per-bond provenance.
 
+The application-facing charge result owns those ordered imported records together with the toolkit-neutral
+execution result. Output adapters consume that boundary directly, keeping source correspondence out of the
+scientific calculation engine without requiring parallel caller-supplied structures or contexts.
+
 ChargeFW is not a general chemistry-preparation toolkit. It does not provide SMILES parsing, arbitrary
 bond perception, sanitization, protonation, hydrogen addition or removal, conformer generation, or
 geometry optimization. Structural template bonding covers common amino acids, nucleotides, water, and
