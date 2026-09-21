@@ -8,7 +8,8 @@ function(run_structural_input extension contents input_stem expected_selection e
     file(REMOVE_RECURSE "${output_directory}")
 
     execute_process(
-            COMMAND "${CHARGEFW_CLI}" calculate ${ARGN} "${input_path}" "${output_directory}"
+            COMMAND "${CHARGEFW_CLI}" calculate --output-mol2 --output-mmcif ${ARGN}
+                    "${input_path}" "${output_directory}"
             RESULT_VARIABLE result
             OUTPUT_VARIABLE output
             ERROR_VARIABLE error

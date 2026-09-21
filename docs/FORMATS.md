@@ -239,6 +239,7 @@ Requested provenance records method and parameter selection, classification mode
 execution request, resource thresholds, and thread limit. Import policy is record-local under
 `input.import.policy`, so mixed import histories require no invocation-wide fallback.
 Effective provenance records the resolved method, parameter set, complete options, execution policy, and
-warnings. When supplied by the application, metrics include UTC start/end timestamps, parsing,
-applicability, computation, writing and total runtimes, and peak resident memory. Durations and memory are
-rounded to three decimal places.
+warnings. When supplied by the application, metrics include UTC start/end timestamps through result
+finalization, parsing, applicability and computation runtimes, and peak resident memory. Output publication
+happens afterward so that JSON can be published first without a rewrite. Durations and memory are rounded
+to three decimal places.

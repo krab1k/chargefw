@@ -125,6 +125,7 @@ auto run(std::span<char*> arguments) -> int {
     chargefw::cli::InputArguments applicability_input;
     chargefw::cli::SelectionArguments calculate_selection;
     chargefw::cli::SelectionArguments applicability_selection;
+    chargefw::cli::OutputArguments calculate_output;
     std::string output_directory;
     std::string method_info;
     std::string parameter_method;
@@ -141,6 +142,8 @@ auto run(std::span<char*> arguments) -> int {
     calculate->add_option("--threads", calculate_selection.max_threads,
                           "Maximum calculation threads; 0 uses the oneTBB default");
     calculate->add_flag("--progress", progress, "Show calculation progress on standard error");
+    calculate->add_flag("--output-mol2", calculate_output.mol2, "Write generated MOL2 output");
+    calculate->add_flag("--output-mmcif", calculate_output.mmcif, "Write generated mmCIF output");
     chargefw::cli::add_input_options(*inspect, inspect_input);
     chargefw::cli::add_input_options(*applicability, applicability_input);
     chargefw::cli::add_selection_options(*applicability, applicability_selection);
@@ -225,7 +228,8 @@ auto run(std::span<char*> arguments) -> int {
     run.metrics.applicability_seconds = result.metrics.applicability_seconds;
     run.metrics.computation_seconds = result.metrics.computation_seconds;
     return chargefw::cli::write_calculation_outputs(output_directory, calculate_input.path, records,
-                                                    requested_provenance, result, run);
+                                                    requested_provenance, result, calculate_output,
+                                                    run);
 }
 
 } // namespace

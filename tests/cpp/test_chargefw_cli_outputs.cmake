@@ -3,54 +3,50 @@ set(output_prefix "${output_directory}/water.chargefw")
 include("${CMAKE_CURRENT_LIST_DIR}/prepare_moved_install.cmake")
 file(REMOVE_RECURSE "${output_directory}")
 
-function(expect_output_failure label extension)
-    set(failure_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_output_failure_${label}")
-    set(failure_output_prefix "${failure_output_directory}/water.chargefw")
-    file(REMOVE_RECURSE "${failure_output_directory}")
-    file(MAKE_DIRECTORY "${failure_output_directory}")
-    file(CREATE_LINK "/dev/full" "${failure_output_prefix}.${extension}" SYMBOLIC RESULT link_result)
-    if(NOT link_result STREQUAL "0")
-        message(FATAL_ERROR "Unable to create /dev/full output link: ${link_result}")
-    endif()
-
-    execute_process(
-            COMMAND "${CHARGEFW_CLI}" calculate --method eem "${CHARGEFW_INPUT}"
-                    "${failure_output_directory}"
-            RESULT_VARIABLE failure_result
-            OUTPUT_VARIABLE failure_output
-            ERROR_VARIABLE failure_error
-    )
-    if(NOT failure_result EQUAL 2 OR
-       NOT failure_error MATCHES "Unable to write output file: ${failure_output_prefix}.${extension}" OR
-       failure_output MATCHES "Wrote")
-        message(FATAL_ERROR "${label} output failure was not reported correctly: ${failure_error}")
-    endif()
-    file(REMOVE_RECURSE "${failure_output_directory}")
-endfunction()
-
-if(EXISTS "/dev/full")
-    foreach(extension IN ITEMS mol2 cif json)
-        expect_output_failure("full_${extension}" "${extension}")
-    endforeach()
-endif()
-
-set(open_failure_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_output_open_failure")
-set(open_failure_output_prefix "${open_failure_output_directory}/water.chargefw")
-file(REMOVE_RECURSE "${open_failure_output_directory}")
-file(MAKE_DIRECTORY "${open_failure_output_prefix}.cif")
+set(json_failure_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_json_failure")
+set(json_failure_output_prefix "${json_failure_output_directory}/water.chargefw")
+file(REMOVE_RECURSE "${json_failure_output_directory}")
+file(MAKE_DIRECTORY "${json_failure_output_prefix}.json")
 execute_process(
         COMMAND "${CHARGEFW_CLI}" calculate --method eem "${CHARGEFW_INPUT}"
-                "${open_failure_output_directory}"
-        RESULT_VARIABLE open_failure_result
-        OUTPUT_VARIABLE open_failure_output
-        ERROR_VARIABLE open_failure_error
+                "${json_failure_output_directory}"
+        RESULT_VARIABLE json_failure_result
+        OUTPUT_VARIABLE json_failure_output
+        ERROR_VARIABLE json_failure_error
 )
-if(NOT open_failure_result EQUAL 2 OR
-   NOT open_failure_error MATCHES "Unable to open output file: ${open_failure_output_prefix}.cif" OR
-   open_failure_output MATCHES "Wrote")
-    message(FATAL_ERROR "normal filesystem output failure was not reported correctly: ${open_failure_error}")
+file(GLOB json_failure_temporary_files "${json_failure_output_prefix}.json.tmp.*")
+if(NOT json_failure_result EQUAL 2 OR
+   NOT json_failure_error MATCHES "Unable to publish output file: ${json_failure_output_prefix}.json" OR
+   json_failure_output MATCHES "Wrote" OR json_failure_temporary_files)
+    message(FATAL_ERROR "atomic JSON publication failure was not reported correctly: ${json_failure_error}")
 endif()
-file(REMOVE_RECURSE "${open_failure_output_directory}")
+file(REMOVE_RECURSE "${json_failure_output_directory}")
+
+set(export_failure_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_export_failure")
+set(export_failure_output_prefix "${export_failure_output_directory}/water.chargefw")
+file(REMOVE_RECURSE "${export_failure_output_directory}")
+file(MAKE_DIRECTORY "${export_failure_output_prefix}.mol2")
+execute_process(
+        COMMAND "${CHARGEFW_CLI}" calculate --method eem --output-mol2 "${CHARGEFW_INPUT}"
+                "${export_failure_output_directory}"
+        RESULT_VARIABLE export_failure_result
+        OUTPUT_VARIABLE export_failure_output
+        ERROR_VARIABLE export_failure_error
+)
+file(GLOB export_failure_temporary_files "${export_failure_output_prefix}.mol2.tmp.*")
+if(NOT export_failure_result EQUAL 6 OR
+   NOT export_failure_error MATCHES "Export error: Unable to publish output file: ${export_failure_output_prefix}.mol2" OR
+   NOT EXISTS "${export_failure_output_prefix}.json" OR
+   NOT export_failure_output MATCHES "Wrote ${export_failure_output_prefix}.json" OR
+   export_failure_temporary_files)
+    message(FATAL_ERROR "atomic molecular export failure was not reported correctly: ${export_failure_error}")
+endif()
+file(READ "${export_failure_output_prefix}.json" export_failure_json)
+string(JSON export_failure_status GET "${export_failure_json}" status)
+if(NOT export_failure_status STREQUAL "success")
+    message(FATAL_ERROR "molecular export failure changed the JSON calculation status")
+endif()
+file(REMOVE_RECURSE "${export_failure_output_directory}")
 
 foreach(mode IN ITEMS full cutoff cover)
     set(mode_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_${mode}")
@@ -174,7 +170,8 @@ file(WRITE "${multiconformer_input}" [=[
 ]=])
 file(REMOVE_RECURSE "${multiconformer_output_directory}")
 execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method formal "${multiconformer_input}"
+        COMMAND "${CHARGEFW_CLI}" calculate --method formal --output-mol2 --output-mmcif
+                "${multiconformer_input}"
                 "${multiconformer_output_directory}"
         RESULT_VARIABLE multiconformer_result
         ERROR_VARIABLE multiconformer_error
@@ -202,6 +199,62 @@ if(mol2_first_position EQUAL -1 OR mol2_second_position EQUAL -1)
 endif()
 file(REMOVE "${multiconformer_input}")
 file(REMOVE_RECURSE "${multiconformer_output_directory}")
+
+set(coordinate_free_input "${CMAKE_CURRENT_BINARY_DIR}/coordinate_free.json")
+set(coordinate_free_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_coordinate_free")
+set(coordinate_free_output_prefix "${coordinate_free_output_directory}/coordinate_free.chargefw")
+file(WRITE "${coordinate_free_input}" [=[
+{"schema_version":"1.0","molecules":[{"atoms":[{"atomic_number":1,"formal_charge":0}]}]}
+]=])
+file(REMOVE_RECURSE "${coordinate_free_output_directory}")
+file(MAKE_DIRECTORY "${coordinate_free_output_directory}")
+file(WRITE "${coordinate_free_output_prefix}.mol2" "existing export\n")
+execute_process(
+        COMMAND "${CHARGEFW_CLI}" calculate --method formal --output-mol2
+                "${coordinate_free_input}"
+                "${coordinate_free_output_directory}"
+        RESULT_VARIABLE coordinate_free_result
+        ERROR_VARIABLE coordinate_free_error
+)
+if(NOT coordinate_free_result EQUAL 6 OR
+   NOT coordinate_free_error MATCHES "Export error: MOL2 output requires coordinates")
+    message(FATAL_ERROR "coordinate-free MOL2 failure was not reported as an export error: ${coordinate_free_error}")
+endif()
+file(READ "${coordinate_free_output_prefix}.mol2" coordinate_free_mol2)
+file(GLOB coordinate_free_temporary_files "${coordinate_free_output_prefix}.mol2.tmp.*")
+if(NOT coordinate_free_mol2 STREQUAL "existing export\n" OR
+   NOT EXISTS "${coordinate_free_output_prefix}.json" OR coordinate_free_temporary_files)
+    message(FATAL_ERROR "failed MOL2 generation changed a published file or left a temporary file")
+endif()
+file(REMOVE "${coordinate_free_input}")
+file(REMOVE_RECURSE "${coordinate_free_output_directory}")
+
+set(range_input "${CMAKE_CURRENT_BINARY_DIR}/out_of_range_charge.json")
+set(range_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_out_of_range_charge")
+set(range_output_prefix "${range_output_directory}/out_of_range_charge.chargefw")
+file(WRITE "${range_input}" [=[
+{"schema_version":"1.0","molecules":[{"atoms":[{"atomic_number":1,"formal_charge":6}],"conformers":[{"coordinates":[[0,0,0]]}]}]}
+]=])
+file(REMOVE_RECURSE "${range_output_directory}")
+execute_process(
+        COMMAND "${CHARGEFW_CLI}" calculate --method formal --output-mol2 --output-mmcif
+                "${range_input}"
+                "${range_output_directory}"
+        RESULT_VARIABLE range_result
+        ERROR_VARIABLE range_error
+)
+if(NOT range_result EQUAL 6 OR
+   NOT range_error MATCHES "Export error: mmCIF charge is outside the dictionary range")
+    message(FATAL_ERROR "mmCIF range failure was not reported as an export error: ${range_error}")
+endif()
+file(GLOB range_temporary_files "${range_output_prefix}.*.tmp.*")
+if(NOT EXISTS "${range_output_prefix}.json" OR
+   NOT EXISTS "${range_output_prefix}.mol2" OR
+   EXISTS "${range_output_prefix}.cif" OR range_temporary_files)
+    message(FATAL_ERROR "second export failure discarded an earlier output or left a temporary file")
+endif()
+file(REMOVE "${range_input}")
+file(REMOVE_RECURSE "${range_output_directory}")
 
 set(deterministic_result "")
 foreach(run IN ITEMS 1 2)
@@ -342,10 +395,12 @@ if(NOT IS_DIRECTORY "${output_directory}")
     message(FATAL_ERROR "Output directory was not created: ${output_directory}")
 endif()
 
-foreach(extension IN ITEMS json mol2 cif)
-    set(path "${output_prefix}.${extension}")
-    if(NOT EXISTS "${path}")
-        message(FATAL_ERROR "Expected output file was not created: ${path}")
+if(NOT EXISTS "${output_prefix}.json")
+    message(FATAL_ERROR "Default JSON output was not created")
+endif()
+foreach(extension IN ITEMS mol2 cif)
+    if(EXISTS "${output_prefix}.${extension}")
+        message(FATAL_ERROR "Unrequested molecular output was created: ${extension}")
     endif()
 endforeach()
 
@@ -393,13 +448,31 @@ foreach(extension IN ITEMS sdf)
     endif()
 endforeach()
 
-file(READ "${output_prefix}.mol2" mol2_output)
+set(explicit_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_explicit_outputs")
+set(explicit_output_prefix "${explicit_output_directory}/water.chargefw")
+file(REMOVE_RECURSE "${explicit_output_directory}")
+execute_process(
+        COMMAND "${CHARGEFW_CLI}" calculate --output-mol2 --output-mmcif "${CHARGEFW_INPUT}"
+                "${explicit_output_directory}"
+        RESULT_VARIABLE explicit_result
+        ERROR_VARIABLE explicit_error
+)
+if(NOT explicit_result EQUAL 0)
+    message(FATAL_ERROR "explicit molecular output failed: ${explicit_error}")
+endif()
+foreach(extension IN ITEMS json mol2 cif)
+    if(NOT EXISTS "${explicit_output_prefix}.${extension}")
+        message(FATAL_ERROR "Requested output file was not created: ${extension}")
+    endif()
+endforeach()
+file(READ "${explicit_output_prefix}.mol2" mol2_output)
 if(NOT mol2_output MATCHES "@<TRIPOS>MOLECULE" OR
    NOT mol2_output MATCHES "USER_CHARGES")
     message(FATAL_ERROR "Generated MOL2 output is incomplete")
 endif()
 
 file(REMOVE_RECURSE "${output_directory}")
+file(REMOVE_RECURSE "${explicit_output_directory}")
 
 execute_process(
         COMMAND "${CHARGEFW_CLI}" inspect "${CHARGEFW_INPUT}"

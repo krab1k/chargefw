@@ -27,3 +27,15 @@ execute_process(
 if(NOT help_result EQUAL 0)
     message(FATAL_ERROR "help command failed with exit status ${help_result}: ${help_error}")
 endif()
+
+execute_process(
+        COMMAND "${CHARGEFW_CLI}" calculate --help
+        RESULT_VARIABLE calculate_help_result
+        OUTPUT_VARIABLE calculate_help_output
+        ERROR_VARIABLE calculate_help_error
+)
+if(NOT calculate_help_result EQUAL 0 OR
+   NOT calculate_help_output MATCHES "--output-mol2" OR
+   NOT calculate_help_output MATCHES "--output-mmcif")
+    message(FATAL_ERROR "calculate help does not list molecular output options: ${calculate_help_error}")
+endif()

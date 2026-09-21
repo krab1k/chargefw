@@ -2,6 +2,7 @@
 
 #include <chargefw/config.h>
 
+#include <atomic>
 #include <chrono>
 #include <ctime>
 #include <filesystem>
@@ -13,6 +14,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <sys/resource.h>
+#include <unistd.h>
 
 namespace chargefw::cli {
 namespace {
@@ -52,37 +54,54 @@ void finalize_output(std::ofstream& output, const std::filesystem::path& path) {
     }
 }
 
+template <typename Writer> void write_atomically(const std::filesystem::path& path, Writer writer) {
+    static auto sequence = std::atomic_size_t{};
+    auto temporary_path = path;
+    temporary_path += ".tmp." + std::to_string(getpid()) + "." +
+                      std::to_string(sequence.fetch_add(1, std::memory_order_relaxed));
+    try {
+        auto output = std::ofstream{temporary_path};
+        if (!output) {
+            throw std::runtime_error{"Unable to open output file: " + path.string()};
+        }
+        writer(output);
+        finalize_output(output, path);
+
+        std::error_code rename_error;
+        std::filesystem::rename(temporary_path, path, rename_error);
+        if (rename_error) {
+            throw std::runtime_error{"Unable to publish output file: " + path.string() + ": " +
+                                     rename_error.message()};
+        }
+    } catch (...) {
+        std::error_code remove_error;
+        std::filesystem::remove(temporary_path, remove_error);
+        throw;
+    }
+}
+
 void write_json(const std::filesystem::path& path, const adapters::ChargeCalculationResult& result,
                 const adapters::ExecutionMetrics& metrics) {
-    auto output = std::ofstream{path};
-    if (!output) {
-        throw std::runtime_error{"Unable to open output file: " + path.string()};
-    }
-    adapters::native::json_output::JsonWriter{output}.write(result, "ChargeFW",
-                                                            CHARGEFW_VERSION_STRING, metrics);
-    finalize_output(output, path);
+    write_atomically(path, [&result, &metrics](auto& output) {
+        adapters::native::json_output::JsonWriter{output}.write(result, "ChargeFW",
+                                                                CHARGEFW_VERSION_STRING, metrics);
+    });
 }
 
 void write_mmcif(const std::filesystem::path& path,
                  const adapters::ChargeCalculationResult& result) {
-    auto output = std::ofstream{path};
-    if (!output) {
-        throw std::runtime_error{"Unable to open output file: " + path.string()};
-    }
-    adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, "ChargeFW",
-                                                             CHARGEFW_VERSION_STRING);
-    finalize_output(output, path);
+    write_atomically(path, [&result](auto& output) {
+        adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, "ChargeFW",
+                                                                 CHARGEFW_VERSION_STRING);
+    });
 }
 
 void write_mol2(const std::filesystem::path& path,
                 const adapters::ChargeCalculationResult& result) {
-    auto output = std::ofstream{path};
-    if (!output) {
-        throw std::runtime_error{"Unable to open output file: " + path.string()};
-    }
-    adapters::native::mol2_output::Mol2Writer{output}.write(result, "ChargeFW",
-                                                            CHARGEFW_VERSION_STRING);
-    finalize_output(output, path);
+    write_atomically(path, [&result](auto& output) {
+        adapters::native::mol2_output::Mol2Writer{output}.write(result, "ChargeFW",
+                                                                CHARGEFW_VERSION_STRING);
+    });
 }
 
 } // namespace
@@ -129,7 +148,8 @@ auto make_requested_provenance(const calculation::AssessmentRequest& request,
 auto write_calculation_outputs(const std::string& output_directory, const std::string& input_path,
                                const std::vector<adapters::ImportedMoleculeRecord>& records,
                                const adapters::RequestedCalculationProvenance& requested,
-                               const calculation::ExecutionResult& result, CalculationRun& run)
+                               const calculation::ExecutionResult& result,
+                               const OutputArguments& output_arguments, CalculationRun& run)
     -> int {
     const auto owned_result = adapters::make_charge_calculation_result(records, requested, result);
     run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
@@ -168,19 +188,30 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
     if (!result.charges.has_value()) {
         throw std::runtime_error{"calculation result is missing charges"};
     }
-    const auto writing_started = std::chrono::steady_clock::now();
-    write_mol2(prefix.string() + ".mol2", owned_result);
-    write_mmcif(prefix.string() + ".cif", owned_result);
-    run.metrics.writing_seconds =
-        std::chrono::duration<double>{std::chrono::steady_clock::now() - writing_started}.count();
     run.metrics.peak_resident_memory_mb = peak_resident_memory_mb();
     run.metrics.ended_at = utc_timestamp();
     run.metrics.runtime_seconds =
         std::chrono::duration<double>{std::chrono::steady_clock::now() - run.started}.count();
-    write_json(prefix.string() + ".json", owned_result, run.metrics);
+    const auto json_path = std::filesystem::path{prefix.string() + ".json"};
+    write_json(json_path, owned_result, run.metrics);
     report_diagnostics(owned_result);
-    std::println("Wrote {}, {}, and {}", prefix.string() + ".json", prefix.string() + ".mol2",
-                 prefix.string() + ".cif");
+    std::println("Wrote {}", json_path.string());
+
+    try {
+        if (output_arguments.mol2) {
+            const auto mol2_path = std::filesystem::path{prefix.string() + ".mol2"};
+            write_mol2(mol2_path, owned_result);
+            std::println("Wrote {}", mol2_path.string());
+        }
+        if (output_arguments.mmcif) {
+            const auto mmcif_path = std::filesystem::path{prefix.string() + ".cif"};
+            write_mmcif(mmcif_path, owned_result);
+            std::println("Wrote {}", mmcif_path.string());
+        }
+    } catch (const std::exception& error) {
+        std::println(std::cerr, "Export error: {}", error.what());
+        return 6;
+    }
     return 0;
 }
 

@@ -290,8 +290,7 @@ constexpr auto metric_scale = 1000.0;
             {"phases",
              {{"parsing_seconds", rounded(metrics.parsing_seconds, metric_scale)},
               {"applicability_seconds", rounded(metrics.applicability_seconds, metric_scale)},
-              {"computation_seconds", rounded(metrics.computation_seconds, metric_scale)},
-              {"writing_seconds", rounded(metrics.writing_seconds, metric_scale)}}},
+              {"computation_seconds", rounded(metrics.computation_seconds, metric_scale)}}},
             {"peak_resident_memory_mb", rounded(metrics.peak_resident_memory_mb, metric_scale)}};
     }
     return encoded;

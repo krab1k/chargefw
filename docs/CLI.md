@@ -123,24 +123,42 @@ The output basename is derived from the input filename:
 OUTPUT_DIRECTORY/<input-stem>.chargefw
 ```
 
-On a successful calculation, ChargeFW writes:
+Every normal calculation outcome writes result JSON:
 
 ```text
 <basename>.json
+```
+
+On success, request fresh molecular representations explicitly:
+
+```bash
+chargefw calculate --output-mol2 molecule.sdf output
+chargefw calculate --output-mmcif structure.cif output
+chargefw calculate --output-mol2 --output-mmcif molecule.sdf output
+```
+
+The requested files use the same basename:
+
+```text
 <basename>.mol2
 <basename>.cif
 ```
 
-MOL2 and mmCIF are fresh generated representations for every supported input format. MOL2 writes one
-`SMALL`/`USER_CHARGES` record per retained conformer and is intended primarily for small molecules; mmCIF
-retains known structural hierarchy and is preferred for polymers and other structural input. Both require
-coordinates even when the selected method is geometry-independent and never copy unselected source models
-or unrelated source content. SDF is input-only. The [molecular format reference](FORMATS.md#charge-output)
-describes the generated structures, charge fields, precision, and mapping checks.
+MOL2 and mmCIF are fresh generated representations for every supported input format. They are not written
+unless requested. MOL2 writes one `SMALL`/`USER_CHARGES` record per retained conformer and is intended
+primarily for small molecules; mmCIF retains known structural hierarchy and is preferred for polymers and
+other structural input. Both require coordinates even when the selected method is geometry-independent and
+never copy unselected source models or unrelated source content. SDF is input-only. The
+[molecular format reference](FORMATS.md#charge-output) describes the generated structures, charge fields,
+precision, and mapping checks.
 
-Once import and request construction succeed, normal calculation outcomes write `<basename>.json`.
-Molecular charge files are written only on success. Import, request-construction, filesystem, and output
-compatibility failures are reported on standard error and can occur before a result document is written.
+Once import and request construction succeed, normal calculation outcomes atomically publish
+`<basename>.json`. On success, ChargeFW publishes JSON before attempting requested molecular exports. Each
+file is independently written to a same-directory temporary file and atomically replaces its destination
+only after serialization completes. A molecular export failure reports `Export error`, exits with status 6,
+and leaves JSON and any earlier completed export intact; the JSON calculation status remains `success`.
+Import, request-construction, primary JSON publication, and other filesystem failures are reported on
+standard error and can occur before a result document is published.
 
 During calculation, press `Ctrl+C` once to request cooperative cancellation. ChargeFW stops at its next
 cancellation check point, writes `<basename>.json` with status `cancelled` and no charge assignments, and
@@ -191,7 +209,8 @@ publication, notes, and priority; the positional ID and `--method` cannot be com
 | --- | --- |
 | `0` | Calculation or reporting command completed successfully |
 | `1` | Unexpected internal failure |
-| `2` | Invalid input or request |
+| `2` | Invalid input or request, or primary output publication failure |
 | `3` | No executable plan |
 | `4` | Numerical calculation failure |
 | `5` | Calculation cancelled |
+| `6` | A requested molecular export failed after JSON publication |
