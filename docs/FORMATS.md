@@ -12,15 +12,19 @@ order is retained in charge assignments and in every output mapping.
 
 ## Format overview
 
-| Format | Input | Charge output | Record model |
+| Format | Accepted input | Available output | Input record model |
 | --- | --- | --- | --- |
 | MOL V2000/V3000 | Yes | No | One molecule, one conformer |
 | SDF V2000/V3000 | Yes | No | One molecule per record, one conformer each |
-| Tripos MOL2 | Yes | Fresh generated MOL2 | One molecule per `MOLECULE` record, one conformer each |
-| ChargeFW molecule JSON 1.0 | Yes | No; result JSON uses a different schema | `molecules` array, zero or more conformers each |
-| PDB | Yes, through Gemmi | Fresh generated mmCIF | One molecule, models become conformers |
-| mmCIF | Yes, through Gemmi | Fresh generated mmCIF | One molecule per coordinate-bearing block |
-| ChargeFW result JSON 1.0 | No | Yes | One result record per imported molecule |
+| Tripos MOL2 | Yes | Yes, freshly generated | One molecule per `MOLECULE` record, one conformer each |
+| ChargeFW molecule JSON 1.0 | Yes | No | `molecules` array, zero or more conformers each |
+| PDB | Yes, through Gemmi | No | One molecule, models become conformers |
+| mmCIF | Yes, through Gemmi | Yes, freshly generated | One molecule per coordinate-bearing block |
+| ChargeFW result JSON 1.0 | No | Yes | Not applicable |
+
+Input and output capabilities are independent. A result calculated from any supported molecular input can
+be written as result JSON or, when its data is representable, as generated MOL2 or generated mmCIF. ChargeFW
+does not write MOL, SDF, molecule JSON, or PDB.
 
 Readers report malformed or unsupported molecular data as errors. Native MOL, SDF, and MOL2 input accepts
 both LF and CRLF line endings. A successful imported record also carries its source name, zero-based record
