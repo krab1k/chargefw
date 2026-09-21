@@ -163,19 +163,11 @@ auto read_collection(const std::string& input_path,
     }
     if (extension == ".pdb") {
         adapters::gemmi::pdb_input::PdbReader reader{input, input_path, structural_options};
-        auto result = read_collection(reader, input_path, ImportedExportContext::Format::pdb);
-        result.export_context.pdb_source = adapters::gemmi::mmcif_output::PdbSource{
-            .structure = reader.source_structure(), .selection = reader.options().selection};
-        return result;
+        return read_collection(reader, input_path, ImportedExportContext::Format::pdb);
     }
     if (extension == ".cif" || extension == ".mmcif") {
         adapters::gemmi::mmcif_input::MmcifReader reader{input, input_path, structural_options};
-        auto result = read_collection(reader, input_path, ImportedExportContext::Format::mmcif);
-        result.export_context.mmcif_source = adapters::gemmi::mmcif_output::MmcifSource{
-            .document = reader.source_document(),
-            .block_indices = reader.source_block_indices(),
-            .selection = reader.options().selection};
-        return result;
+        return read_collection(reader, input_path, ImportedExportContext::Format::mmcif);
     }
 
     throw std::runtime_error{"Unsupported input file type: " + extension +

@@ -18,8 +18,8 @@ order is retained in charge assignments and in every output mapping.
 | SDF V2000/V3000 | Yes | Preserved or generated SDF | One molecule per record, one conformer each |
 | Tripos MOL2 | Yes | Preserved or generated MOL2 | One molecule per `MOLECULE` record, one conformer each |
 | ChargeFW molecule JSON 1.0 | Yes | No; result JSON uses a different schema | `molecules` array, zero or more conformers each |
-| PDB | Yes, through Gemmi | Converted to mmCIF | One molecule, models become conformers |
-| mmCIF | Yes, through Gemmi | Preserved or generated mmCIF | One molecule per coordinate-bearing block |
+| PDB | Yes, through Gemmi | Fresh generated mmCIF | One molecule, models become conformers |
+| mmCIF | Yes, through Gemmi | Fresh generated mmCIF | One molecule per coordinate-bearing block |
 | ChargeFW result JSON 1.0 | No | Yes | One result record per imported molecule |
 
 Readers report malformed or unsupported molecular data as errors. Native MOL, SDF, and MOL2 input accepts
@@ -202,18 +202,7 @@ mmCIF charge output follows the SB NCBR partial atomic charges dictionary versio
 dictionary declaration in `_audit_conform`. Charge rows refer to `_atom_site.id`, preserving the mapping
 of structural selections and conformers.
 
-For mmCIF input, preservation-oriented output retains the source document and unrelated categories. Its
-default `replace` mode replaces existing ChargeFW charge categories; `append` allocates subsequent numeric
-charge-type IDs. PDB input is converted to mmCIF after applying the imported structural selection.
-Unselected PDB alternate locations are omitted by that conversion, while an mmCIF source document retains
-unselected rows and attaches charges only to selected atom IDs.
-
-Generated mmCIF creates one non-polymer `UNL` data block per molecule, including elements, formal charges,
-single/double/triple bonds, and all native conformers. Block and atom IDs are made unique when necessary.
-Conformer-independent assignments are attached to every retained conformer; conformer-specific
-assignments are attached only to their corresponding model. Coordinates are required.
-
-The result-owned native mmCIF path instead creates a fresh minimal block for every record occurrence. It
+The result-owned mmCIF writer creates a fresh minimal block for every record occurrence. It
 emits `_entry`, `_audit_conform`, `_atom_site`, and the charge dictionary categories without copying source
 categories or inventing component topology. Known author and label atom/residue/chain identities are kept
 separate for every conformer site; unavailable names fall back deterministically to generated atom names,
@@ -223,6 +212,12 @@ molecule-scoped charges cover every conformer and conformer-scoped charges never
 and charges use round-trip floating-point formatting. Output rejects missing or non-finite coordinates,
 empty records, unsuccessful results, and charges outside the dictionary's inclusive `[-5, 5]` range before
 serializing the document.
+
+Python additionally supports strict in-memory annotation of the unchanged Gemmi document used for import.
+This preserves unrelated categories but validates exact block, source-position, atom-ID, and model-ID
+correspondence before mutation. Existing charge categories require explicit overwrite; append mode and CLI
+source-file preservation are not supported. Source atom IDs must be canonical positive integers to satisfy
+the charge dictionary's `atom_id` constraint.
 
 ### ChargeFW result JSON 1.0
 

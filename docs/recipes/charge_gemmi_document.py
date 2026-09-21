@@ -53,7 +53,7 @@ def charge_document(
     for warning in result.warnings:
         print(f"Warning: {warning.message}")
 
-    chargefw.io.gemmi.attach_charges(document, result, selection=selection)
+    chargefw.io.gemmi.attach_charges(document, result)
     document.write_file(str(output_path))
     if result_json is not None:
         chargefw.io.write(result_json, result, format="result-json")

@@ -1,8 +1,6 @@
-from collections.abc import Sequence
 from typing import Literal, TypeAlias, TypedDict
 
 from .calculation import _NativeExecutionResult
-from .core import _NativeMolecule
 
 class _NativeInputMetadata: ...
 
@@ -61,11 +59,4 @@ def _dumps(
     format: Literal["sdf", "mol2", "mmcif", "result-json"],
     sdf_version: Literal["v2000", "v3000"],
 ) -> str: ...
-def _attach_mmcif(
-    contents: str,
-    result: _NativeExecutionResult,
-    molecules: Sequence[_NativeMolecule],
-    selection: Literal["all", "polymers-and-ligands", "polymers"],
-    conformers: Literal["first", "all"],
-    overwrite: bool,
-) -> str: ...
+def _attach_mmcif(contents: str, result: _NativeExecutionResult, overwrite: bool) -> str: ...

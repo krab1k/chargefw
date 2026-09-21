@@ -27,6 +27,8 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 
+#include <gemmi/cif.hpp>
+
 #include <array>
 #include <cstddef>
 #include <memory>
@@ -299,73 +301,14 @@ auto dumps(const NativeExecutionResult& native_result, const std::string& format
 }
 
 auto attach_mmcif(std::string contents, const NativeExecutionResult& native_result,
-                  const nb::sequence& molecules, const std::string& selection,
-                  const std::string& conformers, const bool overwrite) -> std::string {
-    auto source_molecules = std::vector<core::Molecule>{};
-    source_molecules.reserve(static_cast<std::size_t>(nb::len(molecules)));
-    for (const auto molecule : molecules) {
-        source_molecules.push_back(nb::cast<const core::Molecule&>(molecule));
-    }
-    const auto native_selection = adapters::gemmi::record_selection_from_string(selection);
-    const auto native_conformers = adapters::conformer_selection_from_string(conformers);
-    const auto& result = native_result.result().execution();
+                  const bool overwrite) -> std::string {
     auto output = std::ostringstream{};
     {
         nb::gil_scoped_release release;
-        if (!result.calculated()) {
-            throw std::invalid_argument{"charge attachment requires a successful calculation"};
-        }
-        auto input = std::istringstream{std::move(contents)};
-        auto reader = adapters::gemmi::mmcif_input::MmcifReader{
-            input,
-            {},
-            {.selection = native_selection,
-             .bond_strategy = adapters::gemmi::BondStrategy::none,
-             .conformers = native_conformers}};
-        auto records = std::vector<adapters::ImportedMoleculeRecord>{};
-        while (auto record = reader.next()) {
-            records.push_back(std::move(*record));
-        }
-        if (records.size() != source_molecules.size()) {
-            throw std::invalid_argument{
-                "Gemmi target molecule count does not match the calculation input"};
-        }
-        for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
-            const auto source_atoms = source_molecules[molecule_index].atoms();
-            const auto target_atoms = records[molecule_index].molecule.atoms();
-            if (source_atoms.size() != target_atoms.size()) {
-                throw std::invalid_argument{
-                    "Gemmi target atom count does not match the calculation input"};
-            }
-            for (std::size_t atom_index = 0; atom_index < source_atoms.size(); ++atom_index) {
-                if (source_atoms[atom_index].atomic_number() !=
-                        target_atoms[atom_index].atomic_number() ||
-                    source_atoms[atom_index].formal_charge() !=
-                        target_atoms[atom_index].formal_charge()) {
-                    throw std::invalid_argument{
-                        "Gemmi target atom order does not match the calculation input"};
-                }
-            }
-        }
-        const auto source_document = reader.source_document();
-        const auto& block_indices = reader.source_block_indices();
-        if (!overwrite) {
-            for (const auto block_index : block_indices) {
-                const auto& block = source_document->blocks.at(block_index);
-                if (block.has_mmcif_category("_sb_ncbr_partial_atomic_charges_meta.") ||
-                    block.has_mmcif_category("_sb_ncbr_partial_atomic_charges.")) {
-                    throw std::invalid_argument{
-                        "Gemmi target already contains partial charge categories"};
-                }
-            }
-        }
-        const auto source =
-            adapters::gemmi::mmcif_output::MmcifSource{.document = source_document,
-                                                       .block_indices = block_indices,
-                                                       .selection = native_selection};
-        adapters::gemmi::mmcif_output::MmcifWriter{output}.write_mmcif(
-            records, *result.charges, source, "ChargeFW", CHARGEFW_VERSION_STRING,
-            adapters::gemmi::mmcif_output::WriteMode::replace);
+        const auto document =
+            ::gemmi::cif::read_memory(contents.data(), contents.size(), "<Gemmi document>");
+        adapters::gemmi::mmcif_output::MmcifWriter{output}.write_attached(
+            native_result.result(), document, overwrite, "ChargeFW", CHARGEFW_VERSION_STRING);
     }
     return output.str();
 }
@@ -379,7 +322,6 @@ void bind_adapters(nb::module_& module) {
                nb::arg("selection"), nb::arg("bonds"), nb::arg("conformers"));
     module.def("_dumps", &dumps, nb::arg("result"), nb::arg("format"), nb::arg("sdf_version"));
     module.def("_attach_mmcif", &attach_mmcif, nb::arg("contents"), nb::arg("result"),
-               nb::arg("molecules"), nb::arg("selection"), nb::arg("conformers"),
                nb::arg("overwrite"));
 }
 

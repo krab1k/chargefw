@@ -496,12 +496,12 @@ between extension modules.
 `chargefw.io.dumps(..., format="mmcif")`. It never mutates or retains an input document, and source-only
 categories and original site IDs are not copied.
 
-`attach_charges()` enriches a caller-owned `gemmi.cif.Document` in place using ChargeFW's native mmCIF
-writer. ChargeFW reads the target afresh and retains no imported source document. Target molecules and
-atoms must occur in the same order and have matching elements and formal charges. Pass the same
-non-default `selection` used for conversion. Attachment reuses the imported collection's conformer
-selection, so models excluded with `conformers="first"` are neither validated nor assigned charges.
-Existing SB NCBR charge categories are rejected unless `overwrite=True`.
+`attach_charges(document, result)` is the Python-only in-memory annotation path. `document` must be the
+unchanged mmCIF document passed to `from_document()` for the molecules used by `result`. Before changing
+the live object, ChargeFW validates coordinate-block order, block names, source site positions, exact atom
+IDs, and model IDs against the result's owned import mapping. Any mismatch or output error leaves the
+document unchanged. Existing charge categories are rejected unless `overwrite=True`; append mode is not
+supported. After successful attachment, subsequent document changes are the caller's responsibility.
 
 ```python
 result = chargefw.calculate(
@@ -510,8 +510,12 @@ result = chargefw.calculate(
     parameter_set="QEq_original",
     execution="full",
 )
+charged_document = chargefw.io.gemmi.to_document(result)
+charged_document.write_file("charged.cif")
+
+# Alternatively, preserve unrelated categories in the unchanged live input document.
 chargefw.io.gemmi.attach_charges(document, result)
-document.write_file("charged.cif")
+document.write_file("charged-with-source-metadata.cif")
 ```
 
 Structural input defaults are `selection="all"`, `bonds="none"`, and `conformers="all"`. Bond choices are

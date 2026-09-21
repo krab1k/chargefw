@@ -99,7 +99,7 @@ class RecipeTests(unittest.TestCase):
             self.assertEqual(result["status"], "success")
             self.assertEqual(len(result["results"]), 2)
 
-    def test_gemmi_document_recipe_preserves_mmcif(self) -> None:
+    def test_gemmi_document_recipe_preserves_unchanged_mmcif(self) -> None:
         with TemporaryDirectory() as directory:
             input_path = Path(directory) / "water.cif"
             output_path = Path(directory) / "charged.cif"

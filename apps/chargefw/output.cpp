@@ -100,25 +100,14 @@ void write_json(const std::filesystem::path& path, const adapters::ChargeCalcula
     finalize_output(output, path);
 }
 
-void write_mmcif(const std::filesystem::path& path, const ImportedExportContext& export_context,
-                 const charges::ChargeSet& charges) {
+void write_mmcif(const std::filesystem::path& path,
+                 const adapters::ChargeCalculationResult& result) {
     auto output = std::ofstream{path};
     if (!output) {
         throw std::runtime_error{"Unable to open output file: " + path.string()};
     }
-    if (export_context.mmcif_source.has_value()) {
-        adapters::gemmi::mmcif_output::MmcifWriter{output}.write_mmcif(
-            export_context.records, charges, *export_context.mmcif_source, "ChargeFW",
-            CHARGEFW_VERSION_STRING);
-    } else if (export_context.pdb_source.has_value()) {
-        adapters::gemmi::mmcif_output::MmcifWriter{output}.write_pdb(
-            export_context.records.front(), charges, *export_context.pdb_source, "ChargeFW",
-            CHARGEFW_VERSION_STRING);
-    } else {
-        adapters::generated_output::write(output, export_context.records, charges,
-                                          adapters::generated_output::Format::mmcif, "ChargeFW",
-                                          CHARGEFW_VERSION_STRING);
-    }
+    adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, "ChargeFW",
+                                                             CHARGEFW_VERSION_STRING);
     finalize_output(output, path);
 }
 
@@ -251,7 +240,7 @@ auto write_calculation_outputs(const std::string& output_directory, const std::s
         throw std::runtime_error{"calculation result is missing charges"};
     }
     const auto writing_started = std::chrono::steady_clock::now();
-    write_mmcif(prefix.string() + ".cif", export_context, *charges);
+    write_mmcif(prefix.string() + ".cif", owned_result);
     if (!structural_output) {
         write_sdf(prefix.string() + ".sdf", input_path, export_context, *charges);
         write_mol2(prefix.string() + ".mol2", input_path, export_context, *charges);

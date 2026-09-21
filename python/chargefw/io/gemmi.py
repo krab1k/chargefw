@@ -11,7 +11,6 @@ from . import (
     BondStrategy,
     ConformerSelection,
     RecordSelection,
-    _ImportedMolecule,
     dumps,
     parse,
 )
@@ -95,10 +94,9 @@ def attach_charges(
     document: _gemmi.cif.Document,
     result: CalculationResult,
     *,
-    selection: RecordSelection = "all",
     overwrite: bool = False,
 ) -> None:
-    """Attach calculated charges to a caller-owned Gemmi mmCIF document in place."""
+    """Attach charges to the unchanged Gemmi document used for the calculation input."""
 
     from ..calculation import CalculationResult
 
@@ -109,24 +107,11 @@ def attach_charges(
         raise TypeError("result must be a CalculationResult")
     if not isinstance(overwrite, bool):
         raise TypeError("overwrite must be a bool")
-    conformers: ConformerSelection = "all"
-    if result.molecules and all(
-        isinstance(molecule, _ImportedMolecule) and molecule._input_metadata.conformers == "first"
-        for molecule in result.molecules
-    ):
-        conformers = "first"
-    charged = gemmi.cif.read_string(
-        _native_adapters._attach_mmcif(
-            document.as_string(),
-            result._native,
-            result.molecules._native_molecules,
-            selection,
-            conformers,
-            overwrite,
-        )
+    attached = gemmi.cif.read_string(
+        _native_adapters._attach_mmcif(document.as_string(), result._native, overwrite)
     )
     document.clear()
-    for block in charged:
+    for block in attached:
         document.add_copied_block(block)
 
 

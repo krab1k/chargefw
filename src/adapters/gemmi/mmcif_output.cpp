@@ -1,14 +1,9 @@
 #include <chargefw/adapters/gemmi/mmcif_output.h>
 
-#include "selection.h"
-
 #include <chargefw/core/periodic_table.h>
 
 #include <gemmi/cif.hpp>
-#include <gemmi/mmcif.hpp>
-#include <gemmi/polyheur.hpp>
 #include <gemmi/to_cif.hpp>
-#include <gemmi/to_mmcif.hpp>
 
 #include <algorithm>
 #include <array>
@@ -22,11 +17,9 @@
 #include <optional>
 #include <ostream>
 #include <ranges>
-#include <set>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -47,70 +40,6 @@ struct BlockMapping {
 };
 
 auto ensure_dictionary(::gemmi::cif::Block& block) -> void;
-
-[[nodiscard]] auto imported_structure_mapping(const ImportedMoleculeRecord& record)
-    -> BlockMapping {
-    if (!record.import_metadata.has_value() ||
-        record.import_metadata->format != MolecularSourceFormat::mmcif) {
-        throw std::runtime_error{"mmCIF source mapping is not available"};
-    }
-    const auto& metadata = *record.import_metadata;
-    if (record.molecule.conformer_count() > metadata.conformers.size()) {
-        throw std::runtime_error{"structural source has fewer models than calculated conformers"};
-    }
-
-    auto result = BlockMapping{};
-    result.atom_site_ids.reserve(record.molecule.conformer_count());
-    result.model_ids.reserve(record.molecule.conformer_count());
-    for (const auto& conformer :
-         metadata.conformers | std::views::take(record.molecule.conformer_count())) {
-        if (conformer.sites.size() != record.molecule.atom_count()) {
-            throw std::runtime_error{"structural atom count does not match calculated atoms"};
-        }
-        result.model_ids.push_back(conformer.id.value_or("1"));
-        auto& ids = result.atom_site_ids.emplace_back();
-        ids.reserve(conformer.sites.size());
-        for (const auto& site : conformer.sites) {
-            if (!site.id.has_value() || site.id->empty()) {
-                throw std::runtime_error{"mmCIF source atom ID is not available"};
-            }
-            ids.push_back(*site.id);
-        }
-    }
-    return result;
-}
-
-[[nodiscard]] auto selected_structure_mapping(const ::gemmi::Structure& structure,
-                                              const RecordSelection selection,
-                                              const core::Molecule& molecule) -> BlockMapping {
-    if (molecule.conformer_count() > structure.models.size()) {
-        throw std::runtime_error{"structural source has fewer models than calculated conformers"};
-    }
-
-    BlockMapping mapping;
-    mapping.atom_site_ids.reserve(molecule.conformer_count());
-    mapping.model_ids.reserve(molecule.conformer_count());
-    for (const auto& model : structure.models | std::views::take(molecule.conformer_count())) {
-        const auto selected = selection::SelectedModel{model, selection};
-        if (selected.atoms().size() != molecule.atom_count()) {
-            throw std::runtime_error{"structural atom count does not match calculated atoms"};
-        }
-        mapping.model_ids.push_back(std::to_string(model.num));
-        auto& ids = mapping.atom_site_ids.emplace_back();
-        ids.reserve(selected.atoms().size());
-        for (std::size_t atom_index = 0; atom_index < selected.atoms().size(); ++atom_index) {
-            const auto& source = *selected.atoms()[atom_index];
-            const auto& atom = molecule.atom(atom_index);
-            if (source.element.atomic_number() != atom.atomic_number() ||
-                source.charge != atom.formal_charge() || source.name != atom.name()) {
-                throw std::runtime_error{
-                    "structural atom sequence does not match calculated atoms"};
-            }
-            ids.push_back(std::to_string(source.serial));
-        }
-    }
-    return mapping;
-}
 
 [[nodiscard]] auto quote(const std::string_view value) -> std::string {
     return ::gemmi::cif::quote(std::string{value});
@@ -235,6 +164,65 @@ struct OutputAssignments {
         }
     }
     return assignments;
+}
+
+[[nodiscard]] auto canonical_charge_site_id(const std::string_view value) -> bool {
+    int id = 0;
+    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), id);
+    return error == std::errc{} && end == value.data() + value.size() && id > 0 &&
+           std::to_string(id) == value;
+}
+
+[[nodiscard]] auto attached_mapping(::gemmi::cif::Block& block,
+                                    const ImportedMoleculeRecord& record) -> BlockMapping {
+    if (!record.import_metadata.has_value() ||
+        record.import_metadata->format != MolecularSourceFormat::mmcif) {
+        throw std::invalid_argument{
+            "charge attachment requires unchanged mmCIF-imported calculation inputs"};
+    }
+    if (record.identity.record_id.empty() ||
+        record.identity.record_id.display_string() != block.name) {
+        throw std::invalid_argument{
+            "Gemmi target block identity does not match the calculation input"};
+    }
+    auto atom_sites = block.find("_atom_site.", {"id", "?pdbx_PDB_model_num"});
+    if (atom_sites.length() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        throw std::invalid_argument{"Gemmi target contains too many atom sites"};
+    }
+    const auto& metadata = *record.import_metadata;
+    auto result = BlockMapping{};
+    result.atom_site_ids.reserve(metadata.conformers.size());
+    result.model_ids.reserve(metadata.conformers.size());
+    auto mapped_ids = std::unordered_set<std::string>{};
+    for (const auto& conformer : metadata.conformers) {
+        const auto model_id = conformer.id.value_or("1");
+        result.model_ids.push_back(model_id);
+        auto& ids = result.atom_site_ids.emplace_back();
+        ids.reserve(conformer.sites.size());
+        for (const auto& site : conformer.sites) {
+            if (!site.id.has_value() || site.position >= atom_sites.length()) {
+                throw std::invalid_argument{
+                    "Gemmi target site mapping does not match the calculation input"};
+            }
+            const auto row_index = static_cast<int>(site.position);
+            auto target_id = ::gemmi::cif::as_string(atom_sites[row_index][0]);
+            if (target_id != *site.id || !mapped_ids.insert(target_id).second) {
+                throw std::invalid_argument{
+                    "Gemmi target site mapping does not match the calculation input"};
+            }
+            if (!canonical_charge_site_id(target_id)) {
+                throw std::invalid_argument{
+                    "Gemmi target atom IDs are not representable by the charge dictionary"};
+            }
+            if (atom_sites[row_index].has(1) &&
+                ::gemmi::cif::as_string(atom_sites[row_index][1]) != model_id) {
+                throw std::invalid_argument{
+                    "Gemmi target model mapping does not match the calculation input"};
+            }
+            ids.push_back(std::move(target_id));
+        }
+    }
+    return result;
 }
 
 [[nodiscard]] auto structural_labels(const ImportedMoleculeRecord& record,
@@ -590,34 +578,15 @@ auto ensure_dictionary(::gemmi::cif::Block& block) -> void {
     table.append_row({dictionary_name, dictionary_version, dictionary_location});
 }
 
-[[nodiscard]] auto next_assignment_id(::gemmi::cif::Block& block) -> std::size_t {
-    if (!block.has_mmcif_category(metadata_category)) {
-        return 1;
-    }
-    auto table = block.find(metadata_category, {"id"});
-    std::size_t next = 1;
-    for (auto row : table) {
-        try {
-            next = std::max(
-                next, static_cast<std::size_t>(std::stoull(::gemmi::cif::as_string(row[0]))) + 1);
-        } catch (const std::exception&) {
-            throw std::runtime_error{"existing mmCIF charge assignment ID is not numeric"};
-        }
-    }
-    return next;
-}
-
 auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
                    const core::Molecule& molecule,
                    const std::span<const charges::ChargeAssignment> assignments,
                    const charges::ChargeSet& charge_set, const std::string_view generator_name,
-                   const std::string_view generator_version, const WriteMode mode) -> void {
-    if (mode == WriteMode::replace) {
-        erase_category(block, metadata_category);
-        erase_category(block, charges_category);
-    }
+                   const std::string_view generator_version) -> void {
+    erase_category(block, metadata_category);
+    erase_category(block, charges_category);
     ensure_dictionary(block);
-    auto assignment_id = next_assignment_id(block);
+    auto assignment_id = std::size_t{1};
     block
         .find_or_add(metadata_category,
                      {"id", "type", "method", "parameter_set", "software_name", "software_version"})
@@ -649,7 +618,7 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
              ++mapping_index) {
             for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
                 charge_rows.append_row({id, quote(mapping.atom_site_ids[mapping_index][atom_index]),
-                                        std::format("{:.4f}", assignment.charges[atom_index])});
+                                        round_trip_number(assignment.charges[atom_index])});
             }
         }
     }
@@ -669,78 +638,6 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
                                  std::to_string(molecule_index + 1)};
     }
     return result;
-}
-
-auto add_selected_conect_connections(::gemmi::Structure& structure) -> void {
-    if (structure.models.empty()) {
-        return;
-    }
-
-    const auto& model = structure.models.front();
-    std::unordered_map<int, ::gemmi::AtomAddress> addresses;
-    for (const auto& chain : model.chains) {
-        for (const auto& residue : chain.residues) {
-            for (const auto& atom : residue.atoms) {
-                addresses.emplace(atom.serial, ::gemmi::make_address(chain, residue, atom));
-            }
-        }
-    }
-
-    std::set<std::pair<int, int>> seen;
-    for (const auto& connection : structure.connections) {
-        if (connection.type != ::gemmi::Connection::Covale &&
-            connection.type != ::gemmi::Connection::Disulf) {
-            continue;
-        }
-        const auto first = model.find_cra(connection.partner1, true).atom;
-        const auto second = model.find_cra(connection.partner2, true).atom;
-        if (first != nullptr && second != nullptr) {
-            seen.emplace(std::minmax(first->serial, second->serial));
-        }
-    }
-
-    std::size_t connection_index = 1;
-    for (const auto& [first_serial, partners] : structure.conect_map) {
-        for (const auto second_serial : partners) {
-            const auto edge = std::minmax(first_serial, second_serial);
-            if (edge.first == edge.second || !addresses.contains(edge.first) ||
-                !addresses.contains(edge.second) || !seen.insert(edge).second) {
-                continue;
-            }
-
-            auto name = "conect_" + std::to_string(connection_index++);
-            while (structure.find_connection_by_name(name) != nullptr) {
-                name = "conect_" + std::to_string(connection_index++);
-            }
-            auto connection = ::gemmi::Connection{};
-            connection.name = std::move(name);
-            connection.type = ::gemmi::Connection::Covale;
-            connection.asu = ::gemmi::Asu::Same;
-            connection.partner1 = addresses.at(edge.first);
-            connection.partner2 = addresses.at(edge.second);
-            structure.connections.push_back(std::move(connection));
-        }
-    }
-}
-
-[[nodiscard]] auto selected_pdb_structure(const PdbSource& source) -> ::gemmi::Structure {
-    auto structure = source.structure;
-    for (auto& model : structure.models) {
-        const auto selected = selection::SelectedModel{model, source.selection};
-        std::unordered_set<const ::gemmi::Atom*> retained{selected.atoms().begin(),
-                                                          selected.atoms().end()};
-        for (auto& chain : model.chains) {
-            for (auto& residue : chain.residues) {
-                std::erase_if(residue.atoms, [&retained](const ::gemmi::Atom& atom) -> bool {
-                    return !retained.contains(std::addressof(atom));
-                });
-            }
-        }
-        ::gemmi::remove_empty_children(model);
-    }
-    ::gemmi::setup_entities(structure);
-    add_selected_conect_connections(structure);
-    return structure;
 }
 
 } // namespace
@@ -765,6 +662,39 @@ auto MmcifWriter::write(const ChargeCalculationResult& result,
     }
 }
 
+auto MmcifWriter::write_attached(const ChargeCalculationResult& result,
+                                 const ::gemmi::cif::Document& source, const bool overwrite,
+                                 const std::string_view generator_name,
+                                 const std::string_view generator_version) const -> void {
+    validate_result_output(result);
+    auto document = source;
+    auto blocks = std::vector<::gemmi::cif::Block*>{};
+    for (auto& block : document.blocks) {
+        if (block.has_mmcif_category("_atom_site.")) {
+            blocks.push_back(std::addressof(block));
+        }
+    }
+    if (blocks.size() != result.inputs().size()) {
+        throw std::invalid_argument{
+            "Gemmi target molecule count does not match the calculation input"};
+    }
+    for (std::size_t index = 0; index < blocks.size(); ++index) {
+        auto& block = *blocks[index];
+        if (!overwrite && (block.has_mmcif_category(metadata_category) ||
+                           block.has_mmcif_category(charges_category))) {
+            throw std::invalid_argument{"Gemmi target already contains partial charge categories"};
+        }
+        const auto mapping = attached_mapping(block, result.inputs()[index]);
+        write_charges(block, mapping, result.inputs()[index].molecule,
+                      assignments_for(*result.execution().charges, index),
+                      *result.execution().charges, generator_name, generator_version);
+    }
+    ::gemmi::cif::write_cif_to_stream(*output_, document);
+    if (!*output_) {
+        throw std::runtime_error{"failed to write mmCIF output"};
+    }
+}
+
 auto MmcifWriter::write_generated(const std::span<const ImportedMoleculeRecord> records,
                                   const charges::ChargeSet& charge_set,
                                   const std::string_view generator_name,
@@ -781,56 +711,7 @@ auto MmcifWriter::write_generated(const std::span<const ImportedMoleculeRecord> 
             document.add_new_block(unique_block_name(document, block_name(record, record_index)));
         const auto mapping = write_generated_block(block, record.molecule);
         write_charges(block, mapping, record.molecule, assignments, charge_set, generator_name,
-                      generator_version, WriteMode::replace);
-    }
-
-    ::gemmi::cif::write_cif_to_stream(*output_, document);
-    if (!*output_) {
-        throw std::runtime_error{"failed to write mmCIF output"};
-    }
-}
-
-auto MmcifWriter::write_pdb(const ImportedMoleculeRecord& record,
-                            const charges::ChargeSet& charge_set, const PdbSource& source,
-                            const std::string_view generator_name,
-                            const std::string_view generator_version) const -> void {
-    auto document = ::gemmi::make_mmcif_document(selected_pdb_structure(source));
-    if (document.blocks.size() != 1) {
-        throw std::runtime_error{"PDB conversion did not produce one mmCIF block"};
-    }
-    const auto assignments = assignments_for(charge_set, 0);
-    auto& block = document.blocks.front();
-    const auto structure = ::gemmi::make_structure_from_block(block);
-    const auto mapping = selected_structure_mapping(structure, source.selection, record.molecule);
-    write_charges(block, mapping, record.molecule, assignments, charge_set, generator_name,
-                  generator_version, WriteMode::replace);
-
-    ::gemmi::cif::write_cif_to_stream(*output_, document);
-    if (!*output_) {
-        throw std::runtime_error{"failed to write mmCIF output"};
-    }
-}
-
-auto MmcifWriter::write_mmcif(const std::span<const ImportedMoleculeRecord> records,
-                              const charges::ChargeSet& charge_set, const MmcifSource& source,
-                              const std::string_view generator_name,
-                              const std::string_view generator_version, const WriteMode mode) const
-    -> void {
-    if (source.document == nullptr || records.size() != source.block_indices.size()) {
-        throw std::invalid_argument{"mmCIF source does not match imported records"};
-    }
-    auto document = *source.document;
-    for (std::size_t record_index = 0; record_index < records.size(); ++record_index) {
-        const auto block_index = source.block_indices[record_index];
-        if (block_index >= document.blocks.size()) {
-            throw std::runtime_error{"mmCIF source block index is out of range"};
-        }
-        const auto& record = records[record_index];
-        const auto assignments = assignments_for(charge_set, record_index);
-        auto& block = document.blocks[block_index];
-        const auto mapping = imported_structure_mapping(record);
-        write_charges(block, mapping, record.molecule, assignments, charge_set, generator_name,
-                      generator_version, mode);
+                      generator_version);
     }
 
     ::gemmi::cif::write_cif_to_stream(*output_, document);

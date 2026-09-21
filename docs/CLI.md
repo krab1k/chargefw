@@ -132,14 +132,15 @@ On a successful nonstructural calculation, ChargeFW writes:
 <basename>.cif
 ```
 
-PDB and mmCIF input writes JSON and mmCIF only. SDF and MOL2 output preserves source content when the
-input has the same format. Generated SDF and MOL2 use the first retained conformer; generated mmCIF writes
-all retained conformers. The [molecular format reference](FORMATS.md#charge-output) describes
-preservation, generated structures, charge fields, precision, and mapping checks.
+PDB and mmCIF input writes JSON and a fresh generated mmCIF document only. SDF and MOL2 output preserves
+source content when the input has the same format. Generated SDF and MOL2 use the first retained conformer;
+generated mmCIF writes all retained conformers. The
+[molecular format reference](FORMATS.md#charge-output) describes preservation, generated structures,
+charge fields, precision, and mapping checks.
 
 Generated SDF and MOL2 use source conformer zero and therefore require source coordinates even when the
-selected method is geometry-independent. With `--conformers first`, preservation-oriented structural
-output may retain uncalculated source models, but charges are written only for the selected conformer.
+selected method is geometry-independent. Generated mmCIF contains exactly the conformers retained by input
+policy and never copies unselected source models.
 
 Once import and request construction succeed, normal calculation outcomes write `<basename>.json`.
 Molecular charge files are written only on success. Import, request-construction, filesystem, and output

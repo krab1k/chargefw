@@ -371,92 +371,36 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         with self.assertRaises(TypeError):
             chargefw.io.gemmi.to_document(cast(Any, object()))
 
-    def test_attach_charges_enriches_document_in_place(self) -> None:
-        import gemmi
-
+    def test_attach_charges_requires_the_unchanged_import_document(self) -> None:
         document = gemmi.cif.read_string(MMCIF_TEXT)
+        document[0].set_pair("_audit.creation_method", "attachment-test")
         molecules = chargefw.io.gemmi.from_document(document)
         result = calculate(molecules, method="formal")
 
         chargefw.io.gemmi.attach_charges(document, result)
 
-        for expected_count, block in zip((4, 1), document, strict=True):
-            self.assertIn("_sb_ncbr_partial_atomic_charges.", block.get_mmcif_category_names())
-            charges = block.find(
-                "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id", "charge"]
-            )
-            self.assertEqual(len(charges), expected_count)
+        self.assertEqual(document[0].find_value("_audit.creation_method"), "attachment-test")
+        first_ids = [
+            gemmi.cif.as_string(row[0])
+            for row in document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])
+        ]
+        self.assertEqual(first_ids, ["1", "2", "3", "4"])
+        before_rejected_overwrite = document.as_string()
         with self.assertRaisesRegex(ValueError, "already contains partial charge categories"):
             chargefw.io.gemmi.attach_charges(document, result)
+        self.assertEqual(document.as_string(), before_rejected_overwrite)
         chargefw.io.gemmi.attach_charges(document, result, overwrite=True)
 
-    def test_attach_charges_preserves_unrelated_mmcif_metadata(self) -> None:
-        cases = (
-            ("formal", None, 1),
-            ("qeq", "QEq_original", 2),
-        )
-        for method, parameter_set, expected_metadata_rows in cases:
-            with self.subTest(method=method):
-                document = gemmi.read_pdb_string(PDB_TEXT).make_mmcif_document()
-                block = document.sole_block()
-                block.set_pair("_audit.creation_method", "attachment-test")
-                molecules = chargefw.io.gemmi.from_document(document)
-                result = calculate(
-                    molecules,
-                    method=method,
-                    parameter_set=parameter_set,
-                    execution="full",
-                )
-
-                chargefw.io.gemmi.attach_charges(document, result)
-
-                block = document.sole_block()
-                self.assertEqual(block.find_value("_audit.creation_method"), "attachment-test")
-                metadata = block.find(
-                    "_sb_ncbr_partial_atomic_charges_meta.", ["method", "parameter_set"]
-                )
-                self.assertEqual(len(metadata), expected_metadata_rows)
-                self.assertTrue(all(gemmi.cif.as_string(row[0]) == method for row in metadata))
-                if parameter_set is None:
-                    self.assertTrue(all(row[1] == "." for row in metadata))
-                else:
-                    self.assertTrue(
-                        all(gemmi.cif.as_string(row[1]) == parameter_set for row in metadata)
-                    )
-                charges = block.find(
-                    "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id", "charge"]
-                )
-                self.assertEqual(len(charges), 4)
-
-    def test_attach_charges_ignores_incompatible_later_models_excluded_on_import(self) -> None:
-        contents = MMCIF_TEXT.replace(
-            "HETATM 4 O O . HOH A 2 ? 1.1",
-            "HETATM 4 N N . HOH A 2 ? 1.1",
-        )
-        document = gemmi.cif.read_string(contents)
-        molecules = chargefw.io.gemmi.from_document(document, conformers="first")
-        result = calculate(molecules, method="formal")
-
-        chargefw.io.gemmi.attach_charges(document, result)
-
-        charges = document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])
-        self.assertEqual(
-            [gemmi.cif.as_string(row[0]) for row in charges],
-            ["1", "2"],
-        )
-
-    def test_attach_charges_ignores_compatible_later_models_excluded_on_import(self) -> None:
-        document = gemmi.cif.read_string(MMCIF_TEXT)
-        molecules = chargefw.io.gemmi.from_document(document, conformers="first")
-        result = calculate(molecules, method="formal")
-
-        chargefw.io.gemmi.attach_charges(document, result)
-
-        charges = document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])
-        self.assertEqual(
-            [gemmi.cif.as_string(row[0]) for row in charges],
-            ["1", "2"],
-        )
+        modified = gemmi.cif.read_string(MMCIF_TEXT)
+        modified_molecules = chargefw.io.gemmi.from_document(modified)
+        modified_result = calculate(modified_molecules, method="formal")
+        modified[0].find("_atom_site.", ["id"])[0][0] = "99"
+        before_mismatch = modified.as_string()
+        with self.assertRaisesRegex(ValueError, "site mapping"):
+            chargefw.io.gemmi.attach_charges(modified, modified_result)
+        self.assertEqual(modified.as_string(), before_mismatch)
+        with self.assertRaises(TypeError):
+            chargefw.io.gemmi.attach_charges(document, result, overwrite=cast(Any, 1))
 
     def test_selection_conformers_and_types_are_explicit(self) -> None:
         polymers = chargefw_io.parse(

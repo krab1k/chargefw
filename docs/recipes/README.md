@@ -57,9 +57,9 @@ for molecule in molecules:
 
 ## Charge a Gemmi document
 
-[`charge_gemmi_document.py`](charge_gemmi_document.py) attaches calculated charges to a caller-owned Gemmi
-mmCIF document. Original mmCIF input is enriched without reconstructing the document; PDB input is
-necessarily converted to a new mmCIF document. The input must already have appropriate hydrogens, formal
+[`charge_gemmi_document.py`](charge_gemmi_document.py) attaches charges to the unchanged live Gemmi mmCIF
+document used for import, preserving unrelated categories after strict block/model/site validation. PDB
+input is first represented as a caller-owned Gemmi mmCIF document. The input must already have appropriate hydrogens, formal
 charges, coordinates, and explicit or template-supported topology.
 
 ```bash
