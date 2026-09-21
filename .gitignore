@@ -78,3 +78,4 @@ _*install
 old
 CMakeUserPresets.json
 .kilo
+tmp
