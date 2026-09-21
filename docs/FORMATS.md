@@ -235,9 +235,11 @@ field is stored. Coordinate-free inputs have an empty conformer mapping. Failed 
 the same input mapping while omitting assignments. Manually constructed molecules have no verified import
 mapping and omit `input.import`.
 
-Caller-supplied record IDs are strings or signed 64-bit integers. Result JSON preserves those types as JSON
-strings or numbers. Source-format atom and site IDs remain strings so lexical provenance such as `001` is
-not normalized to an integer.
+Caller-supplied record and atom IDs are strings or signed 64-bit integers. Result JSON preserves those
+types as JSON strings or numbers. Explicit atom IDs from a manually constructed molecule appear once as
+`input.atom_ids` in calculation order; omitted atom IDs and imported source IDs do not add this field.
+Source-format atom and site IDs remain strings so lexical provenance such as `001` is not normalized to an
+integer.
 
 Requested provenance records method and parameter selection, classification mode, method options,
 execution request, resource thresholds, and thread limit. Import policy is record-local under

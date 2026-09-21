@@ -464,7 +464,9 @@ remains available from the same object.
 
 Record and atom IDs are normalized to strings or signed 64-bit integers. NumPy integer scalars are accepted
 and converted to Python `int`; booleans, arbitrary hashable objects, and out-of-range integers are rejected.
-Result JSON preserves integer record IDs as JSON numbers rather than stringifying them. Generated MOL2 and
+Result JSON preserves integer IDs as JSON numbers rather than stringifying them. Explicit `atom_ids` from a
+manually constructed molecule appear once in `input.atom_ids`; imported atom IDs remain in source mapping.
+Generated MOL2 and
 mmCIF use their decimal representation where a textual record or block name is required.
 
 The language-independent conformer, mapping, and schema rules are defined in

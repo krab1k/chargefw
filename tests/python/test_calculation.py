@@ -663,6 +663,7 @@ class CalculationTests(unittest.TestCase):
                 [molecule._native],
                 [None],
                 [("", 0, "")],
+                [None],
                 "",
                 chargefw.calculation._default_parameter_catalog(),
                 None,

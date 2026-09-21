@@ -147,6 +147,30 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
     CHECK_FALSE(record.contains("assignments"));
 }
 
+TEST_CASE("JSON output serializes caller atom IDs for a manual record", "[adapters][json]") {
+    const auto owned = adapters::make_charge_calculation_result(
+        {{.molecule = chargefw::core::Molecule{std::vector{chargefw::core::Atom{1},
+                                                           chargefw::core::Atom{1}},
+                                               {},
+                                               {},
+                                               "hydrogen"},
+          .identity = {.source = "manual", .record_index = 1},
+          .caller_atom_ids = std::vector<adapters::PortableId>{"H", std::int64_t{9}}}},
+        {},
+        {.charges = charges::ChargeSet{"formal",
+                                       {{.target = {.molecule_index = 0},
+                                         .charges = charges::AtomicCharges{{0.0, 0.0}}}},
+                                       std::nullopt},
+         .effective = calculation::EffectiveCalculation{
+             .method_id = "formal", .execution_policy = calculation::ExecutionPolicy{}}});
+
+    auto output = std::ostringstream{};
+    json_output::JsonWriter{output}.write(owned, "ChargeFW", "test");
+    const auto result = nlohmann::json::parse(output.str());
+
+    CHECK(result.at("results").at(0).at("input").at("atom_ids") == nlohmann::json{"H", 9});
+}
+
 TEST_CASE("result assembly validates assignment dimensions targets and scope", "[adapters][json]") {
     const auto records = std::vector{adapters::ImportedMoleculeRecord{
         .molecule =

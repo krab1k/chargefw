@@ -265,6 +265,7 @@ def assess(
             )
             for molecule in collection
         ),
+        tuple(molecule._caller_atom_ids for molecule in collection),
         collection.name,
         _default_parameter_catalog(),
         requested.method,

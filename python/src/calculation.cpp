@@ -78,6 +78,20 @@ auto method_options(const nb::dict& values)
     return adapters::PortableId{nb::cast<std::int64_t>(value)};
 }
 
+[[nodiscard]] auto portable_ids(const nb::handle value)
+    -> std::optional<std::vector<adapters::PortableId>> {
+    if (value.is_none()) {
+        return std::nullopt;
+    }
+    auto result = std::vector<adapters::PortableId>{};
+    const auto values = nb::cast<nb::sequence>(value);
+    result.reserve(static_cast<std::size_t>(nb::len(values)));
+    for (const auto& item : values) {
+        result.push_back(portable_id(item));
+    }
+    return result;
+}
+
 auto prerequisite_issue(const methods::PrerequisiteIssue& issue) -> nb::dict {
     auto result = nb::dict{};
     result["kind"] = std::string{methods::to_string(issue.kind)};
@@ -383,8 +397,9 @@ class NativeAssessment {
 };
 
 auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_metadata,
-                     const nb::sequence& identities, std::string molecule_collection_name,
-                     const NativeParameterCatalog& catalog, std::optional<std::string> method_id,
+                     const nb::sequence& identities, const nb::sequence& caller_atom_ids,
+                     std::string molecule_collection_name, const NativeParameterCatalog& catalog,
+                     std::optional<std::string> method_id,
                      std::optional<std::string> parameter_set_id, const nb::dict& options,
                      const bool permissive_types, const std::string& execution,
                      const std::optional<double> radius,
@@ -396,15 +411,18 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
     // objects.
     const auto molecule_count = static_cast<std::size_t>(nb::len(molecules));
     if (static_cast<std::size_t>(nb::len(input_metadata)) != molecule_count ||
-        static_cast<std::size_t>(nb::len(identities)) != molecule_count) {
+        static_cast<std::size_t>(nb::len(identities)) != molecule_count ||
+        static_cast<std::size_t>(nb::len(caller_atom_ids)) != molecule_count) {
         throw std::invalid_argument{"input record metadata count does not match molecules"};
     }
     auto source_molecules = std::vector<const core::Molecule*>{};
     auto source_metadata = std::vector<const NativeInputMetadata*>{};
     auto source_identities = std::vector<adapters::MoleculeRecordIdentity>{};
+    auto source_caller_atom_ids = std::vector<std::optional<std::vector<adapters::PortableId>>>{};
     source_molecules.reserve(molecule_count);
     source_metadata.reserve(molecule_count);
     source_identities.reserve(molecule_count);
+    source_caller_atom_ids.reserve(molecule_count);
     for (std::size_t index = 0; index < molecule_count; ++index) {
         source_molecules.push_back(&nb::cast<const core::Molecule&>(molecules[index]));
         source_metadata.push_back(
@@ -419,6 +437,7 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
             adapters::MoleculeRecordIdentity{.source = nb::cast<std::string>(identity[0]),
                                              .record_index = nb::cast<std::size_t>(identity[1]),
                                              .record_id = portable_id(identity[2])});
+        source_caller_atom_ids.push_back(portable_ids(caller_atom_ids[index]));
     }
     auto native_method_options = method_options(options);
     auto requested_options = std::map<std::string, methods::MethodOptions>{};
@@ -446,6 +465,8 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
             source_metadata[index] == nullptr
                 ? adapters::ImportedMoleculeRecord{.molecule = molecule,
                                                    .identity = std::move(source_identities[index]),
+                                                   .caller_atom_ids =
+                                                       std::move(source_caller_atom_ids[index]),
                                                    .diagnostics = {},
                                                    .import_metadata = std::nullopt}
                 : source_metadata[index]->make_record(molecule));
@@ -487,7 +508,7 @@ void bind_calculation(nb::module_& module) {
              nb::arg("observer") = nb::none());
 
     module.def("_make_assessment", &make_assessment, nb::arg("molecules"),
-               nb::arg("input_metadata"), nb::arg("identities"),
+               nb::arg("input_metadata"), nb::arg("identities"), nb::arg("caller_atom_ids"),
                nb::arg("molecule_collection_name"), nb::arg("catalog"), nb::arg("method_id"),
                nb::arg("parameter_set_id"), nb::arg("method_options"), nb::arg("permissive_types"),
                nb::arg("execution"), nb::arg("radius"), nb::arg("cutoff_threshold"),

@@ -176,6 +176,14 @@ constexpr auto metric_scale = 1000.0;
     return std::visit([](const auto& value) -> Json { return value; }, *id.value());
 }
 
+[[nodiscard]] auto portable_ids_json(const std::span<const PortableId> ids) -> Json {
+    auto result = Json::array();
+    for (const auto& id : ids) {
+        result.push_back(portable_id_json(id));
+    }
+    return result;
+}
+
 [[nodiscard]] auto record_json(const ImportedMoleculeRecord& record,
                                const calculation::ExecutionResult& execution,
                                const std::size_t molecule_index,
@@ -183,6 +191,9 @@ constexpr auto metric_scale = 1000.0;
     Json input{{"source", record.identity.source}, {"record_index", record.identity.record_index}};
     if (!record.identity.record_id.empty()) {
         input["record_id"] = portable_id_json(record.identity.record_id);
+    }
+    if (record.caller_atom_ids.has_value()) {
+        input["atom_ids"] = portable_ids_json(*record.caller_atom_ids);
     }
     if (record.import_metadata.has_value()) {
         input["import"] = import_metadata_json(*record.import_metadata);

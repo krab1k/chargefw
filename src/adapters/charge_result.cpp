@@ -49,6 +49,13 @@ auto append_unique(std::vector<ResultDiagnostic>& diagnostics, ResultDiagnostic 
 
 auto validate_import_metadata(const std::span<const ImportedMoleculeRecord> records) -> void {
     for (const auto& record : records) {
+        if (record.caller_atom_ids.has_value() &&
+            record.caller_atom_ids->size() != record.molecule.atom_count()) {
+            throw std::invalid_argument{"caller atom ID count does not match molecule atom count"};
+        }
+        if (record.caller_atom_ids.has_value() && record.import_metadata.has_value()) {
+            throw std::invalid_argument{"caller atom IDs cannot accompany import metadata"};
+        }
         if (!record.import_metadata.has_value()) {
             continue;
         }

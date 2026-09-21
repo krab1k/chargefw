@@ -125,6 +125,7 @@ class Molecule:
         "_source",
         "_source_mapping",
         "_atom_ids",
+        "_caller_atom_ids",
         "_native",
     )
 
@@ -138,6 +139,7 @@ class Molecule:
     _source: SourceIdentity
     _source_mapping: SourceMapping | None
     _atom_ids: tuple[PortableId, ...]
+    _caller_atom_ids: tuple[PortableId, ...] | None
     _native: _native_core._NativeMolecule
 
     def __init__(
@@ -220,6 +222,7 @@ class Molecule:
         object.__setattr__(self, "_source", source_identity)
         object.__setattr__(self, "_source_mapping", None)
         object.__setattr__(self, "_atom_ids", atom_id_values)
+        object.__setattr__(self, "_caller_atom_ids", None if atom_ids is None else atom_id_values)
         object.__setattr__(
             self,
             "_native",

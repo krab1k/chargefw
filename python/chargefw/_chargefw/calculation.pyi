@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from .._payloads import AssessmentReportPayload, ExecutionPlanPayload, ExecutionResultPayload
-from .._types import Execution
+from .._types import Execution, PortableId
 from .adapters import _NativeInputMetadata
 from .core import _NativeMolecule
 from .parameters import _NativeParameterCatalog
@@ -24,6 +24,7 @@ def _make_assessment(
     molecules: Sequence[_NativeMolecule],
     input_metadata: Sequence[_NativeInputMetadata | None],
     identities: Sequence[tuple[str, int, str | int | None]],
+    caller_atom_ids: Sequence[Sequence[PortableId] | None],
     molecule_collection_name: str,
     catalog: _NativeParameterCatalog,
     method_id: str | None,

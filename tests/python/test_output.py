@@ -191,7 +191,35 @@ class OutputTests(unittest.TestCase):
 
         encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
         self.assertEqual(encoded["results"][0]["input"]["record_id"], 42)
+        self.assertEqual(encoded["results"][0]["input"]["atom_ids"], ["left", 9])
         self.assertEqual(result.assignments[0].atom_ids, ("left", 9))
+
+    def test_failed_result_json_preserves_caller_atom_ids(self) -> None:
+        molecule = chargefw.Molecule([1], atom_ids=["hydrogen"])
+        try:
+            chargefw.calculate(molecule, method="qeq")
+        except chargefw.NoExecutablePlanError as error:
+            encoded = json.loads(chargefw.io.dumps(error.result, format="result-json"))
+        else:
+            self.fail("calculation unexpectedly succeeded")
+
+        self.assertEqual(encoded["results"][0]["input"]["atom_ids"], ["hydrogen"])
+        self.assertNotIn("assignments", encoded["results"][0])
+
+    def test_result_json_omits_default_and_imported_atom_ids(self) -> None:
+        manual = chargefw.calculate(chargefw.Molecule([1]), method="formal")
+        manual_input = json.loads(chargefw.io.dumps(manual, format="result-json"))["results"][0][
+            "input"
+        ]
+        self.assertNotIn("atom_ids", manual_input)
+
+        path = Path(__file__).parents[1] / "fixtures" / "synthetic" / "mol2" / "aromatic.mol2"
+        imported = chargefw.calculate(chargefw.io.read(path, format="mol2"), method="formal")
+        imported_input = json.loads(chargefw.io.dumps(imported, format="result-json"))["results"][
+            0
+        ]["input"]
+        self.assertNotIn("atom_ids", imported_input)
+        self.assertIn("atom_mapping", imported_input["import"])
 
     def test_molecular_output_requires_finite_coordinates(self) -> None:
         missing = chargefw.calculate(chargefw.Molecule([1]), method="formal")
