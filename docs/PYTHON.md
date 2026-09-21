@@ -179,6 +179,15 @@ are read-only, so later mutation or destruction of the caller's arrays cannot ch
 Coordinates are always exposed with shape `(C, N, 3)`; `None` and `(0, N, 3)` both mean no conformers.
 Coordinates are interpreted in ångströms; the Python API does not attach units or convert them.
 
+Molecules returned by native MOL, SDF, MOL2, and molecule JSON readers expose an immutable
+`source_mapping`. Its `atoms` tuple maps calculation atom order to zero-based source positions and exact
+source ID tokens where the format provides them. Its `conformers` tuple retains each selected source
+conformer and its calculation-ordered source sites. The mapping also reports source format, record-local
+import policy, and whether source connectivity was absent, explicitly empty, or present. Imported
+`atom_ids` use exact source IDs when present and source positions otherwise. A newly constructed molecule,
+including one built from an imported molecule's arrays, has `source_mapping is None` and does not inherit
+verified correspondence.
+
 Atomic numbers 1–100 are accepted because they are represented by the bundled periodic table; individual
 methods and parameter sets may support a smaller subset. Only bond orders 1, 2, and 3 are accepted. Self
 bonds, duplicate bonds, invalid indices, non-integral integer input, unsupported atomic numbers, and

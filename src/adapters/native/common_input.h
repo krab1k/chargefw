@@ -38,7 +38,8 @@ namespace chargefw::adapters::native::common_input {
 [[nodiscard]] auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
                                std::vector<core::Conformer> conformers,
                                MoleculeRecordIdentity identity, std::string name = {},
-                               std::vector<MoleculeRecordDiagnostic> diagnostics = {})
+                               std::vector<MoleculeRecordDiagnostic> diagnostics = {},
+                               std::optional<MoleculeImportMetadata> import_metadata = std::nullopt)
     -> ImportedMoleculeRecord;
 
 } // namespace chargefw::adapters::native::common_input

@@ -34,6 +34,7 @@ auto SdfReader::next() -> std::optional<ImportedMoleculeRecord> {
     const auto identity =
         MoleculeRecordIdentity{.source = source_, .record_index = record_index_++, .record_id = {}};
     auto result = mol_input::parse_mol(*input_, identity);
+    result.import_metadata->format = MolecularSourceFormat::sdf;
     consume_to_sdf_delimiter(*input_);
     return result;
 }

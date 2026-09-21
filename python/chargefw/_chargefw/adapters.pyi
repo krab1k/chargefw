@@ -4,6 +4,18 @@ from typing import Literal, TypedDict
 from .calculation import _NativeExecutionResult
 from .core import _NativeMolecule
 
+type AtomReferencePayload = tuple[int, str | None]
+type ConformerReferencePayload = tuple[int, str | None, list[AtomReferencePayload]]
+
+class ImportMetadataPayload(TypedDict):
+    format: Literal["mol", "sdf", "mol2", "molecule-json", "pdb", "mmcif"]
+    atoms: list[AtomReferencePayload]
+    conformers: list[ConformerReferencePayload]
+    record_selection: str | None
+    conformer_selection: str | None
+    bond_strategy: str | None
+    source_connectivity: Literal["absent", "explicitly-empty", "present"]
+
 class MoleculePayload(TypedDict):
     atomic_numbers: list[int]
     formal_charges: list[int]
@@ -16,6 +28,7 @@ class MoleculePayload(TypedDict):
     record_index: int
     record_id: str
     diagnostics: list[tuple[str, str, int | None]]
+    import_metadata: ImportMetadataPayload | None
 
 def _parse(
     contents: str,

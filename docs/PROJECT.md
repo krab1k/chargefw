@@ -190,6 +190,11 @@ ChargeFW result JSON 1.0, SDF, MOL2, and mmCIF charge data. The language-indepen
 [molecular format reference](FORMATS.md) defines exactly what each reader imports and how each writer
 preserves or generates molecular data.
 
+Imported records keep adapter metadata beside the normalized molecule rather than inside
+`core::Molecule`. The metadata owns only source correspondence, record-local import policy, diagnostics,
+and a small connectivity summary; it does not retain source documents, parser objects, normalized-value
+snapshots, or per-bond provenance.
+
 ChargeFW is not a general chemistry-preparation toolkit. It does not provide SMILES parsing, arbitrary
 bond perception, sanitization, protonation, hydrogen addition or removal, conformer generation, or
 geometry optimization. Structural template bonding covers common amino acids, nucleotides, water, and

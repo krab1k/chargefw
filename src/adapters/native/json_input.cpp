@@ -142,7 +142,9 @@ auto require_array(const Json& value, const std::string& context) -> void {
     }
 
     std::vector<core::Atom> atoms;
+    std::vector<SourceAtomReference> atom_references;
     atoms.reserve(atoms_value.size());
+    atom_references.reserve(atoms_value.size());
     for (std::size_t index = 0; index < atoms_value.size(); ++index) {
         const auto atom_context = index_context(context + ".atoms", index);
         const auto& atom_value = atoms_value[index];
@@ -152,6 +154,7 @@ auto require_array(const Json& value, const std::string& context) -> void {
         const auto formal_charge = require_integer(
             member(atom_value, "formal_charge", atom_context), atom_context + ".formal_charge");
         atoms.emplace_back(atomic_number, formal_charge);
+        atom_references.push_back(SourceAtomReference{.position = index, .id = std::nullopt});
     }
 
     std::vector<core::Bond> bonds;
@@ -177,6 +180,7 @@ auto require_array(const Json& value, const std::string& context) -> void {
     }
 
     std::vector<core::Conformer> conformers;
+    std::vector<SourceConformerReference> conformer_references;
     const auto* conformers_value = optional_member(value, "conformers");
     if (conformers_value != nullptr) {
         require_array(*conformers_value, context + ".conformers");
@@ -184,14 +188,17 @@ auto require_array(const Json& value, const std::string& context) -> void {
                                          ? std::min<std::size_t>(1, conformers_value->size())
                                          : conformers_value->size();
         conformers.reserve(conformer_count);
+        conformer_references.reserve(conformer_count);
         for (std::size_t index = 0; index < conformer_count; ++index) {
             const auto conformer_context = index_context(context + ".conformers", index);
             const auto& conformer_value = (*conformers_value)[index];
             require_object(conformer_value, conformer_context);
             auto conformer_name = std::string{};
             const auto* conformer_id = optional_member(conformer_value, "id");
+            auto source_conformer_id = std::optional<std::string>{};
             if (conformer_id != nullptr) {
                 conformer_name = require_string(*conformer_id, conformer_context + ".id");
+                source_conformer_id = conformer_name;
             }
             const auto& coordinates = member(conformer_value, "coordinates", conformer_context);
             require_array(coordinates, conformer_context + ".coordinates");
@@ -213,11 +220,28 @@ auto require_array(const Json& value, const std::string& context) -> void {
                                    .z = require_number(coordinate[2], coordinate_context + "[2]")});
             }
             conformers.emplace_back(std::move(positions), std::move(conformer_name));
+            conformer_references.push_back(SourceConformerReference{
+                .position = index,
+                .id = std::move(source_conformer_id),
+                .sites = atom_references,
+            });
         }
     }
 
+    auto metadata = MoleculeImportMetadata{
+        .format = MolecularSourceFormat::molecule_json,
+        .atoms = std::move(atom_references),
+        .conformers = std::move(conformer_references),
+        .record_selection = std::nullopt,
+        .conformer_selection = std::string{to_string(conformer_selection)},
+        .bond_strategy = std::nullopt,
+        .source_connectivity = bonds_value == nullptr
+                                   ? SourceConnectivity::absent
+                                   : (bonds_value->empty() ? SourceConnectivity::explicitly_empty
+                                                           : SourceConnectivity::present),
+    };
     return common::make_record(std::move(atoms), std::move(bonds), std::move(conformers),
-                               std::move(identity), std::move(name));
+                               std::move(identity), std::move(name), {}, std::move(metadata));
 }
 
 } // namespace

@@ -164,7 +164,8 @@ TEST_CASE("result assembly validates assignment dimensions targets and scope", "
                 std::vector{chargefw::core::Conformer{{chargefw::core::Position{0.0, 0.0, 0.0},
                                                        chargefw::core::Position{1.0, 0.0, 0.0}}}},
                 "hydrogen"},
-        .identity = {.source = "hydrogen.json", .record_id = "hydrogen"}}};
+        .identity = {.source = "hydrogen.json", .record_id = "hydrogen"},
+        .import_metadata = std::nullopt}};
     const auto make_document = [&records](calculation::ExecutionResult result) {
         if (result.status == calculation::ExecutionStatus::success &&
             !result.effective.has_value()) {

@@ -8,7 +8,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
 from .._chargefw import adapters as _native_adapters
-from ..core import Molecule, MoleculeCollection
+from ..core import (
+    Molecule,
+    MoleculeCollection,
+    SourceAtomReference,
+    SourceConformerReference,
+    SourceMapping,
+)
 
 if TYPE_CHECKING:
     from ..calculation import CalculationResult
@@ -45,6 +51,33 @@ def _molecule(
     conformers: ConformerSelection,
 ) -> Molecule:
     coordinates = payload["coordinates"] or None
+    import_metadata = payload["import_metadata"]
+    source_mapping = (
+        None
+        if import_metadata is None
+        else SourceMapping(
+            format=import_metadata["format"],
+            atoms=tuple(
+                SourceAtomReference(position, source_id)
+                for position, source_id in import_metadata["atoms"]
+            ),
+            conformers=tuple(
+                SourceConformerReference(
+                    position,
+                    source_id,
+                    tuple(
+                        SourceAtomReference(site_position, site_id)
+                        for site_position, site_id in sites
+                    ),
+                )
+                for position, source_id, sites in import_metadata["conformers"]
+            ),
+            source_connectivity=import_metadata["source_connectivity"],
+            record_selection=import_metadata["record_selection"],
+            conformer_selection=import_metadata["conformer_selection"],
+            bond_strategy=import_metadata["bond_strategy"],
+        )
+    )
     result = _ImportedMolecule(
         atomic_numbers=payload["atomic_numbers"],
         formal_charges=payload["formal_charges"],
@@ -56,7 +89,16 @@ def _molecule(
         source_name=payload["source"],
         record_index=payload["record_index"],
         record_id=payload["record_id"],
+        atom_ids=(
+            None
+            if source_mapping is None
+            else tuple(
+                reference.position if reference.id is None else reference.id
+                for reference in source_mapping.atoms
+            )
+        ),
     )
+    object.__setattr__(result, "_source_mapping", source_mapping)
     object.__setattr__(
         result,
         "_input_metadata",

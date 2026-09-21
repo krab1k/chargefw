@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Hashable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from operator import index as as_index
-from typing import Any, overload
+from typing import Any, Literal, TypeAlias, overload
 
 import numpy as np
 
@@ -44,6 +44,40 @@ class SourceIdentity:
         return self.source
 
 
+SourceFormat: TypeAlias = Literal["mol", "sdf", "mol2", "molecule-json", "pdb", "mmcif"]
+SourceConnectivity: TypeAlias = Literal["absent", "explicitly-empty", "present"]
+
+
+@dataclass(frozen=True, slots=True)
+class SourceAtomReference:
+    """Location of one calculation atom in its source record."""
+
+    position: int
+    id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SourceConformerReference:
+    """Location and selected atom sites for one retained conformer."""
+
+    position: int
+    id: str | None
+    sites: tuple[SourceAtomReference, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SourceMapping:
+    """Read-only source correspondence retained for an imported molecule."""
+
+    format: SourceFormat
+    atoms: tuple[SourceAtomReference, ...]
+    conformers: tuple[SourceConformerReference, ...]
+    source_connectivity: SourceConnectivity
+    record_selection: str | None = None
+    conformer_selection: str | None = None
+    bond_strategy: str | None = None
+
+
 class Molecule:
     """Immutable, owned toolkit-neutral molecular data."""
 
@@ -56,6 +90,7 @@ class Molecule:
         "_atom_names",
         "_conformer_names",
         "_source",
+        "_source_mapping",
         "_atom_ids",
         "_native",
     )
@@ -68,6 +103,7 @@ class Molecule:
     _atom_names: tuple[str, ...]
     _conformer_names: tuple[str, ...]
     _source: SourceIdentity
+    _source_mapping: SourceMapping | None
     _atom_ids: tuple[Hashable, ...]
     _native: _native_core._NativeMolecule
 
@@ -149,6 +185,7 @@ class Molecule:
         object.__setattr__(self, "_atom_names", atom_name_values)
         object.__setattr__(self, "_conformer_names", conformer_name_values)
         object.__setattr__(self, "_source", source_identity)
+        object.__setattr__(self, "_source_mapping", None)
         object.__setattr__(self, "_atom_ids", atom_id_values)
         object.__setattr__(
             self,
@@ -202,6 +239,10 @@ class Molecule:
     @property
     def source_name(self) -> str:
         return self._source.source
+
+    @property
+    def source_mapping(self) -> SourceMapping | None:
+        return self._source_mapping
 
     @property
     def record_index(self) -> int:

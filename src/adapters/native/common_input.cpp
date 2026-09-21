@@ -98,8 +98,8 @@ auto bond_order(const std::string_view value, const ::chargefw::adapters::native
 
 auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
                  std::vector<core::Conformer> conformers, MoleculeRecordIdentity identity,
-                 std::string name, std::vector<MoleculeRecordDiagnostic> diagnostics)
-    -> ImportedMoleculeRecord {
+                 std::string name, std::vector<MoleculeRecordDiagnostic> diagnostics,
+                 std::optional<MoleculeImportMetadata> import_metadata) -> ImportedMoleculeRecord {
     if (name.empty()) {
         name = identity.record_id;
     }
@@ -108,7 +108,8 @@ auto make_record(std::vector<core::Atom> atoms, std::vector<core::Bond> bonds,
                                       core::Molecule{std::move(atoms), std::move(bonds),
                                                      std::move(conformers), std::move(name)},
                                   .identity = std::move(identity),
-                                  .diagnostics = std::move(diagnostics)};
+                                  .diagnostics = std::move(diagnostics),
+                                  .import_metadata = std::move(import_metadata)};
 }
 
 } // namespace chargefw::adapters::native::common_input

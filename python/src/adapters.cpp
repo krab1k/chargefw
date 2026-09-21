@@ -32,6 +32,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -52,7 +53,65 @@ struct MoleculePayload {
     std::vector<std::string> conformer_names;
     adapters::MoleculeRecordIdentity identity;
     std::vector<adapters::MoleculeRecordDiagnostic> diagnostics;
+    std::optional<adapters::MoleculeImportMetadata> import_metadata;
 };
+
+[[nodiscard]] auto format_name(const adapters::MolecularSourceFormat format) -> std::string_view {
+    switch (format) {
+    case adapters::MolecularSourceFormat::molecule_json:
+        return "molecule-json";
+    case adapters::MolecularSourceFormat::mol:
+        return "mol";
+    case adapters::MolecularSourceFormat::sdf:
+        return "sdf";
+    case adapters::MolecularSourceFormat::mol2:
+        return "mol2";
+    case adapters::MolecularSourceFormat::pdb:
+        return "pdb";
+    case adapters::MolecularSourceFormat::mmcif:
+        return "mmcif";
+    }
+    throw std::invalid_argument{"unknown molecular source format"};
+}
+
+[[nodiscard]] auto connectivity_name(const adapters::SourceConnectivity connectivity)
+    -> std::string_view {
+    switch (connectivity) {
+    case adapters::SourceConnectivity::absent:
+        return "absent";
+    case adapters::SourceConnectivity::explicitly_empty:
+        return "explicitly-empty";
+    case adapters::SourceConnectivity::present:
+        return "present";
+    }
+    throw std::invalid_argument{"unknown source connectivity state"};
+}
+
+[[nodiscard]] auto atom_references(const std::vector<adapters::SourceAtomReference>& references)
+    -> nb::list {
+    auto result = nb::list{};
+    for (const auto& reference : references) {
+        result.append(nb::make_tuple(reference.position, reference.id));
+    }
+    return result;
+}
+
+[[nodiscard]] auto import_metadata(const adapters::MoleculeImportMetadata& metadata) -> nb::dict {
+    auto conformers = nb::list{};
+    for (const auto& conformer : metadata.conformers) {
+        conformers.append(
+            nb::make_tuple(conformer.position, conformer.id, atom_references(conformer.sites)));
+    }
+    auto result = nb::dict{};
+    result["format"] = std::string{format_name(metadata.format)};
+    result["atoms"] = atom_references(metadata.atoms);
+    result["conformers"] = std::move(conformers);
+    result["record_selection"] = metadata.record_selection;
+    result["conformer_selection"] = metadata.conformer_selection;
+    result["bond_strategy"] = metadata.bond_strategy;
+    result["source_connectivity"] = std::string{connectivity_name(metadata.source_connectivity)};
+    return result;
+}
 
 auto make_payload(adapters::ImportedMoleculeRecord record) -> MoleculePayload {
     MoleculePayload result;
@@ -87,6 +146,7 @@ auto make_payload(adapters::ImportedMoleculeRecord record) -> MoleculePayload {
     result.name = molecule.name();
     result.identity = std::move(record.identity);
     result.diagnostics = std::move(record.diagnostics);
+    result.import_metadata = std::move(record.import_metadata);
     return result;
 }
 
@@ -107,6 +167,11 @@ auto as_python(const MoleculePayload& payload) -> nb::dict {
         diagnostics.append(nb::make_tuple(diagnostic.code, diagnostic.message, diagnostic.line));
     }
     result["diagnostics"] = std::move(diagnostics);
+    if (payload.import_metadata.has_value()) {
+        result["import_metadata"] = import_metadata(*payload.import_metadata);
+    } else {
+        result["import_metadata"] = nb::none();
+    }
     return result;
 }
 
@@ -194,7 +259,8 @@ auto output_records(const nb::sequence& molecules, const nb::sequence& identitie
             .identity = {.source = std::get<0>(identity),
                          .record_index = std::get<1>(identity),
                          .record_id = std::get<2>(identity)},
-            .diagnostics = std::move(record_diagnostics)});
+            .diagnostics = std::move(record_diagnostics),
+            .import_metadata = std::nullopt});
     }
     return result;
 }

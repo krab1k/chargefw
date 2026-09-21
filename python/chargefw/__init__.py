@@ -26,7 +26,14 @@ from .calculation import (
     parameter_sets,
 )
 from .charges import ChargeAssignment
-from .core import Molecule, MoleculeCollection, SourceIdentity
+from .core import (
+    Molecule,
+    MoleculeCollection,
+    SourceAtomReference,
+    SourceConformerReference,
+    SourceIdentity,
+    SourceMapping,
+)
 
 __version__ = _native_version()
 
@@ -35,6 +42,9 @@ __all__ = [
     "Molecule",
     "MoleculeCollection",
     "SourceIdentity",
+    "SourceAtomReference",
+    "SourceConformerReference",
+    "SourceMapping",
     "ChargeAssignment",
     "CalculationResult",
     "Assessment",

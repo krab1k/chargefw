@@ -117,3 +117,32 @@ TEST_CASE("JSON input rejects integers outside the native integer range", "[adap
     auto reader = json::JsonReader{stream};
     CHECK_THROWS_AS(reader.next(), std::runtime_error);
 }
+
+TEST_CASE("JSON input owns coordinate-free source mapping", "[adapters][json]") {
+    auto record = [] {
+        std::istringstream input{R"json(
+{
+  "schema_version": "1.0",
+  "molecules": [{
+    "atoms": [
+      {"atomic_number": 6, "formal_charge": 0},
+      {"atomic_number": 8, "formal_charge": 0}
+    ]
+  }]
+}
+)json"};
+        auto reader = json::JsonReader{input, "topology.json"};
+        return *reader.next();
+    }();
+
+    REQUIRE(record.import_metadata.has_value());
+    const auto& metadata = *record.import_metadata;
+    CHECK(metadata.format == chargefw::adapters::MolecularSourceFormat::molecule_json);
+    REQUIRE(metadata.atoms.size() == 2);
+    CHECK(metadata.atoms[0].position == 0);
+    CHECK_FALSE(metadata.atoms[0].id.has_value());
+    CHECK(metadata.atoms[1].position == 1);
+    CHECK(metadata.conformers.empty());
+    CHECK(metadata.conformer_selection == "all");
+    CHECK(metadata.source_connectivity == chargefw::adapters::SourceConnectivity::absent);
+}

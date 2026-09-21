@@ -78,10 +78,12 @@ auto read_to_atom_section(std::istream& input, std::size_t& line) -> void {
 
     std::vector<core::Atom> atoms;
     std::vector<core::Position> positions;
+    std::vector<SourceAtomReference> atom_references;
     std::unordered_map<int, std::size_t> atom_indices;
     bool has_partial_charges = false;
     atoms.reserve(static_cast<std::size_t>(atom_count));
     positions.reserve(static_cast<std::size_t>(atom_count));
+    atom_references.reserve(static_cast<std::size_t>(atom_count));
 
     for (int index = 0; index < atom_count; ++index) {
         std::istringstream atom_line{common::read_line(input, line, "MOL2")};
@@ -118,6 +120,8 @@ auto read_to_atom_section(std::istream& input, std::size_t& line) -> void {
         const auto& element = core::periodic_table().element(element_symbol(atom_type));
         atom_indices.emplace(source_id, atoms.size());
         atoms.emplace_back(element.atomic_number, 0, std::move(atom_name));
+        atom_references.push_back(SourceAtomReference{.position = static_cast<std::size_t>(index),
+                                                      .id = std::move(source_id_text)});
         positions.push_back(core::Position{.x = common::parse_double(x_text, "MOL2 x coordinate"),
                                            .y = common::parse_double(y_text, "MOL2 y coordinate"),
                                            .z = common::parse_double(z_text, "MOL2 z coordinate")});
@@ -168,9 +172,21 @@ auto read_to_atom_section(std::istream& input, std::size_t& line) -> void {
             .line = std::nullopt});
     }
 
-    return common::make_record(std::move(atoms), std::move(bonds),
-                               {core::Conformer{std::move(positions), "input"}},
-                               std::move(identity), {}, std::move(diagnostics));
+    auto sites = atom_references;
+    auto metadata = MoleculeImportMetadata{
+        .format = MolecularSourceFormat::mol2,
+        .atoms = std::move(atom_references),
+        .conformers = {SourceConformerReference{
+            .position = 0, .id = std::nullopt, .sites = std::move(sites)}},
+        .record_selection = std::nullopt,
+        .conformer_selection = "all",
+        .bond_strategy = std::nullopt,
+        .source_connectivity =
+            bond_count == 0 ? SourceConnectivity::explicitly_empty : SourceConnectivity::present,
+    };
+    return common::make_record(
+        std::move(atoms), std::move(bonds), {core::Conformer{std::move(positions), "input"}},
+        std::move(identity), {}, std::move(diagnostics), std::move(metadata));
 }
 
 } // namespace

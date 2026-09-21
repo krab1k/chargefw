@@ -24,8 +24,11 @@ order is retained in charge assignments and in every output mapping.
 
 Readers report malformed or unsupported molecular data as errors. Native MOL, SDF, and MOL2 input accepts
 both LF and CRLF line endings. A successful imported record also carries its source name, zero-based record
-index, format-derived record ID, and non-fatal diagnostics. Streaming SDF and MOL2 readers consume one
-record at a time; molecule JSON, PDB, and mmCIF parsing retains the complete source document in memory.
+index, format-derived record ID, and non-fatal diagnostics. MOL, SDF, MOL2, and molecule JSON records own
+their calculation-atom source positions, explicit source atom IDs where available, per-conformer site
+mapping, import policy, and whether source connectivity was absent, explicitly empty, or present. Streaming
+SDF and MOL2 readers consume one record at a time; molecule JSON, PDB, and mmCIF parsing retains the complete
+source document in memory.
 
 ## MOL and SDF input
 
@@ -48,6 +51,9 @@ V2000 properties other than `M  CHG` are not interpreted. One warning per ignore
 property code is attached to the molecule record. Repeated ignored-property and omitted-bond warnings are
 coalesced within a record and retain the first record-relative line number.
 
+V3000 source atom ID tokens are retained exactly for mapping, including leading zeros. V2000 has no
+explicit atom-ID field, so its zero-based atom-row positions are the source references.
+
 The first MOL header line supplies the record ID and, unless another name is available, the molecule
 name. MOL and SDF input always produces one conformer named `input`.
 
@@ -65,6 +71,9 @@ bonds.
 MOL2 atom charges are partial charges, not formal charges. They are parsed for validity but are not used;
 all imported formal charges are zero. A record containing any nonzero input partial charge receives a
 `partial_charges_ignored` warning. Each record produces one conformer named `input`.
+
+MOL2 source atom ID tokens are retained exactly for mapping after their positive-integer uniqueness and
+bond-reference semantics have been validated.
 
 ## ChargeFW molecule JSON input 1.0
 

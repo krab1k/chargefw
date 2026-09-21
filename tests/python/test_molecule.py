@@ -1,6 +1,8 @@
 """Owned molecule and collection model checks."""
 
 import unittest
+from dataclasses import FrozenInstanceError
+from gc import collect
 from typing import Any, cast
 
 import chargefw
@@ -9,6 +11,47 @@ from chargefw._chargefw import core as _native_core
 
 
 class MoleculeTests(unittest.TestCase):
+    def test_imported_source_mapping_is_owned_and_read_only(self) -> None:
+        contents = """\
+@<TRIPOS>MOLECULE
+mapping
+2 0 0 0 0
+SMALL
+NO_CHARGES
+@<TRIPOS>ATOM
+001 C1 0 0 0 C.3
+10 O1 1 0 0 O.2
+@<TRIPOS>BOND
+"""
+        collection = chargefw.io.parse(contents, format="mol2", source_name="mapping.mol2")
+        molecule = collection[0]
+        del collection, contents
+        collect()
+
+        self.assertEqual(molecule.atom_ids, ("001", "10"))
+        mapping = molecule.source_mapping
+        self.assertIsNotNone(mapping)
+        assert mapping is not None
+        self.assertEqual(mapping.format, "mol2")
+        self.assertEqual(mapping.source_connectivity, "explicitly-empty")
+        self.assertEqual(
+            mapping.atoms,
+            (
+                chargefw.SourceAtomReference(0, "001"),
+                chargefw.SourceAtomReference(1, "10"),
+            ),
+        )
+        self.assertEqual(mapping.conformers[0].sites, mapping.atoms)
+        with self.assertRaises(FrozenInstanceError):
+            setattr(mapping, "format", "mol")
+
+        manual = chargefw.Molecule(
+            molecule.atomic_numbers,
+            coordinates=molecule.coordinates,
+            atom_ids=molecule.atom_ids,
+        )
+        self.assertIsNone(manual.source_mapping)
+
     def test_private_binding_rejects_native_integer_overflow(self) -> None:
         with self.assertRaises(ValueError):
             _native_core._make_molecule(

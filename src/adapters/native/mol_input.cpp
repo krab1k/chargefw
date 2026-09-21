@@ -46,6 +46,8 @@ struct ParsedMolecule {
     std::vector<core::Atom> atoms;
     std::vector<core::Bond> bonds;
     std::vector<core::Position> positions;
+    std::vector<SourceAtomReference> atom_references;
+    SourceConnectivity source_connectivity = SourceConnectivity::absent;
     std::vector<MoleculeRecordDiagnostic> diagnostics;
 };
 
@@ -63,7 +65,10 @@ auto parse_v2000(std::istream& input, const std::string_view counts, std::size_t
     auto result = ParsedMolecule{};
     result.atoms.reserve(static_cast<std::size_t>(atom_count));
     result.positions.reserve(static_cast<std::size_t>(atom_count));
+    result.atom_references.reserve(static_cast<std::size_t>(atom_count));
     result.bonds.reserve(static_cast<std::size_t>(bond_count));
+    result.source_connectivity =
+        bond_count == 0 ? SourceConnectivity::explicitly_empty : SourceConnectivity::present;
     auto ignored_property_codes = std::unordered_set<std::string>{};
 
     for (int index = 0; index < atom_count; ++index) {
@@ -78,6 +83,8 @@ auto parse_v2000(std::istream& input, const std::string_view counts, std::size_t
 
         result.atoms.push_back(atom_from_symbol(symbol, 0));
         result.positions.push_back(core::Position{.x = x, .y = y, .z = z});
+        result.atom_references.push_back(
+            SourceAtomReference{.position = static_cast<std::size_t>(index), .id = std::nullopt});
     }
 
     for (int index = 0; index < bond_count; ++index) {
@@ -218,7 +225,10 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
     auto result = ParsedMolecule{};
     result.atoms.reserve(static_cast<std::size_t>(atom_count));
     result.positions.reserve(static_cast<std::size_t>(atom_count));
+    result.atom_references.reserve(static_cast<std::size_t>(atom_count));
     result.bonds.reserve(static_cast<std::size_t>(bond_count));
+    result.source_connectivity =
+        bond_count == 0 ? SourceConnectivity::explicitly_empty : SourceConnectivity::present;
     std::unordered_map<int, std::size_t> atom_indices;
     std::unordered_set<int> bond_ids;
     std::unordered_set<int> ignored_bond_orders;
@@ -249,6 +259,8 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
 
         atom_indices.emplace(source_id, result.atoms.size());
         result.atoms.push_back(atom_from_symbol(atom[1], formal_charge));
+        result.atom_references.push_back(
+            SourceAtomReference{.position = static_cast<std::size_t>(index), .id = atom[0]});
         result.positions.push_back(
             core::Position{.x = common::parse_double(atom[2], "V3000 x coordinate"),
                            .y = common::parse_double(atom[3], "V3000 y coordinate"),
@@ -310,9 +322,21 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
 
 [[nodiscard]] auto make_record(ParsedMolecule parsed, MoleculeRecordIdentity identity)
     -> ImportedMoleculeRecord {
+    auto sites = parsed.atom_references;
+    auto metadata = MoleculeImportMetadata{
+        .format = MolecularSourceFormat::mol,
+        .atoms = std::move(parsed.atom_references),
+        .conformers = {SourceConformerReference{
+            .position = 0, .id = std::nullopt, .sites = std::move(sites)}},
+        .record_selection = std::nullopt,
+        .conformer_selection = "all",
+        .bond_strategy = std::nullopt,
+        .source_connectivity = parsed.source_connectivity,
+    };
     return common::make_record(std::move(parsed.atoms), std::move(parsed.bonds),
                                {core::Conformer{std::move(parsed.positions), "input"}},
-                               std::move(identity), {}, std::move(parsed.diagnostics));
+                               std::move(identity), {}, std::move(parsed.diagnostics),
+                               std::move(metadata));
 }
 
 } // namespace

@@ -204,7 +204,11 @@ Public headers are provided under `chargefw/adapters`, with format-specific APIs
 - `make_charge_result_document()` assembles result status, diagnostics, assignments, and provenance for
   `JsonWriter`; application-specific execution metrics are optional.
 
-Readers return `ImportedMoleculeRecord`, which keeps the molecule together with source identity and import
-diagnostics. The [molecular format reference](FORMATS.md) documents supported subsets, reader policy,
-source preservation, generated output, charge fields, and mapping requirements independently of the C++
-API.
+Readers return `ImportedMoleculeRecord`, which keeps the molecule together with source identity, import
+diagnostics, and optional `MoleculeImportMetadata`. Native MOL, SDF, MOL2, and molecule JSON readers populate
+calculation-ordered `SourceAtomReference` values, per-conformer `SourceConformerReference` site mappings,
+record-local import policy, source format, and the small `SourceConnectivity` summary. These values own
+their source tokens and remain valid after reader destruction; they do not retain parser documents or
+normalized verification snapshots. The [molecular format reference](FORMATS.md) documents supported
+subsets, reader policy, source preservation, generated output, charge fields, and mapping requirements
+independently of the C++ API.

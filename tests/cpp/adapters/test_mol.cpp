@@ -113,6 +113,38 @@ TEST_CASE("native numeric parsing is complete and locale independent", "[adapter
     }
 }
 
+TEST_CASE("native molecular mappings retain original atom tokens", "[adapters][mol]") {
+    auto mol_record = [] {
+        std::istringstream input{"mapping\nchargefw\n\n"
+                                 "  0  0  0  0  0  0  0  0  0  0999 V3000\n"
+                                 "M  V30 BEGIN CTAB\nM  V30 COUNTS 2 0 0 0 0\nM  V30 BEGIN ATOM\n"
+                                 "M  V30 001 C 0 0 0 0\nM  V30 10 O 1 0 0 0\nM  V30 END ATOM\n"
+                                 "M  V30 BEGIN BOND\nM  V30 END BOND\nM  V30 END CTAB\nM  END\n"};
+        auto reader = mol::MolReader{input, "mapping.mol"};
+        return *reader.next();
+    }();
+
+    REQUIRE(mol_record.import_metadata.has_value());
+    const auto& mol_mapping = *mol_record.import_metadata;
+    CHECK(mol_mapping.format == adapters::MolecularSourceFormat::mol);
+    CHECK(mol_mapping.atoms[0].id == "001");
+    CHECK(mol_mapping.atoms[1].id == "10");
+    REQUIRE(mol_mapping.conformers.size() == 1);
+    CHECK(mol_mapping.conformers[0].sites == mol_mapping.atoms);
+    CHECK(mol_mapping.source_connectivity == adapters::SourceConnectivity::explicitly_empty);
+
+    std::istringstream mol2_input{
+        "@<TRIPOS>MOLECULE\nmapping\n2 0 0 0 0\nSMALL\nNO_CHARGES\n"
+        "@<TRIPOS>ATOM\n001 C1 0 0 0 C.3\n10 O1 1 0 0 O.2\n@<TRIPOS>BOND\n"};
+    auto mol2_reader = mol2::Mol2Reader{mol2_input, "mapping.mol2"};
+    const auto mol2_record = mol2_reader.next();
+    REQUIRE(mol2_record.has_value());
+    REQUIRE(mol2_record->import_metadata.has_value());
+    CHECK(mol2_record->import_metadata->format == adapters::MolecularSourceFormat::mol2);
+    CHECK(mol2_record->import_metadata->atoms[0].id == "001");
+    CHECK(mol2_record->import_metadata->atoms[1].id == "10");
+}
+
 TEST_CASE("native MOL and SDF input accepts CRLF", "[adapters][native]") {
     constexpr auto v2000 = "minimal\nchargefw\n\n"
                            "  1  0  0  0  0  0  0  0  0  0999 V2000\n"
@@ -292,6 +324,8 @@ TEST_CASE("native readers preserve molecular mapping and reject malformed record
         const auto& v3000_record = *result;
         CHECK(v3000_record.molecule.atom_count() == 36);
         CHECK(v3000_record.molecule.bond_count() == 38);
+        REQUIRE(v3000_record.import_metadata.has_value());
+        CHECK(v3000_record.import_metadata->format == adapters::MolecularSourceFormat::sdf);
     }
 
     {
