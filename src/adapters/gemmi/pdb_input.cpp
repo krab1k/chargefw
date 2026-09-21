@@ -7,6 +7,8 @@
 #include <gemmi/pdb.hpp>
 
 #include <algorithm>
+#include <charconv>
+#include <cstdlib>
 #include <istream>
 #include <iterator>
 #include <optional>
@@ -43,9 +45,33 @@ namespace {
     return std::string{value.substr(first, last - first + 1)};
 }
 
+[[nodiscard]] auto normalized_sequence(const std::optional<std::string>& sequence)
+    -> std::optional<std::string> {
+    if (!sequence.has_value()) {
+        return std::nullopt;
+    }
+    if (sequence->front() < 'A') {
+        auto value = int{};
+        const auto [end, error] =
+            std::from_chars(sequence->data(), sequence->data() + sequence->size(), value);
+        if (error != std::errc{} || end != sequence->data() + sequence->size()) {
+            throw std::runtime_error{"PDB source contains an invalid residue sequence ID"};
+        }
+        return std::to_string(value);
+    }
+
+    const auto value = std::strtol(sequence->c_str(), nullptr, 36) - 466560L + 10000L;
+    return std::to_string(value);
+}
+
+struct PdbSourceSite {
+    SourceAtomReference reference;
+    SourceStructuralLabels identity;
+};
+
 struct PdbSourceModel {
     std::optional<std::string> id;
-    std::vector<SourceAtomReference> sites;
+    std::vector<PdbSourceSite> sites;
 };
 
 struct PdbSource {
@@ -84,19 +110,23 @@ struct PdbSource {
             result.models.push_back(PdbSourceModel{.id = std::nullopt, .sites = {}});
             current = std::addressof(result.models.back());
         }
+        auto labels =
+            SourceStructuralLabels{.author = SourceHierarchyLabels{.atom = field(view, 12, 4),
+                                                                   .residue = field(view, 17, 3),
+                                                                   .chain = field(view, 20, 2),
+                                                                   .sequence = field(view, 22, 4)},
+                                   .label = {},
+                                   .entity = std::nullopt,
+                                   .insertion_code = field(view, 26, 1),
+                                   .alternate_location = field(view, 16, 1),
+                                   .segment = field(view, 72, 4)};
+        auto identity = labels;
+        identity.author.sequence = normalized_sequence(labels.author.sequence);
         current->sites.push_back(
-            SourceAtomReference{.position = source_position++,
-                                .id = field(view, 6, 5),
-                                .structural_labels = SourceStructuralLabels{
-                                    .author = SourceHierarchyLabels{.atom = field(view, 12, 4),
-                                                                    .residue = field(view, 17, 3),
-                                                                    .chain = field(view, 21, 1),
-                                                                    .sequence = field(view, 22, 4)},
-                                    .label = {},
-                                    .entity = std::nullopt,
-                                    .insertion_code = field(view, 26, 1),
-                                    .alternate_location = field(view, 16, 1),
-                                    .segment = field(view, 72, 4)}});
+            PdbSourceSite{.reference = SourceAtomReference{.position = source_position++,
+                                                           .id = field(view, 6, 5),
+                                                           .structural_labels = std::move(labels)},
+                          .identity = std::move(identity)});
     }
     return result;
 }
@@ -134,7 +164,7 @@ struct PdbSource {
             const auto labels = selected_labels(site);
             auto match = std::optional<std::size_t>{};
             for (std::size_t index = 0; index < source[model_index].sites.size(); ++index) {
-                if (!used[index] && source[model_index].sites[index].structural_labels == labels) {
+                if (!used[index] && source[model_index].sites[index].identity == labels) {
                     if (match.has_value()) {
                         throw std::runtime_error{
                             "PDB source contains ambiguous selected atom identity"};
@@ -146,7 +176,7 @@ struct PdbSource {
                 throw std::runtime_error{"PDB source mapping does not match selected atoms"};
             }
             used[*match] = true;
-            sites.push_back(source[model_index].sites[*match]);
+            sites.push_back(source[model_index].sites[*match].reference);
         }
         result.push_back(structure_import::SourceModelMapping{
             .conformer = SourceConformerReference{

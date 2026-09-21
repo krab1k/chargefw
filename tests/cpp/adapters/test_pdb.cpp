@@ -214,6 +214,26 @@ END
     CHECK(conformers[1].sites[0].structural_labels->alternate_location == "B");
 }
 
+TEST_CASE("PDB mapping retains source labels through Gemmi normalization", "[adapters][pdb]") {
+    std::istringstream input{
+        R"pdb(ATOM      1  C1  LIGAB0001      0.000   0.000   0.000  1.00 20.00           C
+ATOM      2  O1  LIGABA000      1.000   0.000   0.000  1.00 20.00           O
+END
+)pdb"};
+    auto reader = pdb::PdbReader{input};
+    const auto record = reader.next();
+    REQUIRE(record.has_value());
+    REQUIRE(record->import_metadata.has_value());
+    const auto& atoms = record->import_metadata->atoms;
+    REQUIRE(atoms.size() == 2);
+    REQUIRE(atoms[0].structural_labels.has_value());
+    REQUIRE(atoms[1].structural_labels.has_value());
+    CHECK(atoms[0].structural_labels->author.chain == "AB");
+    CHECK(atoms[0].structural_labels->author.sequence == "0001");
+    CHECK(atoms[1].structural_labels->author.chain == "AB");
+    CHECK(atoms[1].structural_labels->author.sequence == "A000");
+}
+
 TEST_CASE("PDB input rejects empty and incompatible selected models", "[adapters][pdb]") {
     {
         std::istringstream input{"END\n"};
