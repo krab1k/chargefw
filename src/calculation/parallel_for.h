@@ -15,7 +15,6 @@
 #include <string_view>
 #include <utility>
 
-#include <oneapi/tbb/blocked_range.h>
 #include <oneapi/tbb/parallel_for.h>
 #include <oneapi/tbb/task_arena.h>
 
@@ -43,13 +42,8 @@ auto parallel_for_indexed(const std::size_t count, const std::size_t max_threads
 
     oneapi::tbb::task_arena arena{static_cast<int>(max_threads)};
     arena.execute([&] {
-        oneapi::tbb::parallel_for(
-            oneapi::tbb::blocked_range<std::size_t>{0, count},
-            [&function](const oneapi::tbb::blocked_range<std::size_t>& range) {
-                for (auto index = range.begin(); index != range.end(); ++index) {
-                    function(index);
-                }
-            });
+        oneapi::tbb::parallel_for(std::size_t{0}, count,
+                                  [&function](const std::size_t index) { function(index); });
     });
 }
 
