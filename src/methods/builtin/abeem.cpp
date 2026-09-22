@@ -188,11 +188,8 @@ auto ABEEMMethod::calculate(const CalculationInput& input) const -> charges::Ato
         }
     }
 
-    for (Eigen::Index i = 0; i < n + m; ++i) {
-        matrix(i, n + m) = 1.0;
-        matrix(n + m, i) = 1.0;
-    }
-
+    matrix.row(n + m).setOnes();
+    matrix.col(n + m).setOnes();
     matrix(n + m, n + m) = 0.0;
     rhs(n + m) = input.target_charge();
 

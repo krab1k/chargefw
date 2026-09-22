@@ -78,8 +78,8 @@ auto TSEFMethod::calculate(const CalculationInput& input) const -> charges::Atom
         }
     }
 
-    A.row(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
-    A.col(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
+    A.row(n).setOnes();
+    A.col(n).setOnes();
     A(n, n) = 0.0;
     b(n) = core::total_formal_charge(molecule);
 

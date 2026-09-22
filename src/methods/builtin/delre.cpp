@@ -58,12 +58,12 @@ auto DelReMethod::calculate(const CalculationInput& input) const -> charges::Ato
 
     Eigen::MatrixXd matrix = Eigen::MatrixXd::Zero(n, n);
     Eigen::VectorXd rhs = Eigen::VectorXd::Zero(n);
+    matrix.diagonal().setConstant(-1.0);
 
     for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
         const auto eigen_index = static_cast<Eigen::Index>(atom_index);
 
         rhs(eigen_index) = -delta[atom_index];
-        matrix(eigen_index, eigen_index) = -1.0;
     }
 
     for (std::size_t bond_index = 0; bond_index < molecule.bond_count(); ++bond_index) {

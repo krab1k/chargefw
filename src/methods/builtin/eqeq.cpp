@@ -88,8 +88,8 @@ auto eqeq_core::calculate(const CalculationInput& input, const std::string_view 
         }
     }
 
-    matrix.row(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
-    matrix.col(n) = Eigen::VectorXd::Constant(n + 1, 1.0);
+    matrix.row(n).setOnes();
+    matrix.col(n).setOnes();
     matrix(n, n) = 0.0;
     rhs(n) = input.target_charge();
 
