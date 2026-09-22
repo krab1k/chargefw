@@ -3,8 +3,6 @@
 #include <chargefw/adapters/gemmi/input_options.h>
 #include <chargefw/adapters/molecule_record.h>
 
-#include <gemmi/model.hpp>
-
 #include <istream>
 #include <optional>
 #include <string>
