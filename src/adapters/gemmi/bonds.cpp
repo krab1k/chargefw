@@ -245,10 +245,10 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
     auto rows =
         block.find("_chem_comp_bond.", {"comp_id", "atom_id_1", "atom_id_2", "value_order"});
     for (const auto row : rows) {
-        auto component = ::gemmi::cif::as_string(row[0]);
-        auto first = ::gemmi::cif::as_string(row[1]);
-        auto second = ::gemmi::cif::as_string(row[2]);
-        const auto order_value = ::gemmi::cif::as_string(row[3]);
+        auto component = row.str(0);
+        auto first = row.str(1);
+        auto second = row.str(2);
+        const auto order_value = row.str(3);
         if (const auto order = bond_order(order_value)) {
             component_bonds[std::move(component)].emplace_back(ParsedComponentBond{
                 .first = std::move(first), .second = std::move(second), .order = *order});
