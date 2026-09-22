@@ -6,6 +6,7 @@
 #include <chargefw/core/periodic_table.h>
 
 #include <gemmi/cif.hpp>
+#include <gemmi/numb.hpp>
 #include <gemmi/to_cif.hpp>
 
 #include <algorithm>
@@ -201,10 +202,13 @@ struct OutputAssignments {
     }
     auto atom_sites = mmcif_labels::source_atom_sites(block);
     auto type_symbols = block.find("_atom_site.", {"type_symbol"});
+    auto identity_sites =
+        block.find("_atom_site.", {"Cartn_x", "Cartn_y", "Cartn_z", "?pdbx_formal_charge"});
     if (atom_sites.length() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
         throw std::invalid_argument{"Gemmi target contains too many atom sites"};
     }
-    if (type_symbols.length() != atom_sites.length()) {
+    if (type_symbols.length() != atom_sites.length() ||
+        identity_sites.length() != atom_sites.length()) {
         throw std::invalid_argument{
             "Gemmi target site mapping does not match the calculation input"};
     }
@@ -213,7 +217,9 @@ struct OutputAssignments {
     result.atom_site_ids.reserve(metadata.conformers.size());
     result.model_ids.reserve(metadata.conformers.size());
     auto mapped_ids = std::unordered_set<std::string>{};
-    for (const auto& conformer : metadata.conformers) {
+    for (std::size_t conformer_index = 0; conformer_index < metadata.conformers.size();
+         ++conformer_index) {
+        const auto& conformer = metadata.conformers[conformer_index];
         const auto model_id = conformer.id.value_or("1");
         result.model_ids.push_back(model_id);
         auto& ids = result.atom_site_ids.emplace_back();
@@ -249,6 +255,17 @@ struct OutputAssignments {
                 ::gemmi::cif::as_string(target_site[mmcif_labels::model_id_column]) != model_id) {
                 throw std::invalid_argument{
                     "Gemmi target model mapping does not match the calculation input"};
+            }
+            const auto& position = record.molecule.conformer(conformer_index)[atom_index];
+            const auto& identity_site = identity_sites[row_index];
+            const auto formal_charge =
+                identity_site.has(3) ? ::gemmi::cif::as_int(identity_site[3], 0) : 0;
+            if (::gemmi::cif::as_number(identity_site[0]) != position.x ||
+                ::gemmi::cif::as_number(identity_site[1]) != position.y ||
+                ::gemmi::cif::as_number(identity_site[2]) != position.z ||
+                formal_charge != record.molecule.atom(atom_index).formal_charge()) {
+                throw std::invalid_argument{
+                    "Gemmi target site mapping does not match the calculation input"};
             }
             ids.push_back(std::move(target_id));
         }

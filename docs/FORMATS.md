@@ -208,10 +208,11 @@ empty records, unsuccessful results, and charges outside the dictionary's inclus
 serializing the document.
 
 Python additionally supports strict in-memory annotation of the unchanged Gemmi document used for import.
-This preserves unrelated categories but validates exact block, source-position, atom-ID, and model-ID
-correspondence before mutation. Existing charge categories require explicit overwrite; append mode and CLI
-source-file preservation are not supported. Source atom IDs must be canonical positive integers to satisfy
-the charge dictionary's `atom_id` constraint.
+This preserves unrelated categories but validates exact block, source-position, atom-ID, model-ID, element,
+structural labels, coordinates, and formal charges before mutation. Occupancy and B factors may change.
+Existing charge categories require explicit overwrite; append mode and CLI source-file preservation are not
+supported. Source atom IDs must be canonical positive integers to satisfy the charge dictionary's `atom_id`
+constraint.
 
 ### ChargeFW result JSON 1.0
 
