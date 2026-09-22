@@ -14,7 +14,6 @@ namespace chargefw::python {
 namespace {
 
 auto make_parameter_catalog(const std::string& directory) -> NativeParameterCatalog {
-    nb::gil_scoped_release release;
     return NativeParameterCatalog{
         parameters::load_parameter_sets_json_directory(std::filesystem::path{directory})};
 }
@@ -40,7 +39,8 @@ auto parameter_set_descriptors(const NativeParameterCatalog& catalog) -> nb::lis
 void bind_parameters(nb::module_& module) {
     nb::class_<NativeParameterCatalog>(module, "_NativeParameterCatalog")
         .def("_descriptors", &parameter_set_descriptors);
-    module.def("_load_parameter_catalog", &make_parameter_catalog, nb::arg("directory"));
+    module.def("_load_parameter_catalog", &make_parameter_catalog, nb::arg("directory"),
+               nb::call_guard<nb::gil_scoped_release>());
 }
 
 } // namespace chargefw::python
