@@ -391,6 +391,22 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         self.assertEqual(document.as_string(), before_rejected_overwrite)
         chargefw.io.gemmi.attach_charges(document, result, overwrite=True)
 
+        conformer_document = gemmi.cif.read_string(MMCIF_TEXT)
+        conformer_result = calculate(
+            chargefw.io.gemmi.from_document(conformer_document), method="qeq"
+        )
+        self.assertEqual(
+            [assignment.conformer_index for assignment in conformer_result.assignments], [0, 1, 0]
+        )
+        chargefw.io.gemmi.attach_charges(conformer_document, conformer_result)
+        first_charge_rows = conformer_document[0].find(
+            "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id"]
+        )
+        self.assertEqual(
+            [(gemmi.cif.as_string(row[0]), gemmi.cif.as_string(row[1])) for row in first_charge_rows],
+            [("1", "1"), ("1", "2"), ("2", "3"), ("2", "4")],
+        )
+
         modified = gemmi.cif.read_string(MMCIF_TEXT)
         modified_molecules = chargefw.io.gemmi.from_document(modified)
         modified_result = calculate(modified_molecules, method="formal")

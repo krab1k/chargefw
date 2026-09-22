@@ -488,22 +488,6 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
     }
 }
 
-[[nodiscard]] auto assignments_for(const charges::ChargeSet& charge_set,
-                                   const std::size_t molecule_index)
-    -> std::vector<charges::ChargeAssignment> {
-    std::vector<charges::ChargeAssignment> result;
-    for (const auto& assignment : charge_set.assignments()) {
-        if (assignment.target.molecule_index == molecule_index) {
-            result.push_back(assignment);
-        }
-    }
-    if (result.empty()) {
-        throw std::runtime_error{"no charge assignments for mmCIF output molecule " +
-                                 std::to_string(molecule_index + 1)};
-    }
-    return result;
-}
-
 } // namespace
 
 MmcifWriter::MmcifWriter(std::ostream& output) : output_{std::addressof(output)} {}
@@ -542,6 +526,8 @@ auto write_attached(std::ostream& output, const ChargeCalculationResult& result,
         throw std::invalid_argument{
             "Gemmi target molecule count does not match the calculation input"};
     }
+    const auto assignments = result.execution().charges->assignments();
+    auto assignment_offset = std::size_t{0};
     for (std::size_t index = 0; index < blocks.size(); ++index) {
         auto& block = *blocks[index];
         if (!overwrite && (block.has_mmcif_category(metadata_category) ||
@@ -549,9 +535,14 @@ auto write_attached(std::ostream& output, const ChargeCalculationResult& result,
             throw std::invalid_argument{"Gemmi target already contains partial charge categories"};
         }
         const auto mapping = attached_mapping(block, result.inputs()[index]);
+        const auto assignment_count =
+            assignments[assignment_offset].target.conformer_index.has_value()
+                ? result.inputs()[index].molecule.conformer_count()
+                : std::size_t{1};
         write_charges(block, mapping, result.inputs()[index].molecule,
-                      assignments_for(*result.execution().charges, index),
+                      assignments.subspan(assignment_offset, assignment_count),
                       *result.execution().charges, generator_name, generator_version);
+        assignment_offset += assignment_count;
     }
     ::gemmi::cif::write_cif_to_stream(output, document);
     if (!output) {
