@@ -589,7 +589,7 @@ auto write_attached(std::ostream& output, const ChargeCalculationResult& result,
     auto document = source;
     auto blocks = std::vector<::gemmi::cif::Block*>{};
     for (auto& block : document.blocks) {
-        if (block.has_mmcif_category("_atom_site.")) {
+        if (block.has_tag("_atom_site.id")) {
             blocks.push_back(std::addressof(block));
         }
     }

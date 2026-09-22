@@ -420,6 +420,18 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         with self.assertRaises(TypeError):
             chargefw.io.gemmi.attach_charges(document, result, overwrite=cast(Any, 1))
 
+    def test_attach_charges_ignores_atom_site_categories_without_ids(self) -> None:
+        document = gemmi.cif.read_string(
+            f"{MMCIF_TEXT}data_auxiliary\nloop_\n_atom_site.label_atom_id\nX\n#\n"
+        )
+        result = calculate(chargefw.io.gemmi.from_document(document), method="formal")
+
+        chargefw.io.gemmi.attach_charges(document, result)
+
+        self.assertEqual(len(document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])), 4)
+        self.assertEqual(len(document[1].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])), 1)
+        self.assertNotIn("_sb_ncbr_partial_atomic_charges.", document[2].get_mmcif_category_names())
+
     def test_selection_conformers_and_types_are_explicit(self) -> None:
         polymers = chargefw_io.parse(
             MMCIF_TEXT,
