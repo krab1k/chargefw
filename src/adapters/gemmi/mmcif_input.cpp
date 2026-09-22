@@ -5,6 +5,8 @@
 #include "selection.h"
 #include "structure_import.h"
 
+#include <chargefw/core/bond.h>
+
 #include <gemmi/cif.hpp>
 #include <gemmi/mmcif.hpp>
 
@@ -139,9 +141,13 @@ auto MmcifReader::next() -> std::optional<ImportedMoleculeRecord> {
         if (structure.models.empty()) {
             throw std::runtime_error{"structural input contains no models"};
         }
-        const auto selected =
-            selection::SelectedModel{structure.models.front(), options_.selection};
-        auto explicit_bonds = bonds::explicit_mmcif(structure, block, selected);
+        auto explicit_bonds = std::vector<core::Bond>{};
+        if (options_.bond_strategy == BondStrategy::explicit_bonds ||
+            options_.bond_strategy == BondStrategy::hybrid) {
+            const auto selected =
+                selection::SelectedModel{structure.models.front(), options_.selection};
+            explicit_bonds = bonds::explicit_mmcif(structure, block, selected);
+        }
         auto source_models = make_source_mappings(block, structure, options_);
         const auto current_record_index = record_index_++;
         auto record = structure_import::make_record(

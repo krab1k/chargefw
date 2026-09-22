@@ -4,6 +4,8 @@
 #include "selection.h"
 #include "structure_import.h"
 
+#include <chargefw/core/bond.h>
+
 #include <gemmi/pdb.hpp>
 
 #include <algorithm>
@@ -220,8 +222,12 @@ PdbReader::PdbReader(std::istream& input, std::string source,
         throw std::runtime_error{"structural input contains no models"};
     }
     const auto name = structure.name.empty() ? source : structure.name;
-    const auto selected = selection::SelectedModel{structure.models.front(), options.selection};
-    auto explicit_bonds = bonds::explicit_pdb(structure, selected);
+    auto explicit_bonds = std::vector<core::Bond>{};
+    if (options.bond_strategy == BondStrategy::explicit_bonds ||
+        options.bond_strategy == BondStrategy::hybrid) {
+        const auto selected = selection::SelectedModel{structure.models.front(), options.selection};
+        explicit_bonds = bonds::explicit_pdb(structure, selected);
+    }
     const auto parsed_source = parse_source(contents);
     auto mappings = source_models(structure, options, parsed_source.models);
     record_ = structure_import::make_record(
