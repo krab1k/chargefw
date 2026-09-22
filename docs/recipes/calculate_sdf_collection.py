@@ -1,4 +1,4 @@
-"""Calculate QEq charges for every record in a small SDF collection.
+"""Calculate EEM charges for every record in a small SDF collection.
 
 Run with: python docs/recipes/calculate_sdf_collection.py input.sdf result.json
 """
@@ -17,14 +17,12 @@ def calculate_sdf_collection(input_path: str | Path, output_path: str | Path) ->
     molecules = chargefw.io.read(input_path, format="sdf")
     result = chargefw.calculate(
         molecules,
-        method="qeq",
-        parameter_set="QEq_original",
-        execution="full",
+        method="eem",
     )
     chargefw.io.write(output_path, result, format="result-json")
     print(
         f"Calculated {len(result.assignments)} assignment(s) for {len(molecules)} "
-        f"molecule(s) with {result.plan.method.id}/{result.plan.parameter_set.id}"
+        f"molecule(s) with {result.plan.method.id}"
     )
 
 

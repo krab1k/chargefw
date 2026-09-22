@@ -1,7 +1,6 @@
 """Read a molecular file, calculate an explicit charge model, and print the charges.
 
-Run with: python docs/recipes/calculate_file.py molecule.sdf --format sdf \
-    --method qeq --parameter-set QEq_original
+Run with: python docs/recipes/calculate_file.py molecule.sdf --format sdf --method eem
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ def calculate_file(
     *,
     input_format: str,
     method: str,
-    parameter_set: str,
+    parameter_set: str | None = None,
 ) -> chargefw.CalculationResult:
     """Calculate full charges for every molecule in one supported input file."""
 
@@ -26,7 +25,6 @@ def calculate_file(
         molecules,
         method=method,
         parameter_set=parameter_set,
-        execution="full",
     )
 
 
@@ -35,7 +33,7 @@ def main() -> None:
     parser.add_argument("input", type=Path)
     parser.add_argument("--format", required=True, choices=chargefw.io.INPUT_FORMATS)
     parser.add_argument("--method", required=True)
-    parser.add_argument("--parameter-set", required=True)
+    parser.add_argument("--parameter-set")
     arguments = parser.parse_args()
 
     result = calculate_file(

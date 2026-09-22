@@ -42,10 +42,7 @@ def atom_charge_statistics(
     native_molecule = chargefw_rdkit.from_mol(molecule, source_name=source_name)
     result = chargefw.calculate(
         native_molecule,
-        method="qeq",
-        parameter_set="QEq_original",
-        options={"overlap_term": "Louwen-Vogt"},
-        execution="full",
+        method="eem",
     )
     charges = np.stack([assignment.values for assignment in result.assignments])
     statistics = []

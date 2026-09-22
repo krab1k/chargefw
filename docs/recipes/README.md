@@ -9,14 +9,13 @@ advanced workflow for inspecting and executing several prepared plans. The
 ## Calculate a molecular file
 
 [`calculate_file.py`](calculate_file.py) is the shortest complete file-to-charges workflow. It reads any
-supported molecular format, calculates one explicitly selected method and parameter set in full, and
-prints each source-ordered charge array.
+supported molecular format, calculates one explicitly selected method, and prints each source-ordered
+charge array. Its EEM invocation lets ChargeFW select an applicable bundled parameter set.
 
 ```bash
 python docs/recipes/calculate_file.py ethanol.sdf \
     --format sdf \
-    --method qeq \
-    --parameter-set QEq_original
+    --method eem
 ```
 
 ## Inspect imported molecules
@@ -32,9 +31,9 @@ python docs/recipes/inspect_molecules.py input.sdf --format sdf
 ## Calculate an SDF collection
 
 [`calculate_sdf_collection.py`](calculate_sdf_collection.py) reads a multimolecule SDF, directly
-calculates one explicit QEq policy for the complete collection, and writes result JSON with requested and
-effective provenance. One inapplicable record makes the policy inapplicable to the collection; the recipe
-does not silently choose a separate model per record.
+calculates one EEM policy for the complete collection, and writes result JSON with requested and effective
+provenance. One inapplicable record makes the policy inapplicable to the collection; the recipe does not
+silently choose a separate model per record.
 
 ```bash
 python docs/recipes/calculate_sdf_collection.py input.sdf result.json
@@ -67,13 +66,13 @@ pip install "chargefw[gemmi]"
 python docs/recipes/charge_gemmi_document.py input.cif charged.cif --format mmcif
 ```
 
-The recipe uses full QEq with `QEq_original` by default. Full execution can be expensive for large
-structures, and the recipe reports rather than overrides resource warnings.
+The recipe uses EEM by default and lets ChargeFW select an applicable bundled parameter set. ChargeFW's
+default execution policy reports resource warnings and can select a reduced mode for large structures.
 
 ## Analyze conformer-dependent charges
 
 [`analyze_rdkit_conformer_charges.py`](analyze_rdkit_conformer_charges.py) generates an unoptimized,
-deterministic RDKit ETKDG ensemble, calculates QEq charges, and ranks atoms by charge standard deviation
+deterministic RDKit ETKDG ensemble, calculates EEM charges, and ranks atoms by charge standard deviation
 over the equally weighted generated conformers.
 
 ```bash

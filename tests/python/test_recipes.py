@@ -50,9 +50,7 @@ class RecipeTests(unittest.TestCase):
                     "--format",
                     "sdf",
                     "--method",
-                    "qeq",
-                    "--parameter-set",
-                    "QEq_original",
+                    "eem",
                 ],
                 check=True,
                 capture_output=True,
@@ -142,7 +140,7 @@ class RecipeTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        self.assertIn("Method: qeq/QEq_original", completed.stdout)
+        self.assertIn("Method: eem/", completed.stdout)
         self.assertIn("equally weighted, unoptimized ETKDGv3 structures", completed.stdout)
         self.assertIn("Atom          mean         std", completed.stdout)
 

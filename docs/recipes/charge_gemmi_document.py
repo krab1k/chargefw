@@ -27,7 +27,7 @@ def charge_document(
     output_path: str | Path,
     *,
     input_format: str,
-    method: str = "qeq",
+    method: str = "eem",
     parameter_set: str | None = None,
     selection: str = "all",
     result_json: str | Path | None = None,
@@ -36,8 +36,6 @@ def charge_document(
 
     input_path = Path(input_path)
     document = load_document(input_path, input_format)
-    if parameter_set is None and method == "qeq":
-        parameter_set = "QEq_original"
     molecules = chargefw.io.gemmi.from_document(
         document,
         source_name=str(input_path),
@@ -48,7 +46,6 @@ def charge_document(
         molecules,
         method=method,
         parameter_set=parameter_set,
-        execution="full",
     )
     for warning in result.warnings:
         print(f"Warning: {warning.message}")
@@ -64,7 +61,7 @@ def main() -> None:
     parser.add_argument("input", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--format", choices=("pdb", "mmcif"), required=True)
-    parser.add_argument("--method", default="qeq")
+    parser.add_argument("--method", default="eem")
     parser.add_argument("--parameter-set")
     parser.add_argument(
         "--selection", choices=("all", "polymers-and-ligands", "polymers"), default="all"
