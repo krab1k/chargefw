@@ -473,11 +473,7 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
             throw std::runtime_error{"charge assignment conformer is missing from mmCIF block"};
         }
         const auto id = std::to_string(assignment_id++);
-        const auto parameter_set = charge_set.parameter_set_id();
-        metadata.append_row({id, "empirical", quote(charge_set.method_id()),
-                             parameter_set.has_value() ? quote(*parameter_set) : ".",
-                             quote(generator_name.empty() ? "unknown" : generator_name),
-                             quote(generator_version.empty() ? "unknown" : generator_version)});
+        append_charge_metadata(metadata, id, charge_set, generator_name, generator_version);
         const auto first_mapping = assignment.target.conformer_index.value_or(0);
         const auto mapping_count = assignment.target.conformer_index.has_value()
                                        ? first_mapping + 1
