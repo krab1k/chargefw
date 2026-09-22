@@ -377,6 +377,22 @@ _chem_comp_bond.value_order
         CHECK(quoted.order() == unquoted.order());
         CHECK(quoted.order() == chargefw::core::BondOrder::DOUBLE);
     }
+
+    const auto explicit_bond_count = [&](const std::string_view value_order) {
+        std::istringstream component_stream{
+            duplicate_input("ALA N CA " + std::string{value_order})};
+        auto component_reader = mmcif::MmcifReader{
+            component_stream, {}, {.bond_strategy = gemmi_adapter::BondStrategy::explicit_bonds}};
+        const auto record = component_reader.next();
+        REQUIRE(record.has_value());
+        return record->molecule.bond_count();
+    };
+    CHECK(
+        read_duplicate_bond(gemmi_adapter::BondStrategy::explicit_bonds, "ALA N CA aRoM").order() ==
+        chargefw::core::BondOrder::SINGLE);
+    for (const auto value_order : {"DELO", "METAL", "1.5", ".", "?", "invalid"}) {
+        CHECK(explicit_bond_count(value_order) == 0);
+    }
 }
 
 TEST_CASE("mmCIF input restores source order across residues and models", "[adapters][mmcif]") {

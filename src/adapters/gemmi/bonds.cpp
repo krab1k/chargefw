@@ -3,6 +3,7 @@
 #include "component_templates.h"
 #include "selection.h"
 
+#include <gemmi/chemcomp.hpp>
 #include <gemmi/cif.hpp>
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <cstdlib>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -152,19 +154,26 @@ void add_sequential_bonds(BondAccumulator& bonds,
     }
 }
 
-[[nodiscard]] auto bond_order(const std::string_view value) -> std::optional<core::BondOrder> {
-    if (value == "SING" || value == "sing") {
-        return core::BondOrder::SINGLE;
+[[nodiscard]] auto bond_order(const std::string& value) -> std::optional<core::BondOrder> {
+    try {
+        switch (::gemmi::bond_type_from_string(value)) {
+        case ::gemmi::BondType::Single:
+            return core::BondOrder::SINGLE;
+        case ::gemmi::BondType::Double:
+            return core::BondOrder::DOUBLE;
+        case ::gemmi::BondType::Triple:
+            return core::BondOrder::TRIPLE;
+        case ::gemmi::BondType::Aromatic:
+            return core::BondOrder::SINGLE;
+        case ::gemmi::BondType::Deloc:
+        case ::gemmi::BondType::Metal:
+        case ::gemmi::BondType::Unspec:
+            return std::nullopt;
+        }
+    } catch (const std::out_of_range&) {
+        return std::nullopt;
     }
-    if (value == "DOUB" || value == "doub") {
-        return core::BondOrder::DOUBLE;
-    }
-    if (value == "TRIP" || value == "trip") {
-        return core::BondOrder::TRIPLE;
-    }
-    if (value == "AROM" || value == "arom") {
-        return core::BondOrder::SINGLE;
-    }
+
     return std::nullopt;
 }
 
