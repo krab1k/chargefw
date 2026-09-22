@@ -7,6 +7,7 @@
 #include <gemmi/pdb.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <cstdlib>
 #include <istream>
@@ -104,20 +105,27 @@ struct StructuralLabelsLess {
             line.pop_back();
         }
         const auto view = std::string_view{line};
-        if (view.starts_with("CONECT") || view.starts_with("LINK  ") ||
-            view.starts_with("SSBOND")) {
-            result.connectivity = SourceConnectivity::present;
-        }
-        if (view.starts_with("MODEL ")) {
+        auto record = std::string{view.substr(0, std::min(view.size(), std::size_t{6}))};
+        std::ranges::transform(record, record.begin(), [](const unsigned char character) {
+            return static_cast<char>(std::toupper(character));
+        });
+        if (record.starts_with("MODEL ")) {
             result.models.push_back(PdbSourceModel{.id = field(view, 10, 4), .sites = {}});
             current = std::addressof(result.models.back());
             continue;
         }
-        if (view.starts_with("ENDMDL")) {
+        if (record.starts_with("ENDMDL")) {
             current = nullptr;
             continue;
         }
-        if (!view.starts_with("ATOM  ") && !view.starts_with("HETATM")) {
+        if (record.starts_with("END")) {
+            break;
+        }
+        if (record.starts_with("CONECT") || record.starts_with("LINK  ") ||
+            record.starts_with("SSBOND")) {
+            result.connectivity = SourceConnectivity::present;
+        }
+        if (!record.starts_with("ATOM  ") && !record.starts_with("HETATM")) {
             continue;
         }
         if (current == nullptr) {

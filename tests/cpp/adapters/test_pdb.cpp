@@ -193,6 +193,28 @@ END
     CHECK(record->import_metadata->atoms[1].id == "3");
 }
 
+TEST_CASE("PDB source mapping follows Gemmi record handling", "[adapters][pdb]") {
+    std::istringstream input{R"pdb(mOdEl        1
+aToM      1  C1  LIG A   1       0.000   0.000   0.000  1.00 20.00           C
+eNdMdL
+eNd
+cOnEcT    1    2
+aToM      2  O1  LIG A   1       1.000   0.000   0.000  1.00 20.00           O
+)pdb"};
+
+    auto reader = pdb::PdbReader{input};
+    const auto record = reader.next();
+    REQUIRE(record.has_value());
+    CHECK(record->molecule.atom_count() == 1);
+    REQUIRE(record->import_metadata.has_value());
+    const auto& mapping = *record->import_metadata;
+    CHECK(mapping.source_connectivity == chargefw::adapters::SourceConnectivity::absent);
+    REQUIRE(mapping.conformers.size() == 1);
+    CHECK(mapping.conformers[0].id == "1");
+    REQUIRE(mapping.conformers[0].sites.size() == 1);
+    CHECK(mapping.conformers[0].sites[0].position == 0);
+}
+
 TEST_CASE("PDB mapping retains model-specific alternate locations", "[adapters][pdb]") {
     std::istringstream input{R"pdb(MODEL        1
 ATOM      1  C1 ALIG A   1       0.000   0.000   0.000  1.00 20.00           C
