@@ -1,4 +1,4 @@
-# ChargeFW Development Guide
+# ChargeFW Repository Change Policy
 
 ## Required reading and document ownership
 
@@ -9,9 +9,11 @@ Read this file before changing the repository. Then read only the relevant secti
 - [docs/CLI.md](docs/CLI.md): implemented command-line behavior;
 - [docs/NATIVE.md](docs/NATIVE.md): implemented public C++ API and installation;
 - [docs/PYTHON.md](docs/PYTHON.md): implemented Python API and package behavior;
+- [docs/PARAMETERS.md](docs/PARAMETERS.md): parameter-set JSON and classifier behavior;
+- [docs/recipes/](docs/recipes/): executable end-user examples, not normative behavior;
 - [DEVELOPMENT.md](DEVELOPMENT.md): executable local build, test, analysis, and container workflows;
 - [RELEASING.md](RELEASING.md): Python distribution validation and publication procedure;
-- [TODO.md](TODO.md): unfinished product work; and
+- [TODO.md](TODO.md): unfinished product, integration, qualification, and infrastructure work; and
 - [README.md](README.md): concise project entry point.
 
 Keep ownership clear. The files under `docs/` are user documentation and must describe implemented
@@ -19,10 +21,11 @@ behavior, not development plans or milestone history. Unfinished work belongs in
 when complete rather than retaining checked history. `README.md` should remain a concise user entry
 point. `DEVELOPMENT.md` and `RELEASING.md` own executable contributor and maintainer procedures;
 `AGENTS.md` owns repository policy and should link to those procedures rather than duplicate them.
-Document cross-interface concepts, rationale, and limitations once in `docs/PROJECT.md`. Interface-specific
-documents should state only the syntax and behavior needed for that interface and link to the owning
-document when additional explanation is useful; do not repeat the same explanatory text across CLI,
-native, and Python documentation.
+Document cross-interface concepts, rationale, and limitations once in `docs/PROJECT.md`. Keep molecular
+serialization behavior in `docs/FORMATS.md` and parameter-file behavior in `docs/PARAMETERS.md`.
+Interface-specific documents should state only the syntax and behavior needed for that interface and link
+to the owning document when additional explanation is useful; do not repeat the same explanatory text
+across CLI, native, and Python documentation.
 
 ## Repository map
 
@@ -84,8 +87,8 @@ should include only the individual adapter headers it uses.
 
 ### Validation cadence
 
-- Use `gcc-debug` for the rapid edit/build/focused-test loop. After a coherent change, run the full
-  `ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$'` suite.
+- Use `gcc-debug` for the rapid edit/build/focused-test loop. After a coherent change, run its full
+  test suite.
 - Use `clang-debug` for cross-compiler validation when changing templates, conversions, overloads,
   headers, or compiler-sensitive C++ behavior; run its focused test before substantial work is complete.
 - Use `gcc-release` and `clang-release` for optimization- or `NDEBUG`-sensitive behavior, numerical
@@ -94,25 +97,21 @@ should include only the individual adapter headers it uses.
 - Use `clang-asan` for ownership, lifetime, bounds, mapping, parser, container, view, and pointer
   changes. Use `clang-ubsan` for arithmetic, conversions, shifts, alignment, indexing, and other
   undefined-behavior risks. Run the focused sanitizer test first and the full relevant sanitizer suite
-  before completing substantial risk-sensitive work. Never run ASan and UBSan builds or tests
-  concurrently; finish one sanitizer configuration before starting another. Keep each sanitizer build
-  serial or deliberately low-parallel because template-heavy translation units can consume substantial
-  memory.
+  before completing substantial risk-sensitive work. Run the sanitizer workflows sequentially and with
+  conservative parallelism.
 - Run `clang-tidy` after meaningful implementation or public-interface changes and before a milestone;
   it is static analysis, not a replacement for compiler or runtime tests.
 - Before a substantial merge or milestone, run the full debug, release, sanitizer, and clang-tidy
   matrix. CI may distribute those configurations across independent jobs.
 
+The executable commands for every preset and check are maintained in
+[DEVELOPMENT.md](DEVELOPMENT.md).
+
 ### Container validation
 
-The root `Dockerfile` builds the user-facing Ubuntu 26.04 CLI image. It performs an optimized native
-release build without tests, Python bindings, or host-specific `-march=native` instructions by default.
-The native-optimization build argument is only for images that remain on the build machine.
-
-`docker/Dockerfile.ubuntu-26.04`, `docker/Dockerfile.debian-13`, and `docker/Dockerfile.fedora-44` are
-developer compatibility containers. Each builds and tests the `gcc-release` configuration; run them one
-at a time because template-heavy builds consume substantial memory. Fedora is pinned to release 44; update
-that release intentionally before it reaches end of life.
+Use the distributable CLI image and compatibility-container workflows in
+[DEVELOPMENT.md](DEVELOPMENT.md#installation-and-containers). Run compatibility builds one at a time and
+update pinned distribution releases intentionally.
 
 ## C++ conventions
 

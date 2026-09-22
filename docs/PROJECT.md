@@ -11,7 +11,7 @@ owned, toolkit-neutral molecule model; method applicability, parameter matching,
 and calculation remain in the native library.
 
 ChargeFW implements finite, non-periodic molecular calculations. Periodic and Ewald variants are not
-implemented. ChargeFW is not yet the production backend for Atomic Charge Calculator III.
+implemented.
 
 ## Design principles
 
@@ -185,10 +185,8 @@ diagnostics, timings, timestamps, and peak resident memory in its JSON result.
 
 ## Molecular data scope
 
-The native adapters support MOL/SDF, MOL2, ChargeFW molecule JSON 1.0, PDB, and mmCIF input and write
-ChargeFW result JSON 1.0, generated MOL2, and mmCIF charge data. The language-independent
-[molecular format reference](FORMATS.md) defines exactly what each reader imports and how each writer
-preserves or generates molecular data.
+The language-independent [molecular format reference](FORMATS.md) defines supported inputs and outputs,
+exactly what each reader imports, and how each writer preserves or generates molecular data.
 
 Imported records keep adapter metadata beside the normalized molecule rather than inside
 `core::Molecule`. The metadata owns only source correspondence, record-local import policy, diagnostics,
@@ -203,5 +201,3 @@ ChargeFW is not a general chemistry-preparation toolkit. It does not provide SMI
 bond perception, sanitization, protonation, hydrogen addition or removal, conformer generation, or
 geometry optimization. Structural template bonding covers common amino acids, nucleotides, water, and
 basic polymer links; it is not a complete Chemical Component Dictionary provider.
-
-Current release and integration gaps are listed in the root [TODO](../TODO.md).

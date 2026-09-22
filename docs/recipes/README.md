@@ -33,41 +33,27 @@ python docs/recipes/inspect_molecules.py input.sdf --format sdf
 [`calculate_sdf_collection.py`](calculate_sdf_collection.py) reads a multimolecule SDF, directly
 calculates one EEM policy for the complete collection, and writes result JSON with requested and effective
 provenance. One inapplicable record makes the policy inapplicable to the collection; the recipe does not
-silently choose a separate model per record.
+silently choose a separate model per record. The [Python collection guide](../PYTHON.md#reading-molecular-files)
+explains when to calculate a collection or its records independently.
 
 ```bash
 python docs/recipes/calculate_sdf_collection.py input.sdf result.json
 ```
 
-SDF data fields are not imported. Result JSON is used here because it retains the complete calculation
-record.
-
-For independent automatic policies, use an ordinary per-record loop instead. Each call performs a separate
-assessment, so the selected method, parameter set, or execution mode can differ between records:
-
-```python
-molecules = chargefw.io.read("input.sdf", format="sdf")
-
-for molecule in molecules:
-    result = chargefw.calculate(molecule)
-    for assignment in result.assignments:
-        print(molecule.name, result.plan.method.id, assignment.values)
-```
+The [format reference](../FORMATS.md) defines SDF import and result JSON behavior.
 
 ## Charge a Gemmi document
 
 [`charge_gemmi_document.py`](charge_gemmi_document.py) attaches charges to the unchanged live Gemmi mmCIF
-document used for import, preserving unrelated categories after strict block/model/site validation. PDB
-input is first represented as a caller-owned Gemmi mmCIF document. The input must already have appropriate hydrogens, formal
-charges, coordinates, and explicit or template-supported topology.
+document used for import. PDB input is first represented as a caller-owned Gemmi mmCIF document. See the
+[Gemmi integration contract](../PYTHON.md#toolkit-integrations) for validation and mutation behavior.
 
 ```bash
 pip install "chargefw[gemmi]"
 python docs/recipes/charge_gemmi_document.py input.cif charged.cif --format mmcif
 ```
 
-The recipe uses EEM by default and lets ChargeFW select an applicable bundled parameter set. ChargeFW's
-default execution policy reports resource warnings and can select a reduced mode for large structures.
+The recipe uses EEM by default and lets ChargeFW select an applicable bundled parameter set.
 
 ## Analyze conformer-dependent charges
 

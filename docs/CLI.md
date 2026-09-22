@@ -5,28 +5,21 @@ writes source-mapped partial charges.
 
 ## Installation
 
-ChargeFW requires CMake 3.28 or newer, Ninja, and a GCC or Clang toolchain with C++23 support. The default
-build downloads pinned dependencies when they are not already available.
-
-```bash
-cmake -S . -B build/native-release -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
-    -DCHARGEFW_BUILD_CLI=ON \
-    -DCHARGEFW_BUILD_PYTHON=OFF \
-    -DCHARGEFW_BUILD_TESTS=OFF \
-    -DCHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS=OFF
-cmake --build build/native-release --parallel
-cmake --install build/native-release --prefix "$PWD/_install" --strip
-```
-
-Set `CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS=ON` only for an installation that will remain on the build
-machine. IPO does not make the installed binaries CPU-specific.
-
-Use the installed executable. Bundled parameter data is discovered relative to the installed library:
+Follow the [native source installation](NATIVE.md#build-and-link) with
+`CHARGEFW_BUILD_CLI=ON`. The installed executable discovers bundled parameter data relative to the
+installed library.
 
 ```bash
 _install/bin/chargefw --help
+```
+
+The root `Dockerfile` builds the same CLI as a portable Ubuntu image without Python, tests, or
+host-specific processor instructions:
+
+```bash
+docker build --tag chargefw:local .
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" -w /work chargefw:local \
+    calculate molecule.sdf output
 ```
 
 ## Commands
@@ -73,8 +66,8 @@ PDB and mmCIF input additionally accepts:
 - `--structural-selection all|polymers-and-ligands|polymers` (default `all`);
 - `--structural-bonds none|explicit|templates|hybrid` (CLI default `hybrid`).
 
-Structural options are rejected for other input formats. Alternate locations prefer blank, then `A`,
-then the first available location.
+Structural options are rejected for other input formats. Selection, bonding, and alternate-location
+semantics are defined in the [PDB and mmCIF format reference](FORMATS.md#pdb-and-mmcif-input).
 
 The CLI reads the imported collection before calculation and stops at the first malformed record.
 
@@ -103,17 +96,9 @@ chargefw calculate --method peoe --method-option peoe.iters=8 molecule.sdf outpu
 Explicit method, parameter-set, or execution choices do not fall back to alternatives if they are
 inapplicable. `applicability` reports the reasons without running a calculation.
 
-### Automatic execution
-
-Automatic planning prefers full execution. For methods with cubic-time or quadratic-memory behavior,
-collections containing a molecule above the cutoff threshold use supported cutoff execution. Above the
-cover threshold, supported cover execution is preferred. Automatic reduced execution uses a 12 Å radius.
-
-Explicit `full`, `cutoff`, or `cover` filters plans to that mode. Explicit full execution can exceed the
-resource threshold and reports a warning rather than silently changing mode.
-
-Cutoff and cover are available for ABEEM, EEM, EQeq, EQeq+C, QEq, SFKEEM, SQE, SQE+q0, and SQE+qp.
-They are explicit approximations and do not have a general accuracy guarantee.
+Automatic and explicit execution share the policy, supported-method, conservation, and approximation
+semantics documented in [Assessment and execution](PROJECT.md#assessment-and-execution). Explicit choices
+do not silently fall back to another mode.
 
 ## Output
 
@@ -144,13 +129,9 @@ The requested files use the same basename:
 <basename>.cif
 ```
 
-MOL2 and mmCIF are fresh generated representations for every supported input format. They are not written
-unless requested. MOL2 writes one `SMALL`/`USER_CHARGES` record per retained conformer and is intended
-primarily for small molecules; mmCIF retains known structural hierarchy and is preferred for polymers and
-other structural input. Both require coordinates even when the selected method is geometry-independent and
-never copy unselected source models or unrelated source content. SDF is input-only. The
-[molecular format reference](FORMATS.md#charge-output) describes the generated structures, charge fields,
-precision, and mapping checks.
+MOL2 and mmCIF are fresh generated representations for every supported input format and are not written
+unless requested. The [molecular format reference](FORMATS.md#charge-output) describes their intended use,
+coordinate requirements, generated structures, charge fields, precision, and mapping checks.
 
 Once import and request construction succeed, normal calculation outcomes write `<basename>.json`. On
 success, ChargeFW writes JSON before attempting requested molecular exports. A molecular export failure

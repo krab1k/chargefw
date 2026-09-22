@@ -8,14 +8,19 @@ The package is synchronous and in-process. Native molecule construction, assessm
 release the GIL, and independent calculations can run concurrently. Calculations can report structured
 progress and support cooperative cancellation through a per-request observer.
 
-The executable [Python recipes](recipes/README.md) demonstrate complete toolkit integration workflows and
-also serve as concise checks of the public API design.
+The executable [Python recipes](recipes/README.md) demonstrate complete toolkit integration workflows.
 
-## Installation status
+## Installation
 
-Python 3.10 or newer is required. NumPy 1.26 or newer is the only required runtime dependency. The current
-manual release process builds and tests Linux x86-64 wheels for CPython 3.10 through 3.14; other platforms
-and architectures are not yet qualified.
+Python 3.10 or newer is required. NumPy 1.26 or newer is the only required runtime dependency. Install a
+published wheel with:
+
+```bash
+pip install chargefw
+```
+
+Published wheels currently target CPython 3.10 through 3.14 on Linux x86-64. Build and install a local
+wheel from the source tree with:
 
 ```bash
 uv build --quiet --wheel
@@ -26,8 +31,9 @@ The wheel contains the private native extension, required shared libraries, bund
 Python modules, type declarations, and the `py.typed` marker. Parameter discovery uses package resources
 and does not depend on the current directory or an environment variable.
 
-For a direct CMake build, set `CHARGEFW_BUILD_PYTHON=ON`. The option defaults to `OFF` for ordinary native
-builds.
+For contributor CMake builds and the supported validation environments, use the
+[development guide](../DEVELOPMENT.md). Maintainer distribution steps belong to the
+[release procedure](../RELEASING.md).
 
 ## Quick start
 
@@ -137,9 +143,6 @@ This loop is not equivalent to `calculate(molecules)`: the latter requires one c
 one result containing source-aligned assignments for the complete collection. Choose the collection
 boundary deliberately when using automatic selection.
 
-Geometry-dependent methods produce one assignment for each conformer; geometry-independent methods
-produce one assignment with `conformer_index` set to `None`.
-
 Retrieve one assignment directly by its source indices:
 
 ```python
@@ -231,9 +234,9 @@ Complexity uses `n` for atoms and `m` for bonds, as defined in the
 [project design](PROJECT.md#methods-and-parameters). Python exposes only the installed bundled parameter
 catalog. Its package-level and method-level mappings are immutable and cannot be extended. The
 [parameter-set JSON reference](PARAMETERS.md) documents the bundled data and classifier behavior,
-including permissive matching. Automatic selection considers higher method and parameter-set priorities
-first, with stable IDs as the tie-breaker. The `formal` method copies input formal charges and `dummy`
-returns zeros; neither is an empirical partial-charge model.
+including permissive matching. Selection order and method scope are defined in
+[Methods and parameters](PROJECT.md#methods-and-parameters). The `formal` method copies input formal
+charges and `dummy` returns zeros; neither is an empirical partial-charge model.
 
 ## Calculation policy
 
@@ -251,6 +254,9 @@ Direct `calculate()` accepts keyword-only policy arguments:
 | `cutoff_threshold` | Automatic full-to-cutoff threshold; default `20_000`, `None` is unlimited |
 | `cover_threshold` | Automatic cutoff-to-cover threshold; default `80_000`, `None` is unlimited |
 | `threads` | Non-negative oneTBB thread limit; omitted or `0` delegates to oneTBB |
+
+The [project design](PROJECT.md#assessment-and-execution) defines the shared execution modes, automatic
+selection policy, conservation behavior, and approximation limits.
 
 Flat `options` require an explicit method. `options` and `options_by_method` cannot be combined. Automatic
 execution accepts an optional radius override. Explicit full execution rejects a radius; explicit cutoff
@@ -439,39 +445,17 @@ chargefw.io.write("charged.cif", result, format="mmcif")
 chargefw.io.write("charged.mol2", result, format="mol2")
 ```
 
-MOL2 and mmCIF output are generated only from the calculation result. Neither preserves SDF properties,
-Tripos typing or substructures, crystallographic metadata, lexical formatting, or other source content that
-the owned record does not contain. MOL2 creates one `SMALL`/`USER_CHARGES` record per conformer with
-element-only atom types and generated `UNL` substructure fields; it is intended primarily for small
-molecules. mmCIF creates a fresh block per record, retains known author/label hierarchy and model-specific
-alternate locations, emits all conformers, and uses deterministic `UNL`/generated-name fallbacks only where
-labels are unavailable. The source format does not restrict either output; SDF remains input-only.
-
-Native calculation results own the exact ordered input records used for assessment, including source
-mapping, diagnostics, and record-local import policy. This ownership survives reader and caller collection
-destruction, reusable plan execution, selection, reordering, and recombination. Result writers consume that
-owned boundary rather than reconstructing records from parallel Python sequences. Mixed import histories
-are valid and serialize their policies independently. Molecules constructed directly have no verified
-import mapping, so `input.import` is omitted for those records.
-
-Result JSON retains full native charge precision and identifies each assignment's molecule or conformer
-scope, target, and elementary-charge unit. Generated MOL2 and mmCIF use round-trip floating-point
-formatting.
-
-MOL2 and mmCIF generation validate coordinates before serialization; mmCIF additionally validates charge
-dictionary limits. An output error raises `ValueError` without changing the calculation result; result JSON
-remains available from the same object.
+The language-independent [charge-output reference](FORMATS.md#charge-output) defines generated MOL2 and
+mmCIF content, result JSON, coordinate requirements, precision, and mapping behavior. Python output does
+not depend on the source format. An output error raises `ValueError` without changing the calculation
+result, so result JSON remains available from the same object.
 
 Record and atom IDs are normalized to strings or signed 64-bit integers. NumPy integer scalars are accepted
 and converted to Python `int`; booleans, arbitrary hashable objects, and out-of-range integers are rejected.
 Result JSON preserves integer IDs as JSON numbers rather than stringifying them. Explicit `atom_ids` from a
 manually constructed molecule appear once in `input.atom_ids`; imported atom IDs remain in source mapping.
-Generated MOL2 and
-mmCIF use their decimal representation where a textual record or block name is required.
-
-The language-independent conformer, mapping, and schema rules are defined in
-[Charge output](FORMATS.md#charge-output). Fresh Python MOL2 and mmCIF output is generated rather than
-source-preserving.
+Generated MOL2 and mmCIF use their decimal representation where a textual record or block name is
+required.
 
 ## Toolkit integrations
 
@@ -503,11 +487,12 @@ between extension modules.
 categories and original site IDs are not copied.
 
 `attach_charges(document, result)` is the Python-only in-memory annotation path. `document` must be the
-unchanged mmCIF document passed to `from_document()` for the molecules used by `result`. Before changing
-the live object, ChargeFW validates coordinate-block order, block names, source site positions, exact atom
-IDs, and model IDs against the result's owned import mapping. Any mismatch or output error leaves the
-document unchanged. Existing charge categories are rejected unless `overwrite=True`; append mode is not
-supported. After successful attachment, subsequent document changes are the caller's responsibility.
+mmCIF document passed to `from_document()` for the molecules used by `result`. Before changing the live
+object, ChargeFW validates coordinate-block order, block names, source site positions, exact atom IDs,
+model IDs, elements, structural labels, coordinates, and formal charges against the result's owned import
+mapping. Occupancy and B factors may change. Any mismatch or output error leaves the document unchanged.
+Existing charge categories are rejected unless `overwrite=True`; append mode is not supported. After
+successful attachment, subsequent document changes are the caller's responsibility.
 
 ```python
 result = chargefw.calculate(
@@ -558,6 +543,3 @@ chargefw_rdkit.attach_charges(rdkit_molecule, result)
 The RDKit molecule in this example must already contain suitable coordinates. For a multiconformer
 geometry-dependent result, pass `conformer=` explicitly and use separate molecule copies or property
 names if several charge vectors must be retained.
-
-The Python package currently has no Biopython integration, chemistry preparation API, or asynchronous job
-API. Current distribution and integration work is tracked in the root [TODO](../TODO.md).

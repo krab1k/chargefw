@@ -134,13 +134,9 @@ data format and classifier semantics.
 ## Execution policy
 
 `ExecutionSelectionKind` accepts automatic, full, cutoff, or cover selection. Effective plans always use
-the concrete `ExecutionMode` values full, cutoff, or cover.
-
-- Full execution requires no radius.
-- Explicit cutoff and cover require a finite radius of at least 8 Å.
-- Automatic reduced execution uses 12 Å.
-- The default full-to-cutoff and cutoff-to-cover thresholds are 20,000 and 80,000 atoms.
-- `std::nullopt` disables the corresponding resource threshold.
+the concrete `ExecutionMode` values full, cutoff, or cover. `std::nullopt` disables an automatic resource
+threshold. The [project design](PROJECT.md#assessment-and-execution) defines mode semantics, defaults,
+supported methods, conservation behavior, and approximation limits.
 
 Pass the thread limit to `calculate()` for each execution. A count of zero delegates scheduling to
 oneTBB, and the same prepared assessment may be executed repeatedly with different limits:
@@ -151,13 +147,9 @@ auto serial = calculation::calculate(assessment, 1);
 auto parallel = calculation::calculate(assessment, 4);
 ```
 
-Automatic policy does not turn missing scientific requirements into warnings. Explicit unsupported
-execution produces no runnable plan, and explicit full execution above a threshold remains runnable with
-a resource warning.
-
 Method implementations declare reduced-execution support through
-`ResourceRequirements::reduced_charge_policy` and `ReducedChargePolicy`. The
-[project design](PROJECT.md#assessment-and-execution) owns the policy semantics.
+`ResourceRequirements::reduced_charge_policy` and `ReducedChargePolicy`. Each plan separately exposes its
+selected execution mode and radius through its concrete `ExecutionPolicy`.
 
 ## Results, errors, and mapping
 
@@ -202,24 +194,15 @@ Public headers are provided under `chargefw/adapters`, with format-specific APIs
 - `MolReader`, `SdfReader`, and `Mol2Reader` import native molecular formats.
 - `JsonReader` imports ChargeFW molecule JSON 1.0.
 - `PdbReader` and `MmcifReader` import Gemmi structures with explicit record, bond, and conformer policy.
-- Native writers emit ChargeFW result JSON and fresh generated MOL2.
-- `native::mol2_output::Mol2Writer::write(const ChargeCalculationResult&)` writes one generated record per
-  retained conformer, joining conformer-specific assignments or repeating molecule-scoped charges without
-  retaining source MOL2 text or typing.
-- The Gemmi writer emits one fresh generated mmCIF representation from the owned calculation result.
-- `gemmi::mmcif_output::MmcifWriter::write(const ChargeCalculationResult&)` builds a fresh minimal mmCIF
-  document from the owned result, retaining known hierarchy labels across every conformer and joining
-  charges to newly generated site IDs during construction.
+- `native::mol2_output::Mol2Writer` emits generated MOL2 from an owned calculation result.
+- `gemmi::mmcif_output::MmcifWriter` emits a fresh mmCIF document from an owned calculation result.
 - `JsonWriter` serializes `ChargeCalculationResult` directly; application-specific execution metrics are
   optional. `PortableId` retains absent, string, or signed 64-bit integer record IDs without implicit
   stringification.
 
 Readers return `ImportedMoleculeRecord`, which keeps the molecule together with source identity, import
-diagnostics, and optional `MoleculeImportMetadata`. All serialized readers populate calculation-ordered
-`SourceAtomReference` values, per-conformer `SourceConformerReference` site mappings, record-local import
-policy, source format, and the small `SourceConnectivity` summary. Structural references additionally carry
-`SourceStructuralLabels` with separate author and label hierarchy namespaces, model identity, alternate
-location, entity, insertion code, and segment where available. These values own their source tokens and
-remain valid after reader destruction; they do not retain parser documents or normalized verification
-snapshots. The [molecular format reference](FORMATS.md) documents supported subsets, reader policy,
-generated output, charge fields, and mapping requirements independently of the C++ API.
+diagnostics, and optional `MoleculeImportMetadata`. Its `SourceAtomReference`,
+`SourceConformerReference`, `SourceStructuralLabels`, and `SourceConnectivity` values own their source
+tokens and remain valid after reader destruction. The [molecular format reference](FORMATS.md) documents
+the populated mappings, supported subsets, reader policy, and generated output independently of the C++
+types.

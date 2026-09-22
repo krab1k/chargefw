@@ -115,9 +115,9 @@ pre-commit run --all-files
 
 ## Installation and containers
 
-Use the self-contained source installation recipes for the [native library](docs/NATIVE.md#build-and-link)
-and [CLI](docs/CLI.md#installation). They intentionally exclude the Python and test dependencies used
-by the validation presets.
+Use the self-contained [native source installation](docs/NATIVE.md#build-and-link), enabling
+`CHARGEFW_BUILD_CLI` when the executable is required. It intentionally excludes the Python and test
+dependencies used by the validation presets.
 
 The root `Dockerfile` builds the distributable CLI image:
 

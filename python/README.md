@@ -1,8 +1,8 @@
 # ChargeFW for Python
 
 ChargeFW calculates empirical partial atomic charges through Python bindings to its native C++
-calculation engine. It provides 22 charge methods, bundled parameter sets, deterministic applicability
-and execution planning, source-ordered result mapping, molecular-file input, result JSON, MOL2 and mmCIF
+calculation engine. It provides bundled methods and parameter sets, deterministic applicability and
+execution planning, source-ordered result mapping, molecular-file input, result JSON, MOL2 and mmCIF
 output, and optional Gemmi and RDKit integration.
 
 ChargeFW expects prepared molecular graphs with formal charges and any coordinates required by the

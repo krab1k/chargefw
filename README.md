@@ -4,10 +4,9 @@ ChargeFW is a C++23 framework for empirical partial atomic-charge calculation. I
 toolkit-neutral native library, a command-line application, and Python bindings over the same
 assessment and calculation engine.
 
-The current implementation includes 22 charge methods, bundled parameter sets, deterministic
-applicability and execution planning, source-ordered result mapping, native molecular-file adapters,
-and full or explicit reduced calculations. It is not yet the production backend for Atomic Charge
-Calculator III.
+The current implementation includes bundled methods and parameter sets, deterministic applicability and
+execution planning, source-ordered result mapping, molecular-file adapters, and full or explicit reduced
+calculations.
 
 ChargeFW expects a molecular graph, formal charges, and any coordinates required by the selected
 method. It does not parse SMILES, add hydrogens, assign protonation states, perceive arbitrary bonds,
@@ -15,36 +14,14 @@ or generate coordinates.
 
 ## Quick start
 
-Build and install the native library and CLI:
-
-```bash
-cmake -S . -B build/native-release -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
-    -DCHARGEFW_BUILD_CLI=ON \
-    -DCHARGEFW_BUILD_PYTHON=OFF \
-    -DCHARGEFW_BUILD_TESTS=OFF \
-    -DCHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS=OFF
-cmake --build build/native-release --parallel
-cmake --install build/native-release --prefix "$PWD/_install" --strip
-```
-
-Calculate charges for an SDF file:
+Build the [native library](docs/NATIVE.md#build-and-link) with
+`CHARGEFW_BUILD_CLI=ON`, then calculate charges for an SDF file:
 
 ```bash
 _install/bin/chargefw calculate molecule.sdf output
 ```
 
-Build a Python wheel from the source tree:
-
-```bash
-uv build --quiet --wheel
-uv pip install --link-mode=copy --reinstall dist/chargefw-*.whl
-```
-
-## Python usage
-
-### From a molecular file
+For Python installation and package status, see the [Python package guide](docs/PYTHON.md#installation).
 
 ```python
 import chargefw
@@ -59,28 +36,6 @@ result = chargefw.calculate(
 print(result.assignments[0].values)
 ```
 
-### From arrays
-
-```python
-import chargefw
-
-molecule = chargefw.Molecule(
-    atomic_numbers=[8, 1, 1],
-    bonds=[[0, 1, 1], [0, 2, 1]],
-    coordinates=[[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]],
-)
-result = chargefw.calculate(
-    molecule,
-    method="qeq",
-    parameter_set="QEq_original",
-    execution="full",
-)
-charges = result.assignments[0].values
-```
-
-The Python package is pre-release. See the [Python package guide](docs/PYTHON.md) for installation and
-the [release guide](RELEASING.md) for package build and publication details.
-
 ## Documentation
 
 - **[Python API](docs/PYTHON.md)** - read molecules, calculate charges, and inspect methods and results.
@@ -92,9 +47,12 @@ the [release guide](RELEASING.md) for package build and publication details.
 - **[Parameter sets](docs/PARAMETERS.md)** - understand parameter data and matching behavior.
 - **[Native C++ API](docs/NATIVE.md)** - embed ChargeFW in a C++ application.
 - **[Project design](docs/PROJECT.md)** - understand the architecture and scientific scope.
+
+## Development
+
 - **[Development guide](DEVELOPMENT.md)** - configure, build, test, and validate the repository.
 - **[Release guide](RELEASING.md)** - build, verify, and publish Python distributions.
-- **[Unfinished work](TODO.md)** - see current product gaps.
-- **[Contribution guide](AGENTS.md)** - work on the ChargeFW repository.
+- **[Unfinished work](TODO.md)** - see current project gaps.
+- **[Repository change policy](AGENTS.md)** - preserve architecture and choose proportionate validation.
 
 ChargeFW is distributed under the MIT license.

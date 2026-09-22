@@ -1,4 +1,4 @@
-# ChargeFW releases
+# ChargeFW Maintainer Release Procedure
 
 This is the manual procedure for building and publishing the Python package. Development builds and the
 full native validation matrix are covered by [DEVELOPMENT.md](DEVELOPMENT.md).
@@ -28,23 +28,30 @@ Published files cannot be replaced. Use a new version whenever artifacts must be
 
 ## Build
 
-Build the source distribution first, then build every wheel from that exact archive:
+Build the source distribution first, identify that single archive, then build every wheel from it:
 
 ```bash
-VERSION=0.1.1  # Must match CMakeLists.txt.
+set -euo pipefail
+shopt -s nullglob
 
 uv build --sdist --out-dir release-wheelhouse --clear
+
+SDIST=(release-wheelhouse/chargefw-*.tar.gz)
+[[ ${#SDIST[@]} -eq 1 ]] || { printf 'expected one sdist\n' >&2; exit 1; }
+VERSION=${SDIST[0]#release-wheelhouse/chargefw-}
+VERSION=${VERSION%.tar.gz}
 
 CIBW_CONTAINER_ENGINE=podman uvx cibuildwheel==3.4.1 \
     --platform linux \
     --output-dir release-wheelhouse \
-    "release-wheelhouse/chargefw-$VERSION.tar.gz"
+    "${SDIST[0]}"
 ```
 
 Omit `CIBW_CONTAINER_ENGINE=podman` to use Docker. The wheel matrix, tests, and portable CMake settings
 are defined in `pyproject.toml`.
 
-A successful build produces one source distribution and five wheels in `release-wheelhouse/`.
+A successful build produces one source distribution and the wheel matrix configured in `pyproject.toml`
+in `release-wheelhouse/`.
 
 ## Check artifacts
 
@@ -105,6 +112,19 @@ After publication, install the exact version from PyPI in a clean environment, r
 push the tag:
 
 ```bash
+uv venv --clear /tmp/chargefw-pypi --python 3.14
+uv pip install \
+    --python /tmp/chargefw-pypi/bin/python \
+    --no-cache \
+    --only-binary chargefw \
+    "chargefw==$VERSION"
+
+/tmp/chargefw-pypi/bin/python docs/recipes/calculate_file.py \
+    tests/fixtures/synthetic/sdf/water.sdf \
+    --format sdf \
+    --method qeq \
+    --parameter-set QEq_original
+
 git push origin "v$VERSION"
 ```
 

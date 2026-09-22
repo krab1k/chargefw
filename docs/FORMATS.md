@@ -6,9 +6,10 @@ application, and language bindings. API names and command-line file-selection po
 [Command-line interface](CLI.md), respectively.
 
 ChargeFW imports files into a toolkit-neutral molecule containing source-ordered atoms, bonds, formal
-charges, and zero or more Cartesian conformers. Import does not sanitize molecules, infer arbitrary
-bonds, change protonation or hydrogen count, generate conformers, or optimize geometry. Atom and molecule
-order is retained in charge assignments and in every output mapping.
+charges, and zero or more Cartesian conformers. Readers apply only the format-specific transformations
+documented below; broader chemistry-preparation limits are defined in the
+[project design](PROJECT.md#molecular-data-scope). Atom and molecule order is retained in charge
+assignments and output mappings.
 
 ## Format overview
 
@@ -123,8 +124,7 @@ PDB and mmCIF are parsed through Gemmi. PDB produces one molecule record. Each m
 `_atom_site.id` produces one molecule record; blocks without coordinate data are skipped. The source block
 name is retained as the mmCIF record ID. Atom-site IDs must be present and unique, but may be arbitrary
 strings or integers; values such as `Csite`, `001`, and integers wider than 64 bits are retained exactly.
-ChargeFW gives a private copy of the block sequential parser IDs for Gemmi without changing the source
-document or exposed mapping.
+Parsing does not change the source document or exposed mapping.
 
 The first selected model defines elements, formal charges, names, topology, and source mapping. Selected
 atoms are restored to source row order even when Gemmi groups noncontiguous rows by hierarchy; later models
@@ -207,12 +207,9 @@ and charges use round-trip floating-point formatting. Output rejects missing or 
 empty records, unsuccessful results, and charges outside the dictionary's inclusive `[-5, 5]` range before
 serializing the document.
 
-Python additionally supports strict in-memory annotation of the unchanged Gemmi document used for import.
-This preserves unrelated categories but validates exact block, source-position, atom-ID, model-ID, element,
-structural labels, coordinates, and formal charges before mutation. Occupancy and B factors may change.
-Existing charge categories require explicit overwrite; append mode and CLI source-file preservation are not
-supported. Source atom IDs must be canonical positive integers to satisfy the charge dictionary's `atom_id`
-constraint.
+Python additionally provides a strict in-memory annotation API for the unchanged Gemmi document used for
+import. Its mutation and validation contract is documented with
+[`attach_charges()`](PYTHON.md#toolkit-integrations).
 
 ### ChargeFW result JSON 1.0
 
@@ -250,6 +247,5 @@ execution request, resource thresholds, and thread limit. Import policy is recor
 `input.import.policy`, so mixed import histories require no invocation-wide fallback.
 Effective provenance records the resolved method, parameter set, complete options, execution policy, and
 warnings. When supplied by the application, metrics include UTC start/end timestamps through result
-finalization, parsing, applicability and computation runtimes, and peak resident memory. Output publication
-happens afterward so that JSON can be published first without a rewrite. Durations and memory are rounded
-to three decimal places.
+finalization, parsing, applicability and computation runtimes, and peak resident memory. Durations and
+memory are rounded to three decimal places.

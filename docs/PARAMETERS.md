@@ -1,8 +1,9 @@
 # Parameter-set JSON
 
 ChargeFW's bundled parameter sets are JSON documents installed with the library. User-facing interfaces
-select parameter sets from this catalog. This reference documents its data format and classifier
-semantics.
+select parameter sets from this catalog, and native applications can load compatible JSON through the
+public parameter I/O API. This reference is for parameter authors and documents the file format and
+classifier semantics.
 
 A parameter set declares values for one method. Method requirements determine which common, atom, and
 bond parameter names must be present. During assessment, ChargeFW verifies those names, then classifies
