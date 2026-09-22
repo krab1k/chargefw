@@ -55,14 +55,6 @@ constexpr auto metric_scale = 1000.0;
     return std::round(value * scale) / scale;
 }
 
-[[nodiscard]] auto charges_json(const charges::AtomicCharges& charges) -> Json {
-    Json values = Json::array();
-    for (const auto value : charges.values()) {
-        values.push_back(value);
-    }
-    return values;
-}
-
 [[nodiscard]] auto source_format_name(const MolecularSourceFormat format) -> std::string_view {
     switch (format) {
     case MolecularSourceFormat::molecule_json:
@@ -210,7 +202,6 @@ constexpr auto metric_scale = 1000.0;
         if (assignment.target.molecule_index != molecule_index) {
             continue;
         }
-        auto encoded_charges = charges_json(assignment.charges);
         auto total_charge = 0.0;
         for (const auto value : assignment.charges.values()) {
             total_charge += value;
@@ -223,7 +214,7 @@ constexpr auto metric_scale = 1000.0;
             {"scope", assignment.target.conformer_index.has_value() ? "conformer" : "molecule"},
             {"target", std::move(target)},
             {"charge_unit", "e"},
-            {"charges", std::move(encoded_charges)},
+            {"charges", assignment.charges.values()},
             {"total_charge", total_charge}};
         assignments.push_back(std::move(encoded_assignment));
     }
@@ -237,9 +228,6 @@ constexpr auto metric_scale = 1000.0;
     -> Json {
     const auto optional_id = [](const std::optional<std::string>& id) -> Json {
         return id.has_value() ? Json{{"id", *id}} : Json(nullptr);
-    };
-    const auto optional_value = [](const auto& value) -> Json {
-        return value.has_value() ? Json(*value) : Json(nullptr);
     };
     const auto option_value = [](const methods::MethodOptionValue& value) -> Json {
         return std::visit([](const auto& item) -> Json { return item; }, value);
@@ -271,7 +259,7 @@ constexpr auto metric_scale = 1000.0;
           {"max_threads", requested_provenance.max_threads}}},
         {"execution",
          {{"kind", requested_provenance.execution_kind},
-          {"radius_angstrom", optional_value(requested_provenance.execution_radius)}}}};
+          {"radius_angstrom", requested_provenance.execution_radius}}}};
     requested["method_options"] = method_options_json(requested_provenance.method_options);
 
     auto effective = Json{{"method", nullptr},
@@ -285,9 +273,8 @@ constexpr auto metric_scale = 1000.0;
         for (const auto& issue : value.execution_issues) {
             effective["warnings"].push_back(issue.message);
         }
-        effective["execution"] = {
-            {"mode", calculation::to_string(value.execution_policy.mode())},
-            {"radius_angstrom", optional_value(value.execution_policy.radius())}};
+        effective["execution"] = {{"mode", calculation::to_string(value.execution_policy.mode())},
+                                  {"radius_angstrom", value.execution_policy.radius()}};
         effective["method_options"] =
             method_options_json({{value.method_id, value.method_options}});
     }
