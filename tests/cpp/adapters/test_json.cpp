@@ -78,13 +78,7 @@ TEST_CASE("JSON input preserves identity, graph, and conformer mapping", "[adapt
 }
 )json"};
         auto reader = json::JsonReader{input};
-        auto rejected = false;
-        try {
-            [[maybe_unused]] const auto result = reader.next();
-        } catch (const std::exception&) {
-            rejected = true;
-        }
-        CHECK(rejected);
+        CHECK_THROWS_AS(reader.next(), std::exception);
     }
 
     {
@@ -94,13 +88,7 @@ TEST_CASE("JSON input preserves identity, graph, and conformer mapping", "[adapt
   "molecules": []
 }
 )json"};
-        auto rejected = false;
-        try {
-            [[maybe_unused]] auto reader = json::JsonReader{input};
-        } catch (const std::runtime_error&) {
-            rejected = true;
-        }
-        CHECK(rejected);
+        CHECK_THROWS_AS(json::JsonReader{input}, std::runtime_error);
     }
 }
 

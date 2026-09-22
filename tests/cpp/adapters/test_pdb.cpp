@@ -308,13 +308,7 @@ END
 TEST_CASE("PDB input rejects empty and incompatible selected models", "[adapters][pdb]") {
     {
         std::istringstream input{"END\n"};
-        bool rejected = false;
-        try {
-            [[maybe_unused]] auto reader = pdb::PdbReader{input};
-        } catch (const std::exception&) {
-            rejected = true;
-        }
-        CHECK(rejected);
+        CHECK_THROWS_AS(pdb::PdbReader{input}, std::exception);
     }
 
     {
@@ -326,13 +320,7 @@ ATOM      1  O   UNL A   1       0.000   0.000   0.000  1.00 20.00           O
 ENDMDL
 END
 )pdb"};
-        bool rejected = false;
-        try {
-            [[maybe_unused]] auto reader = pdb::PdbReader{input};
-        } catch (const std::exception&) {
-            rejected = true;
-        }
-        CHECK(rejected);
+        CHECK_THROWS_AS(pdb::PdbReader{input}, std::exception);
     }
 
     {

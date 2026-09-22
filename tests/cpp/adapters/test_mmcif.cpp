@@ -215,13 +215,7 @@ ATOM 1 Xx CA . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
 )cif"};
     auto deferred_error_reader = mmcif::MmcifReader{deferred_error_input};
     REQUIRE(deferred_error_reader.next().has_value());
-    bool deferred_error = false;
-    try {
-        static_cast<void>(deferred_error_reader.next());
-    } catch (const std::runtime_error&) {
-        deferred_error = true;
-    }
-    CHECK(deferred_error);
+    CHECK_THROWS_AS(deferred_error_reader.next(), std::runtime_error);
 
     std::istringstream filtered_input{R"cif(data_filtered
 loop_
@@ -486,11 +480,5 @@ HETATM 3 C C1 . LIG A 1 ? 0.1 0.0 0.0 1.0 20.0 0 1 LIG A C1 2
 )cif";
     std::istringstream input{incompatible_input};
     auto reader = mmcif::MmcifReader{input};
-    bool rejected = false;
-    try {
-        [[maybe_unused]] const auto record = reader.next();
-    } catch (const std::exception&) {
-        rejected = true;
-    }
-    CHECK(rejected);
+    CHECK_THROWS_AS(reader.next(), std::exception);
 }

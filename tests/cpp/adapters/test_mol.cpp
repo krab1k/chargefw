@@ -279,37 +279,19 @@ TEST_CASE("native readers preserve molecular mapping and reject malformed record
     {
         std::ifstream input{fixture("synthetic/mol2/malformed_then_valid.mol2")};
         auto reader = mol2::Mol2Reader{input, "malformed_then_valid.mol2"};
-        auto rejected = false;
-        try {
-            [[maybe_unused]] const auto result = reader.next();
-        } catch (const std::exception&) {
-            rejected = true;
-        }
-        CHECK(rejected);
+        CHECK_THROWS_AS(reader.next(), std::exception);
     }
 
     {
         std::ifstream input{fixture("synthetic/mol2/missing_atom_section_then_valid.mol2")};
         auto reader = mol2::Mol2Reader{input, "missing_atom_section_then_valid.mol2"};
-        auto rejected = false;
-        try {
-            [[maybe_unused]] const auto result = reader.next();
-        } catch (const std::exception&) {
-            rejected = true;
-        }
-        CHECK(rejected);
+        CHECK_THROWS_AS(reader.next(), std::exception);
     }
 
     {
         std::ifstream input{fixture("synthetic/sdf/malformed_then_water.sdf")};
         auto reader = sdf::SdfReader{input, "malformed_then_water.sdf"};
-        auto rejected = false;
-        try {
-            [[maybe_unused]] const auto result = reader.next();
-        } catch (const std::exception&) {
-            rejected = true;
-        }
-        CHECK(rejected);
+        CHECK_THROWS_AS(reader.next(), std::exception);
     }
 
     {
@@ -370,13 +352,7 @@ TEST_CASE("native readers preserve molecular mapping and reject malformed record
                            "M  V30 1 C 0 0 0 0\nM  V30 1 O 1 0 0 0\nM  V30 END ATOM\n"
                            "M  V30 BEGIN BOND\nM  V30 END BOND\nM  V30 END CTAB\nM  END\n"}}) {
         std::istringstream input{std::string{malformed}};
-        bool rejected = false;
-        try {
-            [[maybe_unused]] const auto record = mol::parse_mol(input, {});
-        } catch (const std::exception&) {
-            rejected = true;
-        }
-        CHECK(rejected);
+        CHECK_THROWS_AS(mol::parse_mol(input, {}), std::exception);
     }
 
     for (const auto malformed : {
