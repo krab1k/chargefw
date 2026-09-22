@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias
@@ -33,25 +32,13 @@ _STRUCTURAL_FORMATS = frozenset(("pdb", "mmcif"))
 _MULTI_CONFORMER_FORMATS = frozenset(("molecule-json", "pdb", "mmcif"))
 
 
-@dataclass(frozen=True, slots=True)
-class _InputMetadata:
-    diagnostics: tuple[tuple[str, str, int | None], ...]
-    structural_input: tuple[RecordSelection, BondStrategy] | None
-    conformers: ConformerSelection
-
-
 class _ImportedMolecule(Molecule):
-    __slots__ = ("_input_metadata", "_native_input_metadata")
+    __slots__ = ("_native_input_metadata",)
 
-    _input_metadata: _InputMetadata
     _native_input_metadata: _native_adapters._NativeInputMetadata
 
 
-def _molecule(
-    payload: _native_adapters.MoleculePayload,
-    structural_input: tuple[RecordSelection, BondStrategy] | None,
-    conformers: ConformerSelection,
-) -> Molecule:
+def _molecule(payload: _native_adapters.MoleculePayload) -> Molecule:
     coordinates = payload["coordinates"] or None
     import_metadata = payload["import_metadata"]
 
@@ -117,25 +104,13 @@ def _molecule(
     )
     object.__setattr__(result, "_source_mapping", source_mapping)
     object.__setattr__(result, "_native_input_metadata", payload["native_input_metadata"])
-    object.__setattr__(
-        result,
-        "_input_metadata",
-        _InputMetadata(
-            diagnostics=tuple(payload["diagnostics"]),
-            structural_input=structural_input,
-            conformers=conformers,
-        ),
-    )
     return result
 
 
 def _collection(
-    payloads: list[_native_adapters.MoleculePayload],
-    source_name: str,
-    structural_input: tuple[RecordSelection, BondStrategy] | None,
-    conformers: ConformerSelection,
+    payloads: list[_native_adapters.MoleculePayload], source_name: str
 ) -> MoleculeCollection:
-    molecules = tuple(_molecule(payload, structural_input, conformers) for payload in payloads)
+    molecules = tuple(_molecule(payload) for payload in payloads)
     return MoleculeCollection(molecules, source_name)
 
 
@@ -175,8 +150,7 @@ def parse(
         raise TypeError("source_name must be a string")
     _validate_options(format, selection, bonds, conformers)
     payloads = _native_adapters._parse(contents, source_name, format, selection, bonds, conformers)
-    structural_input = (selection, bonds) if format in _STRUCTURAL_FORMATS else None
-    return _collection(payloads, source_name, structural_input, conformers)
+    return _collection(payloads, source_name)
 
 
 def read(

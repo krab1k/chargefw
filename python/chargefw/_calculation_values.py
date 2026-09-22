@@ -307,23 +307,6 @@ class CalculationResult:
         return self._molecules
 
     @property
-    def _requested_payload(self) -> dict[str, object]:
-        return {
-            "method_id": self._requested.method,
-            "parameter_set_id": self._requested.parameter_set,
-            "permissive_types": self._requested.parameter_matching == "permissive",
-            "cutoff_threshold": self._requested.cutoff_threshold,
-            "cover_threshold": self._requested.cover_threshold,
-            "max_threads": self._requested.threads,
-            "execution": self._requested.execution,
-            "radius": self._requested.radius,
-            "method_options": {
-                method_id: dict(options)
-                for method_id, options in self._requested.options_by_method.items()
-            },
-        }
-
-    @property
     def assignments(self) -> tuple[ChargeAssignment, ...]:
         return self._assignments
 
