@@ -191,10 +191,13 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
     arguments.method_option = command.add_option("--method", arguments.method_id, "Method ID");
     arguments.parameter_set_option =
         command.add_option("--parameter-set", arguments.parameter_set_id, "Parameter-set ID");
+    arguments.parameter_set_option->needs(arguments.method_option);
     command.add_flag("--permissive-types", arguments.permissive_types,
                      "Allow permissive parameter type classification");
-    command.add_option("--method-option", arguments.method_options,
-                       "Method option METHOD.OPTION=VALUE (repeatable)");
+    command
+        .add_option("--method-option", arguments.method_options,
+                    "Method option METHOD.OPTION=VALUE (repeatable)")
+        ->allow_extra_args(false);
     command.add_option("--execution", arguments.execution,
                        "Execution: auto, full, cutoff, or cover");
     command.add_option("--radius", arguments.radius, "Cutoff or cover radius in angstrom");
@@ -219,10 +222,6 @@ auto import_input(const InputArguments& arguments) -> ImportedCollection {
 
 auto make_request(core::MoleculeCollection molecules, const SelectionArguments& arguments)
     -> calculation::AssessmentRequest {
-    if (arguments.parameter_set_option->count() > 0 && arguments.method_option->count() == 0) {
-        throw std::invalid_argument{"--parameter-set requires --method"};
-    }
-
     auto method_options = std::unordered_map<std::string, methods::MethodOptions>{};
     for (const auto& text : arguments.method_options) {
         const auto [method_id, option] = parse_method_option(text);

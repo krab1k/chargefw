@@ -120,6 +120,7 @@ class TerminalProgressObserver final : public chargefw::calculation::Calculation
 
 auto run(std::span<char*> arguments) -> int {
     CLI::App app{"ChargeFW molecular charge calculation and inspection."};
+    app.require_subcommand(1, 1);
     chargefw::cli::InputArguments calculate_input;
     chargefw::cli::InputArguments inspect_input;
     chargefw::cli::InputArguments applicability_input;
@@ -148,9 +149,11 @@ auto run(std::span<char*> arguments) -> int {
     chargefw::cli::add_input_options(*applicability, applicability_input);
     chargefw::cli::add_selection_options(*applicability, applicability_selection);
     methods->add_option("method", method_info, "Show details for a method ID");
-    parameters->add_option("parameter-set", parameter_set_info,
-                           "Show details for a parameter-set ID");
-    parameters->add_option("--method", parameter_method, "Limit results to a method ID");
+    auto* parameter_set_option = parameters->add_option("parameter-set", parameter_set_info,
+                                                        "Show details for a parameter-set ID");
+    auto* parameter_method_option =
+        parameters->add_option("--method", parameter_method, "Limit results to a method ID");
+    parameter_set_option->excludes(parameter_method_option);
     const auto argc = static_cast<int>(arguments.size());
     auto* const argv = arguments.data();
     try {
@@ -180,12 +183,6 @@ auto run(std::span<char*> arguments) -> int {
         chargefw::cli::print_applicability(chargefw::calculation::assess(std::move(request)));
         return 0;
     }
-    if (!*calculate) {
-        throw std::invalid_argument{
-            "a subcommand is required; use calculate, inspect, applicability, "
-            "methods, or parameters"};
-    }
-
     auto run =
         chargefw::cli::CalculationRun{.metrics = {}, .started = std::chrono::steady_clock::now()};
     run.metrics.started_at = chargefw::cli::utc_timestamp();

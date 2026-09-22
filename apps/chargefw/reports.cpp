@@ -165,10 +165,6 @@ void print_parameter_sets(const std::string& parameter_set_id, const std::string
         print_summary(rows);
         return;
     }
-    if (!method_id.empty()) {
-        throw std::invalid_argument{"parameter-set ID and --method cannot be combined"};
-    }
-
     const auto parameter_set =
         std::ranges::find(parameter_sets, parameter_set_id, &parameters::ParameterSet::id);
     if (parameter_set == parameter_sets.end()) {
