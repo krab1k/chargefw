@@ -438,12 +438,6 @@ auto write_result_block(::gemmi::cif::Block& block, const ImportedMoleculeRecord
     }
 }
 
-auto erase_category(::gemmi::cif::Block& block, const std::string_view category) -> void {
-    if (block.has_mmcif_category(std::string{category})) {
-        block.find_mmcif_category(std::string{category}).erase();
-    }
-}
-
 auto ensure_dictionary(::gemmi::cif::Block& block) -> void {
     auto table =
         block.find_or_add("_audit_conform.", {"dict_name", "dict_version", "dict_location"});
@@ -461,18 +455,14 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
                    const std::span<const charges::ChargeAssignment> assignments,
                    const charges::ChargeSet& charge_set, const std::string_view generator_name,
                    const std::string_view generator_version) -> void {
-    erase_category(block, metadata_category);
-    erase_category(block, charges_category);
     ensure_dictionary(block);
+    block.init_mmcif_loop(metadata_category, metadata_columns);
+    block.init_mmcif_loop(charges_category, charge_columns);
+
+    // Category initialization can invalidate tables, so acquire them only after both mutations.
     auto assignment_id = std::size_t{1};
-    block
-        .find_or_add(metadata_category,
-                     {"id", "type", "method", "parameter_set", "software_name", "software_version"})
-        .ensure_loop();
-    block.find_or_add(charges_category, {"type_id", "atom_id", "charge"}).ensure_loop();
-    auto metadata = block.find(metadata_category, {"id", "type", "method", "parameter_set",
-                                                   "software_name", "software_version"});
-    auto charge_rows = block.find(charges_category, {"type_id", "atom_id", "charge"});
+    auto metadata = block.find(metadata_category, metadata_columns);
+    auto charge_rows = block.find(charges_category, charge_columns);
 
     for (const auto& assignment : assignments) {
         if (assignment.charges.size() != molecule.atom_count()) {
