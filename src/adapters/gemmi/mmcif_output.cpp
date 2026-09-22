@@ -1,6 +1,7 @@
 #include <chargefw/adapters/gemmi/mmcif_output.h>
 
 #include "adapters/gemmi/mmcif_attachment.h"
+#include "adapters/gemmi/mmcif_labels.h"
 
 #include <chargefw/core/periodic_table.h>
 
@@ -163,32 +164,17 @@ struct OutputAssignments {
            std::to_string(id) == value;
 }
 
-[[nodiscard]] auto source_value(const ::gemmi::cif::Table::Row& row, const std::size_t index)
-    -> std::optional<std::string> {
-    if (!row.has(index)) {
-        return std::nullopt;
-    }
-    const auto& token = row[index];
-    if (token == "." || token == "?") {
-        return token;
-    }
-    return ::gemmi::cif::as_string(token);
-}
-
-[[nodiscard]] auto source_labels(const ::gemmi::cif::Table::Row& row) -> SourceStructuralLabels {
-    return SourceStructuralLabels{.author = SourceHierarchyLabels{.atom = source_value(row, 6),
-                                                                  .residue = source_value(row, 7),
-                                                                  .chain = source_value(row, 8),
-                                                                  .sequence = source_value(row, 9)},
-                                  .label = SourceHierarchyLabels{.atom = source_value(row, 2),
-                                                                 .residue = source_value(row, 3),
-                                                                 .chain = source_value(row, 4),
-                                                                 .sequence = source_value(row, 5)},
-                                  .entity = source_value(row, 12),
-                                  .insertion_code = source_value(row, 10),
-                                  .alternate_location = source_value(row, 11),
-                                  .segment = std::nullopt};
-}
+constexpr auto attached_label_columns = mmcif_labels::SourceLabelColumns{.label_atom = 2,
+                                                                         .label_residue = 3,
+                                                                         .label_chain = 4,
+                                                                         .label_sequence = 5,
+                                                                         .author_atom = 6,
+                                                                         .author_residue = 7,
+                                                                         .author_chain = 8,
+                                                                         .author_sequence = 9,
+                                                                         .insertion_code = 10,
+                                                                         .alternate_location = 11,
+                                                                         .entity = 12};
 
 [[nodiscard]] auto attached_mapping(::gemmi::cif::Block& block,
                                     const ImportedMoleculeRecord& record) -> BlockMapping {
@@ -243,7 +229,8 @@ struct OutputAssignments {
                     "Gemmi target site mapping does not match the calculation input"};
             }
             if (!site.structural_labels.has_value() ||
-                source_labels(target_site) != *site.structural_labels) {
+                mmcif_labels::decode_source_labels(target_site, attached_label_columns) !=
+                    *site.structural_labels) {
                 throw std::invalid_argument{
                     "Gemmi target site mapping does not match the calculation input"};
             }

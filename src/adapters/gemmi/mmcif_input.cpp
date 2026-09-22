@@ -1,6 +1,7 @@
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 
 #include "bonds.h"
+#include "mmcif_labels.h"
 #include "selection.h"
 #include "structure_import.h"
 
@@ -46,17 +47,17 @@ namespace {
     return result;
 }
 
-[[nodiscard]] auto source_value(const ::gemmi::cif::Table::Row& row, const std::size_t index)
-    -> std::optional<std::string> {
-    if (!row.has(index)) {
-        return std::nullopt;
-    }
-    const auto& token = row[index];
-    if (token == "." || token == "?") {
-        return token;
-    }
-    return ::gemmi::cif::as_string(token);
-}
+constexpr auto source_label_columns = mmcif_labels::SourceLabelColumns{.label_atom = 1,
+                                                                       .label_residue = 2,
+                                                                       .label_chain = 3,
+                                                                       .label_sequence = 4,
+                                                                       .author_atom = 5,
+                                                                       .author_residue = 6,
+                                                                       .author_chain = 7,
+                                                                       .author_sequence = 8,
+                                                                       .insertion_code = 9,
+                                                                       .alternate_location = 10,
+                                                                       .entity = 11};
 
 struct MmcifSourceSite {
     std::optional<std::string> model_id;
@@ -74,25 +75,14 @@ struct MmcifSourceSite {
     auto position = std::size_t{0};
     for (const auto row : atom_sites) {
         const auto id = ::gemmi::cif::as_string(row[0]);
-        const auto model_id = source_value(row, 12);
-        result.push_back(MmcifSourceSite{
-            .model_id = model_id,
-            .reference = SourceAtomReference{
-                .position = position++,
-                .id = id,
-                .structural_labels = SourceStructuralLabels{
-                    .author = SourceHierarchyLabels{.atom = source_value(row, 5),
-                                                    .residue = source_value(row, 6),
-                                                    .chain = source_value(row, 7),
-                                                    .sequence = source_value(row, 8)},
-                    .label = SourceHierarchyLabels{.atom = source_value(row, 1),
-                                                   .residue = source_value(row, 2),
-                                                   .chain = source_value(row, 3),
-                                                   .sequence = source_value(row, 4)},
-                    .entity = source_value(row, 11),
-                    .insertion_code = source_value(row, 9),
-                    .alternate_location = source_value(row, 10),
-                    .segment = std::nullopt}}});
+        const auto model_id = mmcif_labels::source_value(row, 12);
+        result.push_back(
+            MmcifSourceSite{.model_id = model_id,
+                            .reference = SourceAtomReference{.position = position++,
+                                                             .id = id,
+                                                             .structural_labels =
+                                                                 mmcif_labels::decode_source_labels(
+                                                                     row, source_label_columns)}});
     }
     return result;
 }
