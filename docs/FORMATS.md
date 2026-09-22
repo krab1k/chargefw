@@ -161,9 +161,10 @@ Structural readers provide four explicit bond strategies:
 - `templates` applies ChargeFW's built-in residue templates and peptide/nucleotide polymer links; and
 - `hybrid` combines explicit and template bonds, with explicit connectivity taking precedence.
 
-Explicit structural aromatic bonds become single bonds. Templates cover common amino acids,
-nucleotides, water, and basic sequential peptide and nucleotide links; they are not a complete Chemical
-Component Dictionary. No distance-based bond perception is performed.
+Explicit structural aromatic bonds become single bonds. Delocalized (including `1.5`), metal,
+unspecified/null, and malformed component bond orders are skipped because the core graph cannot represent
+them. Templates cover common amino acids, nucleotides, water, and basic sequential peptide and nucleotide
+links; they are not a complete Chemical Component Dictionary. No distance-based bond perception is performed.
 
 ## Charge output
 
