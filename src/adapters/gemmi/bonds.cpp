@@ -61,9 +61,12 @@ class BondAccumulator {
                                        const selection::SelectedModel& selected,
                                        const ::gemmi::AtomAddress& address)
     -> std::optional<std::size_t> {
-    const auto cra = model.find_cra(address);
+    const auto cra = model.find_cra(address, true);
     if (cra.atom != nullptr) {
         return selected.atom_index(cra.atom);
+    }
+    if (!address.res_id.name.empty() && address.altloc != '\0') {
+        return std::nullopt;
     }
 
     for (const auto& chain : model.chains) {

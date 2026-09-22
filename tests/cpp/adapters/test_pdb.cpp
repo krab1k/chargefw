@@ -193,6 +193,25 @@ END
     CHECK(record->import_metadata->atoms[1].id == "3");
 }
 
+TEST_CASE("PDB explicit connections retain address wildcard behavior", "[adapters][pdb]") {
+    const auto read_bond_count = [](const std::string_view link) {
+        auto input = std::istringstream{std::string{link} + R"pdb(
+ATOM      1  C  AALA A   1       0.000   0.000   0.000  1.00 20.00           C
+HETATM    2  C1 ALIG A   5       1.000   0.000   0.000  1.00 20.00           C
+END
+)pdb"};
+        auto reader = pdb::PdbReader{
+            input, {}, {.bond_strategy = gemmi_adapter::BondStrategy::explicit_bonds}};
+        const auto record = reader.next();
+        REQUIRE(record.has_value());
+        CHECK(record->molecule.atom_count() == 2);
+        return record->molecule.bond_count();
+    };
+
+    CHECK(read_bond_count("LINK         C   ALA A   1                 C1  LIG A   5") == 1);
+    CHECK(read_bond_count("LINK         C       A   1                 C1  LIG A   5") == 1);
+}
+
 TEST_CASE("PDB source mapping follows Gemmi record handling", "[adapters][pdb]") {
     std::istringstream input{R"pdb(mOdEl        1
 aToM      1  C1  LIG A   1       0.000   0.000   0.000  1.00 20.00           C
