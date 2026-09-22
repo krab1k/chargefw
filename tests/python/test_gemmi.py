@@ -462,13 +462,15 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         self.assertNotIn("_sb_ncbr_partial_atomic_charges.", document[2].get_mmcif_category_names())
 
     def test_selection_conformers_and_types_are_explicit(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "no selected atoms"):
+            chargefw_io.parse(MMCIF_TEXT, format="mmcif", selection="polymers", conformers="first")
+
         polymers = chargefw_io.parse(
-            MMCIF_TEXT,
-            format="mmcif",
+            BOND_STRATEGY_PDB,
+            format="pdb",
             selection="polymers",
             conformers="first",
         )
-        self.assertEqual(polymers[0].atom_names, ("CA",))
         self.assertEqual(polymers[0].conformer_count, 1)
         result = calculate(polymers, method="formal")
         encoded = json.loads(chargefw_io.dumps(result, format="result-json"))

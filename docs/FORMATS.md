@@ -144,7 +144,9 @@ Selection is applied before conformer validation and bonding:
 
 - `all` retains polymer, ligand, and water residues;
 - `polymers-and-ligands` excludes water residues recognized by Gemmi: `HOH`, `WAT`, `H2O`, and `DOD`; and
-- `polymers` excludes all hetero residues.
+- `polymers` retains only residues Gemmi classifies as linear polymers. Branched, non-polymer, and water
+  entities are excluded; Gemmi infers unknown entity types on the private imported structure, and residues
+  that remain unclassified are excluded.
 
 Only one alternate location is imported for each atom name in a residue: the first location in source order.
 The selected atom retains its original alternate-location identity in source mapping and generated output.

@@ -9,6 +9,7 @@
 
 #include <gemmi/cif.hpp>
 #include <gemmi/mmcif.hpp>
+#include <gemmi/polyheur.hpp>
 
 #include <algorithm>
 #include <istream>
@@ -134,10 +135,11 @@ auto MmcifReader::next() -> std::optional<ImportedMoleculeRecord> {
         }
 
         auto normalized = parser_block(block);
-        const auto structure = ::gemmi::make_structure_from_block(normalized);
+        auto structure = ::gemmi::make_structure_from_block(normalized);
         if (structure.models.empty()) {
             throw std::runtime_error{"structural input contains no models"};
         }
+        ::gemmi::add_entity_types(structure, false);
         const auto selected_models =
             selection::select_models(structure, options_.selection, options_.conformers);
         auto explicit_bonds = std::vector<core::Bond>{};

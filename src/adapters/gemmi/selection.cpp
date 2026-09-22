@@ -13,7 +13,7 @@ auto include_residue(const ::gemmi::Residue& residue, const RecordSelection sele
     case RecordSelection::polymers_and_ligands:
         return !residue.is_water();
     case RecordSelection::polymers:
-        return residue.het_flag != 'H';
+        return residue.entity_type == ::gemmi::EntityType::Polymer;
     }
 
     return false;

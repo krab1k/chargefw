@@ -114,7 +114,22 @@ END
             polymers_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers}};
         const auto polymers_record = polymers_reader.next();
         REQUIRE(polymers_record.has_value());
-        CHECK(polymers_record->molecule.atom_count() == 1);
+        CHECK(polymers_record->molecule.atom_count() == 2);
+
+        std::istringstream modified_polymer_input{
+            R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C
+HETATM    2 SE   MSE A   2       1.000   0.000   0.000  1.00 20.00          SE
+TER
+HETATM    3  C1  LIG A   3       2.000   0.000   0.000  1.00 20.00           C
+END
+)pdb"};
+        auto modified_polymer_reader = pdb::PdbReader{
+            modified_polymer_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers}};
+        const auto modified_polymer_record = modified_polymer_reader.next();
+        REQUIRE(modified_polymer_record.has_value());
+        CHECK(modified_polymer_record->molecule.atom_count() == 2);
+        CHECK(modified_polymer_record->molecule.atom(0).name() == "CA");
+        CHECK(modified_polymer_record->molecule.atom(1).name() == "SE");
     }
 
     {

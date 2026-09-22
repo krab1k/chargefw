@@ -7,6 +7,7 @@
 #include <chargefw/core/bond.h>
 
 #include <gemmi/pdb.hpp>
+#include <gemmi/polyheur.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -217,10 +218,11 @@ PdbReader::PdbReader(std::istream& input, std::string source,
         throw std::runtime_error{"failed to read PDB input"};
     }
 
-    const auto structure = ::gemmi::read_pdb_string(contents, source);
+    auto structure = ::gemmi::read_pdb_string(contents, source);
     if (structure.models.empty()) {
         throw std::runtime_error{"structural input contains no models"};
     }
+    ::gemmi::add_entity_types(structure, false);
     const auto name = structure.name.empty() ? source : structure.name;
     const auto selected_models =
         selection::select_models(structure, options.selection, options.conformers);

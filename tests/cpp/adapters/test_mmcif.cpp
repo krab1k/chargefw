@@ -254,7 +254,7 @@ HETATM 3 O O . HOH A 3 ? 2.0 0.0 0.0 1.0 20.0 0 3 HOH A O 1
         filtered_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers}};
     const auto filtered_record = filtered.next();
     REQUIRE(filtered_record.has_value());
-    CHECK(filtered_record->molecule.atom_count() == 1);
+    CHECK(filtered_record->molecule.atom_count() == 2);
 
     const auto strategy_input = R"cif(data_connectivity
 loop_
