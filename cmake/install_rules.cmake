@@ -38,6 +38,25 @@ install(
         PATTERN "*.json"
 )
 
+# Keep the public guide hierarchy intact so installed Markdown links remain valid.
+install(
+        FILES
+        ${PROJECT_SOURCE_DIR}/README.md
+        ${PROJECT_SOURCE_DIR}/LICENSE
+        DESTINATION ${CMAKE_INSTALL_DOCDIR}/chargefw
+        COMPONENT documentation
+)
+install(
+        FILES
+        ${PROJECT_SOURCE_DIR}/docs/NATIVE.md
+        ${PROJECT_SOURCE_DIR}/docs/CLI.md
+        ${PROJECT_SOURCE_DIR}/docs/FORMATS.md
+        ${PROJECT_SOURCE_DIR}/docs/PARAMETERS.md
+        ${PROJECT_SOURCE_DIR}/docs/PROJECT.md
+        DESTINATION ${CMAKE_INSTALL_DOCDIR}/chargefw/docs
+        COMPONENT documentation
+)
+
 install(
         FILES
         ${PROJECT_BINARY_DIR}/generated/chargefw/config.h
