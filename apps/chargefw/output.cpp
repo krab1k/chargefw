@@ -64,24 +64,22 @@ template <typename Writer> void write_output(const std::filesystem::path& path, 
 void write_json(const std::filesystem::path& path, const adapters::ChargeCalculationResult& result,
                 const adapters::ExecutionMetrics& metrics) {
     write_output(path, [&result, &metrics](auto& output) {
-        adapters::native::json_output::JsonWriter{output}.write(result, "ChargeFW",
-                                                                CHARGEFW_VERSION_STRING, metrics);
+        adapters::native::json_output::JsonWriter{output}.write(result, CHARGEFW_VERSION_STRING,
+                                                                metrics);
     });
 }
 
 void write_mmcif(const std::filesystem::path& path,
                  const adapters::ChargeCalculationResult& result) {
     write_output(path, [&result](auto& output) {
-        adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, "ChargeFW",
-                                                                 CHARGEFW_VERSION_STRING);
+        adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, CHARGEFW_VERSION_STRING);
     });
 }
 
 void write_mol2(const std::filesystem::path& path,
                 const adapters::ChargeCalculationResult& result) {
     write_output(path, [&result](auto& output) {
-        adapters::native::mol2_output::Mol2Writer{output}.write(result, "ChargeFW",
-                                                                CHARGEFW_VERSION_STRING);
+        adapters::native::mol2_output::Mol2Writer{output}.write(result, CHARGEFW_VERSION_STRING);
     });
 }
 

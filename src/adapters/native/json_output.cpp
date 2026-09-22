@@ -298,7 +298,7 @@ constexpr auto metric_scale = 1000.0;
 
 JsonWriter::JsonWriter(std::ostream& output) : output_{std::addressof(output)} {}
 
-auto JsonWriter::write(const ChargeCalculationResult& result, const std::string_view generator_name,
+auto JsonWriter::write(const ChargeCalculationResult& result,
                        const std::string_view generator_version,
                        const std::optional<ExecutionMetrics>& execution_metrics) const -> void {
     Json records = Json::array();
@@ -309,7 +309,7 @@ auto JsonWriter::write(const ChargeCalculationResult& result, const std::string_
     }
 
     Json document{{"schema_version", "1.0"},
-                  {"generator", {{"name", generator_name}, {"version", generator_version}}},
+                  {"generator", {{"name", "ChargeFW"}, {"version", generator_version}}},
                   {"status", calculation::to_string(result.execution().status)},
                   {"diagnostics", diagnostics_json(charge_result_diagnostics(result))},
                   {"results", std::move(records)}};

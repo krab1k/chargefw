@@ -73,7 +73,7 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
                                    .peak_resident_memory_mb = 123.4567};
 
     auto output = std::ostringstream{};
-    json_output::JsonWriter{output}.write(owned, "ChargeFW", "test", execution_metrics);
+    json_output::JsonWriter{output}.write(owned, "test", execution_metrics);
     const auto result = nlohmann::json::parse(output.str());
 
     CHECK(result.at("schema_version") == "1.0");
@@ -137,7 +137,7 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
         {}, {.status = calculation::ExecutionStatus::cancelled});
 
     auto output = std::ostringstream{};
-    json_output::JsonWriter{output}.write(owned, "ChargeFW", "test");
+    json_output::JsonWriter{output}.write(owned, "test");
     const auto result = nlohmann::json::parse(output.str());
 
     CHECK(result.at("status") == "cancelled");
@@ -165,7 +165,7 @@ TEST_CASE("JSON output serializes caller atom IDs for a manual record", "[adapte
              .method_id = "formal", .execution_policy = calculation::ExecutionPolicy{}}});
 
     auto output = std::ostringstream{};
-    json_output::JsonWriter{output}.write(owned, "ChargeFW", "test");
+    json_output::JsonWriter{output}.write(owned, "test");
     const auto result = nlohmann::json::parse(output.str());
 
     CHECK(result.at("results").at(0).at("input").at("atom_ids") == nlohmann::json{"H", 9});

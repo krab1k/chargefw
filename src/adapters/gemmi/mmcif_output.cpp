@@ -325,18 +325,15 @@ auto validate_result_output(const ChargeCalculationResult& result) -> void {
 
 auto append_charge_metadata(::gemmi::cif::Table& metadata, const std::string_view id,
                             const charges::ChargeSet& charge_set,
-                            const std::string_view generator_name,
                             const std::string_view generator_version) -> void {
     const auto parameter_set = charge_set.parameter_set_id();
     metadata.append_row({std::string{id}, "empirical", quote(charge_set.method_id()),
-                         parameter_set.has_value() ? quote(*parameter_set) : ".",
-                         quote(generator_name.empty() ? "unknown" : generator_name),
+                         parameter_set.has_value() ? quote(*parameter_set) : ".", quote("ChargeFW"),
                          quote(generator_version.empty() ? "unknown" : generator_version)});
 }
 
 auto write_result_block(::gemmi::cif::Block& block, const ImportedMoleculeRecord& record,
                         const OutputAssignments& assignments, const charges::ChargeSet& charge_set,
-                        const std::string_view generator_name,
                         const std::string_view generator_version) -> void {
     const auto& molecule = record.molecule;
     const auto generated_atom_ids = atom_ids(molecule);
@@ -356,12 +353,11 @@ auto write_result_block(::gemmi::cif::Block& block, const ImportedMoleculeRecord
     auto next_type_id = std::size_t{1};
     if (assignments.molecule != nullptr) {
         molecule_type_id = std::to_string(next_type_id++);
-        append_charge_metadata(metadata, *molecule_type_id, charge_set, generator_name,
-                               generator_version);
+        append_charge_metadata(metadata, *molecule_type_id, charge_set, generator_version);
     } else {
         for (std::size_t index = 0; index < assignments.conformers.size(); ++index) {
             conformer_type_ids[index] = std::to_string(next_type_id++);
-            append_charge_metadata(metadata, *conformer_type_ids[index], charge_set, generator_name,
+            append_charge_metadata(metadata, *conformer_type_ids[index], charge_set,
                                    generator_version);
         }
     }
@@ -470,8 +466,8 @@ auto ensure_dictionary(::gemmi::cif::Block& block) -> void {
 auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
                    const core::Molecule& molecule,
                    const std::span<const charges::ChargeAssignment> assignments,
-                   const charges::ChargeSet& charge_set, const std::string_view generator_name,
-                   const std::string_view generator_version) -> void {
+                   const charges::ChargeSet& charge_set, const std::string_view generator_version)
+    -> void {
     ensure_dictionary(block);
     block.init_mmcif_loop(metadata_category, metadata_columns);
     block.init_mmcif_loop(charges_category, charge_columns);
@@ -490,7 +486,7 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
             throw std::runtime_error{"charge assignment conformer is missing from mmCIF block"};
         }
         const auto id = std::to_string(assignment_id++);
-        append_charge_metadata(metadata, id, charge_set, generator_name, generator_version);
+        append_charge_metadata(metadata, id, charge_set, generator_version);
         const auto first_mapping = assignment.target.conformer_index.value_or(0);
         const auto mapping_count = assignment.target.conformer_index.has_value()
                                        ? first_mapping + 1
@@ -510,7 +506,6 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
 MmcifWriter::MmcifWriter(std::ostream& output) : output_{std::addressof(output)} {}
 
 auto MmcifWriter::write(const ChargeCalculationResult& result,
-                        const std::string_view generator_name,
                         const std::string_view generator_version) const -> void {
     validate_result_output(result);
     auto document = ::gemmi::cif::Document{};
@@ -519,7 +514,7 @@ auto MmcifWriter::write(const ChargeCalculationResult& result,
         auto& block =
             document.add_new_block(unique_block_name(document, block_name(record, index)));
         write_result_block(block, record, assignments_for_result(result, index),
-                           *result.execution().charges, generator_name, generator_version);
+                           *result.execution().charges, generator_version);
     }
     ::gemmi::cif::write_cif_to_stream(*output_, document);
     if (!*output_) {
@@ -529,8 +524,7 @@ auto MmcifWriter::write(const ChargeCalculationResult& result,
 
 auto write_attached(std::ostream& output, const ChargeCalculationResult& result,
                     const ::gemmi::cif::Document& source, const bool overwrite,
-                    const std::string_view generator_name, const std::string_view generator_version)
-    -> void {
+                    const std::string_view generator_version) -> void {
     validate_result_output(result);
     auto document = source;
     auto blocks = std::vector<::gemmi::cif::Block*>{};
@@ -558,7 +552,7 @@ auto write_attached(std::ostream& output, const ChargeCalculationResult& result,
                 : std::size_t{1};
         write_charges(block, mapping, result.inputs()[index].molecule,
                       assignments.subspan(assignment_offset, assignment_count),
-                      *result.execution().charges, generator_name, generator_version);
+                      *result.execution().charges, generator_version);
         assignment_offset += assignment_count;
     }
     ::gemmi::cif::write_cif_to_stream(output, document);

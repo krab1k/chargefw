@@ -265,14 +265,11 @@ auto dumps(const NativeExecutionResult& native_result, const std::string& format
     const auto& result = native_result.result();
     auto output = std::ostringstream{};
     if (format == "result-json") {
-        adapters::native::json_output::JsonWriter{output}.write(result, "ChargeFW",
-                                                                CHARGEFW_VERSION_STRING);
+        adapters::native::json_output::JsonWriter{output}.write(result, CHARGEFW_VERSION_STRING);
     } else if (format == "mol2") {
-        adapters::native::mol2_output::Mol2Writer{output}.write(result, "ChargeFW",
-                                                                CHARGEFW_VERSION_STRING);
+        adapters::native::mol2_output::Mol2Writer{output}.write(result, CHARGEFW_VERSION_STRING);
     } else if (format == "mmcif") {
-        adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, "ChargeFW",
-                                                                 CHARGEFW_VERSION_STRING);
+        adapters::gemmi::mmcif_output::MmcifWriter{output}.write(result, CHARGEFW_VERSION_STRING);
     } else {
         throw std::invalid_argument{"unsupported calculation output format: " + format};
     }
@@ -285,7 +282,7 @@ auto attach_mmcif(std::string contents, const NativeExecutionResult& native_resu
     const auto document =
         ::gemmi::cif::read_memory(contents.data(), contents.size(), "<Gemmi document>");
     adapters::gemmi::mmcif_output::write_attached(output, native_result.result(), document,
-                                                  overwrite, "ChargeFW", CHARGEFW_VERSION_STRING);
+                                                  overwrite, CHARGEFW_VERSION_STRING);
     return output.str();
 }
 

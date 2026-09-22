@@ -196,9 +196,9 @@ Public headers are provided under `chargefw/adapters`, with format-specific APIs
 - `PdbReader` and `MmcifReader` import Gemmi structures with explicit record, bond, and conformer policy.
 - `native::mol2_output::Mol2Writer` emits generated MOL2 from an owned calculation result.
 - `gemmi::mmcif_output::MmcifWriter` emits a fresh mmCIF document from an owned calculation result.
-- `JsonWriter` serializes `ChargeCalculationResult` directly; application-specific execution metrics are
-  optional. `PortableId` retains absent, string, or signed 64-bit integer record IDs without implicit
-  stringification.
+- `JsonWriter` serializes `ChargeCalculationResult` directly with the fixed `ChargeFW` generator identity;
+  application-specific execution metrics are optional. `PortableId` retains absent, string, or signed
+  64-bit integer record IDs without implicit stringification.
 
 Readers return `ImportedMoleculeRecord`, which keeps the molecule together with source identity, import
 diagnostics, and optional `MoleculeImportMetadata`. Its `SourceAtomReference`,

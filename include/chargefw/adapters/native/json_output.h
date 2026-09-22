@@ -13,8 +13,7 @@ class JsonWriter {
   public:
     explicit JsonWriter(std::ostream& output);
 
-    auto write(const ChargeCalculationResult& result, std::string_view generator_name,
-               std::string_view generator_version,
+    auto write(const ChargeCalculationResult& result, std::string_view generator_version,
                const std::optional<ExecutionMetrics>& execution_metrics = std::nullopt) const
         -> void;
 

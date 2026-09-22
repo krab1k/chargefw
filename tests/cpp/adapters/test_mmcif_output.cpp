@@ -94,7 +94,7 @@ TEST_CASE("result-owned mmCIF preserves hierarchy and joins conformer charges",
           "[adapters][mmcif]") {
     const auto result = structural_result();
     auto output = std::ostringstream{};
-    mmcif_output::MmcifWriter{output}.write(result, "ChargeFW", "test");
+    mmcif_output::MmcifWriter{output}.write(result, "test");
     auto document = ::gemmi::cif::read_string(output.str());
     REQUIRE(document.blocks.size() == 1);
     auto& block = document.blocks.front();
@@ -119,6 +119,11 @@ TEST_CASE("result-owned mmCIF preserves hierarchy and joins conformer charges",
 
     auto values = block.find("_sb_ncbr_partial_atomic_charges.", {"type_id", "atom_id", "charge"});
     REQUIRE(values.length() == 4);
+    auto metadata =
+        block.find("_sb_ncbr_partial_atomic_charges_meta.", {"software_name", "software_version"});
+    REQUIRE(metadata.length() == 2);
+    CHECK(::gemmi::cif::as_string(metadata[0][0]) == "ChargeFW");
+    CHECK(::gemmi::cif::as_string(metadata[0][1]) == "test");
     CHECK(::gemmi::cif::as_string(values[0][0]) == "1");
     CHECK(::gemmi::cif::as_string(values[2][0]) == "2");
     CHECK(::gemmi::cif::as_string(values[2][1]) == "3");
