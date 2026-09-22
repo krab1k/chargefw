@@ -11,11 +11,13 @@
 #include <cstdlib>
 #include <istream>
 #include <iterator>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -77,6 +79,18 @@ struct PdbSourceModel {
 struct PdbSource {
     std::vector<PdbSourceModel> models;
     SourceConnectivity connectivity = SourceConnectivity::absent;
+};
+
+struct StructuralLabelsLess {
+    [[nodiscard]] auto operator()(const SourceStructuralLabels& lhs,
+                                  const SourceStructuralLabels& rhs) const -> bool {
+        return std::tie(lhs.author.atom, lhs.author.residue, lhs.author.chain, lhs.author.sequence,
+                        lhs.label.atom, lhs.label.residue, lhs.label.chain, lhs.label.sequence,
+                        lhs.entity, lhs.insertion_code, lhs.alternate_location, lhs.segment) <
+               std::tie(rhs.author.atom, rhs.author.residue, rhs.author.chain, rhs.author.sequence,
+                        rhs.label.atom, rhs.label.residue, rhs.label.chain, rhs.label.sequence,
+                        rhs.entity, rhs.insertion_code, rhs.alternate_location, rhs.segment);
+    }
 };
 
 [[nodiscard]] auto parse_source(const std::string& contents) -> PdbSource {
@@ -159,24 +173,22 @@ struct PdbSource {
         const auto selected = selection::SelectedModel{model, options.selection};
         auto sites = std::vector<SourceAtomReference>{};
         sites.reserve(selected.sites().size());
-        auto used = std::vector<bool>(source[model_index].sites.size(), false);
+        auto source_indices =
+            std::map<SourceStructuralLabels, std::vector<std::size_t>, StructuralLabelsLess>{};
+        for (std::size_t index = 0; index < source[model_index].sites.size(); ++index) {
+            source_indices[source[model_index].sites[index].identity].push_back(index);
+        }
         for (const auto& site : selected.sites()) {
             const auto labels = selected_labels(site);
-            auto match = std::optional<std::size_t>{};
-            for (std::size_t index = 0; index < source[model_index].sites.size(); ++index) {
-                if (!used[index] && source[model_index].sites[index].identity == labels) {
-                    if (match.has_value()) {
-                        throw std::runtime_error{
-                            "PDB source contains ambiguous selected atom identity"};
-                    }
-                    match = index;
-                }
-            }
-            if (!match.has_value()) {
+            const auto found = source_indices.find(labels);
+            if (found == source_indices.end()) {
                 throw std::runtime_error{"PDB source mapping does not match selected atoms"};
             }
-            used[*match] = true;
-            sites.push_back(source[model_index].sites[*match].reference);
+            if (found->second.size() != 1) {
+                throw std::runtime_error{"PDB source contains ambiguous selected atom identity"};
+            }
+            sites.push_back(source[model_index].sites[found->second.front()].reference);
+            source_indices.erase(found);
         }
         result.push_back(structure_import::SourceModelMapping{
             .conformer = SourceConformerReference{

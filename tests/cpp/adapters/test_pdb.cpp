@@ -214,6 +214,16 @@ END
     CHECK(conformers[1].sites[0].structural_labels->alternate_location == "B");
 }
 
+TEST_CASE("PDB input rejects ambiguous source identities", "[adapters][pdb]") {
+    std::istringstream input{
+        R"pdb(ATOM      1  C1  LIG A   1       0.000   0.000   0.000  1.00 20.00           C
+ATOM      2  C1  LIG A   1       0.100   0.000   0.000  1.00 20.00           C
+END
+)pdb"};
+
+    CHECK_THROWS_AS(pdb::PdbReader{input}, std::runtime_error);
+}
+
 TEST_CASE("PDB mapping retains source labels through Gemmi normalization", "[adapters][pdb]") {
     std::istringstream input{
         R"pdb(ATOM      1  C1  LIGAB0001      0.000   0.000   0.000  1.00 20.00           C
