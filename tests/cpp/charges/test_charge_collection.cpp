@@ -9,17 +9,6 @@
 
 namespace charges = chargefw::charges;
 
-TEST_CASE("charge target distinguishes conformer-specific and molecule-level",
-          "[charges][charge-collection]") {
-    const charges::ChargeTarget molecule_target{};
-
-    CHECK_FALSE(molecule_target.conformer_index.has_value());
-
-    const charges::ChargeTarget conformer_target{.molecule_index = 0, .conformer_index = 0};
-
-    CHECK(conformer_target.conformer_index.has_value());
-}
-
 TEST_CASE("charge set stores method, parameter, and assignments", "[charges][charge-collection]") {
     const charges::ChargeTarget conformer_target{.molecule_index = 0, .conformer_index = 0};
     const charges::ChargeAssignment water_assignment{

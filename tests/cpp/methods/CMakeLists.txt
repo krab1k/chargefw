@@ -63,44 +63,16 @@ chargefw_add_snitch_test(test_kcm
         test_kcm.cpp
 )
 
-chargefw_add_snitch_test(test_qeq
-        test_qeq.cpp
-)
-
 chargefw_add_snitch_test(test_sqe
         test_sqe.cpp
-)
-
-chargefw_add_snitch_test(test_sqeq0
-        test_sqeq0.cpp
 )
 
 chargefw_add_snitch_test(test_sqeqp
         test_sqeqp.cpp
 )
 
-chargefw_add_snitch_test(test_eem
-        test_eem.cpp
-)
-
-chargefw_add_snitch_test(test_smpqeq
-        test_smpqeq.cpp
-)
-
-chargefw_add_snitch_test(test_sfkeem
-        test_sfkeem.cpp
-)
-
-chargefw_add_snitch_test(test_eqeq
-        test_eqeq.cpp
-)
-
-chargefw_add_snitch_test(test_eqeqc
-        test_eqeqc.cpp
-)
-
-chargefw_add_snitch_test(test_abeem
-        test_abeem.cpp
+chargefw_add_snitch_test(test_electronegativity_equalization
+        test_electronegativity_equalization.cpp
 )
 
 chargefw_add_snitch_test(test_mgc

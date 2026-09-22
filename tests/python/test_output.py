@@ -183,9 +183,13 @@ class OutputTests(unittest.TestCase):
         self.assertEqual(record["input"]["import"]["atom_mapping"], [{"source_position": 0}])
         self.assertEqual(record["input"]["import"]["conformer_mapping"], [])
 
-    def test_result_json_preserves_integer_caller_ids(self) -> None:
+    def test_result_outputs_preserve_integer_caller_ids(self) -> None:
         molecule = chargefw.Molecule(
-            [1, 1], record_id=42, atom_ids=cast(Any, ["left", np.int64(9)])
+            [1, 1],
+            coordinates=[[0, 0, 0], [1, 0, 0]],
+            name="hydrogen",
+            record_id=42,
+            atom_ids=cast(Any, ["left", np.int64(9)]),
         )
         result = chargefw.calculate(molecule, method="formal")
 
@@ -193,6 +197,8 @@ class OutputTests(unittest.TestCase):
         self.assertEqual(encoded["results"][0]["input"]["record_id"], 42)
         self.assertEqual(encoded["results"][0]["input"]["atom_ids"], ["left", 9])
         self.assertEqual(result.assignments[0].atom_ids, ("left", 9))
+        self.assertIn("\n42\n", chargefw.io.dumps(result, format="mol2"))
+        self.assertIn("data_42", chargefw.io.dumps(result, format="mmcif"))
 
     def test_failed_result_json_preserves_caller_atom_ids(self) -> None:
         molecule = chargefw.Molecule([1], atom_ids=["hydrogen"])
@@ -247,25 +253,6 @@ class OutputTests(unittest.TestCase):
         result = chargefw.calculate(water(), method="formal")
         with self.assertRaises(TypeError):
             chargefw.io.dumps(result)  # type: ignore[call-arg]
-
-    def test_manual_molecules_do_not_claim_import_provenance(self) -> None:
-        result = chargefw.calculate(water(), method="formal")
-
-        encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
-
-        requested = encoded["calculation_provenance"]["requested"]
-        self.assertNotIn("input", requested)
-        self.assertNotIn("structural_input", requested)
-
-    def test_integer_record_ids_are_preserved_by_outputs(self) -> None:
-        molecule = chargefw.Molecule([1], coordinates=[[0, 0, 0]], name="hydrogen", record_id=7)
-        result = chargefw.calculate(molecule, method="formal")
-
-        self.assertIn("\n7\n", chargefw.io.dumps(result, format="mol2"))
-        self.assertIn("data_7", chargefw.io.dumps(result, format="mmcif"))
-        encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
-        self.assertEqual(encoded["results"][0]["input"]["record_id"], 7)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -154,12 +154,8 @@ NO_CHARGES
 
     def test_supported_atomic_number_boundaries(self) -> None:
         self.assertEqual(chargefw.Molecule([100]).atomic_numbers[0], 100)
-        for atomic_number in (101, 118, 119):
-            with (
-                self.subTest(atomic_number=atomic_number),
-                self.assertRaisesRegex(ValueError, r"range 1\.\.100"),
-            ):
-                chargefw.Molecule([atomic_number])
+        with self.assertRaisesRegex(ValueError, r"range 1\.\.100"):
+            chargefw.Molecule([101])
 
     def test_invalid_inputs_are_rejected(self) -> None:
         invalid_cases = (

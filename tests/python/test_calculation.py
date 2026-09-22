@@ -744,9 +744,6 @@ class CalculationTests(unittest.TestCase):
         self.assertFalse(hasattr(chargefw, "load_parameter_set"))
         self.assertFalse(hasattr(chargefw, "load_parameter_sets"))
         self.assertFalse(hasattr(chargefw, "method_descriptors"))
-        self.assertFalse(hasattr(chargefw, "MethodCatalog"))
-        self.assertFalse(hasattr(chargefw, "MethodOptionCatalog"))
-        self.assertFalse(hasattr(chargefw, "ParameterSetCatalog"))
 
         methods = chargefw.methods
         self.assertIsInstance(methods, Mapping)

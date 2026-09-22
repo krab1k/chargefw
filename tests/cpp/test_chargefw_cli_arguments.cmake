@@ -1,5 +1,3 @@
-include("${CMAKE_CURRENT_LIST_DIR}/prepare_moved_install.cmake")
-
 function(expect_argument_error label)
     execute_process(
             COMMAND "${CHARGEFW_CLI}" ${ARGN}

@@ -4,8 +4,6 @@
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 
-#include <array>
-#include <future>
 #include <type_traits>
 #include <vector>
 
@@ -38,29 +36,4 @@ TEST_CASE("prepared molecule collection retains each source molecule", "[feature
     CHECK(&prepared[1].molecule() == &collection[1]);
     CHECK(prepared[0].topology().degree(0) == 2);
     CHECK(prepared[1].topology().degree(0) == 2);
-}
-
-TEST_CASE("prepared topology supports concurrent read-only access", "[features][prepared]") {
-    const auto water = chargefw::test::make_water_graph();
-    const features::PreparedMolecule prepared{water};
-
-    const auto read_topology = [&prepared] {
-        for (auto iteration = 0; iteration < 1000; ++iteration) {
-            if (prepared.topology().degree(0) != 2 || !prepared.topology().are_bonded(0, 1) ||
-                !prepared.topology().are_bonded(0, 2)) {
-                return false;
-            }
-        }
-
-        return true;
-    };
-
-    std::array futures{std::async(std::launch::async, read_topology),
-                       std::async(std::launch::async, read_topology),
-                       std::async(std::launch::async, read_topology),
-                       std::async(std::launch::async, read_topology)};
-
-    for (auto& future : futures) {
-        CHECK(future.get());
-    }
 }

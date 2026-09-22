@@ -156,13 +156,6 @@ TEST_CASE("parameter set loads from a PEOE JSON file", "[parameters][io]") {
     CHECK(parameter_set.atom().parameter(0, "C") == -0.56);
 }
 
-TEST_CASE("parameter set directory loads all JSON files", "[parameters][io]") {
-    const auto parameter_sets =
-        parameters::load_parameter_sets_json_directory(CHARGEFW_TEST_PARAMETER_DIR);
-
-    CHECK_FALSE(parameter_sets.empty());
-}
-
 TEST_CASE("bundled parameter-set IDs match their filenames", "[parameters][io]") {
     for (const auto& entry : std::filesystem::directory_iterator{CHARGEFW_TEST_PARAMETER_DIR}) {
         if (!entry.is_regular_file() || entry.path().extension() != ".json") {

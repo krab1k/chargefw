@@ -8,18 +8,24 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
+#include <array>
 #include <cmath>
 #include <snitch/snitch.hpp>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace parameters = chargefw::parameters;
 
 namespace {
 
-auto make_parameter_set() -> parameters::ParameterSet {
+auto make_parameter_set(std::string_view method_id, std::string_view name)
+    -> parameters::ParameterSet {
     return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-sqe", .method_id = "sqe", .name = "Test SQE parameters"},
+        parameters::ParameterSetMetadata{.id = std::string{"test-"} + std::string{method_id},
+                                         .method_id = std::string{method_id},
+                                         .name = std::string{name}},
         {},
         parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
                                      .parameters = {{.name = "electronegativity", .value = 4.5280},
@@ -35,10 +41,19 @@ auto make_parameter_set() -> parameters::ParameterSet {
 
 } // namespace
 
-TEST_CASE("SQE responds to changed conformer geometry", "[methods][sqe]") {
-    const auto charge_set = chargefw::test::calculate_method(
-        chargefw::test::make_two_conformer_water(), "sqe", {make_parameter_set()});
-    const auto& charges = charge_set.assignment(0).charges;
+TEST_CASE("SQE variants respond to changed conformer geometry", "[methods][sqe][sqeq0]") {
+    constexpr auto variants = std::array{
+        std::pair{"sqe", "Test SQE parameters"},
+        std::pair{"sqeq0", "Test SQE+q0 parameters"},
+    };
 
-    CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
+    for (const auto& [method_id, name] : variants) {
+        CAPTURE(method_id);
+        const auto charge_set =
+            chargefw::test::calculate_method(chargefw::test::make_two_conformer_water(), method_id,
+                                             {make_parameter_set(method_id, name)});
+        const auto& charges = charge_set.assignment(0).charges;
+
+        CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
+    }
 }

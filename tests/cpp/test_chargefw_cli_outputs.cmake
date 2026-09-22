@@ -1,6 +1,5 @@
 set(output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_outputs")
 set(output_prefix "${output_directory}/water.chargefw")
-include("${CMAKE_CURRENT_LIST_DIR}/prepare_moved_install.cmake")
 file(REMOVE_RECURSE "${output_directory}")
 
 set(json_failure_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_json_failure")
