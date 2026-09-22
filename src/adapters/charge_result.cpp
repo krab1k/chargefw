@@ -4,7 +4,6 @@
 #include <chargefw/methods/method_prerequisites.h>
 
 #include <algorithm>
-#include <functional>
 #include <optional>
 #include <ranges>
 #include <stdexcept>
@@ -102,22 +101,15 @@ auto validate_assignments(const std::span<const ImportedMoleculeRecord> records,
             "charge assignment parameter set does not match effective provenance"};
     }
 
-    struct AssignmentCoverage {
-        bool molecule = false;
-        std::vector<bool> conformers;
-    };
-
-    auto coverage = std::vector<AssignmentCoverage>{};
-    coverage.reserve(records.size());
-    for (const auto& record : records) {
-        coverage.push_back(
-            AssignmentCoverage{.conformers = std::vector<bool>(record.molecule.conformer_count())});
+    const auto assignments = result.charges->assignments();
+    if (assignments.empty()) {
+        if (records.empty()) {
+            return;
+        }
+        throw std::invalid_argument{"calculation result does not cover every input molecule"};
     }
-
-    auto conformer_scope = std::optional<bool>{};
-    auto actual_order = std::vector<std::pair<std::size_t, std::optional<std::size_t>>>{};
-    actual_order.reserve(result.charges->size());
-    for (const auto& assignment : result.charges->assignments()) {
+    const auto conformer_scope = assignments.front().target.conformer_index.has_value();
+    const auto validate_assignment = [&](const charges::ChargeAssignment& assignment) {
         const auto molecule_index = assignment.target.molecule_index;
         if (molecule_index >= records.size()) {
             throw std::invalid_argument{"charge assignment molecule index is outside the input"};
@@ -127,59 +119,48 @@ auto validate_assignments(const std::span<const ImportedMoleculeRecord> records,
             throw std::invalid_argument{
                 "charge assignment size does not match molecule atom count"};
         }
-
-        const auto assignment_conformer_scope = assignment.target.conformer_index.has_value();
-        if (conformer_scope.has_value() && *conformer_scope != assignment_conformer_scope) {
+        if (assignment.target.conformer_index.has_value() != conformer_scope) {
             throw std::invalid_argument{
                 "calculation result mixes molecule and conformer assignment scopes"};
         }
-        conformer_scope = assignment_conformer_scope;
-        actual_order.emplace_back(molecule_index, assignment.target.conformer_index);
-
-        auto& assigned = coverage[molecule_index];
-        if (!assignment.target.conformer_index.has_value()) {
-            if (assigned.molecule || std::ranges::any_of(assigned.conformers, std::identity{})) {
-                throw std::invalid_argument{
-                    "duplicate or mixed-scope charge assignments for one molecule"};
-            }
-            assigned.molecule = true;
-            continue;
-        }
-
-        const auto conformer_index = *assignment.target.conformer_index;
-        if (conformer_index >= molecule.conformer_count()) {
+        if (assignment.target.conformer_index.has_value() &&
+            *assignment.target.conformer_index >= molecule.conformer_count()) {
             throw std::invalid_argument{
                 "charge assignment conformer index is outside the molecule"};
         }
-        if (assigned.molecule || assigned.conformers[conformer_index]) {
-            throw std::invalid_argument{
-                "duplicate or mixed-scope charge assignments for one molecule"};
-        }
-        assigned.conformers[conformer_index] = true;
-    }
+    };
 
-    for (const auto& assigned : coverage) {
-        if (!assigned.molecule && (assigned.conformers.empty() ||
-                                   !std::ranges::all_of(assigned.conformers, std::identity{}))) {
+    auto assignment_index = std::size_t{0};
+    const auto consume = [&](const std::size_t molecule_index,
+                             const std::optional<std::size_t> conformer_index) {
+        if (assignment_index == assignments.size()) {
             throw std::invalid_argument{"calculation result does not cover every input molecule"};
         }
-    }
-
-    auto expected_order = std::vector<std::pair<std::size_t, std::optional<std::size_t>>>{};
-    if (conformer_scope.value_or(false)) {
-        for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
-            for (std::size_t conformer_index = 0;
-                 conformer_index < records[molecule_index].molecule.conformer_count();
-                 ++conformer_index) {
-                expected_order.emplace_back(molecule_index, conformer_index);
+        const auto& assignment = assignments[assignment_index];
+        validate_assignment(assignment);
+        if (assignment.target.molecule_index != molecule_index ||
+            assignment.target.conformer_index != conformer_index) {
+            throw std::invalid_argument{"charge assignments are not in canonical input order"};
+        }
+        ++assignment_index;
+    };
+    for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
+        const auto& molecule = records[molecule_index].molecule;
+        if (conformer_scope) {
+            if (molecule.conformer_count() == 0) {
+                throw std::invalid_argument{
+                    "calculation result does not cover every input molecule"};
             }
-        }
-    } else {
-        for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
-            expected_order.emplace_back(molecule_index, std::nullopt);
+            for (std::size_t conformer_index = 0; conformer_index < molecule.conformer_count();
+                 ++conformer_index) {
+                consume(molecule_index, conformer_index);
+            }
+        } else {
+            consume(molecule_index, std::nullopt);
         }
     }
-    if (actual_order != expected_order) {
+    if (assignment_index != assignments.size()) {
+        validate_assignment(assignments[assignment_index]);
         throw std::invalid_argument{"charge assignments are not in canonical input order"};
     }
 }

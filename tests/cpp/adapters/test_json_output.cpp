@@ -244,3 +244,29 @@ TEST_CASE("result assembly validates assignment dimensions targets and scope", "
                                                           calculation::ExecutionPolicy{}}}),
         std::invalid_argument);
 }
+
+TEST_CASE("result assembly requires canonical assignment order", "[adapters][json]") {
+    const auto records =
+        std::vector{adapters::ImportedMoleculeRecord{
+                        .molecule = chargefw::core::Molecule{{chargefw::core::Atom{1}}}},
+                    adapters::ImportedMoleculeRecord{
+                        .molecule = chargefw::core::Molecule{{chargefw::core::Atom{1}}}}};
+    const auto make_result = [&records](charges::ChargeSet charge_set) {
+        return adapters::make_charge_calculation_result(
+            records, {},
+            {.charges = std::move(charge_set),
+             .effective = calculation::EffectiveCalculation{
+                 .method_id = "formal", .execution_policy = calculation::ExecutionPolicy{}}});
+    };
+
+    CHECK_NOTHROW(make_result(charges::ChargeSet{
+        "formal",
+        {{.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{{0.0}}},
+         {.target = {.molecule_index = 1}, .charges = charges::AtomicCharges{{0.0}}}}}));
+    CHECK_THROWS_AS(
+        make_result(charges::ChargeSet{
+            "formal",
+            {{.target = {.molecule_index = 1}, .charges = charges::AtomicCharges{{0.0}}},
+             {.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{{0.0}}}}}),
+        std::invalid_argument);
+}
