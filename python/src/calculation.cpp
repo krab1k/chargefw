@@ -17,7 +17,6 @@
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/string.h>
-#include <nanobind/stl/vector.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -96,12 +95,10 @@ auto prerequisite_issue(const methods::PrerequisiteIssue& issue) -> nb::dict {
     auto result = nb::dict{};
     result["kind"] = std::string{methods::to_string(issue.kind)};
     result["message"] = issue.message;
-    result["molecule_index"] =
-        issue.molecule_index.has_value() ? nb::cast(*issue.molecule_index) : nb::none();
-    result["atom_index"] = issue.atom_index.has_value() ? nb::cast(*issue.atom_index) : nb::none();
-    result["bond_index"] = issue.bond_index.has_value() ? nb::cast(*issue.bond_index) : nb::none();
-    result["conformer_index"] =
-        issue.conformer_index.has_value() ? nb::cast(*issue.conformer_index) : nb::none();
+    result["molecule_index"] = issue.molecule_index;
+    result["atom_index"] = issue.atom_index;
+    result["bond_index"] = issue.bond_index;
+    result["conformer_index"] = issue.conformer_index;
     return result;
 }
 
@@ -109,15 +106,14 @@ auto execution_issue(const methods::ExecutionIssue& issue) -> nb::dict {
     auto result = nb::dict{};
     result["kind"] = std::string{methods::to_string(issue.kind)};
     result["message"] = issue.message;
-    result["molecule_index"] =
-        issue.molecule_index.has_value() ? nb::cast(*issue.molecule_index) : nb::none();
+    result["molecule_index"] = issue.molecule_index;
     return result;
 }
 
 auto execution_policy(const calculation::ExecutionPolicy& policy) -> nb::dict {
     auto result = nb::dict{};
     result["mode"] = std::string{calculation::to_string(policy.mode())};
-    result["radius"] = policy.radius().has_value() ? nb::cast(*policy.radius()) : nb::none();
+    result["radius"] = policy.radius();
     return result;
 }
 
@@ -136,9 +132,7 @@ auto method_options(const methods::MethodOptions& options) -> nb::dict {
 auto effective_calculation(const calculation::EffectiveCalculation& effective) -> nb::dict {
     auto result = nb::dict{};
     result["method_id"] = effective.method_id;
-    result["parameter_set_id"] = effective.parameter_set_id.has_value()
-                                     ? nb::cast(std::string{*effective.parameter_set_id})
-                                     : nb::none();
+    result["parameter_set_id"] = effective.parameter_set_id;
     result["method_options"] = method_options(effective.method_options);
     result["execution_policy"] = execution_policy(effective.execution_policy);
     auto issues = nb::list{};
@@ -162,8 +156,7 @@ auto numpy_charge_values(const std::span<const double> values)
 auto rejection(const calculation::Rejection& rejected) -> nb::dict {
     auto result = nb::dict{};
     result["method_id"] = rejected.method_id;
-    result["parameter_set_id"] =
-        rejected.parameter_set_id.has_value() ? nb::cast(*rejected.parameter_set_id) : nb::none();
+    result["parameter_set_id"] = rejected.parameter_set_id;
     result["execution_policy"] =
         rejected.policy.has_value() ? nb::cast(execution_policy(*rejected.policy)) : nb::none();
     auto prerequisite_issues = nb::list{};
@@ -188,8 +181,7 @@ auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {
         rejections.append(rejection(rejected));
     }
     result["rejections"] = std::move(rejections);
-    result["failure_message"] =
-        value.failure_message.has_value() ? nb::cast(*value.failure_message) : nb::none();
+    result["failure_message"] = value.failure_message;
     auto metrics = nb::dict{};
     metrics["applicability_seconds"] = value.metrics.applicability_seconds;
     metrics["computation_seconds"] = value.metrics.computation_seconds;
@@ -211,9 +203,7 @@ auto execution_result(const calculation::ExecutionResult& value) -> nb::dict {
     for (const auto& assignment : charges.assignments()) {
         auto item = nb::dict{};
         item["molecule_index"] = assignment.target.molecule_index;
-        item["conformer_index"] = assignment.target.conformer_index.has_value()
-                                      ? nb::cast(*assignment.target.conformer_index)
-                                      : nb::none();
+        item["conformer_index"] = assignment.target.conformer_index;
         item["values"] = numpy_charge_values(assignment.charges.values());
         assignments.append(std::move(item));
     }
@@ -248,8 +238,7 @@ auto calculation_progress(const calculation::CalculationProgress& progress) -> n
     result["completed_fragment_count"] = progress.completed_fragment_count;
     result["fragment_count"] = progress.fragment_count;
     result["molecule_index"] = progress.molecule_index;
-    result["conformer_index"] =
-        progress.conformer_index.has_value() ? nb::cast(*progress.conformer_index) : nb::none();
+    result["conformer_index"] = progress.conformer_index;
     result["elapsed_seconds"] = progress.elapsed_seconds;
     return result;
 }
