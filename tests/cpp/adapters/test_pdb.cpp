@@ -82,17 +82,19 @@ END
             R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  
 HETATM    2  C1  LIG A   2       1.000   0.000   0.000  1.00 20.00           C  
 HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O  
+HETATM    4  O   WAT A   4       3.000   0.000   0.000  1.00 20.00           O
 END
 )pdb"};
         auto all_reader = pdb::PdbReader{selection_input};
         const auto all_record = all_reader.next();
         REQUIRE(all_record.has_value());
-        CHECK(all_record->molecule.atom_count() == 3);
+        CHECK(all_record->molecule.atom_count() == 4);
 
         std::istringstream ligands_input{
             R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  
 HETATM    2  C1  LIG A   2       1.000   0.000   0.000  1.00 20.00           C  
 HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O  
+HETATM    4  O   WAT A   4       3.000   0.000   0.000  1.00 20.00           O
 END
 )pdb"};
         auto ligands_reader = pdb::PdbReader{
@@ -105,6 +107,7 @@ END
             R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  
 HETATM    2  C1  LIG A   2       1.000   0.000   0.000  1.00 20.00           C  
 HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O  
+HETATM    4  O   WAT A   4       3.000   0.000   0.000  1.00 20.00           O
 END
 )pdb"};
         auto polymers_reader = pdb::PdbReader{

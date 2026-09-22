@@ -143,7 +143,7 @@ identities. PDB populates its known author hierarchy and leaves unavailable labe
 Selection is applied before conformer validation and bonding:
 
 - `all` retains polymer, ligand, and water residues;
-- `polymers-and-ligands` excludes `HOH` water residues; and
+- `polymers-and-ligands` excludes water residues recognized by Gemmi: `HOH`, `WAT`, `H2O`, and `DOD`; and
 - `polymers` excludes all hetero residues.
 
 Only one alternate location is imported for each atom name in a residue. A blank location is preferred,

@@ -18,7 +18,7 @@ auto include_residue(const ::gemmi::Residue& residue, const RecordSelection sele
     case RecordSelection::all:
         return true;
     case RecordSelection::polymers_and_ligands:
-        return residue.het_flag != 'H' || residue.name != "HOH";
+        return !residue.is_water();
     case RecordSelection::polymers:
         return residue.het_flag != 'H';
     }

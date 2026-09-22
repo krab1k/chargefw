@@ -68,9 +68,9 @@ run_structural_input(
         pdb
         "ATOM      1  O   HOH A   1       0.000   0.000   0.000  1.00 20.00           O  \nATOM      2  H1  HOH A   1       0.957   0.000   0.000  1.00 20.00           H  \nATOM      3  H2  HOH A   1      -0.239   0.927   0.000  1.00 20.00           H  \nEND\n"
         structural_pdb
-        polymers-and-ligands
+        all
         templates
-        --structural-selection polymers-and-ligands
+        --structural-selection all
         --structural-bonds templates
 )
 
