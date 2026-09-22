@@ -159,9 +159,10 @@ template <typename T>
 
 } // namespace
 
-auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity identity,
-                 const RecordSelection selection, const BondStrategy bond_strategy,
-                 const ConformerSelection conformer_selection,
+auto make_record(const ::gemmi::Structure& structure,
+                 const std::span<const selection::SelectedModel> selected_models,
+                 MoleculeRecordIdentity identity, const RecordSelection selection,
+                 const BondStrategy bond_strategy, const ConformerSelection conformer_selection,
                  std::vector<core::Bond> explicit_bonds, std::string name,
                  const MolecularSourceFormat format, std::vector<SourceModelMapping> source_models,
                  const SourceConnectivity source_connectivity) -> ImportedMoleculeRecord {
@@ -169,11 +170,14 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
         throw std::runtime_error{"structural input contains no models"};
     }
 
-    const auto selected_model =
-        ::chargefw::adapters::gemmi::selection::SelectedModel{structure.models.front(), selection};
-    auto first = import_reference(selected_model);
     const auto retained_model_count =
         conformer_selection == ConformerSelection::all ? structure.models.size() : std::size_t{1};
+    if (selected_models.size() != retained_model_count) {
+        throw std::runtime_error{"structural selection does not match retained models"};
+    }
+
+    const auto& selected_model = selected_models.front();
+    auto first = import_reference(selected_model);
     if (source_models.size() != retained_model_count || source_models.empty() ||
         source_models.front().conformer.sites.size() != first.atoms.size()) {
         throw std::runtime_error{"structural source mapping does not match selected models"};
@@ -197,11 +201,9 @@ auto make_record(const ::gemmi::Structure& structure, MoleculeRecordIdentity ide
     for (std::size_t index = 1;
          index < structure.models.size() && conformer_selection == ConformerSelection::all;
          ++index) {
-        const auto selected = ::chargefw::adapters::gemmi::selection::SelectedModel{
-            structure.models[index], selection};
-        auto positions =
-            conformer_positions(selected, first.atoms, source_models.front().conformer.sites,
-                                source_models[index].conformer.sites, source_orders[index]);
+        auto positions = conformer_positions(
+            selected_models[index], first.atoms, source_models.front().conformer.sites,
+            source_models[index].conformer.sites, source_orders[index]);
         conformers.emplace_back(std::move(positions), std::to_string(structure.models[index].num));
     }
 

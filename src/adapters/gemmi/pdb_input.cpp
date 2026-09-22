@@ -155,11 +155,11 @@ struct StructuralLabelsLess {
     return result;
 }
 
-[[nodiscard]] auto selected_labels(const selection::SelectedSite& site) -> SourceStructuralLabels {
+[[nodiscard]] auto selected_labels(const ::gemmi::const_CRA& site) -> SourceStructuralLabels {
     return SourceStructuralLabels{
         .author = SourceHierarchyLabels{.atom = optional_text(site.atom->name),
                                         .residue = optional_text(site.residue->name),
-                                        .chain = optional_text(site.chain_name),
+                                        .chain = optional_text(site.chain->name),
                                         .sequence = optional_text(site.residue->seqid.num.str())},
         .label = {},
         .entity = std::nullopt,
@@ -169,6 +169,7 @@ struct StructuralLabelsLess {
 }
 
 [[nodiscard]] auto source_models(const ::gemmi::Structure& structure, const InputOptions options,
+                                 const std::span<const selection::SelectedModel> selected_models,
                                  const std::vector<PdbSourceModel>& source)
     -> std::vector<structure_import::SourceModelMapping> {
     const auto retained_count =
@@ -179,8 +180,7 @@ struct StructuralLabelsLess {
     auto result = std::vector<structure_import::SourceModelMapping>{};
     result.reserve(retained_count);
     for (std::size_t model_index = 0; model_index < retained_count; ++model_index) {
-        const auto& model = structure.models[model_index];
-        const auto selected = selection::SelectedModel{model, options.selection};
+        const auto& selected = selected_models[model_index];
         auto sites = std::vector<SourceAtomReference>{};
         sites.reserve(selected.sites().size());
         auto source_indices =
@@ -222,16 +222,17 @@ PdbReader::PdbReader(std::istream& input, std::string source,
         throw std::runtime_error{"structural input contains no models"};
     }
     const auto name = structure.name.empty() ? source : structure.name;
+    const auto selected_models =
+        selection::select_models(structure, options.selection, options.conformers);
     auto explicit_bonds = std::vector<core::Bond>{};
     if (options.bond_strategy == BondStrategy::explicit_bonds ||
         options.bond_strategy == BondStrategy::hybrid) {
-        const auto selected = selection::SelectedModel{structure.models.front(), options.selection};
-        explicit_bonds = bonds::explicit_pdb(structure, selected);
+        explicit_bonds = bonds::explicit_pdb(structure, selected_models.front());
     }
     const auto parsed_source = parse_source(contents);
-    auto mappings = source_models(structure, options, parsed_source.models);
+    auto mappings = source_models(structure, options, selected_models, parsed_source.models);
     record_ = structure_import::make_record(
-        structure,
+        structure, selected_models,
         MoleculeRecordIdentity{.source = std::move(source), .record_index = 0, .record_id = name},
         options.selection, options.bond_strategy, options.conformers, std::move(explicit_bonds),
         name, MolecularSourceFormat::pdb, std::move(mappings), parsed_source.connectivity);

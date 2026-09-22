@@ -96,9 +96,9 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
 
                 const auto& atom = residue.atoms[index];
                 atoms_.push_back(std::addressof(atom));
-                sites_.push_back(SelectedSite{.atom = std::addressof(atom),
-                                              .residue = std::addressof(residue),
-                                              .chain_name = chain.name});
+                sites_.push_back(::gemmi::const_CRA{.chain = std::addressof(chain),
+                                                    .residue = std::addressof(residue),
+                                                    .atom = std::addressof(atom)});
                 selected.atom_indices.emplace_back(atom.name, atom_index);
                 atom_indices_.emplace(std::addressof(atom), atom_index);
                 serial_indices_.emplace(atom.serial, atom_index++);
@@ -112,7 +112,7 @@ auto SelectedModel::atoms() const -> const std::vector<const ::gemmi::Atom*>& {
     return atoms_;
 }
 
-auto SelectedModel::sites() const -> const std::vector<SelectedSite>& {
+auto SelectedModel::sites() const -> const std::vector<::gemmi::const_CRA>& {
     return sites_;
 }
 
@@ -143,6 +143,18 @@ auto SelectedResidue::find_atom(const std::string_view name) const -> std::optio
         }
     }
     return std::nullopt;
+}
+
+auto select_models(const ::gemmi::Structure& structure, const RecordSelection selection,
+                   const ConformerSelection conformers) -> std::vector<SelectedModel> {
+    const auto count =
+        conformers == ConformerSelection::all ? structure.models.size() : std::size_t{1};
+    auto result = std::vector<SelectedModel>{};
+    result.reserve(count);
+    for (std::size_t index = 0; index < count; ++index) {
+        result.emplace_back(structure.models[index], selection);
+    }
+    return result;
 }
 
 } // namespace chargefw::adapters::gemmi::selection

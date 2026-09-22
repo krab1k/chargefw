@@ -71,18 +71,15 @@ struct MmcifSourceSite {
     return result;
 }
 
-[[nodiscard]] auto make_source_mappings(::gemmi::cif::Block& block,
-                                        const ::gemmi::Structure& structure,
-                                        const InputOptions options)
+[[nodiscard]] auto
+make_source_mappings(::gemmi::cif::Block& block,
+                     const std::span<const selection::SelectedModel> selected_models)
     -> std::vector<structure_import::SourceModelMapping> {
     const auto sites = source_sites(block);
-    const auto retained_count =
-        options.conformers == ConformerSelection::all ? structure.models.size() : std::size_t{1};
     auto result = std::vector<structure_import::SourceModelMapping>{};
-    result.reserve(retained_count);
-    for (std::size_t model_index = 0; model_index < retained_count; ++model_index) {
-        const auto& model = structure.models[model_index];
-        const auto selected = selection::SelectedModel{model, options.selection};
+    result.reserve(selected_models.size());
+    for (std::size_t model_index = 0; model_index < selected_models.size(); ++model_index) {
+        const auto& selected = selected_models[model_index];
         auto mapped = std::vector<SourceAtomReference>{};
         mapped.reserve(selected.atoms().size());
         auto model_id = std::optional<std::string>{};
@@ -141,17 +138,17 @@ auto MmcifReader::next() -> std::optional<ImportedMoleculeRecord> {
         if (structure.models.empty()) {
             throw std::runtime_error{"structural input contains no models"};
         }
+        const auto selected_models =
+            selection::select_models(structure, options_.selection, options_.conformers);
         auto explicit_bonds = std::vector<core::Bond>{};
         if (options_.bond_strategy == BondStrategy::explicit_bonds ||
             options_.bond_strategy == BondStrategy::hybrid) {
-            const auto selected =
-                selection::SelectedModel{structure.models.front(), options_.selection};
-            explicit_bonds = bonds::explicit_mmcif(structure, block, selected);
+            explicit_bonds = bonds::explicit_mmcif(structure, block, selected_models.front());
         }
-        auto source_models = make_source_mappings(block, structure, options_);
+        auto source_models = make_source_mappings(block, selected_models);
         const auto current_record_index = record_index_++;
         auto record = structure_import::make_record(
-            structure,
+            structure, selected_models,
             MoleculeRecordIdentity{
                 .source = source_, .record_index = current_record_index, .record_id = block.name},
             options_.selection, options_.bond_strategy, options_.conformers,
