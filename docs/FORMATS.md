@@ -146,8 +146,8 @@ Selection is applied before conformer validation and bonding:
 - `polymers-and-ligands` excludes water residues recognized by Gemmi: `HOH`, `WAT`, `H2O`, and `DOD`; and
 - `polymers` excludes all hetero residues.
 
-Only one alternate location is imported for each atom name in a residue. A blank location is preferred,
-then `A`, then the first location present in source order.
+Only one alternate location is imported for each atom name in a residue: the first location in source order.
+The selected atom retains its original alternate-location identity in source mapping and generated output.
 
 ### Connectivity
 

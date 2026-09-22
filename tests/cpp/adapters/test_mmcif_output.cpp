@@ -74,7 +74,7 @@ auto structural_result() -> adapters::ChargeCalculationResult {
         .conformers = {{.position = 0, .id = "source-model-1", .sites = std::move(first_sites)},
                        {.position = 1, .id = "source-model-2", .sites = std::move(second_sites)}},
         .record_selection = "all",
-        .alternate_location_selection = "blank-then-A-then-first",
+        .alternate_location_selection = "first-source-order",
         .conformer_selection = "all",
         .bond_strategy = "none"};
     return calculation_result(

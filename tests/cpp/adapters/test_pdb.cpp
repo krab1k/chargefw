@@ -64,7 +64,7 @@ END
     const auto& mapping = *first->import_metadata;
     CHECK(mapping.format == chargefw::adapters::MolecularSourceFormat::pdb);
     CHECK(mapping.source_connectivity == chargefw::adapters::SourceConnectivity::present);
-    CHECK(mapping.alternate_location_selection == "blank-then-A-then-first");
+    CHECK(mapping.alternate_location_selection == "first-source-order");
     REQUIRE(mapping.conformers.size() == 2);
     CHECK(mapping.conformers[0].id == "1");
     CHECK(mapping.conformers[1].id == "2");
@@ -172,7 +172,7 @@ END
     }
 }
 
-TEST_CASE("PDB input keeps selected alternate locations in source order", "[adapters][pdb]") {
+TEST_CASE("PDB input selects the first noncontiguous alternate location", "[adapters][pdb]") {
     std::istringstream input{
         R"pdb(HETATM    1  C1 BLIG A   1       0.000   0.000   0.000  1.00  0.00           C
 HETATM    2  O1  LIG A   1       1.000   0.000   0.000  1.00  0.00           O
@@ -184,16 +184,18 @@ END
     const auto record = reader.next();
     REQUIRE(record.has_value());
     REQUIRE(record->molecule.atom_count() == 2);
-    CHECK(record->molecule.atom(0).name() == "O1");
-    CHECK(record->molecule.atom(1).name() == "C1");
-    CHECK(record->molecule.conformer(0)[0].x == 1.0);
-    CHECK(record->molecule.conformer(0)[1].x == 2.0);
+    CHECK(record->molecule.atom(0).name() == "C1");
+    CHECK(record->molecule.atom(1).name() == "O1");
+    CHECK(record->molecule.conformer(0)[0].x == 0.0);
+    CHECK(record->molecule.conformer(0)[1].x == 1.0);
     REQUIRE(record->import_metadata.has_value());
     CHECK_FALSE(record->import_metadata->conformers[0].id.has_value());
-    CHECK(record->import_metadata->atoms[0].position == 1);
-    CHECK(record->import_metadata->atoms[0].id == "2");
-    CHECK(record->import_metadata->atoms[1].position == 2);
-    CHECK(record->import_metadata->atoms[1].id == "3");
+    CHECK(record->import_metadata->atoms[0].position == 0);
+    CHECK(record->import_metadata->atoms[0].id == "1");
+    CHECK(record->import_metadata->atoms[1].position == 1);
+    CHECK(record->import_metadata->atoms[1].id == "2");
+    REQUIRE(record->import_metadata->atoms[0].structural_labels.has_value());
+    CHECK(record->import_metadata->atoms[0].structural_labels->alternate_location == "B");
 }
 
 TEST_CASE("PDB explicit connections retain address wildcard behavior", "[adapters][pdb]") {

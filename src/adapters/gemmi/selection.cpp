@@ -1,17 +1,10 @@
 #include "selection.h"
 
+#include <string_view>
+#include <unordered_set>
+
 namespace chargefw::adapters::gemmi::selection {
 namespace {
-
-auto altloc_priority(const char altloc) -> int {
-    if (altloc == '\0') {
-        return 0;
-    }
-    if (altloc == 'A') {
-        return 1;
-    }
-    return 2;
-}
 
 auto include_residue(const ::gemmi::Residue& residue, const RecordSelection selection) -> bool {
     switch (selection) {
@@ -24,37 +17,6 @@ auto include_residue(const ::gemmi::Residue& residue, const RecordSelection sele
     }
 
     return false;
-}
-
-auto is_first_named_atom(const ::gemmi::Residue& residue, const std::size_t atom_index) -> bool {
-    const auto& atom = residue.atoms[atom_index];
-    for (std::size_t previous = 0; previous < atom_index; ++previous) {
-        if (residue.atoms[previous].name == atom.name) {
-            return false;
-        }
-    }
-    return true;
-}
-
-auto select_altloc_index(const ::gemmi::Residue& residue, const std::size_t first_atom_index)
-    -> std::size_t {
-    const auto& first = residue.atoms[first_atom_index];
-    auto selected_index = first_atom_index;
-
-    for (std::size_t candidate_index = first_atom_index + 1; candidate_index < residue.atoms.size();
-         ++candidate_index) {
-        const auto& candidate = residue.atoms[candidate_index];
-        if (candidate.name != first.name) {
-            continue;
-        }
-
-        if (altloc_priority(candidate.altloc) <
-            altloc_priority(residue.atoms[selected_index].altloc)) {
-            selected_index = candidate_index;
-        }
-    }
-
-    return selected_index;
 }
 
 } // namespace
@@ -82,19 +44,15 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
             SelectedResidue selected{
                 .residue = std::addressof(residue), .chain_name = chain.name, .atom_indices = {}};
             selected.atom_indices.reserve(residue.atoms.size());
-            auto retained = std::vector<bool>(residue.atoms.size(), false);
+            // Select one alternate location per atom name: the first source-order occurrence.
+            auto seen_names = std::unordered_set<std::string_view>{};
+            seen_names.reserve(residue.atoms.size());
             for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
-                if (is_first_named_atom(residue, index)) {
-                    retained[select_altloc_index(residue, index)] = true;
-                }
-            }
-
-            for (std::size_t index = 0; index < residue.atoms.size(); ++index) {
-                if (!retained[index]) {
+                const auto& atom = residue.atoms[index];
+                if (!seen_names.emplace(atom.name).second) {
                     continue;
                 }
 
-                const auto& atom = residue.atoms[index];
                 atoms_.push_back(std::addressof(atom));
                 sites_.push_back(::gemmi::const_CRA{.chain = std::addressof(chain),
                                                     .residue = std::addressof(residue),

@@ -235,7 +235,7 @@ class GemmiAdapterTests(unittest.TestCase):
         self.assertIsNotNone(mapping)
         assert mapping is not None
         self.assertEqual(mapping.format, "pdb")
-        self.assertEqual(mapping.alternate_location_selection, "blank-then-A-then-first")
+        self.assertEqual(mapping.alternate_location_selection, "first-source-order")
         self.assertEqual([value.id for value in mapping.conformers], ["1", "2"])
         labels = mapping.atoms[1].structural_labels
         self.assertIsNotNone(labels)
@@ -405,6 +405,19 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         self.assertEqual(
             [(gemmi.cif.as_string(row[0]), gemmi.cif.as_string(row[1])) for row in first_charge_rows],
             [("1", "1"), ("1", "2"), ("2", "3"), ("2", "4")],
+        )
+
+        altloc_document = gemmi.cif.read_string(
+            MMCIF_TEXT.replace(" C CA . ALA", " C CA B ALA")
+        )
+        altloc_result = calculate(chargefw.io.gemmi.from_document(altloc_document), method="formal")
+        chargefw.io.gemmi.attach_charges(altloc_document, altloc_result)
+        self.assertEqual(
+            gemmi.cif.as_string(altloc_document[0].find("_atom_site.", ["label_alt_id"])[0][0]),
+            "B",
+        )
+        self.assertEqual(
+            len(altloc_document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])), 4
         )
 
         modified = gemmi.cif.read_string(MMCIF_TEXT)
