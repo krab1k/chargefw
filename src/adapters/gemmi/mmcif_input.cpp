@@ -10,7 +10,6 @@
 
 #include <algorithm>
 #include <istream>
-#include <iterator>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -115,12 +114,10 @@ struct MmcifSourceSite {
 MmcifReader::MmcifReader(std::istream& input, std::string source,
                          const ::chargefw::adapters::gemmi::InputOptions options)
     : source_{std::move(source)}, options_{options} {
-    std::string contents{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+    document_ = ::gemmi::cif::read_istream(input, std::size_t{4096}, source_.c_str());
     if (input.bad()) {
         throw std::runtime_error{"failed to read mmCIF input"};
     }
-
-    document_ = ::gemmi::cif::read_memory(contents.data(), contents.size(), source_.c_str());
 
     const auto has_coordinates = [](const ::gemmi::cif::Block& block) -> bool {
         return block.has_tag("_atom_site.id");
