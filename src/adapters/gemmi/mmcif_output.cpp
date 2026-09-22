@@ -36,6 +36,29 @@ constexpr auto dictionary_name = "mmcif_charges_v11.dic";
 constexpr auto dictionary_version = "1.1";
 constexpr auto dictionary_location =
     "https://sb-ncbr.github.io/charges-schema/schemas/mmcif_charges_v11.dic";
+const auto atom_site_columns = std::vector<std::string>{"id",
+                                                        "type_symbol",
+                                                        "label_atom_id",
+                                                        "label_alt_id",
+                                                        "label_comp_id",
+                                                        "label_asym_id",
+                                                        "label_entity_id",
+                                                        "label_seq_id",
+                                                        "pdbx_PDB_ins_code",
+                                                        "Cartn_x",
+                                                        "Cartn_y",
+                                                        "Cartn_z",
+                                                        "occupancy",
+                                                        "B_iso_or_equiv",
+                                                        "pdbx_formal_charge",
+                                                        "auth_seq_id",
+                                                        "auth_comp_id",
+                                                        "auth_asym_id",
+                                                        "auth_atom_id",
+                                                        "pdbx_PDB_model_num"};
+const auto metadata_columns = std::vector<std::string>{
+    "id", "type", "method", "parameter_set", "software_name", "software_version"};
+const auto charge_columns = std::vector<std::string>{"type_id", "atom_id", "charge"};
 
 struct BlockMapping {
     std::vector<std::vector<std::string>> atom_site_ids;
@@ -164,18 +187,6 @@ struct OutputAssignments {
            std::to_string(id) == value;
 }
 
-constexpr auto attached_label_columns = mmcif_labels::SourceLabelColumns{.label_atom = 2,
-                                                                         .label_residue = 3,
-                                                                         .label_chain = 4,
-                                                                         .label_sequence = 5,
-                                                                         .author_atom = 6,
-                                                                         .author_residue = 7,
-                                                                         .author_chain = 8,
-                                                                         .author_sequence = 9,
-                                                                         .insertion_code = 10,
-                                                                         .alternate_location = 11,
-                                                                         .entity = 12};
-
 [[nodiscard]] auto attached_mapping(::gemmi::cif::Block& block,
                                     const ImportedMoleculeRecord& record) -> BlockMapping {
     if (!record.import_metadata.has_value() ||
@@ -188,13 +199,14 @@ constexpr auto attached_label_columns = mmcif_labels::SourceLabelColumns{.label_
         throw std::invalid_argument{
             "Gemmi target block identity does not match the calculation input"};
     }
-    auto atom_sites = block.find(
-        "_atom_site.",
-        {"id", "type_symbol", "?label_atom_id", "?label_comp_id", "?label_asym_id", "?label_seq_id",
-         "?auth_atom_id", "?auth_comp_id", "?auth_asym_id", "?auth_seq_id", "?pdbx_PDB_ins_code",
-         "?label_alt_id", "?label_entity_id", "?pdbx_PDB_model_num"});
+    auto atom_sites = mmcif_labels::source_atom_sites(block);
+    auto type_symbols = block.find("_atom_site.", {"type_symbol"});
     if (atom_sites.length() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
         throw std::invalid_argument{"Gemmi target contains too many atom sites"};
+    }
+    if (type_symbols.length() != atom_sites.length()) {
+        throw std::invalid_argument{
+            "Gemmi target site mapping does not match the calculation input"};
     }
     const auto& metadata = *record.import_metadata;
     auto result = BlockMapping{};
@@ -223,18 +235,18 @@ constexpr auto attached_label_columns = mmcif_labels::SourceLabelColumns{.label_
                     "Gemmi target atom IDs are not representable by the charge dictionary"};
             }
             const auto& target_site = atom_sites[row_index];
-            if (::gemmi::cif::as_string(target_site[1]) !=
+            if (::gemmi::cif::as_string(type_symbols[row_index][0]) !=
                 core::element_symbol(record.molecule.atom(atom_index).atomic_number())) {
                 throw std::invalid_argument{
                     "Gemmi target site mapping does not match the calculation input"};
             }
             if (!site.structural_labels.has_value() ||
-                mmcif_labels::decode_source_labels(target_site, attached_label_columns) !=
-                    *site.structural_labels) {
+                mmcif_labels::decode_source_labels(target_site) != *site.structural_labels) {
                 throw std::invalid_argument{
                     "Gemmi target site mapping does not match the calculation input"};
             }
-            if (target_site.has(13) && ::gemmi::cif::as_string(target_site[13]) != model_id) {
+            if (target_site.has(mmcif_labels::model_id_column) &&
+                ::gemmi::cif::as_string(target_site[mmcif_labels::model_id_column]) != model_id) {
                 throw std::invalid_argument{
                     "Gemmi target model mapping does not match the calculation input"};
             }
@@ -314,53 +326,13 @@ auto write_result_block(::gemmi::cif::Block& block, const ImportedMoleculeRecord
     block.set_pair("_entry.id", quote(block.name));
     ensure_dictionary(block);
 
-    block.init_loop("_atom_site.", {"id",
-                                    "type_symbol",
-                                    "label_atom_id",
-                                    "label_alt_id",
-                                    "label_comp_id",
-                                    "label_asym_id",
-                                    "label_entity_id",
-                                    "label_seq_id",
-                                    "pdbx_PDB_ins_code",
-                                    "Cartn_x",
-                                    "Cartn_y",
-                                    "Cartn_z",
-                                    "occupancy",
-                                    "B_iso_or_equiv",
-                                    "pdbx_formal_charge",
-                                    "auth_seq_id",
-                                    "auth_comp_id",
-                                    "auth_asym_id",
-                                    "auth_atom_id",
-                                    "pdbx_PDB_model_num"});
-    block.init_loop(metadata_category,
-                    {"id", "type", "method", "parameter_set", "software_name", "software_version"});
-    block.init_loop(charges_category, {"type_id", "atom_id", "charge"});
+    block.init_loop("_atom_site.", atom_site_columns);
+    block.init_loop(metadata_category, metadata_columns);
+    block.init_loop(charges_category, charge_columns);
 
-    auto atom_sites = block.find("_atom_site.", {"id",
-                                                 "type_symbol",
-                                                 "label_atom_id",
-                                                 "label_alt_id",
-                                                 "label_comp_id",
-                                                 "label_asym_id",
-                                                 "label_entity_id",
-                                                 "label_seq_id",
-                                                 "pdbx_PDB_ins_code",
-                                                 "Cartn_x",
-                                                 "Cartn_y",
-                                                 "Cartn_z",
-                                                 "occupancy",
-                                                 "B_iso_or_equiv",
-                                                 "pdbx_formal_charge",
-                                                 "auth_seq_id",
-                                                 "auth_comp_id",
-                                                 "auth_asym_id",
-                                                 "auth_atom_id",
-                                                 "pdbx_PDB_model_num"});
-    auto metadata = block.find(metadata_category, {"id", "type", "method", "parameter_set",
-                                                   "software_name", "software_version"});
-    auto charge_rows = block.find(charges_category, {"type_id", "atom_id", "charge"});
+    auto atom_sites = block.find("_atom_site.", atom_site_columns);
+    auto metadata = block.find(metadata_category, metadata_columns);
+    auto charge_rows = block.find(charges_category, charge_columns);
 
     auto molecule_type_id = std::optional<std::string>{};
     auto conformer_type_ids = std::vector<std::optional<std::string>>(molecule.conformer_count());

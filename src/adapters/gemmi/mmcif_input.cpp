@@ -47,42 +47,25 @@ namespace {
     return result;
 }
 
-constexpr auto source_label_columns = mmcif_labels::SourceLabelColumns{.label_atom = 1,
-                                                                       .label_residue = 2,
-                                                                       .label_chain = 3,
-                                                                       .label_sequence = 4,
-                                                                       .author_atom = 5,
-                                                                       .author_residue = 6,
-                                                                       .author_chain = 7,
-                                                                       .author_sequence = 8,
-                                                                       .insertion_code = 9,
-                                                                       .alternate_location = 10,
-                                                                       .entity = 11};
-
 struct MmcifSourceSite {
     std::optional<std::string> model_id;
     SourceAtomReference reference;
 };
 
 [[nodiscard]] auto source_sites(::gemmi::cif::Block& block) -> std::vector<MmcifSourceSite> {
-    auto atom_sites =
-        block.find("_atom_site.", {"id", "?label_atom_id", "?label_comp_id", "?label_asym_id",
-                                   "?label_seq_id", "?auth_atom_id", "?auth_comp_id",
-                                   "?auth_asym_id", "?auth_seq_id", "?pdbx_PDB_ins_code",
-                                   "?label_alt_id", "?label_entity_id", "?pdbx_PDB_model_num"});
+    auto atom_sites = mmcif_labels::source_atom_sites(block);
     auto result = std::vector<MmcifSourceSite>{};
     result.reserve(atom_sites.length());
     auto position = std::size_t{0};
     for (const auto row : atom_sites) {
         const auto id = ::gemmi::cif::as_string(row[0]);
-        const auto model_id = mmcif_labels::source_value(row, 12);
-        result.push_back(
-            MmcifSourceSite{.model_id = model_id,
-                            .reference = SourceAtomReference{.position = position++,
-                                                             .id = id,
-                                                             .structural_labels =
-                                                                 mmcif_labels::decode_source_labels(
-                                                                     row, source_label_columns)}});
+        const auto model_id = mmcif_labels::source_value(row, mmcif_labels::model_id_column);
+        result.push_back(MmcifSourceSite{
+            .model_id = model_id,
+            .reference =
+                SourceAtomReference{.position = position++,
+                                    .id = id,
+                                    .structural_labels = mmcif_labels::decode_source_labels(row)}});
     }
     return result;
 }
