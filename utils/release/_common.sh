@@ -180,8 +180,9 @@ PY
 }
 
 upload_missing_artifacts() {
-    local repository_url=$1
-    local json_url=$2
+    local repository=$1
+    local repository_url=$2
+    local json_url=$3
     local status_file="$RELEASE_ROOT/upload-status.txt"
     local -a missing=()
     local status artifact
@@ -200,8 +201,9 @@ upload_missing_artifacts() {
         return
     fi
 
-    local -a command=(env -u TWINE_REPOSITORY -u TWINE_REPOSITORY_URL uvx twine upload
-                      --repository-url "$repository_url")
+    local -a command=(env -u TWINE_REPOSITORY -u TWINE_REPOSITORY_URL
+                      TWINE_USERNAME=__token__ uvx twine upload
+                      --repository "$repository" --repository-url "$repository_url")
     command+=("${missing[@]}")
     "${command[@]}"
 }

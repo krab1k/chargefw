@@ -9,11 +9,10 @@ require_command uv
 load_release_state
 require_marker main-pushed
 require_artifacts
-[[ ${TWINE_USERNAME:-} == __token__ ]] || die "set TWINE_USERNAME=__token__"
-[[ -n ${TWINE_PASSWORD:-} ]] || die "set TWINE_PASSWORD to a TestPyPI project token"
+[[ ${TWINE_USERNAME:-__token__} == __token__ ]] || die "TWINE_USERNAME must be __token__"
 
 confirm_release_action "Upload release artifacts to TestPyPI"
-upload_missing_artifacts "https://test.pypi.org/legacy/" \
+upload_missing_artifacts testpypi "https://test.pypi.org/legacy/" \
     "https://test.pypi.org/pypi/chargefw/$RELEASE_VERSION/json"
 
 write_marker testpypi-uploaded

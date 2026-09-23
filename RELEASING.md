@@ -18,6 +18,7 @@ usable CPython 3.15 wheel. Other operating systems and architectures are not yet
 Install the development dependencies from [DEVELOPMENT.md](DEVELOPMENT.md), `sed`, Python 3, `uv`,
 `pre-commit`, and either Podman or Docker. Set `CIBW_CONTAINER_ENGINE=docker` to choose Docker when both
 engines are installed; otherwise the scripts prefer Podman.
+The optional `keyring` command can retrieve stored upload tokens without typing them at each release.
 
 The release version comes from the top-level `project(... VERSION ...)` declaration in `CMakeLists.txt`.
 It also determines the native library version and `chargefw.__version__`. The scripts currently accept
@@ -85,10 +86,26 @@ only `main`, and verifies that `origin/main` points to the recorded release comm
 
 ## 4. TestPyPI
 
-Use a TestPyPI project-scoped token. Read it without placing it in shell history:
+Use a TestPyPI project-scoped token. To store it in the system keyring, run `keyring set` once; it prompts
+for the token without putting it in shell history:
 
 ```bash
-export TWINE_USERNAME=__token__
+keyring set 'https://test.pypi.org/legacy/' __token__
+```
+
+`uvx twine` runs in an isolated environment that may not see the system's keyring backend (for example,
+KWallet). Read the token through the system `keyring` command and pass it to the upload script without
+displaying it or placing it in shell history:
+
+```bash
+TWINE_PASSWORD="$(keyring get 'https://test.pypi.org/legacy/' __token__)" \
+  ./utils/release/06-publish-testpypi.sh
+```
+
+Do not run the command with shell tracing (`set -x`) enabled. If no keyring is available, use a masked
+prompt instead:
+
+```bash
 read -rsp 'TestPyPI token: ' TWINE_PASSWORD && export TWINE_PASSWORD
 printf '\n'
 ./utils/release/06-publish-testpypi.sh
@@ -119,11 +136,23 @@ filenames. If a local tag already exists, it must be annotated and point to the 
 
 ## 6. Production PyPI
 
-Use a separate production PyPI project token. The production step consumes the unchanged local checksum
-manifest approved by TestPyPI:
+Use a separate production PyPI project token. Store it under the production URL if needed:
 
 ```bash
-export TWINE_USERNAME=__token__
+keyring set 'https://upload.pypi.org/legacy/' __token__
+```
+
+Retrieve it from the system keyring for the production upload. The production step consumes the unchanged
+local checksum manifest approved by TestPyPI:
+
+```bash
+TWINE_PASSWORD="$(keyring get 'https://upload.pypi.org/legacy/' __token__)" \
+  ./utils/release/09-publish-pypi.sh
+```
+
+The same masked-prompt fallback applies when a system keyring is unavailable:
+
+```bash
 read -rsp 'PyPI token: ' TWINE_PASSWORD && export TWINE_PASSWORD
 printf '\n'
 ./utils/release/09-publish-pypi.sh
