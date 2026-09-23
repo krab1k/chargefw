@@ -21,12 +21,7 @@ require_command() {
 }
 
 current_version() {
-    perl -ne '
-        if (/^\s*VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)\s*$/) {
-            print "$1\n";
-            exit;
-        }
-    ' CMakeLists.txt
+    sed -nE 's/^[[:space:]]*VERSION[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)[[:space:]]*$/\1/p' CMakeLists.txt
 }
 
 validate_version() {

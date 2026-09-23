@@ -15,9 +15,9 @@ usable CPython 3.15 wheel. Other operating systems and architectures are not yet
 
 ## Requirements and safety
 
-Install the development dependencies from [DEVELOPMENT.md](DEVELOPMENT.md), `uv`, `pre-commit`, and
-either Podman or Docker. Set `CIBW_CONTAINER_ENGINE=docker` to choose Docker when both engines are
-installed; otherwise the scripts prefer Podman.
+Install the development dependencies from [DEVELOPMENT.md](DEVELOPMENT.md), `sed`, Python 3, `uv`,
+`pre-commit`, and either Podman or Docker. Set `CIBW_CONTAINER_ENGINE=docker` to choose Docker when both
+engines are installed; otherwise the scripts prefer Podman.
 
 The release version comes from the top-level `project(... VERSION ...)` declaration in `CMakeLists.txt`.
 It also determines the native library version and `chargefw.__version__`. The scripts currently accept
