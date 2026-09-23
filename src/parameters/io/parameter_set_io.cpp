@@ -124,7 +124,7 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     }
 
     const auto number = value.get<std::int64_t>();
-    if (number < 0 || number > std::numeric_limits<std::uint16_t>::max()) {
+    if (!std::in_range<std::uint16_t>(number)) {
         throw_error(context, "expected integer in range [0, 65535]");
     }
 

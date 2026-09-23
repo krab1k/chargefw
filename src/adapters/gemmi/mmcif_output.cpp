@@ -37,29 +37,40 @@ constexpr auto dictionary_name = "mmcif_charges_v11.dic";
 constexpr auto dictionary_version = "1.1";
 constexpr auto dictionary_location =
     "https://sb-ncbr.github.io/charges-schema/schemas/mmcif_charges_v11.dic";
-const auto atom_site_columns = std::vector<std::string>{"id",
-                                                        "type_symbol",
-                                                        "label_atom_id",
-                                                        "label_alt_id",
-                                                        "label_comp_id",
-                                                        "label_asym_id",
-                                                        "label_entity_id",
-                                                        "label_seq_id",
-                                                        "pdbx_PDB_ins_code",
-                                                        "Cartn_x",
-                                                        "Cartn_y",
-                                                        "Cartn_z",
-                                                        "occupancy",
-                                                        "B_iso_or_equiv",
-                                                        "pdbx_formal_charge",
-                                                        "auth_seq_id",
-                                                        "auth_comp_id",
-                                                        "auth_asym_id",
-                                                        "auth_atom_id",
-                                                        "pdbx_PDB_model_num"};
-const auto metadata_columns = std::vector<std::string>{
-    "id", "type", "method", "parameter_set", "software_name", "software_version"};
-const auto charge_columns = std::vector<std::string>{"type_id", "atom_id", "charge"};
+[[nodiscard]] auto atom_site_columns() -> const std::vector<std::string>& {
+    static const auto columns = std::vector<std::string>{"id",
+                                                         "type_symbol",
+                                                         "label_atom_id",
+                                                         "label_alt_id",
+                                                         "label_comp_id",
+                                                         "label_asym_id",
+                                                         "label_entity_id",
+                                                         "label_seq_id",
+                                                         "pdbx_PDB_ins_code",
+                                                         "Cartn_x",
+                                                         "Cartn_y",
+                                                         "Cartn_z",
+                                                         "occupancy",
+                                                         "B_iso_or_equiv",
+                                                         "pdbx_formal_charge",
+                                                         "auth_seq_id",
+                                                         "auth_comp_id",
+                                                         "auth_asym_id",
+                                                         "auth_atom_id",
+                                                         "pdbx_PDB_model_num"};
+    return columns;
+}
+
+[[nodiscard]] auto metadata_columns() -> const std::vector<std::string>& {
+    static const auto columns = std::vector<std::string>{
+        "id", "type", "method", "parameter_set", "software_name", "software_version"};
+    return columns;
+}
+
+[[nodiscard]] auto charge_columns() -> const std::vector<std::string>& {
+    static const auto columns = std::vector<std::string>{"type_id", "atom_id", "charge"};
+    return columns;
+}
 
 struct BlockMapping {
     std::vector<std::vector<std::string>> atom_site_ids;
@@ -340,13 +351,13 @@ auto write_result_block(::gemmi::cif::Block& block, const ImportedMoleculeRecord
     block.set_pair("_entry.id", quote(block.name));
     ensure_dictionary(block);
 
-    block.init_loop("_atom_site.", atom_site_columns);
-    block.init_loop(metadata_category, metadata_columns);
-    block.init_loop(charges_category, charge_columns);
+    block.init_loop("_atom_site.", atom_site_columns());
+    block.init_loop(metadata_category, metadata_columns());
+    block.init_loop(charges_category, charge_columns());
 
-    auto atom_sites = block.find("_atom_site.", atom_site_columns);
-    auto metadata = block.find(metadata_category, metadata_columns);
-    auto charge_rows = block.find(charges_category, charge_columns);
+    auto atom_sites = block.find("_atom_site.", atom_site_columns());
+    auto metadata = block.find(metadata_category, metadata_columns());
+    auto charge_rows = block.find(charges_category, charge_columns());
 
     auto molecule_type_id = std::optional<std::string>{};
     auto conformer_type_ids = std::vector<std::optional<std::string>>(molecule.conformer_count());
@@ -469,13 +480,13 @@ auto write_charges(::gemmi::cif::Block& block, const BlockMapping& mapping,
                    const charges::ChargeSet& charge_set, const std::string_view generator_version)
     -> void {
     ensure_dictionary(block);
-    block.init_mmcif_loop(metadata_category, metadata_columns);
-    block.init_mmcif_loop(charges_category, charge_columns);
+    block.init_mmcif_loop(metadata_category, metadata_columns());
+    block.init_mmcif_loop(charges_category, charge_columns());
 
     // Category initialization can invalidate tables, so acquire them only after both mutations.
     auto assignment_id = std::size_t{1};
-    auto metadata = block.find(metadata_category, metadata_columns);
-    auto charge_rows = block.find(charges_category, charge_columns);
+    auto metadata = block.find(metadata_category, metadata_columns());
+    auto charge_rows = block.find(charges_category, charge_columns());
 
     for (const auto& assignment : assignments) {
         if (assignment.charges.size() != molecule.atom_count()) {

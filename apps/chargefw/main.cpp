@@ -55,6 +55,8 @@ class ScopedInterruptHandler final {
 
     ScopedInterruptHandler(const ScopedInterruptHandler&) = delete;
     auto operator=(const ScopedInterruptHandler&) -> ScopedInterruptHandler& = delete;
+    ScopedInterruptHandler(ScopedInterruptHandler&&) = delete;
+    auto operator=(ScopedInterruptHandler&&) -> ScopedInterruptHandler& = delete;
 
     ~ScopedInterruptHandler() {
         std::signal(SIGINT, previous_handler_);
