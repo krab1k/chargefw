@@ -1,134 +1,164 @@
 # ChargeFW Maintainer Release Procedure
 
-This is the manual procedure for building and publishing the Python package. Development builds and the
-full native validation matrix are covered by [DEVELOPMENT.md](DEVELOPMENT.md).
+This procedure validates the repository, builds immutable Python artifacts, promotes them through
+TestPyPI, tags their source commit, and publishes the same files to PyPI. The numbered scripts under
+`utils/release/` enforce that order and retain release state under the ignored `build/release/` directory.
 
 ## Current wheel matrix
 
-The current manual release target is CPython 3.10 through 3.14 on Linux x86-64. `cibuildwheel` builds each
-wheel in a manylinux container, repairs its native libraries, installs it, and runs the Python test suite.
-The resulting wheels carry `manylinux_2_27_x86_64` and `manylinux_2_28_x86_64` tags.
+The current release target is CPython 3.10 through 3.14 on Linux x86-64. `cibuildwheel` builds each wheel
+in a manylinux container, repairs its native libraries, installs it, and runs the Python test suite. The
+resulting wheels carry `manylinux_2_27_x86_64` and `manylinux_2_28_x86_64` tags.
 
 CPython 3.15 is not included because the pinned optional Gemmi 0.7.4 package does not currently provide a
 usable CPython 3.15 wheel. Other operating systems and architectures are not yet qualified.
 
-## Before building
+## Requirements and safety
 
-The release version comes from the top-level `project(... VERSION ...)` declaration in
-`CMakeLists.txt`. It is also used for the native library and `chargefw.__version__`.
+Install the development dependencies from [DEVELOPMENT.md](DEVELOPMENT.md), `uv`, `pre-commit`, and
+either Podman or Docker. Set `CIBW_CONTAINER_ENGINE=docker` to choose Docker when both engines are
+installed; otherwise the scripts prefer Podman.
 
-Before a release:
+The release version comes from the top-level `project(... VERSION ...)` declaration in `CMakeLists.txt`.
+It also determines the native library version and `chargefw.__version__`. The scripts currently accept
+only `MAJOR.MINOR.PATCH` versions.
 
-1. Update the version in `CMakeLists.txt`.
-2. Run the required debug, release, sanitizer, and static-analysis checks.
-3. Commit the release changes and start from a clean worktree.
-4. Install `uv` and either Podman or Docker.
+Each script verifies the recorded version and Git commit. Publication scripts additionally verify the
+exact artifact checksums. A repeated upload skips an existing remote file only when its SHA-256 matches;
+the release stops if a filename exists with different content.
 
-Published files cannot be replaced. Use a new version whenever artifacts must be rebuilt after upload.
+Published files cannot be replaced. If any artifact must be rebuilt after it has been uploaded to either
+package index, increment the version and restart the release. Do not delete or reuse a published version
+or move a published release tag.
 
-## Build
+## 1. Prepare the release commit
 
-Build the source distribution first, identify that single archive, then build every wheel from it:
-
-```bash
-set -euo pipefail
-shopt -s nullglob
-
-uv build --sdist --out-dir release-wheelhouse --clear
-
-SDIST=(release-wheelhouse/chargefw-*.tar.gz)
-[[ ${#SDIST[@]} -eq 1 ]] || { printf 'expected one sdist\n' >&2; exit 1; }
-VERSION=${SDIST[0]#release-wheelhouse/chargefw-}
-VERSION=${VERSION%.tar.gz}
-
-CIBW_CONTAINER_ENGINE=podman uvx cibuildwheel==3.4.1 \
-    --platform linux \
-    --output-dir release-wheelhouse \
-    "${SDIST[0]}"
-```
-
-Omit `CIBW_CONTAINER_ENGINE=podman` to use Docker. The wheel matrix, tests, and portable CMake settings
-are defined in `pyproject.toml`.
-
-A successful build produces one source distribution and the wheel matrix configured in `pyproject.toml`
-in `release-wheelhouse/`.
-
-## Check artifacts
-
-Validate all package metadata and record checksums:
+Start from an up-to-date branch and a clean worktree. Select the version explicitly:
 
 ```bash
-uvx twine check --strict release-wheelhouse/*
-sha256sum release-wheelhouse/* > /tmp/chargefw-"$VERSION".sha256
+git fetch origin
+git switch -c release/0.1.3 origin/main
+./utils/release/01-prepare.sh 0.1.3
+git diff -- CMakeLists.txt
+git add CMakeLists.txt
+git commit -m "Prepare release 0.1.3"
 ```
 
-`cibuildwheel` has already installed and tested every wheel in an isolated container. Before uploading,
-also inspect the filenames, version, Python tags, and manylinux tags. Keep the checksum file until the
-release is complete.
+Include any release notes or other intentional release changes in that commit. The remaining phases
+require a clean worktree.
 
-## Publish to TestPyPI
+## 2. Validate and build
 
-Set `TWINE_USERNAME=__token__` and `TWINE_PASSWORD` to a TestPyPI project token. Keep credentials outside
-the repository and shell history:
+Run the complete GCC, Clang, release, sanitizer, and clang-tidy matrix and build the distributable CLI
+container image:
 
 ```bash
-uvx twine upload --repository testpypi release-wheelhouse/*
+./utils/release/02-validate.sh
 ```
 
-Install the uploaded package in a clean environment and run a smoke calculation:
+The sanitizer builds run sequentially with one build job. The full preset tests include native, CLI,
+Python, installed-package, relocation, and downstream CMake consumer checks.
+
+Build one source distribution and then build all wheels from that source distribution:
 
 ```bash
-uv venv --clear /tmp/chargefw-testpypi --python 3.14
-uv pip install --python /tmp/chargefw-testpypi/bin/python 'numpy>=1.26'
-uv pip install \
-    --python /tmp/chargefw-testpypi/bin/python \
-    --no-deps \
-    --no-cache \
-    --only-binary chargefw \
-    --default-index https://test.pypi.org/simple/ \
-    "chargefw==$VERSION"
-
-/tmp/chargefw-testpypi/bin/python docs/recipes/calculate_file.py \
-    tests/fixtures/synthetic/sdf/water.sdf \
-    --format sdf \
-    --method qeq \
-    --parameter-set QEq_original
+./utils/release/03-build.sh
+./utils/release/04-verify-local.sh
 ```
 
-## Publish to PyPI
+The local verification requires exactly one sdist and the five configured wheels, runs strict package
+metadata checks, writes `build/release/sha256sums.txt`, installs a wheel in a clean environment, verifies
+its runtime version, and runs a smoke calculation. Do not rebuild after this point.
 
-Publish the same files that passed TestPyPI validation; do not rebuild them. Set the Twine variables to a
-production PyPI project token. Compare the TestPyPI file hashes with
-`/tmp/chargefw-$VERSION.sha256`; stop if any file differs.
+## 3. Publish the source commit
 
-Create the tag locally, then upload:
+Fast-forward `main` to the validated release commit, then let the gated script push it:
 
 ```bash
-git tag -a "v$VERSION" -m "ChargeFW $VERSION"
-uvx twine upload release-wheelhouse/*
+git switch main
+git merge --ff-only release/0.1.3
+./utils/release/05-push-main.sh
 ```
 
-After publication, install the exact version from PyPI in a clean environment, repeat the smoke test, and
-push the tag:
+The script requires the current branch to be `main`, asks for the release version as confirmation, pushes
+only `main`, and verifies that `origin/main` points to the recorded release commit.
+
+## 4. TestPyPI
+
+Use a TestPyPI project-scoped token. Read it without placing it in shell history:
 
 ```bash
-uv venv --clear /tmp/chargefw-pypi --python 3.14
-uv pip install \
-    --python /tmp/chargefw-pypi/bin/python \
-    --no-cache \
-    --only-binary chargefw \
-    "chargefw==$VERSION"
-
-/tmp/chargefw-pypi/bin/python docs/recipes/calculate_file.py \
-    tests/fixtures/synthetic/sdf/water.sdf \
-    --format sdf \
-    --method qeq \
-    --parameter-set QEq_original
-
-git push origin "v$VERSION"
+export TWINE_USERNAME=__token__
+read -rsp 'TestPyPI token: ' TWINE_PASSWORD && export TWINE_PASSWORD
+printf '\n'
+./utils/release/06-publish-testpypi.sh
+unset TWINE_PASSWORD
 ```
 
-If the original TestPyPI-approved files or checksums are no longer available, do not substitute rebuilt
-files under the same version. Increment the version and repeat the release process.
+Verify every remote hash, install the exact wheel from TestPyPI in a clean environment, assert the
+runtime version, and run the smoke calculation:
 
-Release automation and additional wheel platforms are tracked in [TODO.md](TODO.md#distribution).
+```bash
+./utils/release/07-verify-testpypi.sh
+```
+
+Package-index propagation can take time. If verification reports a missing artifact, wait and rerun only
+`07-verify-testpypi.sh`; do not rebuild or upload a second set of files.
+
+## 5. Tag the approved source
+
+Create and push the annotated tag only after TestPyPI verification:
+
+```bash
+./utils/release/08-tag.sh
+```
+
+The script creates `vVERSION` at the recorded release commit, pushes it, and verifies that the remote tag
+resolves to that commit. Before creating the tag it also checks production PyPI for conflicting artifact
+filenames. If a local tag already exists, it must be annotated and point to the same commit.
+
+## 6. Production PyPI
+
+Use a separate production PyPI project token. The production step consumes the unchanged local checksum
+manifest approved by TestPyPI:
+
+```bash
+export TWINE_USERNAME=__token__
+read -rsp 'PyPI token: ' TWINE_PASSWORD && export TWINE_PASSWORD
+printf '\n'
+./utils/release/09-publish-pypi.sh
+unset TWINE_PASSWORD
+```
+
+Finally, compare every PyPI hash and repeat the clean installation and smoke calculation:
+
+```bash
+./utils/release/10-verify-pypi.sh
+```
+
+If PyPI propagation is incomplete, rerun only `10-verify-pypi.sh`. A successful run writes the
+`build/release/release-complete.ok` gate.
+
+## Recovery and retention
+
+The scripts are resumable. Rerun a failed phase after correcting an environmental or network problem.
+Completed build and local-verification phases deliberately refuse to run again so they cannot replace an
+approved artifact set. Upload phases query the target index before uploading, which permits safe recovery
+from a partial upload when every file already present has the expected hash.
+
+If source code, the version, the release commit, or an artifact changes, restart from the appropriate
+earlier phase. Once an upload has occurred, a required rebuild means creating a new version.
+
+After production verification, retain these files outside the working build directory:
+
+- `build/release/artifacts/`
+- `build/release/sha256sums.txt`
+- `build/release/build-info.txt`
+- `build/release/state.env`
+
+The next release validation replaces state for a different version only when the previous release has a
+`release-complete.ok` gate. Archive the listed files before beginning that next release.
+
+Create the GitHub release from the pushed tag and attach the release notes. Release automation, trusted
+publishing, durable CI artifact retention, and additional wheel platforms remain tracked in
+[TODO.md](TODO.md#distribution).
