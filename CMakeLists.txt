@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 project(
   chargefw
-  VERSION 0.1.2
+  VERSION 0.1.3
   DESCRIPTION "Empirical partial atomic charge calculation framework"
   LANGUAGES CXX
 )
