@@ -12,11 +12,22 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 namespace adapters = chargefw::adapters;
 namespace mol = chargefw::adapters::native::mol_input;
 namespace mol2 = chargefw::adapters::native::mol2_input;
 namespace sdf = chargefw::adapters::native::sdf_input;
+
+static_assert(!std::is_copy_constructible_v<mol::MolReader> &&
+              !std::is_copy_assignable_v<mol::MolReader>);
+static_assert(!std::is_copy_constructible_v<sdf::SdfReader> &&
+              !std::is_copy_assignable_v<sdf::SdfReader>);
+static_assert(!std::is_copy_constructible_v<mol2::Mol2Reader> &&
+              !std::is_copy_assignable_v<mol2::Mol2Reader>);
+static_assert(std::is_move_constructible_v<mol::MolReader> &&
+              std::is_move_constructible_v<sdf::SdfReader> &&
+              std::is_move_constructible_v<mol2::Mol2Reader>);
 
 namespace {
 

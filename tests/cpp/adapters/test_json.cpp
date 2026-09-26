@@ -5,8 +5,13 @@
 #include <exception>
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 namespace json = chargefw::adapters::native::json_input;
+
+static_assert(!std::is_copy_constructible_v<json::JsonReader> &&
+              !std::is_copy_assignable_v<json::JsonReader>);
+static_assert(std::is_move_constructible_v<json::JsonReader>);
 
 TEST_CASE("JSON input preserves identity, graph, and conformer mapping", "[adapters][json]") {
     {

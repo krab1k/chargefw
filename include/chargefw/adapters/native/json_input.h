@@ -21,6 +21,11 @@ class JsonReader {
     explicit JsonReader(std::istream& input, std::string source = {},
                         ConformerSelection conformers = ConformerSelection::all);
 
+    JsonReader(const JsonReader&) = delete;
+    auto operator=(const JsonReader&) -> JsonReader& = delete;
+    JsonReader(JsonReader&&) = default;
+    auto operator=(JsonReader&&) -> JsonReader& = default;
+
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 
   private:

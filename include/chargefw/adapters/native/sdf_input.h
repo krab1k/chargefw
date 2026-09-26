@@ -15,6 +15,11 @@ class SdfReader {
   public:
     explicit SdfReader(std::istream& input, std::string source = {});
 
+    SdfReader(const SdfReader&) = delete;
+    auto operator=(const SdfReader&) -> SdfReader& = delete;
+    SdfReader(SdfReader&&) = default;
+    auto operator=(SdfReader&&) -> SdfReader& = default;
+
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 
   private:

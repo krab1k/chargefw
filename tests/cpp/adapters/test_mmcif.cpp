@@ -6,10 +6,15 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace mmcif = chargefw::adapters::gemmi::mmcif_input;
 namespace gemmi_adapter = chargefw::adapters::gemmi;
+
+static_assert(!std::is_copy_constructible_v<mmcif::MmcifReader> &&
+              !std::is_copy_assignable_v<mmcif::MmcifReader>);
+static_assert(std::is_move_constructible_v<mmcif::MmcifReader>);
 
 TEST_CASE("mmCIF input preserves arbitrary atom-site IDs and label namespaces",
           "[adapters][mmcif]") {

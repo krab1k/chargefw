@@ -20,6 +20,11 @@ class PdbReader {
     explicit PdbReader(std::istream& input, std::string source = {},
                        ::chargefw::adapters::gemmi::InputOptions options = {});
 
+    PdbReader(const PdbReader&) = delete;
+    auto operator=(const PdbReader&) -> PdbReader& = delete;
+    PdbReader(PdbReader&&) = default;
+    auto operator=(PdbReader&&) -> PdbReader& = default;
+
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
     [[nodiscard]] auto options() const noexcept -> ::chargefw::adapters::gemmi::InputOptions;
 

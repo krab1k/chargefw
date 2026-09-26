@@ -205,4 +205,5 @@ diagnostics, and optional `MoleculeImportMetadata`. Its `SourceAtomReference`,
 `SourceConformerReference`, `SourceStructuralLabels`, and `SourceConnectivity` values own their source
 tokens and remain valid after reader destruction. The [molecular format reference](FORMATS.md) documents
 the populated mappings, supported subsets, reader policy, and generated output independently of the C++
-types.
+types. Reader cursors are movable but not copyable; a moved reader still requires its input stream to
+remain alive until reading is complete.

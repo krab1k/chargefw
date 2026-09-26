@@ -7,9 +7,14 @@
 #include <exception>
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 namespace gemmi_adapter = chargefw::adapters::gemmi;
 namespace pdb = gemmi_adapter::pdb_input;
+
+static_assert(!std::is_copy_constructible_v<pdb::PdbReader> &&
+              !std::is_copy_assignable_v<pdb::PdbReader>);
+static_assert(std::is_move_constructible_v<pdb::PdbReader>);
 
 TEST_CASE("structural input options share stable string conversion", "[adapters][options]") {
     CHECK(gemmi_adapter::record_selection_from_string("polymers-and-ligands") ==

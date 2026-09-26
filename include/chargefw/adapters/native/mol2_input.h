@@ -16,6 +16,11 @@ class Mol2Reader {
   public:
     explicit Mol2Reader(std::istream& input, std::string source = {});
 
+    Mol2Reader(const Mol2Reader&) = delete;
+    auto operator=(const Mol2Reader&) -> Mol2Reader& = delete;
+    Mol2Reader(Mol2Reader&&) = default;
+    auto operator=(Mol2Reader&&) -> Mol2Reader& = default;
+
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 
   private:
