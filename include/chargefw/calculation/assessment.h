@@ -92,6 +92,7 @@ class AssessmentResult {
     ~AssessmentResult();
 
     [[nodiscard]] auto applicability_seconds() const noexcept -> double;
+    [[nodiscard]] auto molecules() const noexcept -> const core::MoleculeCollection&;
 
     [[nodiscard]] auto plans() const noexcept -> std::span<const ExecutionPlan>;
     [[nodiscard]] auto rejections() const noexcept -> std::span<const Rejection>;

@@ -298,6 +298,10 @@ auto AssessmentResult::applicability_seconds() const noexcept -> double {
     return applicability_seconds_;
 }
 
+auto AssessmentResult::molecules() const noexcept -> const core::MoleculeCollection& {
+    return *molecules_;
+}
+
 auto AssessmentResult::plans() const noexcept -> std::span<const ExecutionPlan> {
     return plans_;
 }

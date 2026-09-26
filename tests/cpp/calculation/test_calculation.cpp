@@ -132,6 +132,29 @@ static_assert(!HasPublicSelectedCandidate<calculation::AssessmentResult>);
 static_assert(!HasAssessmentThreadLimit<calculation::ResourcePolicy>);
 static_assert(std::is_move_constructible_v<calculation::AssessmentResult>);
 static_assert(!std::is_move_assignable_v<calculation::AssessmentResult>);
+static_assert(
+    std::is_same_v<decltype(std::declval<const calculation::AssessmentResult&>().molecules()),
+                   const core::MoleculeCollection&>);
+
+TEST_CASE("assessment exposes its owned source molecules", "[calculation][calculation]") {
+    auto request = calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
+        .method_id = "formal"};
+    const auto copied = calculation::assess(request);
+    CHECK(&copied.molecules() != &request.molecules);
+    CHECK(copied.molecules().size() == 1);
+    CHECK(copied.molecules()[0].name() == request.molecules[0].name());
+
+    auto consumed = calculation::assess(std::move(request));
+    const auto& owned_molecules = consumed.molecules();
+    CHECK(owned_molecules.size() == 1);
+    CHECK(owned_molecules[0].atom_count() == 3);
+    auto relocated = std::move(consumed);
+    CHECK(&relocated.molecules() == &owned_molecules);
+    const auto result = calculation::calculate(relocated);
+    REQUIRE(result.calculated());
+    CHECK(result.charges->assignment(0).charges.size() == relocated.molecules()[0].atom_count());
+}
 
 TEST_CASE("calculation facade reports singular solver failures with target context",
           "[calculation][calculation]") {
