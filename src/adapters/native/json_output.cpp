@@ -85,63 +85,7 @@ constexpr auto metric_scale = 1000.0;
     throw std::invalid_argument{"unknown source connectivity state"};
 }
 
-[[nodiscard]] auto hierarchy_json(const SourceHierarchyLabels& labels) -> Json {
-    auto result = Json::object();
-    const auto add = [&result](const std::string_view name,
-                               const std::optional<std::string>& value) {
-        if (value.has_value()) {
-            result[name] = *value;
-        }
-    };
-    add("atom", labels.atom);
-    add("residue", labels.residue);
-    add("chain", labels.chain);
-    add("sequence", labels.sequence);
-    return result;
-}
-
-[[nodiscard]] auto source_reference_json(const SourceAtomReference& reference) -> Json {
-    auto result = Json{{"source_position", reference.position}};
-    if (reference.id.has_value()) {
-        result["source_id"] = *reference.id;
-    }
-    if (reference.structural_labels.has_value()) {
-        const auto& labels = *reference.structural_labels;
-        auto structural = Json{{"author", hierarchy_json(labels.author)},
-                               {"label", hierarchy_json(labels.label)}};
-        const auto add = [&structural](const std::string_view name,
-                                       const std::optional<std::string>& value) {
-            if (value.has_value()) {
-                structural[name] = *value;
-            }
-        };
-        add("entity", labels.entity);
-        add("insertion_code", labels.insertion_code);
-        add("alternate_location", labels.alternate_location);
-        add("segment", labels.segment);
-        result["structural_labels"] = std::move(structural);
-    }
-    return result;
-}
-
 [[nodiscard]] auto import_metadata_json(const MoleculeImportMetadata& metadata) -> Json {
-    auto atoms = Json::array();
-    for (const auto& reference : metadata.atoms) {
-        atoms.push_back(source_reference_json(reference));
-    }
-    auto conformers = Json::array();
-    for (const auto& conformer : metadata.conformers) {
-        auto sites = Json::array();
-        for (const auto& reference : conformer.sites) {
-            sites.push_back(source_reference_json(reference));
-        }
-        auto encoded = Json{{"source_position", conformer.position}, {"sites", std::move(sites)}};
-        if (conformer.id.has_value()) {
-            encoded["source_id"] = *conformer.id;
-        }
-        conformers.push_back(std::move(encoded));
-    }
-
     auto policy = Json::object();
     const auto add_policy = [&policy](const std::string_view name,
                                       const std::optional<std::string>& value) {
@@ -156,9 +100,7 @@ constexpr auto metric_scale = 1000.0;
 
     return Json{{"format", source_format_name(metadata.format)},
                 {"policy", std::move(policy)},
-                {"source_connectivity", connectivity_name(metadata.source_connectivity)},
-                {"atom_mapping", std::move(atoms)},
-                {"conformer_mapping", std::move(conformers)}};
+                {"source_connectivity", connectivity_name(metadata.source_connectivity)}};
 }
 
 [[nodiscard]] auto portable_id_json(const PortableId& id) -> Json {

@@ -336,10 +336,9 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         imported = json.loads(chargefw_io.dumps(result, format="result-json"))["results"][0][
             "input"
         ]["import"]
-        self.assertEqual(imported["atom_mapping"][0]["source_id"], "001")
-        encoded_labels = imported["atom_mapping"][0]["structural_labels"]
-        self.assertEqual(encoded_labels["author"]["atom"], "AUTHOR")
-        self.assertEqual(encoded_labels["label"]["atom"], "LABEL")
+        self.assertNotIn("atom_mapping", imported)
+        self.assertNotIn("conformer_mapping", imported)
+        self.assertEqual(imported["format"], "mmcif")
 
     def test_to_document_creates_fresh_mapped_mmcif(self) -> None:
         source = gemmi.cif.read_string(MMCIF_TEXT)
@@ -403,13 +402,14 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
             "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id"]
         )
         self.assertEqual(
-            [(gemmi.cif.as_string(row[0]), gemmi.cif.as_string(row[1])) for row in first_charge_rows],
+            [
+                (gemmi.cif.as_string(row[0]), gemmi.cif.as_string(row[1]))
+                for row in first_charge_rows
+            ],
             [("1", "1"), ("1", "2"), ("2", "3"), ("2", "4")],
         )
 
-        altloc_document = gemmi.cif.read_string(
-            MMCIF_TEXT.replace(" C CA . ALA", " C CA B ALA")
-        )
+        altloc_document = gemmi.cif.read_string(MMCIF_TEXT.replace(" C CA . ALA", " C CA B ALA"))
         altloc_result = calculate(chargefw.io.gemmi.from_document(altloc_document), method="formal")
         chargefw.io.gemmi.attach_charges(altloc_document, altloc_result)
         self.assertEqual(

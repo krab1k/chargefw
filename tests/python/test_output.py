@@ -114,11 +114,12 @@ class OutputTests(unittest.TestCase):
             self.fail("calculation unexpectedly succeeded")
 
         self.assertEqual(encoded["status"], "no_executable_plan")
+        self.assertEqual(encoded["schema_version"], "1.0")
         self.assertNotIn("assignments", encoded["results"][0])
         imported = encoded["results"][0]["input"]["import"]
         self.assertEqual(imported["format"], "molecule-json")
-        self.assertEqual(len(imported["atom_mapping"]), 3)
-        self.assertEqual(imported["conformer_mapping"], [])
+        self.assertNotIn("atom_mapping", imported)
+        self.assertNotIn("conformer_mapping", imported)
         self.assertTrue(encoded["results"][0]["diagnostics"])
         for format_name in ("mol2", "mmcif"):
             with (
@@ -152,9 +153,9 @@ class OutputTests(unittest.TestCase):
         self.assertEqual(encoded["results"][0]["diagnostics"], [])
         imported_input = encoded["results"][1]["input"]["import"]
         self.assertEqual(imported_input["format"], "mol2")
+        self.assertNotIn("atom_mapping", imported_input)
         self.assertEqual(
-            [value["source_id"] for value in imported_input["atom_mapping"]],
-            list(imported_molecule.atom_ids),
+            len(encoded["results"][1]["assignments"][0]["charges"]), len(imported_molecule.atom_ids)
         )
         self.assertEqual(
             [value["code"] for value in encoded["results"][1]["diagnostics"]],
@@ -164,7 +165,7 @@ class OutputTests(unittest.TestCase):
         self.assertNotIn("input", requested)
         self.assertNotIn("structural_input", requested)
 
-    def test_coordinate_free_result_json_retains_mapping(self) -> None:
+    def test_coordinate_free_result_json_omits_mapping(self) -> None:
         molecules = chargefw.io.parse(
             """{
   "schema_version": "1.0",
@@ -180,8 +181,8 @@ class OutputTests(unittest.TestCase):
         encoded = json.loads(chargefw.io.dumps(result, format="result-json"))
         record = encoded["results"][0]
         self.assertEqual(record["assignments"][0]["scope"], "molecule")
-        self.assertEqual(record["input"]["import"]["atom_mapping"], [{"source_position": 0}])
-        self.assertEqual(record["input"]["import"]["conformer_mapping"], [])
+        self.assertNotIn("atom_mapping", record["input"]["import"])
+        self.assertNotIn("conformer_mapping", record["input"]["import"])
 
     def test_result_outputs_preserve_integer_caller_ids(self) -> None:
         molecule = chargefw.Molecule(
@@ -225,7 +226,7 @@ class OutputTests(unittest.TestCase):
             0
         ]["input"]
         self.assertNotIn("atom_ids", imported_input)
-        self.assertIn("atom_mapping", imported_input["import"])
+        self.assertNotIn("atom_mapping", imported_input["import"])
 
     def test_molecular_output_requires_finite_coordinates(self) -> None:
         missing = chargefw.calculate(chargefw.Molecule([1]), method="formal")
@@ -253,6 +254,7 @@ class OutputTests(unittest.TestCase):
         result = chargefw.calculate(water(), method="formal")
         with self.assertRaises(TypeError):
             chargefw.io.dumps(result)  # type: ignore[call-arg]
+
 
 if __name__ == "__main__":
     unittest.main()

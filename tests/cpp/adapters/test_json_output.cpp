@@ -117,8 +117,8 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     CHECK(imported.at("format") == "sdf");
     CHECK(imported.at("policy").at("conformer_selection") == "all");
     CHECK(imported.at("source_connectivity") == "present");
-    CHECK(imported.at("atom_mapping").at(0).at("source_id") == "10");
-    CHECK(imported.at("atom_mapping").at(2).at("source_position") == 2);
+    CHECK_FALSE(imported.contains("atom_mapping"));
+    CHECK_FALSE(imported.contains("conformer_mapping"));
     const auto& assignment = calculated.at("assignments").at(0);
     CHECK(assignment.at("scope") == "conformer");
     CHECK(assignment.at("target").at("molecule_index") == 0);

@@ -200,12 +200,11 @@ The result-owned mmCIF writer creates a fresh minimal block for every record occ
 emits `_entry`, `_audit_conform`, `_atom_site`, and the charge dictionary categories without copying source
 categories or inventing component topology. Known author and label atom/residue/chain identities are kept
 separate for every conformer site; unavailable names fall back deterministically to generated atom names,
-`UNL`, chain `A`, and entity `1`. Output site IDs and model numbers are newly generated per block, while
-original IDs remain result-JSON provenance. Charge rows are joined to each site as it is created:
-molecule-scoped charges cover every conformer and conformer-scoped charges never broadcast. Coordinates
-and charges use round-trip floating-point formatting. Output rejects missing or non-finite coordinates,
-empty records, unsuccessful results, and charges outside the dictionary's inclusive `[-5, 5]` range before
-serializing the document.
+`UNL`, chain `A`, and entity `1`. Output site IDs and model numbers are newly generated per block, and each
+charge row refers to the generated `_atom_site.id` for its site. Molecule-scoped charges cover
+every conformer and conformer-scoped charges never broadcast. Coordinates and charges use round-trip
+floating-point formatting. Output rejects missing or non-finite coordinates, empty records, unsuccessful
+results, and charges outside the dictionary's inclusive `[-5, 5]` range before serializing the document.
 
 Python additionally provides a strict in-memory annotation API for the unchanged Gemmi document used for
 import. Its mutation and validation contract is documented with
@@ -228,19 +227,15 @@ Its full-precision `charges` array follows calculation atom order and includes a
 message fields and may include zero-based molecule, atom, bond, or conformer indices and a one-based
 source line number.
 
-For imported molecules, `input.import` records the source format, connectivity summary, record-local
-policy, calculation-ordered `atom_mapping`, and retained `conformer_mapping`. Each mapping entry contains
-its zero-based source position, exact source ID when present, and structural author/label identity when
-available. Array position is the calculation atom or conformer index, so no duplicate calculation-index
-field is stored. Coordinate-free inputs have an empty conformer mapping. Failed and cancelled results keep
-the same input mapping while omitting assignments. Manually constructed molecules have no verified import
-mapping and omit `input.import`.
+For imported molecules, `input.import` records the source format, connectivity summary, and record-local
+import policy. Charges follow calculation atom order. For structural inputs, generated mmCIF associates
+each charge with its generated `_atom_site.id`; Python's `attach_charges()` can annotate an unchanged source
+mmCIF document using the retained source mapping. Failed and cancelled results keep import policy but omit
+assignments. Manually constructed molecules omit `input.import`.
 
 Caller-supplied record and atom IDs are strings or signed 64-bit integers. Result JSON preserves those
 types as JSON strings or numbers. Explicit atom IDs from a manually constructed molecule appear once as
-`input.atom_ids` in calculation order; omitted atom IDs and imported source IDs do not add this field.
-Source-format atom and site IDs remain strings so lexical provenance such as `001` is not normalized to an
-integer.
+`input.atom_ids` in calculation order.
 
 Requested provenance records method and parameter selection, classification mode, method options,
 execution request, resource thresholds, and thread limit. Import policy is record-local under

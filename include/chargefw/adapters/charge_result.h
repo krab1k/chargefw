@@ -28,9 +28,8 @@ struct ResultDiagnostic {
     std::optional<std::size_t> line;
 };
 
-// Invocation-wide calculation provenance. The JSON writer serializes the requested inputs and their
-// effective resolution as the primary complete result format; other output formats do not consume
-// it.
+// Invocation-wide calculation provenance. The JSON writer serializes requested and effective
+// policy; molecular output formats do not consume it.
 struct RequestedCalculationProvenance {
     std::optional<std::string> method_id;
     std::optional<std::string> parameter_set_id;
