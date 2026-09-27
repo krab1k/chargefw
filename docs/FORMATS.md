@@ -83,7 +83,8 @@ bond-reference semantics have been validated.
 ## ChargeFW molecule JSON input 1.0
 
 Molecule input JSON is an explicit interchange format and is distinct from ChargeFW result JSON. A
-document has this shape:
+document follows the [molecule input JSON Schema](../schemas/molecule-input-1.0.schema.json) and has this
+shape:
 
 ```json
 {
@@ -213,6 +214,9 @@ import. Its mutation and validation contract is documented with
 ### ChargeFW result JSON 1.0
 
 Result JSON is the complete machine-readable calculation record. Its top level contains:
+
+The complete field definitions and descriptions are available in the
+[calculation result JSON Schema](../schemas/result-1.0.schema.json).
 
 - `schema_version`, generator identity, overall status, and document diagnostics;
 - input-ordered `results`, each with source identity, record status, diagnostics, optional import mapping

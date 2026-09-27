@@ -56,6 +56,13 @@ install(
         DESTINATION ${CMAKE_INSTALL_DOCDIR}/chargefw/docs
         COMPONENT documentation
 )
+install(
+        FILES
+        ${PROJECT_SOURCE_DIR}/schemas/molecule-input-1.0.schema.json
+        ${PROJECT_SOURCE_DIR}/schemas/result-1.0.schema.json
+        DESTINATION ${CMAKE_INSTALL_DOCDIR}/chargefw/schemas
+        COMPONENT documentation
+)
 
 install(
         FILES

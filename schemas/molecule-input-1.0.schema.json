@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:chargefw:schema:molecule-input:1.0",
+  "title": "ChargeFW molecule input JSON 1.0",
+  "description": "A collection of molecules with optional connectivity and coordinate conformers. Array order defines molecule, atom, bond, conformer, and coordinate order.",
+  "examples": [
+    {
+      "schema_version": "1.0",
+      "molecules": [
+        {
+          "id": "water-1",
+          "name": "water",
+          "atoms": [
+            { "atomic_number": 8, "formal_charge": 0 },
+            { "atomic_number": 1, "formal_charge": 0 },
+            { "atomic_number": 1, "formal_charge": 0 }
+          ],
+          "bonds": [
+            { "atoms": [0, 1], "order": 1 },
+            { "atoms": [0, 2], "order": 1 }
+          ],
+          "conformers": [
+            {
+              "id": "model-1",
+              "coordinates": [[0, 0, 0], [0.96, 0, 0], [-0.24, 0.93, 0]]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": ["schema_version", "molecules"],
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "description": "Version of the ChargeFW molecule input format."
+    },
+    "molecules": {
+      "type": "array",
+      "description": "Molecules in input order. Their array indices are the record indices used in results.",
+      "items": { "$ref": "#/$defs/molecule" }
+    }
+  },
+  "$defs": {
+    "molecule": {
+      "type": "object",
+      "required": ["atoms"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional caller-facing record identifier, retained as the result record ID."
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional molecule name."
+        },
+        "atoms": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Atoms in calculation order. Every bond endpoint and coordinate row refers to this array by zero-based index.",
+          "items": { "$ref": "#/$defs/atom" }
+        },
+        "bonds": {
+          "type": "array",
+          "description": "Optional molecular connectivity. Endpoint indices are zero-based references into atoms; each bond connects two distinct atoms.",
+          "items": { "$ref": "#/$defs/bond" }
+        },
+        "conformers": {
+          "type": "array",
+          "description": "Optional conformers in source order. Each conformer supplies one coordinate row for every atom. The reader can retain the first conformer or all conformers.",
+          "items": { "$ref": "#/$defs/conformer" }
+        }
+      }
+    },
+    "atom": {
+      "type": "object",
+      "required": ["atomic_number", "formal_charge"],
+      "properties": {
+        "atomic_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Element atomic number supported by ChargeFW."
+        },
+        "formal_charge": {
+          "type": "integer",
+          "description": "Formal charge assigned to this atom."
+        }
+      }
+    },
+    "bond": {
+      "type": "object",
+      "required": ["atoms", "order"],
+      "properties": {
+        "atoms": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "The two distinct zero-based atom indices connected by the bond. Each index must be less than the molecule's atom count."
+        },
+        "order": {
+          "type": "integer",
+          "enum": [1, 2, 3],
+          "description": "Bond order: 1 for single, 2 for double, or 3 for triple."
+        }
+      }
+    },
+    "conformer": {
+      "type": "object",
+      "required": ["coordinates"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional conformer identifier, retained as the conformer name."
+        },
+        "coordinates": {
+          "type": "array",
+          "description": "Cartesian coordinates in Angstroms, in atom order. Supply exactly one row per molecule atom.",
+          "items": { "$ref": "#/$defs/coordinate" }
+        }
+      }
+    },
+    "coordinate": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" },
+      "description": "One atom's finite x, y, and z coordinates in Angstroms."
+    }
+  }
+}

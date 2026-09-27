@@ -1,0 +1,364 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:chargefw:schema:result:1.0",
+  "title": "ChargeFW calculation result JSON 1.0",
+  "description": "A complete machine-readable record of one ChargeFW calculation invocation. Charge arrays use calculation atom order; structural charge-to-site correspondence is provided by generated mmCIF.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generator", "status", "diagnostics", "results", "calculation_provenance"],
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "description": "Version of the ChargeFW calculation result format."
+    },
+    "generator": { "$ref": "#/$defs/generator" },
+    "status": {
+      "$ref": "#/$defs/executionStatus",
+      "description": "Overall calculation outcome."
+    },
+    "diagnostics": {
+      "type": "array",
+      "description": "Invocation-level diagnostics, including issues that are not specific to one input record.",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "results": {
+      "type": "array",
+      "description": "Per-record outcomes in input order. record_index identifies each input record within its source.",
+      "items": { "$ref": "#/$defs/record" }
+    },
+    "calculation_provenance": { "$ref": "#/$defs/provenance" }
+  },
+  "$defs": {
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "ChargeFW" },
+        "version": { "type": "string", "description": "ChargeFW software version." }
+      }
+    },
+    "executionStatus": {
+      "oneOf": [
+        { "const": "success", "title": "Success", "description": "Calculation completed and charge assignments are available." },
+        { "const": "invalid_input_or_request", "title": "Invalid input or request", "description": "The molecular input or calculation request failed validation." },
+        { "const": "no_executable_plan", "title": "No executable plan", "description": "No scientifically applicable and executable method plan was available." },
+        { "const": "numerical_failure", "title": "Numerical failure", "description": "The selected calculation failed during numerical execution." },
+        { "const": "cancelled", "title": "Cancelled", "description": "The calculation was cooperatively cancelled." }
+      ]
+    },
+    "portableId": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "integer", "minimum": -9223372036854775808, "maximum": 9223372036854775807 }
+      ],
+      "description": "A caller-supplied identifier represented as a string or signed 64-bit integer."
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "status", "diagnostics"],
+      "properties": {
+        "input": { "$ref": "#/$defs/inputIdentity" },
+        "status": { "$ref": "#/$defs/executionStatus" },
+        "assignments": {
+          "type": "array",
+          "description": "Charge assignments for this record. Each charges array follows calculation atom order.",
+          "items": { "$ref": "#/$defs/assignment" }
+        },
+        "diagnostics": {
+          "type": "array",
+          "description": "Diagnostics associated with this input record.",
+          "items": { "$ref": "#/$defs/diagnostic" }
+        }
+      }
+    },
+    "inputIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "record_index"],
+      "properties": {
+        "source": { "type": "string", "description": "Input source name or path." },
+        "record_index": { "type": "integer", "minimum": 0, "description": "Zero-based record position within the source." },
+        "record_id": { "$ref": "#/$defs/portableId" },
+        "atom_ids": {
+          "type": "array",
+          "description": "Caller-supplied atom IDs in calculation atom order.",
+          "items": { "oneOf": [{ "$ref": "#/$defs/portableId" }, { "type": "null" }] }
+        },
+        "import": { "$ref": "#/$defs/import" }
+      }
+    },
+    "import": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "policy", "source_connectivity"],
+      "properties": {
+        "format": {
+          "oneOf": [
+            { "const": "molecule-json", "title": "ChargeFW molecule JSON", "description": "ChargeFW's versioned molecule interchange format." },
+            { "const": "mol", "title": "MOL", "description": "A single MDL MOL record." },
+            { "const": "sdf", "title": "SDF", "description": "An MDL structure-data file record." },
+            { "const": "mol2", "title": "MOL2", "description": "A Tripos MOL2 molecule record." },
+            { "const": "pdb", "title": "PDB", "description": "A Protein Data Bank coordinate entry." },
+            { "const": "mmcif", "title": "PDBx/mmCIF", "description": "A coordinate-bearing mmCIF data block." }
+          ],
+          "description": "Format used to import this record."
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Record-specific import choices applied to this structural or molecular input.",
+          "properties": {
+            "record_selection": {
+              "oneOf": [
+                { "const": "all", "title": "All records", "description": "Retain polymers, ligands, and water residues." },
+                { "const": "polymers-and-ligands", "title": "Polymers and ligands", "description": "Retain polymer and ligand residues while excluding recognized water residues." },
+                { "const": "polymers", "title": "Polymers", "description": "Retain residues classified as linear polymers." }
+              ]
+            },
+            "alternate_location_selection": {
+              "const": "first-source-order",
+              "title": "First alternate location in source order",
+              "description": "For each atom name within each residue, select its first source-order alternate location."
+            },
+            "conformer_selection": {
+              "oneOf": [
+                { "const": "first", "title": "First conformer", "description": "Retain only the first input conformer or structural model." },
+                { "const": "all", "title": "All conformers", "description": "Retain all input conformers or structural models in source order." }
+              ]
+            },
+            "bond_strategy": {
+              "oneOf": [
+                { "const": "none", "title": "No bonds", "description": "Import atoms and coordinates without molecular bonds." },
+                { "const": "explicit", "title": "Explicit bonds", "description": "Use explicit bonds and connections represented by the source format." },
+                { "const": "templates", "title": "Templates", "description": "Assign connectivity from ChargeFW's built-in residue templates and polymer links." },
+                { "const": "hybrid", "title": "Hybrid", "description": "Combine explicit connectivity with built-in templates, preferring explicit connections." }
+              ]
+            }
+          }
+        },
+        "source_connectivity": {
+          "oneOf": [
+            { "const": "absent", "title": "Connectivity from another source", "description": "The source record supplies no bond data; choose a bond strategy to derive connectivity when needed." },
+            { "const": "explicitly-empty", "title": "Explicitly empty connectivity", "description": "The source supplies a connectivity section containing no bonds." },
+            { "const": "present", "title": "Connectivity present", "description": "The source supplies one or more bonds." }
+          ],
+          "description": "Connectivity state of the imported source record."
+        }
+      }
+    },
+    "assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "target", "charge_unit", "charges", "total_charge"],
+      "allOf": [
+        {
+          "if": { "properties": { "scope": { "const": "molecule" } } },
+          "then": { "properties": { "target": { "$ref": "#/$defs/moleculeTarget" } } }
+        },
+        {
+          "if": { "properties": { "scope": { "const": "conformer" } } },
+          "then": { "properties": { "target": { "$ref": "#/$defs/conformerTarget" } } }
+        }
+      ],
+      "properties": {
+        "scope": {
+          "oneOf": [
+            { "const": "molecule", "title": "Molecule-scoped", "description": "One charge vector applies to the molecule and is associated with each of its conformers in molecular output." },
+            { "const": "conformer", "title": "Conformer-scoped", "description": "The charge vector applies only to the conformer identified by target.conformer_index." }
+          ]
+        },
+        "target": { "$ref": "#/$defs/target" },
+        "charge_unit": { "const": "e", "description": "Elementary-charge units." },
+        "charges": {
+          "type": "array",
+          "items": { "type": "number" },
+          "examples": [[-0.834, 0.417, 0.417]],
+          "description": "Full-precision partial charges in electron units, aligned by index with the molecule's atom order. Use each generated mmCIF charge row and its atom_id to resolve a charge to an output structural site."
+        },
+        "total_charge": { "type": "number", "description": "Sum of this assignment's partial charges in electron units." }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["molecule_index"],
+      "properties": {
+        "molecule_index": { "type": "integer", "minimum": 0, "description": "Zero-based molecule position in the calculation collection." },
+        "conformer_index": { "type": "integer", "minimum": 0, "description": "Zero-based conformer position for a conformer-scoped assignment." }
+      }
+    },
+    "moleculeTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["molecule_index"],
+      "properties": {
+        "molecule_index": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "conformerTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["molecule_index", "conformer_index"],
+      "properties": {
+        "molecule_index": { "type": "integer", "minimum": 0 },
+        "conformer_index": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "code", "message"],
+      "properties": {
+        "severity": {
+          "oneOf": [
+            { "const": "info", "title": "Information", "description": "An informational event, such as cooperative cancellation." },
+            { "const": "warning", "title": "Warning", "description": "A non-fatal condition or policy warning." },
+            { "const": "error", "title": "Error", "description": "A condition that prevented a successful calculation or record operation." }
+          ]
+        },
+        "code": { "type": "string", "description": "Stable machine-readable diagnostic category." },
+        "message": { "type": "string", "description": "Human-readable diagnostic explanation." },
+        "molecule_index": { "type": "integer", "minimum": 0 },
+        "atom_index": { "type": "integer", "minimum": 0 },
+        "bond_index": { "type": "integer", "minimum": 0 },
+        "conformer_index": { "type": "integer", "minimum": 0 },
+        "line": { "type": "integer", "minimum": 1, "description": "One-based source line number." }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested", "effective"],
+      "properties": {
+        "requested": { "$ref": "#/$defs/requested" },
+        "effective": { "$ref": "#/$defs/effective" },
+        "execution_metrics": { "$ref": "#/$defs/executionMetrics" }
+      }
+    },
+    "requested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "parameter_set", "classification", "resource_policy", "execution", "method_options"],
+      "properties": {
+        "method": { "$ref": "#/$defs/optionalId" },
+        "parameter_set": { "$ref": "#/$defs/optionalId" },
+        "classification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["permissive_types"],
+          "properties": { "permissive_types": { "type": "boolean" } }
+        },
+        "resource_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cutoff_atom_threshold", "cover_atom_threshold", "max_threads"],
+          "properties": {
+            "cutoff_atom_threshold": { "$ref": "#/$defs/threshold" },
+            "cover_atom_threshold": { "$ref": "#/$defs/threshold" },
+            "max_threads": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "radius_angstrom"],
+          "properties": {
+            "kind": {
+              "oneOf": [
+                { "const": "auto", "title": "Automatic", "description": "Let assessment choose an applicable execution mode according to method capabilities and resource policy." },
+                { "const": "full", "title": "Full", "description": "Request a complete calculation for the molecular target." },
+                { "const": "cutoff", "title": "Cutoff", "description": "Request radius-fragment calculations centered on source atoms." },
+                { "const": "cover", "title": "Cover", "description": "Request radius-fragment calculations around pivots, retaining charges in covered interiors." }
+              ]
+            },
+            "radius_angstrom": {
+              "oneOf": [
+                { "type": "number", "exclusiveMinimum": 0, "title": "Radius in angstroms" },
+                { "type": "null", "title": "No explicit radius", "description": "The request does not specify a radius." }
+              ]
+            }
+          }
+        },
+        "method_options": { "$ref": "#/$defs/methodOptions" }
+      }
+    },
+    "effective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "parameter_set", "warnings", "method_options"],
+      "properties": {
+        "method": { "$ref": "#/$defs/optionalId" },
+        "parameter_set": { "$ref": "#/$defs/optionalId" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "radius_angstrom"],
+          "properties": {
+            "mode": {
+              "oneOf": [
+                { "const": "full", "title": "Full", "description": "The complete molecular target was calculated." },
+                { "const": "cutoff", "title": "Cutoff", "description": "Radius-fragment calculations centered on source atoms were used." },
+                { "const": "cover", "title": "Cover", "description": "Radius-fragment calculations around pivots retained charges in covered interiors." }
+              ]
+            },
+            "radius_angstrom": {
+              "oneOf": [
+                { "type": "number", "exclusiveMinimum": 0, "title": "Radius in angstroms" },
+                { "type": "null", "title": "No effective radius", "description": "The effective execution mode uses no spatial radius." }
+              ]
+            }
+          }
+        },
+        "method_options": { "$ref": "#/$defs/methodOptions" }
+      }
+    },
+    "optionalId": {
+      "oneOf": [{ "$ref": "#/$defs/idObject" }, { "type": "null" }]
+    },
+    "idObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": { "id": { "type": "string" } }
+    },
+    "threshold": {
+      "description": "An atom-count threshold or an unlimited threshold.",
+      "oneOf": [
+        { "type": "integer", "minimum": 0, "title": "Atom count" },
+        { "const": "unlimited", "title": "Unlimited", "description": "Do not apply an atom-count threshold." }
+      ]
+    },
+    "methodOptions": {
+      "type": "object",
+      "description": "Method IDs map to option objects. Option values are scalar strings, numbers, or booleans.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": ["string", "number", "boolean"] }
+      }
+    },
+    "executionMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "ended_at", "runtime_seconds", "phases", "peak_resident_memory_mb"],
+      "properties": {
+        "started_at": { "type": "string", "description": "UTC timestamp marking calculation start." },
+        "ended_at": { "type": "string", "description": "UTC timestamp marking result finalization." },
+        "runtime_seconds": { "type": "number", "minimum": 0 },
+        "phases": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["parsing_seconds", "applicability_seconds", "computation_seconds"],
+          "properties": {
+            "parsing_seconds": { "type": "number", "minimum": 0 },
+            "applicability_seconds": { "type": "number", "minimum": 0 },
+            "computation_seconds": { "type": "number", "minimum": 0 }
+          }
+        },
+        "peak_resident_memory_mb": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}
