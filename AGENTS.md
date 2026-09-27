@@ -27,6 +27,11 @@ Interface-specific documents should state only the syntax and behavior needed fo
 to the owning document when additional explanation is useful; do not repeat the same explanatory text
 across CLI, native, and Python documentation.
 
+Describe user-facing behavior through its positive contract: state what users can rely on and how to use
+it. Avoid documenting absent fields, unsupported cases, or missing capabilities as standalone negative
+contracts; document a limitation only when it is necessary to use the supported behavior safely, and frame
+it around the supported boundary or alternative.
+
 ## Repository map
 
 ```text
