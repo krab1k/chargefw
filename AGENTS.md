@@ -112,6 +112,10 @@ should include only the individual adapter headers it uses.
 The executable commands for every preset and check are maintained in
 [DEVELOPMENT.md](DEVELOPMENT.md).
 
+Do not run the CLI directly from the build tree for parameter-dependent commands: bundled parameter
+sets are installed resources. Install locally and run the installed executable, or use the registered
+CTest CLI tests, which prepare an installation.
+
 ### Container validation
 
 Use the distributable CLI image and compatibility-container workflows in

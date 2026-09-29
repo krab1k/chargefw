@@ -27,6 +27,14 @@ cmake --build build/gcc-debug
 ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$'
 ```
 
+For manual CLI use, install to a build-local prefix and run that executable; the build-tree CLI does not
+have the bundled parameter sets:
+
+```bash
+cmake --install build/gcc-debug --prefix "$PWD/build/gcc-debug/_install"
+build/gcc-debug/_install/bin/chargefw parameters
+```
+
 Gemmi registers its internal `cpptest` unconditionally even though that executable is excluded from
 normal builds. Exclude it when invoking CTest directly.
 
