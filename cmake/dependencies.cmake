@@ -46,10 +46,10 @@ function(chargefw_setup_dependencies)
     endif()
 
     if(CHARGEFW_USE_SYSTEM_DEPENDENCIES)
-        find_package(nanoflann 1.12 CONFIG QUIET)
+        find_package(nanoflann 1.14 CONFIG QUIET)
     endif()
     if(NOT TARGET nanoflann::nanoflann)
-        # nanoflann 1.12.1 does not set CMP0077 itself. Select modern option() behavior so these
+        # nanoflann 1.14.0 does not set CMP0077 itself. Select modern option() behavior so these
         # embedding-project choices remain effective on the first configure.
         set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
         set(NANOFLANN_BUILD_EXAMPLES OFF)
@@ -58,7 +58,7 @@ function(chargefw_setup_dependencies)
                 nanoflann
                 SYSTEM
                 EXCLUDE_FROM_ALL
-                URL https://github.com/jlblancoc/nanoflann/archive/refs/tags/1.12.1.tar.gz
+                URL https://github.com/jlblancoc/nanoflann/archive/refs/tags/1.14.0.tar.gz
         )
         FetchContent_MakeAvailable(nanoflann)
         unset(CMAKE_POLICY_DEFAULT_CMP0077)

@@ -27,7 +27,16 @@ auto validate_radius(const double radius) -> void {
 
 class ConformerPointCloud {
   public:
-    explicit ConformerPointCloud(const ConformerFeatures& geometry) : geometry_{&geometry} {}
+    explicit ConformerPointCloud(const ConformerFeatures& geometry) : geometry_{&geometry} {
+        for (std::size_t atom_index = 0; atom_index < geometry.molecule().atom_count();
+             ++atom_index) {
+            const auto& position = geometry.position(atom_index);
+            if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
+                !std::isfinite(position.z)) {
+                throw std::invalid_argument{"spatial index requires finite coordinates"};
+            }
+        }
+    }
 
     [[nodiscard]] auto kdtree_get_point_count() const -> std::size_t {
         return geometry_->molecule().atom_count();
@@ -100,17 +109,7 @@ class SourceIndexRadiusResultSet {
 class SpatialFragmentBuilder::SpatialIndex {
   public:
     explicit SpatialIndex(const ConformerFeatures& geometry)
-        : points_{geometry}, tree_{3, points_} {
-        for (std::size_t atom_index = 0; atom_index < geometry.molecule().atom_count();
-             ++atom_index) {
-            const auto& position = geometry.position(atom_index);
-            if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
-                !std::isfinite(position.z)) {
-                throw std::invalid_argument{"spatial index requires finite coordinates"};
-            }
-        }
-        tree_.buildIndex();
-    }
+        : points_{geometry}, tree_{3, points_} {}
 
     [[nodiscard]] auto neighbor_indices_within(const core::Position& center,
                                                const double radius) const
