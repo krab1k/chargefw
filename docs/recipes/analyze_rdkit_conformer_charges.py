@@ -21,10 +21,19 @@ def prepare_demo_ensemble(smiles: str, conformer_count: int) -> Chem.Mol:
     if molecule is None:
         raise ValueError(f"invalid SMILES: {smiles}")
 
+    # ChargeFW's default RDKit import requires explicit single/double/triple bonds.
+    # Kekulize aromatic rings to retain single/double bond orders rather than using
+    # bond_conversion="single", which would turn every aromatic bond into a single bond.
     Chem.Kekulize(molecule, clearAromaticFlags=True)
+    # Charge calculation needs explicit hydrogens: omitting them calculates charges for an incomplete molecule.
+    # Add them before embedding so their coordinates are generated too.
     molecule = Chem.AddHs(molecule)
+
+    # Generate 3D conformers with RDKit's ETKDGv3 distance-geometry settings:
+    # https://www.rdkit.org/docs/GettingStartedInPython.html#working-with-3d-molecules
     embedding = AllChem.ETKDGv3()
-    embedding.randomSeed = 0xC0FFEE
+    # Fix the random seed for repeatable sampling
+    embedding.randomSeed = 42
     conformer_ids = AllChem.EmbedMultipleConfs(molecule, numConfs=conformer_count, params=embedding)
     if len(conformer_ids) < 2:
         raise RuntimeError(f"RDKit generated only {len(conformer_ids)} conformers")
