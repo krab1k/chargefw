@@ -39,8 +39,8 @@ M  END
 class RecipeTests(unittest.TestCase):
     def test_calculate_file_recipe(self) -> None:
         with TemporaryDirectory() as directory:
-            input_path = Path(directory) / "water.sdf"
-            input_path.write_text(f"{WATER_MOL}$$$$\n", encoding="utf-8")
+            input_path = Path(directory) / "waters.sdf"
+            input_path.write_text(f"{WATER_MOL}$$$$\n{WATER_MOL}$$$$\n", encoding="utf-8")
 
             completed = subprocess.run(
                 [
@@ -56,7 +56,10 @@ class RecipeTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(completed.stdout.count("["), 1)
+            lines = completed.stdout.splitlines()
+            self.assertEqual(len(lines), 2)
+            self.assertTrue(lines[0].startswith("molecule=0 conformer=0: ["))
+            self.assertTrue(lines[1].startswith("molecule=1 conformer=0: ["))
 
     def test_inspect_molecules_recipe(self) -> None:
         with TemporaryDirectory() as directory:

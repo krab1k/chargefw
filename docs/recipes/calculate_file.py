@@ -44,7 +44,10 @@ def main() -> None:
         parameter_set=arguments.parameter_set,
     )
     for assignment in result.assignments:
-        print(assignment.values)
+        print(
+            f"molecule={assignment.molecule_index} conformer={assignment.conformer_index}: "
+            f"{assignment.values}"
+        )
 
 
 if __name__ == "__main__":

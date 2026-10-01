@@ -9,8 +9,9 @@ advanced workflow for inspecting and executing several prepared plans. The
 ## Calculate a molecular file
 
 [`calculate_file.py`](calculate_file.py) is the shortest complete file-to-charges workflow. It reads any
-supported molecular format, calculates one explicitly selected method, and prints each source-ordered
-charge array. Its EEM invocation lets ChargeFW select an applicable bundled parameter set.
+supported molecular format, calculates one explicitly selected method, and prints charges in input atom
+order, labeled with zero-based molecule and conformer indices. `conformer=None` identifies charges from a
+geometry-independent method. Its EEM invocation lets ChargeFW select an applicable bundled parameter set.
 
 ```bash
 python docs/recipes/calculate_file.py ethanol.sdf \
