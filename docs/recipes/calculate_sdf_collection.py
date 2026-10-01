@@ -10,7 +10,10 @@ import chargefw
 
 
 def calculate_sdf_collection(input_path: str | Path, output_path: str | Path) -> None:
-    """Calculate one explicit collection-wide policy and write complete result JSON."""
+    """Calculate EEM charges for the collection and write complete result JSON.
+
+    One parameter set and execution mode are selected automatically for all records.
+    """
 
     molecules = chargefw.io.read(input_path, format="sdf")
     result = chargefw.calculate(

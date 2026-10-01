@@ -16,7 +16,10 @@ def calculate_file(
     method: str,
     parameter_set: str | None = None,
 ) -> chargefw.CalculationResult:
-    """Calculate full charges for every molecule in one supported input file."""
+    """Calculate charges for every molecule in one supported input file.
+
+    Execution mode is selected automatically, as is the parameter set when omitted.
+    """
 
     molecules = chargefw.io.read(input_path, format=input_format)
     return chargefw.calculate(
