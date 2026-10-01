@@ -4,7 +4,6 @@ Run with: python docs/recipes/analyze_rdkit_conformer_charges.py "CCO" --conform
 """
 
 import argparse
-from typing import Any
 
 import chargefw
 import numpy as np
@@ -13,7 +12,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 
-def prepare_demo_ensemble(smiles: str, conformer_count: int) -> Any:
+def prepare_demo_ensemble(smiles: str, conformer_count: int) -> Chem.Mol:
     """Generate an unoptimized, deterministic ETKDG ensemble for demonstration."""
 
     if conformer_count < 2:
@@ -33,7 +32,7 @@ def prepare_demo_ensemble(smiles: str, conformer_count: int) -> Any:
 
 
 def atom_charge_statistics(
-    molecule: Any, *, source_name: str = ""
+    molecule: Chem.Mol, *, source_name: str = ""
 ) -> tuple[list[tuple[str, float, float, float, float]], chargefw.CalculationResult]:
     """Calculate per-atom mean, standard deviation, minimum, and maximum charge."""
 
