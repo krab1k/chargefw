@@ -201,6 +201,9 @@ Public headers are provided under `chargefw/adapters`, with format-specific APIs
   application-specific execution metrics are optional. `PortableId` retains absent, string, or signed
   64-bit integer record IDs without implicit stringification.
 
+`RequestedCalculationProvenance` defaults to `execution_kind = "auto"`, matching automatic execution
+selection. Set it explicitly when assembling a result for a different requested execution mode.
+
 Readers return `ImportedMoleculeRecord`, which keeps the molecule together with source identity, import
 diagnostics, and optional `MoleculeImportMetadata`. Its `SourceAtomReference`,
 `SourceConformerReference`, `SourceStructuralLabels`, and `SourceConnectivity` values own their source

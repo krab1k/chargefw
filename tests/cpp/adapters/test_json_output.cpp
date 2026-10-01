@@ -141,6 +141,7 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
     const auto result = nlohmann::json::parse(output.str());
 
     CHECK(result.at("status") == "cancelled");
+    CHECK(result.at("calculation_provenance").at("requested").at("execution").at("kind") == "auto");
     CHECK(result.at("diagnostics").at(0).at("code") == "calculation_cancelled");
     const auto& record = result.at("results").at(0);
     CHECK(record.at("status") == "cancelled");
@@ -169,6 +170,7 @@ TEST_CASE("JSON output serializes caller atom IDs for a manual record", "[adapte
     const auto result = nlohmann::json::parse(output.str());
 
     CHECK(result.at("results").at(0).at("input").at("atom_ids") == nlohmann::json{"H", 9});
+    CHECK(result.at("calculation_provenance").at("requested").at("execution").at("kind") == "auto");
 }
 
 TEST_CASE("result assembly validates assignment dimensions targets and scope", "[adapters][json]") {

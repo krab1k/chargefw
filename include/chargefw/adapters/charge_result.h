@@ -37,7 +37,7 @@ struct RequestedCalculationProvenance {
     std::optional<std::size_t> cutoff_atom_threshold;
     std::optional<std::size_t> cover_atom_threshold;
     std::size_t max_threads = 0;
-    std::string execution_kind;
+    std::string execution_kind = "auto";
     std::optional<double> execution_radius;
     std::map<std::string, methods::MethodOptions> method_options;
 };
