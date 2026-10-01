@@ -143,7 +143,10 @@ This loop is not equivalent to `calculate(molecules)`: the latter requires one c
 one result containing source-aligned assignments for the complete collection. Choose the collection
 boundary deliberately when using automatic selection.
 
-Retrieve one assignment directly by its source indices:
+Retrieve one assignment directly by its zero-based source indices. For geometry-dependent methods,
+`conformer` is required even when the molecule has only one conformer; use `conformer=0` in that case.
+For geometry-independent methods, omit it: `result.assignment(molecule=0)` returns the molecule's
+single assignment.
 
 ```python
 second_conformer_charges = result.assignment(molecule=0, conformer=1).values
@@ -546,6 +549,8 @@ result = chargefw.calculate(
 chargefw_rdkit.attach_charges(rdkit_molecule, result)
 ```
 
-The RDKit molecule in this example must already contain suitable coordinates. For a multiconformer
-geometry-dependent result, pass `conformer=` explicitly and use separate molecule copies or property
-names if several charge vectors must be retained.
+The RDKit molecule in this example must already contain suitable coordinates. `attach_charges()` selects
+the input molecule with `molecule_index` (default `0`). Unlike `result.assignment()`, it automatically
+selects that molecule's sole assignment when `conformer` is omitted, including a single-conformer
+geometry-dependent result. When the selected molecule has multiple assignments, pass `conformer=`
+explicitly. Use separate molecule copies or property names if several charge vectors must be retained.
