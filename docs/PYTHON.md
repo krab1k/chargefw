@@ -255,6 +255,11 @@ Direct `calculate()` accepts keyword-only policy arguments:
 | `cover_threshold` | Automatic cutoff-to-cover threshold; default `80_000`, `None` is unlimited |
 | `threads` | Non-negative oneTBB thread limit; omitted or `0` delegates to oneTBB |
 
+Finite thresholds are non-negative integers with `cutoff_threshold <= cover_threshold`. To make both
+thresholds unlimited, pass `cutoff_threshold=None, cover_threshold=None`; setting only
+`cutoff_threshold=None` leaves the default finite cover threshold and raises `ValueError`. Setting only
+`cover_threshold=None` is valid and keeps the default cutoff threshold.
+
 The [project design](PROJECT.md#assessment-and-execution) defines the shared execution modes, automatic
 selection policy, conservation behavior, and approximation limits.
 
