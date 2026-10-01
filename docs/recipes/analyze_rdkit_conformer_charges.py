@@ -3,8 +3,6 @@
 Run with: python docs/recipes/analyze_rdkit_conformer_charges.py "CCO" --conformers 20
 """
 
-from __future__ import annotations
-
 import argparse
 from typing import Any
 

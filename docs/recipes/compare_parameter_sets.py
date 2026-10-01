@@ -3,8 +3,6 @@
 Run with: python docs/recipes/compare_parameter_sets.py molecule.sdf --format sdf --method eem
 """
 
-from __future__ import annotations
-
 import argparse
 from pathlib import Path
 

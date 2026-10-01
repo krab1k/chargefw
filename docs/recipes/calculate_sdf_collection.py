@@ -3,8 +3,6 @@
 Run with: python docs/recipes/calculate_sdf_collection.py input.sdf result.json
 """
 
-from __future__ import annotations
-
 import argparse
 from pathlib import Path
 

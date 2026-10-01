@@ -3,8 +3,6 @@
 Run with: python docs/recipes/charge_gemmi_document.py input.cif charged.cif --format mmcif
 """
 
-from __future__ import annotations
-
 import argparse
 from pathlib import Path
 

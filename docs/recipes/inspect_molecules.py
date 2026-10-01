@@ -3,8 +3,6 @@
 Run with: python docs/recipes/inspect_molecules.py input.sdf --format sdf
 """
 
-from __future__ import annotations
-
 import argparse
 from pathlib import Path
 
