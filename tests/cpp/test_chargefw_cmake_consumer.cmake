@@ -1,7 +1,7 @@
 set(CHARGEFW_INSTALL_PREFIX
     "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cmake_consumer_prefix")
-if(NOT DEFINED CHARGEFW_CXX_COMPILER)
-    message(FATAL_ERROR "Downstream consumer test requires the configured C++ compiler")
+if(NOT DEFINED CHARGEFW_PARENT_CACHE)
+    message(FATAL_ERROR "Downstream consumer test requires the parent settings path")
 endif()
 include("${CMAKE_CURRENT_LIST_DIR}/prepare_moved_install.cmake")
 
@@ -31,11 +31,10 @@ execute_process(
         COMMAND "${CMAKE_COMMAND}"
                 -S "${CMAKE_CURRENT_LIST_DIR}/consumer"
                 -B "${consumer_build_directory}"
-                -DCMAKE_BUILD_TYPE=Debug
-                 -DCMAKE_CXX_COMPILER=${CHARGEFW_CXX_COMPILER}
-                 -DCMAKE_PREFIX_PATH=${CHARGEFW_INSTALL_PREFIX}
-                 -Dnlohmann_json_DIR=${nlohmann_json_directory}
-                 ${gemmi_arguments}
+                -C "${CHARGEFW_PARENT_CACHE}"
+                -DCMAKE_PREFIX_PATH=${CHARGEFW_INSTALL_PREFIX}
+                -Dnlohmann_json_DIR=${nlohmann_json_directory}
+                ${gemmi_arguments}
         RESULT_VARIABLE configure_result
         ERROR_VARIABLE configure_error
 )

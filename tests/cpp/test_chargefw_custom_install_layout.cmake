@@ -1,6 +1,6 @@
 if(NOT DEFINED CHARGEFW_SOURCE_DIR OR NOT DEFINED CHARGEFW_BINARY_DIR OR
-   NOT DEFINED CHARGEFW_CXX_COMPILER)
-    message(FATAL_ERROR "Custom-layout test requires source, binary, and compiler paths")
+   NOT DEFINED CHARGEFW_PARENT_CACHE)
+    message(FATAL_ERROR "Custom-layout test requires source, binary, and parent settings paths")
 endif()
 
 set(test_root "${CMAKE_CURRENT_BINARY_DIR}/chargefw_custom_install_layout")
@@ -20,19 +20,18 @@ execute_process(
                 -S "${CHARGEFW_SOURCE_DIR}"
                 -B "${build_directory}"
                 -G Ninja
-                -DCMAKE_BUILD_TYPE=Debug
-                -DCMAKE_CXX_COMPILER=${CHARGEFW_CXX_COMPILER}
+                -C "${CHARGEFW_PARENT_CACHE}"
                 -DCMAKE_INSTALL_LIBDIR=lib/chargefw
                 -DCMAKE_INSTALL_DATADIR=resources
-                 -DCHARGEFW_BUILD_TESTS=OFF
-                 -DCHARGEFW_BUILD_CLI=ON
-                 -DCHARGEFW_USE_SYSTEM_DEPENDENCIES=${CHARGEFW_USE_SYSTEM_DEPENDENCIES}
-                 -DFETCHCONTENT_SOURCE_DIR_CLI11=${CHARGEFW_BINARY_DIR}/_deps/cli11-src
+                -DCHARGEFW_BUILD_TESTS=OFF
+                -DCHARGEFW_BUILD_CLI=ON
+                -DCHARGEFW_BUILD_PYTHON=OFF
+                -DFETCHCONTENT_SOURCE_DIR_CLI11=${CHARGEFW_BINARY_DIR}/_deps/cli11-src
                 -DFETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON=${CHARGEFW_BINARY_DIR}/_deps/nlohmann_json-src
                 -DFETCHCONTENT_SOURCE_DIR_EIGEN=${CHARGEFW_BINARY_DIR}/_deps/eigen-src
-                 -DFETCHCONTENT_SOURCE_DIR_NANOFLANN=${CHARGEFW_BINARY_DIR}/_deps/nanoflann-src
-                 -DFETCHCONTENT_SOURCE_DIR_ONETBB=${CHARGEFW_BINARY_DIR}/_deps/onetbb-src
-                 ${gemmi_source_argument}
+                -DFETCHCONTENT_SOURCE_DIR_NANOFLANN=${CHARGEFW_BINARY_DIR}/_deps/nanoflann-src
+                -DFETCHCONTENT_SOURCE_DIR_ONETBB=${CHARGEFW_BINARY_DIR}/_deps/onetbb-src
+                ${gemmi_source_argument}
         RESULT_VARIABLE configure_result
         ERROR_VARIABLE configure_error
 )

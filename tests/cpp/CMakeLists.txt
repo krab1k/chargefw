@@ -129,22 +129,55 @@ if(CHARGEFW_BUILD_CLI)
     )
 endif()
 
+# Keep nested builds aligned with the parent without copying its output paths or build targets.
+set(chargefw_install_test_variables
+        CMAKE_BUILD_TYPE
+        CMAKE_CXX_COMPILER
+        CMAKE_CXX_COMPILER_LAUNCHER
+        CHARGEFW_USE_SYSTEM_DEPENDENCIES
+        CHARGEFW_ENABLE_CCACHE
+        CHARGEFW_ENABLE_WARNINGS
+        CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS
+        CHARGEFW_ENABLE_ASAN
+        CHARGEFW_ENABLE_UBSAN
+        CHARGEFW_ENABLE_CLANG_TIDY
+)
+set(chargefw_install_test_configurations Debug Release RelWithDebInfo MinSizeRel
+        ${CMAKE_BUILD_TYPE})
+list(REMOVE_DUPLICATES chargefw_install_test_configurations)
+foreach(variable CMAKE_CXX_FLAGS CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS
+        CMAKE_MODULE_LINKER_FLAGS CMAKE_STATIC_LINKER_FLAGS CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+    list(APPEND chargefw_install_test_variables ${variable})
+    foreach(configuration IN LISTS chargefw_install_test_configurations)
+        string(TOUPPER "${configuration}" configuration_upper)
+        list(APPEND chargefw_install_test_variables "${variable}_${configuration_upper}")
+    endforeach()
+endforeach()
+set(chargefw_install_test_settings "")
+foreach(variable IN LISTS chargefw_install_test_variables)
+    if(DEFINED ${variable})
+        string(APPEND chargefw_install_test_settings
+                "set(${variable} [==[${${variable}}]==] CACHE STRING \"Parent build setting\" FORCE)\n")
+    endif()
+endforeach()
+set(chargefw_install_test_cache "${CMAKE_CURRENT_BINARY_DIR}/parent_build_settings.cmake")
+file(CONFIGURE OUTPUT "${chargefw_install_test_cache}"
+        CONTENT "${chargefw_install_test_settings}" @ONLY)
+
 add_test(
         NAME test_chargefw_cmake_consumer
         COMMAND ${CMAKE_COMMAND}
-                 -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
-                 -DCHARGEFW_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                 -DCHARGEFW_USE_SYSTEM_DEPENDENCIES=${CHARGEFW_USE_SYSTEM_DEPENDENCIES}
-                 -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cmake_consumer.cmake
+                -DCHARGEFW_BUILD_DIR=${PROJECT_BINARY_DIR}
+                -DCHARGEFW_PARENT_CACHE=${chargefw_install_test_cache}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cmake_consumer.cmake
 )
 add_test(
         NAME test_chargefw_custom_install_layout
         COMMAND ${CMAKE_COMMAND}
                 -DCHARGEFW_SOURCE_DIR=${PROJECT_SOURCE_DIR}
-                 -DCHARGEFW_BINARY_DIR=${PROJECT_BINARY_DIR}
-                 -DCHARGEFW_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                 -DCHARGEFW_USE_SYSTEM_DEPENDENCIES=${CHARGEFW_USE_SYSTEM_DEPENDENCIES}
-                 -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_custom_install_layout.cmake
+                -DCHARGEFW_BINARY_DIR=${PROJECT_BINARY_DIR}
+                -DCHARGEFW_PARENT_CACHE=${chargefw_install_test_cache}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_custom_install_layout.cmake
 )
 
 add_subdirectory(core)
