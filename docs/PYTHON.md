@@ -455,8 +455,10 @@ chargefw.io.write("charged.mol2", result, format="mol2")
 
 The language-independent [charge-output reference](FORMATS.md#charge-output) defines generated MOL2 and
 mmCIF content, result JSON, coordinate requirements, precision, and mapping behavior. Python output does
-not depend on the source format. An output error raises `ValueError` without changing the calculation
-result, so result JSON remains available from the same object.
+not depend on the source format. Invalid argument types raise `TypeError`; unsupported output formats
+and unmet format requirements raise `ValueError`. Filesystem write failures raise `OSError` subclasses,
+such as `FileNotFoundError` or `PermissionError`. Output errors leave the calculation result unchanged,
+so result JSON can still be serialized from the same object.
 
 Record and atom IDs are normalized to strings or signed 64-bit integers. NumPy integer scalars are accepted
 and converted to Python `int`; booleans, arbitrary hashable objects, and out-of-range integers are rejected.
