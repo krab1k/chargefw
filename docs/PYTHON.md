@@ -396,10 +396,15 @@ charge assignments. Assessment itself is not observed.
 - immutable `assignments`;
 - immutable `assignments_by_molecule`, aligned with the calculation input collection;
 - requested policy in `requested`;
-- detached executed provenance in `plan`;
+- executed method and settings in `plan`, an `ExecutedPlan | None`;
 - rejected alternatives and warnings;
 - optional `failure_message`; and
 - applicability and computation `timings`.
+
+`result.plan` records the method, parameter set, options, execution policy, and warnings for the executed
+plan. This `ExecutedPlan` is metadata, not a reusable `Plan`. To repeat an assessed calculation, retain a
+`Plan` from `assessment.plans` or `assessment.default_plan`, as shown in
+[Advanced assessment and plan reuse](#advanced-assessment-and-plan-reuse).
 
 Each `ChargeAssignment` contains a newly owned, read-only, C-contiguous `float64` vector together with its
 molecule index, optional conformer index, `SourceIdentity`, and atom IDs.
