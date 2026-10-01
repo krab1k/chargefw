@@ -3,7 +3,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, cast
+from typing import Any, cast, get_type_hints
 from unittest.mock import patch
 
 import chargefw
@@ -280,9 +280,20 @@ class RdkitAdapterTests(unittest.TestCase):
         error.name = "rdkit"
         with (
             patch.object(chargefw_rdkit, "import_module", side_effect=error),
-            self.assertRaisesRegex(ImportError, "independently installed RDKit"),
+            self.assertRaisesRegex(ImportError, r"pip install chargefw\[rdkit\]"),
         ):
             chargefw_rdkit.from_mol(object())
+
+    @unittest.skipIf(Chem is None, "RDKit is not installed")
+    def test_public_annotations_resolve_to_runtime_types(self) -> None:
+        assert Chem is not None
+        hints = get_type_hints(chargefw_rdkit.from_mol)
+        self.assertIs(hints["molecule"], Chem.Mol)
+        self.assertIs(hints["return"], chargefw.Molecule)
+        hints = get_type_hints(chargefw_rdkit.attach_charges)
+        self.assertIs(hints["molecule"], Chem.Mol)
+        self.assertIs(hints["result"], chargefw.CalculationResult)
+        self.assertIs(hints["return"], type(None))
 
     @unittest.skipIf(Chem is None, "RDKit is not installed")
     def test_real_rdkit_conversion_attachment_and_sd_serialization(self) -> None:

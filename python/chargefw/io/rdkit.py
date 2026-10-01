@@ -4,15 +4,20 @@ from __future__ import annotations
 
 from importlib import import_module
 from operator import index as as_index
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 import numpy as np
 
+from ..calculation import CalculationResult
+from ..charges import ChargeAssignment
 from ..core import Molecule
 
-if TYPE_CHECKING:
-    from ..calculation import CalculationResult
-    from ..charges import ChargeAssignment
+try:
+    from rdkit import Chem as _rdkit  # type: ignore[import-not-found]
+except ModuleNotFoundError as error:
+    if error.name not in ("rdkit", "rdkit.Chem"):
+        raise
+    _rdkit = None
 
 BondConversion: TypeAlias = Literal["none", "single"]
 
@@ -24,12 +29,13 @@ def _require_rdkit() -> Any:
         if error.name not in ("rdkit", "rdkit.Chem"):
             raise
         raise ImportError(
-            "chargefw.io.rdkit requires an independently installed RDKit package"
+            "chargefw.io.rdkit requires the optional RDKit Python integration; "
+            "install it with `pip install chargefw[rdkit]`"
         ) from error
 
 
 def from_mol(
-    molecule: Any, *, source_name: str = "", bond_conversion: BondConversion = "none"
+    molecule: _rdkit.Mol, *, source_name: str = "", bond_conversion: BondConversion = "none"
 ) -> Molecule:
     """Copy an RDKit molecule, optionally converting aromatic and dative bonds to single."""
 
@@ -127,7 +133,7 @@ def _assignment(
 
 
 def attach_charges(
-    molecule: Any,
+    molecule: _rdkit.Mol,
     result: CalculationResult,
     *,
     molecule_index: int = 0,
@@ -136,8 +142,6 @@ def attach_charges(
     overwrite: bool = False,
 ) -> None:
     """Attach one calculated charge assignment to RDKit atom properties in place."""
-
-    from ..calculation import CalculationResult
 
     chemistry = _require_rdkit()
     if not isinstance(molecule, chemistry.Mol):

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from .._chargefw import adapters as _native_adapters
+from ..calculation import CalculationResult
 from ..core import MoleculeCollection
 from . import (
     BondStrategy,
@@ -15,10 +16,12 @@ from . import (
     parse,
 )
 
-if TYPE_CHECKING:
+try:
     import gemmi as _gemmi
-
-    from ..calculation import CalculationResult
+except ModuleNotFoundError as error:
+    if error.name != "gemmi":
+        raise
+    _gemmi = None  # type: ignore[assignment]
 
 
 def _require_gemmi() -> Any:
@@ -82,8 +85,6 @@ def from_document(
 def to_document(result: CalculationResult) -> _gemmi.cif.Document:
     """Create a fresh Gemmi mmCIF document from a calculation result."""
 
-    from ..calculation import CalculationResult
-
     gemmi = _require_gemmi()
     if not isinstance(result, CalculationResult):
         raise TypeError("result must be a CalculationResult")
@@ -97,8 +98,6 @@ def attach_charges(
     overwrite: bool = False,
 ) -> None:
     """Attach charges to the unchanged Gemmi document used for the calculation input."""
-
-    from ..calculation import CalculationResult
 
     gemmi = _require_gemmi()
     if not isinstance(document, gemmi.cif.Document):

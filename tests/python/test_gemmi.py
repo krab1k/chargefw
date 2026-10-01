@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, cast
+from typing import Any, cast, get_type_hints
 from unittest.mock import patch
 
 import chargefw.io.gemmi
@@ -208,6 +208,36 @@ class NativeInputTests(unittest.TestCase):
 
 
 class GemmiAdapterTests(unittest.TestCase):
+    def test_public_annotations_resolve_to_runtime_types(self) -> None:
+        adapter = chargefw.io.gemmi
+        cases = (
+            (
+                adapter.from_structure,
+                {"structure": gemmi.Structure, "return": chargefw.MoleculeCollection},
+            ),
+            (
+                adapter.from_document,
+                {"document": gemmi.cif.Document, "return": chargefw.MoleculeCollection},
+            ),
+            (
+                adapter.to_document,
+                {"result": chargefw.CalculationResult, "return": gemmi.cif.Document},
+            ),
+            (
+                adapter.attach_charges,
+                {
+                    "document": gemmi.cif.Document,
+                    "result": chargefw.CalculationResult,
+                    "return": type(None),
+                },
+            ),
+        )
+        for function, expected in cases:
+            with self.subTest(function=function.__name__):
+                hints = get_type_hints(function)
+                for name, expected_type in expected.items():
+                    self.assertIs(hints[name], expected_type)
+
     def test_object_conversion_reports_missing_optional_dependency(self) -> None:
         missing_gemmi = ModuleNotFoundError("No module named 'gemmi'", name="gemmi")
         with (
