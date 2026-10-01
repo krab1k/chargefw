@@ -242,18 +242,33 @@ class Molecule:
 
     @property
     def atomic_numbers(self) -> np.ndarray:
+        """Read-only int64 array of shape (atom_count,) in molecule atom order."""
+
         return self._atomic_numbers
 
     @property
     def formal_charges(self) -> np.ndarray:
+        """Read-only int64 array of formal charges, shape (atom_count,)."""
+
         return self._formal_charges
 
     @property
     def bonds(self) -> np.ndarray:
+        """Read-only int64 array of shape (bond_count, 3).
+
+        Rows contain (first_atom, second_atom, order), with zero-based atom indices
+        and bond orders 1, 2, or 3.
+        """
+
         return self._bonds
 
     @property
     def coordinates(self) -> np.ndarray:
+        """Read-only float64 array in angstroms, shape (conformer_count, atom_count, 3).
+
+        The first dimension is zero when no conformers are present.
+        """
+
         return self._coordinates
 
     @property
