@@ -242,6 +242,19 @@ class RdkitAdapterTests(unittest.TestCase):
 
         self.assertFalse(any(atom.HasProp("ChargeFWPartialCharge") for atom in target.atoms))
 
+    def test_attachment_rejects_string_atom_ids(self) -> None:
+        target = FakeMol()
+        molecule = chargefw.Molecule([8, 1], atom_ids=["0", "1"])
+        result = chargefw.calculate(molecule, method="formal")
+
+        with (
+            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
+            self.assertRaisesRegex(ValueError, "requires integer atom IDs"),
+        ):
+            chargefw_rdkit.attach_charges(target, result)
+
+        self.assertFalse(any(atom.HasProp("ChargeFWPartialCharge") for atom in target.atoms))
+
     def test_attachment_accepts_index_compatible_atom_ids(self) -> None:
         target = FakeMol()
         target.atoms = (

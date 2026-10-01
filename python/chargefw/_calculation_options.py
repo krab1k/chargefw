@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from operator import index as as_index
 from types import MappingProxyType
-from typing import Any
+from typing import SupportsIndex
 
 import numpy as np
 
@@ -19,7 +19,7 @@ _MAX_NATIVE_THREADS = int(np.iinfo(np.int32).max)
 _EXECUTIONS = frozenset(("auto", "full", "cutoff", "cover"))
 
 
-def _normalized_nonnegative_integer(value: Any, name: str) -> int:
+def _normalized_nonnegative_integer(value: SupportsIndex, name: str) -> int:
     if isinstance(value, (bool, np.bool_)):
         raise TypeError(f"{name} must be an integer")
     try:

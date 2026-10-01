@@ -5,7 +5,7 @@ from __future__ import annotations
 import numbers
 from collections.abc import Iterable, Sequence
 from operator import index as as_index
-from typing import Any
+from typing import Any, SupportsIndex
 
 import numpy as np
 
@@ -104,7 +104,7 @@ def as_names(value: Sequence[str] | None, count: int, field: str) -> tuple[str, 
     return result
 
 
-def as_portable_id(value: Any, field: str) -> PortableId:
+def as_portable_id(value: str | SupportsIndex, field: str) -> PortableId:
     if isinstance(value, str):
         return value
     if isinstance(value, (bool, np.bool_)):

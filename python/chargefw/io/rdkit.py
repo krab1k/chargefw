@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from importlib import import_module
 from operator import index as as_index
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 import numpy as np
 
@@ -177,10 +177,10 @@ def attach_charges(
         raise ValueError(f"RDKit molecule already has property {property_list_name!r}")
     atom_indices: list[int] = []
     for atom_id in source.atom_ids:
-        if isinstance(atom_id, (bool, np.bool_)):
+        if isinstance(atom_id, (str, bool, np.bool_)):
             raise ValueError("RDKit attachment requires integer atom IDs")
         try:
-            atom_index = as_index(cast(Any, atom_id))
+            atom_index = as_index(atom_id)
         except TypeError as error:
             raise ValueError("RDKit attachment requires integer atom IDs") from error
         if atom_index < 0 or atom_index >= molecule.GetNumAtoms():

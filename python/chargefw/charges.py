@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from operator import index as as_index
-from typing import Any
+from typing import Any, SupportsIndex
 
 import numpy as np
 
@@ -31,7 +31,7 @@ def _charge_values(values: Any) -> np.ndarray:
     return immutable_array(normalized)
 
 
-def _nonnegative_index(value: Any, name: str) -> int:
+def _nonnegative_index(value: SupportsIndex, name: str) -> int:
     if isinstance(value, (bool, np.bool_)):
         raise TypeError(f"{name} must be an integer")
     try:
