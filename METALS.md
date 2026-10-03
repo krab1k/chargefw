@@ -11,9 +11,11 @@ scientific rationale, design direction, unresolved decisions, and checks needed 
 
 Repository revision inspected: `05bbd4139d80b2fd70ab70728047ced015aea09d`.
 
-Follow [AGENTS.md](AGENTS.md) before implementation. Track actionable implementation work in
-[TODO.md](TODO.md); once behavior exists, document it in the appropriate owning documents under
-`docs/`. Keep this research history separate from those implemented-behavior contracts. Build and
+Follow [AGENTS.md](AGENTS.md) before implementation. The user-requested [PLAN.md](PLAN.md) now owns this
+feature's staged implementation checklist and model responsibilities: Astra handles architecture,
+critical scientific/API decisions, and review; Luna handles coding within the agreed design.
+Keep broader unfinished work in [TODO.md](TODO.md); once behavior exists, document it in the appropriate
+owning documents under `docs/`. Keep this research history separate from those implemented-behavior contracts. Build and
 validation commands belong to [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Executive Summary

@@ -1,0 +1,271 @@
+# Fixed-Charge Embedding Implementation Plan
+
+Status: planning only; no implementation steps completed. Step 1 has a concrete proposal ready for
+review; no contract approval or public API change is implied.
+Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
+
+## Goal and Scope
+
+Calculate active-molecule charges in the electrostatic field of explicitly prescribed, fixed in-target
+ion charges, without requiring fitted parameters for those ions. Removing ions and appending their
+charges after an unperturbed calculation does not meet this goal.
+
+The initial deliverable covers EEM, SQE/SQE+q0/SQE+qp, and QEq, followed by supported cutoff/cover
+execution and matching native, Python, and CLI behavior. Start with isolated monatomic sources. Keep
+parameter-covered ligands active. ABEEM and EQeq are bounded follow-ons; EQeq+C and frozen molecular
+fragments are optional, not release blockers.
+
+No new fitted parameter sets, automatic protonation, covalent cutting/capping, fragment-charge generator,
+preset library, independent external charge clouds, or response variants for every method.
+
+This file is the user-requested implementation progress tracker. Keep research rationale in METALS.md
+and implemented contracts in the owning `docs/` files. Do not duplicate this checklist in TODO.md.
+
+## Working Rules
+
+- **GPT-6 Astra owns architecture, public API design, scientific/coupling decisions, and code review.**
+  Astra resolves critical choices before delegating a coding slice; an agent review does not substitute
+  for user approval where this plan requires it.
+- **GPT-6 Luna is used only for coding**, including focused tests and implementation-driven documentation
+  updates within Astra's agreed design. If coding exposes an architectural or scientific ambiguity,
+  Luna reports it to Astra rather than choosing a new contract or expanding scope.
+- For each slice, Astra defines the boundary, Luna implements and runs the relevant checks, and Astra
+  reviews correctness, scientific conventions, ownership/mapping, and regressions. Luna addresses review
+  findings; Astra verifies the fixes before reporting the slice ready for user review. Stop at that
+  boundary instead of starting the next step automatically.
+- Each numbered step is a review unit, normally one commit or small PR. Keep intermediate states usable:
+  unsupported combinations must reject explicitly rather than silently omit the field.
+- Mark a step complete only after its implementation, focused checks, and review are complete. Record
+  its commit and a short validation result below the step; do not accumulate detailed test logs here.
+- Follow [AGENTS.md](AGENTS.md) and the commands in [DEVELOPMENT.md](DEVELOPMENT.md). Reuse existing
+  solvers, assessment, mapping, and tests; do not build a source-provider framework for hypothetical use.
+- Embedding is a scientific approximation independent of `full`, `cutoff`, and `cover`. Default-off
+  calculations keep their existing behavior. Automatic selection must compare the same partition.
+
+## 1. Settle the Small Contract
+
+- [ ] User approval of the proposed public contract below is required before public API edits. This is
+  a review-ready proposal, not approved behavior or API.
+
+### Proposed C++ Shape
+
+Keep one request-level option, independent of method options and execution policy:
+
+```cpp
+struct FixedAtomCharge {
+    std::size_t molecule_index; // collection index, zero-based
+    std::size_t atom_index;     // atom index within the original molecule, zero-based
+    double charge;
+};
+
+struct FixedIonEmbedding {
+    std::vector<FixedAtomCharge> sources;
+    std::string charge_provenance;
+};
+
+struct AssessmentRequest {
+    // existing fields...
+    std::optional<FixedIonEmbedding> fixed_ion_embedding;
+};
+```
+
+Use the original supplied formal-charge sum as `Q_original`; for each affected target,
+`Q_active = Q_original - sum(fixed charges)`. Imported `core::Atom::formal_charge()` is an integer
+defaulting to zero with no presence flag, so a fixed Mg charge of +2 does not repair an imported formal
+charge of zero. Callers must intentionally prepare the target's formal charges when they need a
+nonzero original total. Do not infer charge from element/component ID, apply CCD rules, or change the
+target total based on prescribed source charges.
+
+### Contract Decisions Proposed For Approval
+
+| Decision | Proposed contract |
+| --- | --- |
+| Scope and selection | Sources belong to the same input molecule/target as active atoms; no cross-record or external point cloud. Each source is an explicitly indexed atom with a finite real prescribed charge. Initial support is isolated atoms only: reject duplicate indices, out-of-range indices, selected atoms with any graph bond, and a target with no active atoms. An empty source list normalizes to embedding disabled before capability checks and produces no embedding provenance. No element-based inference. |
+| Coordinates and identity | Use original target conformer coordinates for each calculation target. A source index identifies the same atom across conformers; evaluate its position in the corresponding conformer. Preserve original molecule, conformer, and atom order in returned results. |
+| Budget | Preserve the original supplied formal-charge sum as `Q_original`; calculate `Q_active = Q_original - sum(fixed charges)`. Fixed charges are included exactly once in reconstructed output. A prescribed Mg +2 does not repair an imported formal-charge total of zero; callers must prepare formal charges intentionally. SQE and SQE+q0 reject budgets incompatible with their existing component/seed constraints; never renormalize them. |
+| Validation | Reject nonfinite charges/totals/coordinates, coincident active/source sites, and invalid graph/source scope. Do not clamp distances. Do not define a universal near-contact radius or warning absent a method-specific scientific basis. |
+| Ownership | `AssessmentRequest` owns raw selectors. `AssessmentResult` owns its validated partition, source values, mappings, and geometry lifetime alongside its current molecule/prepared-feature owners. Its facade execution passes internally validated target-local context tied to the active prepared data and candidate. `CalculationInput` receives a read-only non-owning `std::span<const FixedPointSource>` (each source has `core::Position position` and `double charge`), valid throughout the method call. Coupling stays method-specific. |
+| Lower-level execution | Keep the existing public `CalculationRequest` unchanged and non-embedding initially: it consumes already prepared/classified data and cannot accept raw selectors or repartition. Only the owned assessment facade partitions, validates, executes with its tied internal context, and reassembles results at the facade boundary. |
+| Capability/resource | Add an explicit embedding capability to method requirements/assessment, independent of `full`/`cutoff`/`cover`; initially only the methods implemented in steps 2-4 advertise it, and only full execution until step 5. Unsupported candidates/modes are rejected, never silently downgraded. Resource assessment counts active solve size plus `N_active * N_source` source-field work using the existing complexity/resource mechanism; no new planner. |
+| Provenance | Add structured embedding provenance to effective/result output: source molecule/atom indices and exact prescribed charges, caller-supplied charge-provenance label, source kernel convention, per-target original and active totals. Keep it separate from execution mode/radius. The existing native `ExecutionResult` and adapter `ChargeCalculationResult` are the result boundaries; JSON serializes the structure, molecular charge arrays remain original-order. |
+| QEq | Proposed, not settled: analytic infinite-source-hardness limits from METALS.md 4.6, separately for each overlap option and without passing infinity to the finite-parameter kernel. Keep active-active behavior unchanged and identify this convention in provenance. This scientific convention requires explicit approval before step 4. |
+
+`CalculationInput` is a public method-level API, so adding its source span is a public API change, not
+an internal-only detail. It carries numerical inputs, not original-atom selection or result reassembly.
+Direct method calls must reject nonempty source input for unsupported methods and validate the source
+values/geometry they consume; they must not silently ignore an environment. Centralize these guards in
+the existing method execution boundary where possible. The facade additionally owns partition, budget,
+and mapping validation. Source buffers must be owned by the assessment or the individual execution,
+never by shared mutable scratch state, so concurrent plan reuse remains safe.
+
+No CCD charge assignment, fragment-charge generation, automatic chemistry policy, or core molecule
+change is part of this proposal. Python should expose the same zero-based `(molecule_index, atom_index,
+charge)` values and charge provenance through `assess`/`calculate` and plan snapshots; CLI `calculate`
+and `applicability` should accept a simple repeatable source selector with the same explicit indices,
+charge, and provenance. Both use original supplied formal-charge sums. Exact Python/CLI spelling remains
+for their implementation steps and is not a step-1 selector-syntax approval; neither may parse chemistry
+or create its own partition policy.
+
+Review outcome: record approval or requested changes here before step 2. Until then, no public API edits
+are authorized by this plan. No tests are required for this design-only step; check document/API
+consistency. For SQE and SQE+q0, incompatible active budgets reject rather than changing seed policy.
+
+## 2. Deliver EEM Full Execution End to End
+
+- [ ] Implement one complete native path from assessment through reconstructed output.
+
+Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,
+`src/calculation/{assessment,calculation,full_execution,target_execution}.*`,
+`include/chargefw/methods/{calculation_input,method_requirements}.h`, and
+`src/methods/builtin/eem.cpp`.
+
+- Prepare the partition once before candidate checks. Own active molecules and their features with safe
+  lifetimes; retain disconnected active components together and preserve original conformer identity.
+- Declare embedding capability explicitly. Initially enable EEM/full only; automatic planning must not
+  choose an unsupported method or reduced mode, or override resource policy to manufacture a plan.
+- Assess prerequisites and classify active atoms/bonds only with the unchanged matcher. Translate active
+  diagnostic indices back to original atom/bond indices.
+- Pass the active budget to the solve and subtract `sum(kappa * fixed_charge / distance)` from its RHS,
+  using the selected EEM set's `kappa`. Do not read ion atom parameters.
+- Reassemble original-order charges once at the common result boundary. Fixed values are copied exactly;
+  reusable plans, progress, cancellation, and result identity retain their existing guarantees.
+- Add structured embedding provenance and account for active solve size plus source-field work in
+  execution resource assessment. A simple cost term is enough; no resource-planner rewrite.
+- Document the supported native/full slice in `docs/PROJECT.md` and `docs/NATIVE.md`.
+
+Focused check: one small active pair plus a missing-parameter ion, compared with an independently
+assembled constrained EEM system. Demonstrate nonzero active response, exact fixed charge, conserved
+total, and reusable original-order output. Add a compact invalid-request table to existing planning
+tests for crossing bonds, invalid selections/geometry, unsupported modes, and missing active coverage.
+
+## 3. Add the SQE Family
+
+- [ ] Enable full embedding for SQE, SQE+q0, and SQE+qp through the shared solver.
+
+Primary files: `src/methods/builtin/{sqe,sqeq0,sqeqp}.cpp` and method prerequisite checks.
+
+- Subtract the external potential before incidence projection. Preserve the existing `-H*s + D*s`
+  seed correction and all active-active/bond-hardness terms.
+- Couple each point source using the active Gaussian width:
+  `erf(r / (sqrt(2) * abs(width))) / r`, with `1/r` for zero width. No extra Coulomb factor.
+- Preserve ordinary SQE component neutrality and SQE+q0 formal seed totals. Reject incompatible budgets.
+- Normalize SQE+qp fitted seeds once over the whole active target to `Q_active`; fixed sources neither
+  require fitted `q0` nor participate in normalization. Do not switch to per-component normalization.
+- Update method capability and the shared/native documentation for this supported slice.
+
+Focused check: extend existing `test_sqe`/`test_sqeqp` fixtures with a prescribed source and a small
+explicit RHS reference, including charged SQE+qp normalization and SQE+q0 budget rejection. Parameterize
+the kernel edge checks rather than creating a separate test suite for each family member.
+
+## 4. Add QEq With the Approved Source Kernel
+
+- [ ] Enable QEq/full after the step 1 coupling decision is recorded.
+
+Primary file: `src/methods/builtin/qeq.cpp`.
+
+Keep active-active overlap behavior unchanged. Implement only the approved source coupling, subtract
+its potential, and use the active budget. If adopting the proposed limits, preserve Nishimoto-Mataga-
+Weiss's `17.28/r`, Ohno-Klopman's active-hardness softening, and `14.4/r` for the other four options.
+Validate the active-hardness domain required by the limit and identify the convention in provenance.
+
+Focused check: one table-driven kernel/reference-solve test across the supported overlap options,
+reusing the EEM fixture and budget/mapping infrastructure. Update shared/native method documentation.
+
+## 5. Propagate Embedding Through Cutoff and Cover
+
+- [ ] Enable reduced embedding only where its method-specific path is complete.
+
+Primary files: `src/calculation/{reduced_execution,cutoff_execution,cover_execution}.cpp`.
+
+- Build references and conserved groups on the active graph with the active target budget, not its
+  unadjusted formal total. Preserve the one-time SQE+qp normalization from step 3.
+- Supply the complete fixed-source environment to every fragment, including sources beyond its radius.
+  Start by reusing direct source evaluation; precompute/project potentials only if necessary, without
+  introducing a cache framework or changing coupling conventions.
+- Apply conservation corrections to active results before source reinsertion. Never include fixed
+  sources as fragment variables, correct their values, or double-count their contribution.
+- Preserve source-index diagnostics and finite-radius cover's existing order-dependent pivot behavior.
+- Update execution capability/resource handling and `docs/PROJECT.md` for supported combinations.
+
+Focused check: extend `test_reduced_execution` with a distant source outside the fragment radius and
+whole-active-radius agreement with full execution. Exercise cutoff and cover with EEM and SQE+qp to
+cover ordinary budgets and normalized component references; reuse method-level kernel tests.
+
+## 6. Expose the Policy in Python
+
+- [ ] Support the same request and provenance through assessment, direct calculation, and reusable plans.
+
+Primary files: `python/chargefw/{calculation,_calculation_options}.py`, `python/src/calculation.cpp`,
+associated value types, exports, and extension stubs.
+
+Translate the approved molecule/atom-index request into native data. Keep immutable request snapshots,
+plan/collection checks, conformer handling, and adapter source mappings. Python must not partition the
+graph or implement its own charge/capability policy. Update `docs/PYTHON.md`.
+
+Focused check: one public workflow exercising assessment, direct calculation, and plan reuse over a
+multi-conformer input, with matching native results and provenance. Run existing calculation/output
+and typing checks rather than duplicating numerical tests in Python.
+
+## 7. Expose the Policy in the CLI and Serialized Results
+
+- [ ] Add explicit source input to both `calculate` and `applicability`, with matching output provenance.
+
+Primary files: `apps/chargefw/{input,output}.cpp`, shared result serializers and their schemas.
+
+Use unambiguous molecule/atom scope and index base for the selector syntax settled during CLI
+implementation. Parsing translates into the same native assessment request; do not add a component-
+selection language or infer Mg2+ from PDB/mmCIF element names. Retain normal charge arrays and original
+atom mappings in every output path. Update `docs/CLI.md`, `docs/FORMATS.md`, and one concise executable
+usage example.
+
+Focused check: one installed-CLI round trip for applicability and calculation, plus malformed-input
+coverage in existing argument tests. Check structured provenance against the output schema. Use CTest
+installation fixtures rather than parameter-dependent commands from the build tree.
+
+## 8. Review and Qualify the Initial Deliverable
+
+- [ ] Complete integration review and record validation evidence and scientific limits.
+
+Reuse the small fixtures above. Establish a rebuilt baseline before implementation; use focused
+`gcc-debug` checks during each step and the full debug suite after coherent changes. Follow repository
+cadence for Clang header checks, release numerical checks, sequential ASan/UBSan mapping/lifetime
+checks, and clang-tidy. Run the full required matrix at the final integration milestone, not after
+every small edit. Format changed C++ files with clang-format throughout.
+
+Run one reproducible small ion/ligand distance scan with explicitly prepared chemistry, comparing
+embedded and ion-omitted results at the same active geometry and budget. If suitable QM reference data
+are available, separate prescribed-field response from accuracy for a real coordinated ion. Do not
+make a new QM dependency or large protein benchmark project a requirement for this software change;
+without reference data, state that quantitative scientific accuracy remains unvalidated.
+
+Review the entire flow for default-off compatibility, active-only coverage, fixed values, charge
+accounting, target isolation, and provenance. Update owning docs only with implemented behavior, and
+leave unfinished scientific qualification in TODO.md. Record final commits and validation summary here.
+
+## Optional Follow-ons
+
+These are separately reviewed extensions, not prerequisites for completing steps 1-8.
+
+- [ ] **ABEEM:** drive both atomic and covalent-radius-weighted bond-center sites with the set's `k/r`;
+  validate source distances to both site types and retain half-bond output redistribution. One small
+  atom/bond-site reference solve is sufficient to exercise the new coupling.
+- [ ] **EQeq:** approve finite elemental screening versus the parameter-free `8.64/r` limit before
+  implementation; reuse the existing solve and embedding checks.
+- [ ] **Explicit molecular sources:** allow complete mapped per-atom vectors for wholly frozen graph
+  components, with declared total/provenance and crossing-bond rejection. Internal frozen bonds do not
+  enter the active solve. Add one molecular-vector example; do not add charge generation or presets.
+- [ ] **EQeq+C, only if requested:** approve a correction-boundary variant first. Active-active-only
+  correction is the simplest candidate; overwriting final fixed values after ordinary correction is
+  not charge-conserving and is not acceptable.
+
+## Progress Notes
+
+- 2026-10-03: Read the research handoff and inspected integration points. Created `fragments` and
+  committed METALS.md as `4324b11`. Implementation and contract approval remain pending.
+- 2026-10-03: Step 1 proposal prepared by Luna and reviewed by Astra; addressed review fixes in
+  `PLAN.md`. User contract approval remains pending; no implementation step is complete.
+- 2026-10-03: User clarified model responsibilities: Luna only for coding; Astra for architecture,
+  critical decisions, and review. Astra rechecked the current proposal, clarified the public method-input
+  boundary and source lifetime/validation requirements, and retained the existing budget/partition
+  design. The earlier Luna design pass is historical, not the workflow for subsequent steps. User
+  contract approval remains pending.
