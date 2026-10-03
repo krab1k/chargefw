@@ -315,6 +315,13 @@ auto AssessmentResult::default_plan() const noexcept -> const ExecutionPlan* {
 }
 
 auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResult {
+    if (request.fixed_charge_embedding.has_value()) {
+        if (!request.fixed_charge_embedding->sources.empty()) {
+            throw std::invalid_argument{
+                "fixed charge embedding sources are not supported by assessment planning"};
+        }
+        request.fixed_charge_embedding.reset();
+    }
     const auto started = std::chrono::steady_clock::now();
     validate_assessment_method_options(request);
     validate_unique_parameter_set_ids(request);

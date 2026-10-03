@@ -116,8 +116,13 @@ coordinates are missing or non-finite.
 - an optional method ID and its parameter-set ID;
 - method-scoped `methods::MethodOptions` overrides;
 - strict or permissive parameter classification options;
-- an `ExecutionSelection`; and
-- a `ResourcePolicy` containing automatic execution thresholds.
+- an `ExecutionSelection`;
+- a `ResourcePolicy` containing automatic execution thresholds; and
+- an optional `FixedChargeEmbedding`, whose sources pair a fixed charge with zero-based molecule and
+  atom indices in the supplied collection, and whose `charge_provenance` labels those charges.
+
+For ordinary calculations, leave `fixed_charge_embedding` absent or provide an empty `sources` vector.
+Nonempty sources currently cause `assess()` to throw `std::invalid_argument` before planning begins.
 
 `calculation::assess()` returns an `AssessmentResult` with read-only access to its owned source
 `molecules()`, priority-ordered `plans()`, structured `rejections()`, `default_plan()`, and applicability

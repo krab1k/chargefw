@@ -1,7 +1,7 @@
 # Fixed-Charge Embedding Implementation Plan
 
-Status: planning only; no implementation steps completed. Step 1 has a concrete proposal ready for
-review; no contract approval or public API change is implied.
+Status: EEM implementation authorized, beginning with smaller independently reviewable slices.
+The request API preparation slice (2a) is implemented and reviewed; no embedding solver is enabled yet.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -33,7 +33,8 @@ and implemented contracts in the owning `docs/` files. Do not duplicate this che
   reviews correctness, scientific conventions, ownership/mapping, and regressions. Luna addresses review
   findings; Astra verifies the fixes before reporting the slice ready for user review. Stop at that
   boundary instead of starting the next step automatically.
-- Each numbered step is a review unit, normally one commit or small PR. Keep intermediate states usable:
+- Split numbered steps into smaller review units, normally one commit each. Stop after each slice for
+  user review, including API preparation before end-to-end execution. Keep intermediate states usable:
   unsupported combinations must reject explicitly rather than silently omit the field.
 - Mark a step complete only after its implementation, focused checks, and review are complete. Record
   its commit and a short validation result below the step; do not accumulate detailed test logs here.
@@ -44,8 +45,8 @@ and implemented contracts in the owning `docs/` files. Do not duplicate this che
 
 ## 1. Settle the Small Contract
 
-- [ ] User approval of the proposed public contract below is required before public API edits. This is
-  a review-ready proposal, not approved behavior or API.
+- [x] User authorized starting with EEM and explicitly requested smaller review boundaries such as API
+  preparation. The EEM request API slice below is authorized; QEq coupling remains pending approval.
 
 ### Proposed C++ Shape
 
@@ -58,14 +59,14 @@ struct FixedAtomCharge {
     double charge;
 };
 
-struct FixedIonEmbedding {
+struct FixedChargeEmbedding {
     std::vector<FixedAtomCharge> sources;
     std::string charge_provenance;
 };
 
 struct AssessmentRequest {
     // existing fields...
-    std::optional<FixedIonEmbedding> fixed_ion_embedding;
+    std::optional<FixedChargeEmbedding> fixed_charge_embedding;
 };
 ```
 
@@ -106,13 +107,28 @@ charge, and provenance. Both use original supplied formal-charge sums. Exact Pyt
 for their implementation steps and is not a step-1 selector-syntax approval; neither may parse chemistry
 or create its own partition policy.
 
-Review outcome: record approval or requested changes here before step 2. Until then, no public API edits
-are authorized by this plan. No tests are required for this design-only step; check document/API
-consistency. For SQE and SQE+q0, incompatible active budgets reject rather than changing seed policy.
+Review outcome: user authorized starting EEM implementation, with API preparation as a smaller review
+boundary. Implement the contract incrementally without enabling incomplete execution paths. QEq coupling
+still requires explicit approval before step 4. For SQE and SQE+q0, incompatible active budgets reject
+rather than changing seed policy.
 
 ## 2. Deliver EEM Full Execution End to End
 
 - [ ] Implement one complete native path from assessment through reconstructed output.
+
+### Review Slices
+
+- [x] **2a: Native request API preparation.** Add `FixedAtomCharge`, `FixedChargeEmbedding`, and the optional
+  `AssessmentRequest::fixed_charge_embedding` field. Empty source lists normalize to disabled; reject every
+  nonempty embedding request explicitly before preparation/classification until execution is supported.
+  Test both assessment ownership overloads, default/empty compatibility, and explicit/automatic
+  selection rejection. Document this safe API boundary. Do not add numerical method input, partitioning,
+  capabilities, provenance, bindings, or solver changes in this slice.
+- Slice 2a validation: GCC debug focused planning test and full suite (56/56), Clang debug focused
+  planning test, affected clang-tidy target, and whitespace checks passed. Luna implemented; Astra
+  reviewed and verified the strengthened rejection tests and full GCC suite. Commit: pending user review.
+- [ ] **2b and later:** define the next small boundary after review of 2a, working toward the end-to-end
+  requirements below. Keep each intermediate state fail-closed.
 
 Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,
 `src/calculation/{assessment,calculation,full_execution,target_execution}.*`,
@@ -269,3 +285,13 @@ These are separately reviewed extensions, not prerequisites for completing steps
   boundary and source lifetime/validation requirements, and retained the existing budget/partition
   design. The earlier Luna design pass is historical, not the workflow for subsequent steps. User
   contract approval remains pending.
+- 2026-10-03: User authorized starting with EEM but requested smaller reviewable boundaries, such as API
+  preparation. Astra scoped slice 2a to the native request types and fail-closed assessment handling;
+  subsequent API and execution work remains outside this slice. QEq coupling approval remains pending.
+- 2026-10-03: Slice 2a implemented and reviewed. Absent/empty embedding preserves ordinary assessment;
+  nonempty sources throw before planning. Stopped for user review without starting partitioning or
+  numerical execution. Step 2 remains incomplete.
+- 2026-10-03: Generalized the API name to `FixedChargeEmbedding` / `fixed_charge_embedding` at user
+  request. Indexed atomic sources can also represent future frozen components; initial isolated-source
+  scope and current fail-closed behavior are unchanged. Fragment validation and component-total metadata
+  remain optional future work. GCC debug full suite (56/56) and focused Clang planning test passed.

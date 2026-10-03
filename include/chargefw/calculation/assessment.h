@@ -64,6 +64,17 @@ struct Rejection {
     std::vector<RejectionIssue> issues;
 };
 
+struct FixedAtomCharge {
+    std::size_t molecule_index; // Zero-based in the supplied molecule collection.
+    std::size_t atom_index;     // Zero-based in the supplied molecule's atom collection.
+    double charge;
+};
+
+struct FixedChargeEmbedding {
+    std::vector<FixedAtomCharge> sources;
+    std::string charge_provenance;
+};
+
 // Owns application assessment inputs so adapters and bindings do not need to manage native method
 // pointers, parameter spans, or prepared-feature lifetimes.
 struct AssessmentRequest {
@@ -78,6 +89,7 @@ struct AssessmentRequest {
     parameters::ClassificationOptions classification_options{};
     ExecutionSelection execution_selection{};
     ResourcePolicy resource_policy{};
+    std::optional<FixedChargeEmbedding> fixed_charge_embedding{};
 };
 
 // Owns prepared application inputs and reusable concrete execution plans.
