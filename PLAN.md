@@ -1,8 +1,8 @@
 # Fixed-Charge Embedding Implementation Plan
 
 Status: EEM implementation authorized, beginning with smaller independently reviewable slices.
-The request API and validation slices (2a-2c) are committed. Private owned partition construction (2d)
-is implemented and reviewed; no embedding solver is enabled yet.
+The request, validation, and private partition slices (2a-2d) are committed. Method-level source input
+and capability declarations (2e) are revised and reviewed; no embedding solver is enabled yet.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -94,11 +94,15 @@ target total based on prescribed source charges.
 
 `CalculationInput` is a public method-level API, so adding its source span is a public API change, not
 an internal-only detail. It carries numerical inputs, not original-atom selection or result reassembly.
-Direct method calls must reject nonempty source input for unsupported methods and validate the source
-values/geometry they consume; they must not silently ignore an environment. Centralize these guards in
-the existing method execution boundary where possible. The facade additionally owns partition, budget,
-and mapping validation. Source buffers must be owned by the assessment or the individual execution,
-never by shared mutable scratch state, so concurrent plan reuse remains safe.
+Callers invoking `Method::calculate()` directly must satisfy the method's declared requirements,
+including embedding capability; this is a low-level API precondition, not a guarded dispatch interface.
+The facade rejects unsupported embedding candidates before classification/planning and checks the
+selected method/mode in its existing execution validation when source plumbing is connected. It must
+never discard the environment to obtain a usable candidate. Supporting methods validate numerical
+source data they consume; unrelated algorithms do not receive embedding guards. No new dispatch wrapper
+is needed. The facade also owns partition, budget, and mapping validation. Source buffers must be owned
+by the assessment or the individual execution, never shared mutable scratch state, so concurrent plan
+reuse remains safe.
 
 No CCD charge assignment, fragment-charge generation, automatic chemistry policy, or core molecule
 change is part of this proposal. Python should expose the same zero-based `(molecule_index, atom_index,
@@ -159,8 +163,23 @@ rather than changing seed policy.
 - Slice 2d validation: GCC debug full suite (57/57); focused Clang debug and GCC/Clang release tests;
   ASan/UBSan calculation suites (9/9 each) and final focused reruns (2/2 each); affected clang-tidy
   targets and whitespace checks passed. Luna implemented; Astra reviewed ownership and mappings and
-  verified final regressions. Commit: pending user review.
-- [ ] **2e and later:** define the next small boundary after review of 2d, working toward the end-to-end
+  verified final regressions. Commit: `219628d`.
+- [x] **2e: Method input and capability declarations.** Add `methods::FixedPointSource` (position and
+  prescribed charge) and a trailing default-empty borrowed source span to `CalculationInput`, preserving
+  its existing temporary-owner protections. Add a default-false scientific capability on
+  `MethodRequirements`, separate from execution resources. Keep all built-ins unsupported, including EEM.
+  Leave all algorithm implementations unchanged. Direct callers must check declared capability before
+  supplying nonempty sources. Test borrowed source lifetime/identity semantics and unsupported capability
+  declarations across the registry, not rejection of direct calls that violate preconditions. The
+  current facade guard continues rejecting nonempty requests. Candidate/mode checks belong in existing
+  assessment and execution validation when embedding is connected, not in new wrappers. No solver,
+  assessment ownership, facade source plumbing, or reduced-execution support is enabled here.
+- Slice 2e revision: removed per-algorithm guards and their helper at user request; retained source
+  input, capability flag, and lifetime/declaration tests. All built-in implementations remain unchanged.
+  GCC debug full suite (57/57), focused GCC/Clang debug tests (3/3 each), sequential ASan/UBSan focused
+  tests (2/2 each), affected clang-tidy targets, and whitespace checks passed. Luna implemented; Astra
+  reviewed the reduced scope and verified final regressions. Commit: pending user review.
+- [ ] **2f and later:** define the next small boundary after review of 2e, working toward the end-to-end
   requirements below. Keep each intermediate state fail-closed.
 
 Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,
@@ -172,6 +191,9 @@ Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,
   lifetimes; retain disconnected active components together and preserve original conformer identity.
 - Declare embedding capability explicitly. Initially enable EEM/full only; automatic planning must not
   choose an unsupported method or reduced mode, or override resource policy to manufacture a plan.
+- Enforce embedding compatibility in candidate assessment before classification and in existing
+  execution validation before dispatch. Direct method callers are responsible for declared preconditions;
+  do not add guards to algorithms that do not implement embedding or introduce a dispatch wrapper.
 - Assess prerequisites and classify active atoms/bonds only with the unchanged matcher. Translate active
   diagnostic indices back to original atom/bond indices.
 - Pass the active budget to the solve and subtract `sum(kappa * fixed_charge / distance)` from its RHS,

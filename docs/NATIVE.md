@@ -108,6 +108,15 @@ support a smaller subset. Constructors validate atomic numbers, bond endpoints a
 cardinality. Non-finite coordinates are retained, but methods that require geometry are inapplicable when
 coordinates are missing or non-finite.
 
+Lower-level `methods::CalculationInput` accepts a trailing `std::span<const methods::FixedPointSource>`;
+each source contains a Cartesian `core::Position` and charge. The input borrows the span, so keep its
+elements alive for the input's use. These positional sources are distinct from the original-collection
+indices in `calculation::FixedChargeEmbedding`; the assessment facade does not translate between them.
+`MethodRequirements::supports_fixed_charge_embedding` reports numerical support. Direct callers of
+`Method::calculate()` must satisfy the method's requirements, including this capability; methods that do
+not support fixed-charge embedding require an empty span. The flag describes a caller precondition;
+it does not intercept virtual calls.
+
 ## Assessment
 
 `calculation::AssessmentRequest` contains:

@@ -12,10 +12,13 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
+#include <array>
 #include <cstddef>
 #include <snitch/snitch.hpp>
+#include <span>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -24,6 +27,19 @@ namespace methods = chargefw::methods;
 namespace parameters = chargefw::parameters;
 
 namespace {
+
+static_assert(std::is_constructible_v<
+              methods::CalculationInput, const features::PreparedMolecule&,
+              const methods::MethodOptions&, double, const features::ConformerFeatures*,
+              const parameters::ParameterView*, std::span<const methods::FixedPointSource>>);
+static_assert(!std::is_constructible_v<
+              methods::CalculationInput, features::PreparedMolecule&&,
+              const methods::MethodOptions&, double, const features::ConformerFeatures*,
+              const parameters::ParameterView*, std::span<const methods::FixedPointSource>>);
+static_assert(!std::is_constructible_v<
+              methods::CalculationInput, const features::PreparedMolecule&,
+              methods::MethodOptions&&, double, const features::ConformerFeatures*,
+              const parameters::ParameterView*, std::span<const methods::FixedPointSource>>);
 
 auto make_water_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
@@ -55,6 +71,7 @@ TEST_CASE("calculation input exposes molecule, topology, geometry, and parameter
     CHECK(&basic_input.topology() == &prepared_water.topology());
     CHECK(&basic_input.method_options() == &options);
     CHECK(basic_input.target_charge() == -1.5);
+    CHECK(basic_input.fixed_sources().empty());
 
     CHECK_FALSE(basic_input.has_geometry());
     CHECK(basic_input.geometry_if_available() == nullptr);
@@ -67,6 +84,24 @@ TEST_CASE("calculation input exposes molecule, topology, geometry, and parameter
     CHECK_THROWS_AS(basic_input.parameters(), std::logic_error);
 
     const features::ConformerFeatures geometry{water};
+
+    const methods::CalculationInput empty_sources_input{
+        prepared_water, options, 0.0,
+        nullptr,        nullptr, std::span<const methods::FixedPointSource>{}};
+    CHECK(empty_sources_input.fixed_sources().empty());
+
+    auto fixed_sources = std::array{methods::FixedPointSource{{1.0, 2.0, 3.0}, 0.25},
+                                    methods::FixedPointSource{{4.0, 5.0, 6.0}, -0.5}};
+    const methods::CalculationInput borrowed_sources_input{
+        prepared_water, options, 0.0, nullptr, nullptr, std::span{fixed_sources}};
+    CHECK(borrowed_sources_input.fixed_sources().data() == fixed_sources.data());
+    CHECK(borrowed_sources_input.fixed_sources().size() == 2);
+    CHECK(borrowed_sources_input.fixed_sources()[0].position.x == 1.0);
+    CHECK(borrowed_sources_input.fixed_sources()[0].charge == 0.25);
+    CHECK(borrowed_sources_input.fixed_sources()[1].position.z == 6.0);
+    CHECK(borrowed_sources_input.fixed_sources()[1].charge == -0.5);
+    fixed_sources[0].charge = 0.75;
+    CHECK(borrowed_sources_input.fixed_sources()[0].charge == 0.75);
 
     const methods::CalculationInput geometry_input{prepared_water, options, 0.0, &geometry};
 
