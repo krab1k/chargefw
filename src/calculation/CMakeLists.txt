@@ -4,10 +4,12 @@ target_sources(chargefw_core
         calculation.cpp
         cover_execution.cpp
         cutoff_execution.cpp
+        fixed_charge_partition.cpp
         full_execution.cpp
         execution_policy.cpp
         reduced_execution.cpp
         cover_execution.h
+        fixed_charge_partition.h
         full_execution.h
         observer_notifications.h
         parallel_for.h

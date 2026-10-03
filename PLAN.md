@@ -1,8 +1,8 @@
 # Fixed-Charge Embedding Implementation Plan
 
 Status: EEM implementation authorized, beginning with smaller independently reviewable slices.
-The request API and source-selection slices (2a-2b) are committed. Geometry and charge-budget validation
-(2c) is implemented and reviewed; no embedding solver is enabled yet.
+The request API and validation slices (2a-2c) are committed. Private owned partition construction (2d)
+is implemented and reviewed; no embedding solver is enabled yet.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -147,8 +147,20 @@ rather than changing seed policy.
 - Slice 2c validation: GCC debug full suite (56/56); focused Clang debug, GCC/Clang release, ASan, and
   UBSan planning tests; affected clang-tidy target; formatting and whitespace checks passed. Luna
   implemented; Astra reviewed and verified final GCC regressions, including conformer isolation.
-  Commit: pending user review.
-- [ ] **2d and later:** define the next small boundary after review of 2c, working toward the end-to-end
+  Commit: `6050b20`.
+- [x] **2d: Private owned partition construction.** Add a private factory that owns an active collection
+  with original molecule/conformer ordering, active-to-original atom/bond maps, exact fixed-source
+  charges and per-conformer positions, original/active budgets, and the charge-provenance label.
+  Preserve atom metadata and formal charges; retain disconnected active components together. Copy
+  unaffected molecules with identity mappings. Share existing validation with assessment, without
+  constructing a discarded partition on its still-unsupported path. Test ownership after input
+  destruction/moves and ordering/bond/geometry/budget mappings through the private interface. Do not
+  attach the partition to assessment owners or enable classification, reconstruction, or solvers yet.
+- Slice 2d validation: GCC debug full suite (57/57); focused Clang debug and GCC/Clang release tests;
+  ASan/UBSan calculation suites (9/9 each) and final focused reruns (2/2 each); affected clang-tidy
+  targets and whitespace checks passed. Luna implemented; Astra reviewed ownership and mappings and
+  verified final regressions. Commit: pending user review.
+- [ ] **2e and later:** define the next small boundary after review of 2d, working toward the end-to-end
   requirements below. Keep each intermediate state fail-closed.
 
 Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,
