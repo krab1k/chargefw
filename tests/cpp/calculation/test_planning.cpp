@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <snitch/snitch.hpp>
 
+#include <limits>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -32,6 +33,13 @@ auto make_isolated_ion_pair() -> core::Molecule {
         {},
         {core::Conformer{{core::Position{0.0, 0.0, 0.0}, core::Position{3.0, 0.0, 0.0}}}},
         "isolated-ion-pair"};
+}
+
+auto make_bonded_pair() -> core::Molecule {
+    return core::Molecule{std::vector{core::Atom{1}, core::Atom{6}},
+                          std::vector{core::Bond{0, 1}},
+                          {},
+                          "bonded-pair"};
 }
 
 auto make_eem_parameters() -> chargefw::parameters::ParameterSet {
@@ -119,6 +127,61 @@ TEST_CASE("fixed charge embedding sources fail closed before planning", "[calcul
     CHECK(explicit_full.fixed_charge_embedding->sources[0].charge == 2.0);
     check_rejected(make_request(false));
     check_rejected(make_request(true));
+}
+
+TEST_CASE("fixed charge embedding source selectors are validated", "[calculation][planning]") {
+    const auto check_invalid = [](std::vector<core::Molecule> molecules,
+                                  std::vector<calculation::FixedAtomCharge> sources,
+                                  const std::string_view diagnostic) {
+        auto request = calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::move(molecules)},
+            .fixed_charge_embedding =
+                calculation::FixedChargeEmbedding{.sources = std::move(sources)}};
+        auto rejected = false;
+        try {
+            static_cast<void>(calculation::assess(std::move(request)));
+        } catch (const std::invalid_argument& error) {
+            rejected = true;
+            CHECK(std::string_view{error.what()}.contains(diagnostic));
+        }
+        CHECK(rejected);
+    };
+
+    const auto ion_pair = make_isolated_ion_pair();
+    check_invalid({ion_pair}, {{2, 0, 1.0}}, "molecule index 2 is out of range");
+    check_invalid({ion_pair}, {{std::numeric_limits<std::size_t>::max(), 0, 1.0}},
+                  "is out of range (molecule count 1)");
+    check_invalid({ion_pair}, {{0, std::numeric_limits<std::size_t>::max(), 1.0}},
+                  "out of range (atom count 2)");
+    check_invalid({ion_pair}, {{0, 0, 1.0}, {0, 0, -1.0}}, "duplicate fixed charge source");
+    for (const auto charge :
+         {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity(),
+          -std::numeric_limits<double>::infinity()}) {
+        check_invalid({ion_pair}, {{0, 0, charge}}, "has non-finite charge");
+    }
+    check_invalid({make_bonded_pair()}, {{0, 0, 0.5}}, "is bonded to atom 1");
+    check_invalid({make_bonded_pair()}, {{0, 1, 0.5}}, "is bonded to atom 0");
+    check_invalid({make_bonded_pair()}, {{0, 0, 0.5}, {0, 1, -0.5}}, "is bonded to atom 1");
+    check_invalid({core::Molecule{std::vector{core::Atom{6}}}, ion_pair}, {{0, 0, 0.0}},
+                  "leaves no active atoms in molecule 0");
+}
+
+TEST_CASE("valid fixed charge selectors reach the unsupported planning gate",
+          "[calculation][planning]") {
+    auto request = calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{
+            make_isolated_ion_pair(), make_isolated_ion_pair(), make_isolated_ion_pair()}},
+        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .sources = {{.molecule_index = 1, .atom_index = 1, .charge = -0.5},
+                        {.molecule_index = 0, .atom_index = 1, .charge = 0.0},
+                        {.molecule_index = 2, .atom_index = 0, .charge = 0.25}}}};
+    try {
+        static_cast<void>(calculation::assess(std::move(request)));
+        CHECK(false);
+    } catch (const std::invalid_argument& error) {
+        CHECK(std::string_view{error.what()} ==
+              "fixed charge embedding sources are not supported by assessment planning");
+    }
 }
 
 TEST_CASE("empty fixed charge embedding is equivalent to absence", "[calculation][planning]") {

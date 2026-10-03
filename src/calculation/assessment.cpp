@@ -5,10 +5,12 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace chargefw::calculation {
@@ -85,6 +87,74 @@ namespace {
         result.push_back(method.get());
     }
     return result;
+}
+
+auto validate_fixed_charge_embedding(const core::MoleculeCollection& molecules,
+                                     const FixedChargeEmbedding& embedding) -> void {
+    auto selected_atoms = std::vector<std::pair<std::size_t, std::size_t>>{};
+    selected_atoms.reserve(embedding.sources.size());
+    for (const auto& source : embedding.sources) {
+        if (source.molecule_index >= molecules.size()) {
+            throw std::invalid_argument{
+                "fixed charge source molecule index " + std::to_string(source.molecule_index) +
+                " is out of range (molecule count " + std::to_string(molecules.size()) + ")"};
+        }
+        const auto& molecule = molecules[source.molecule_index];
+        if (source.atom_index >= molecule.atom_count()) {
+            throw std::invalid_argument{
+                "fixed charge source at molecule " + std::to_string(source.molecule_index) +
+                " has atom index " + std::to_string(source.atom_index) +
+                " out of range (atom count " + std::to_string(molecule.atom_count()) + ")"};
+        }
+        if (!std::isfinite(source.charge)) {
+            throw std::invalid_argument{
+                "fixed charge source at molecule " + std::to_string(source.molecule_index) +
+                ", atom " + std::to_string(source.atom_index) + " has non-finite charge"};
+        }
+        selected_atoms.emplace_back(source.molecule_index, source.atom_index);
+    }
+
+    std::ranges::sort(selected_atoms);
+    for (std::size_t index = 1; index < selected_atoms.size(); ++index) {
+        if (selected_atoms[index] == selected_atoms[index - 1]) {
+            throw std::invalid_argument{"duplicate fixed charge source at molecule " +
+                                        std::to_string(selected_atoms[index].first) + ", atom " +
+                                        std::to_string(selected_atoms[index].second)};
+        }
+    }
+
+    for (auto first = selected_atoms.begin(); first != selected_atoms.end();) {
+        const auto molecule_index = first->first;
+        const auto last = std::ranges::find_if(
+            first, selected_atoms.end(),
+            [molecule_index](const auto& selected) { return selected.first != molecule_index; });
+        const auto& molecule = molecules[molecule_index];
+        auto selected_mask = std::vector<bool>(molecule.atom_count(), false);
+        for (auto selected = first; selected != last; ++selected) {
+            selected_mask[selected->second] = true;
+        }
+        for (const auto& bond : molecule.bonds()) {
+            if (selected_mask[bond.first_atom_index()]) {
+                throw std::invalid_argument{
+                    "fixed charge source at molecule " + std::to_string(molecule_index) +
+                    ", atom " + std::to_string(bond.first_atom_index()) + " is bonded to atom " +
+                    std::to_string(bond.second_atom_index())};
+            }
+            if (selected_mask[bond.second_atom_index()]) {
+                throw std::invalid_argument{
+                    "fixed charge source at molecule " + std::to_string(molecule_index) +
+                    ", atom " + std::to_string(bond.second_atom_index()) + " is bonded to atom " +
+                    std::to_string(bond.first_atom_index())};
+            }
+        }
+        if (static_cast<std::size_t>(std::ranges::count(selected_mask, true)) ==
+            molecule.atom_count()) {
+            throw std::invalid_argument{
+                "fixed charge embedding leaves no active atoms in molecule " +
+                std::to_string(molecule_index)};
+        }
+        first = last;
+    }
 }
 
 auto validate_assessment_method_options(const AssessmentRequest& request) -> void {
@@ -317,6 +387,7 @@ auto AssessmentResult::default_plan() const noexcept -> const ExecutionPlan* {
 auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResult {
     if (request.fixed_charge_embedding.has_value()) {
         if (!request.fixed_charge_embedding->sources.empty()) {
+            validate_fixed_charge_embedding(request.molecules, *request.fixed_charge_embedding);
             throw std::invalid_argument{
                 "fixed charge embedding sources are not supported by assessment planning"};
         }

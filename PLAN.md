@@ -1,7 +1,8 @@
 # Fixed-Charge Embedding Implementation Plan
 
 Status: EEM implementation authorized, beginning with smaller independently reviewable slices.
-The request API preparation slice (2a) is implemented and reviewed; no embedding solver is enabled yet.
+The request API preparation slice (2a) is committed. Source-selection validation (2b) is implemented and reviewed;
+no embedding solver is enabled yet.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -126,8 +127,17 @@ rather than changing seed policy.
   capabilities, provenance, bindings, or solver changes in this slice.
 - Slice 2a validation: GCC debug focused planning test and full suite (56/56), Clang debug focused
   planning test, affected clang-tidy target, and whitespace checks passed. Luna implemented; Astra
-  reviewed and verified the strengthened rejection tests and full GCC suite. Commit: pending user review.
-- [ ] **2b and later:** define the next small boundary after review of 2a, working toward the end-to-end
+  reviewed and verified the strengthened rejection tests and full GCC suite. Commit: `8749313`.
+- [x] **2b: Source-selection validation.** Validate original molecule/atom index bounds, duplicate
+  selections, finite prescribed charges, isolated selected atoms, and at least one remaining active
+  atom per affected molecule. Report invalid selections before the existing unsupported-execution gate;
+  valid nonempty selections still reject there. Accept finite zero/fractional charges without element
+  inference or formal-charge mutation. Keep empty/default requests unchanged. Geometry, budget checks,
+  owned partitioning, method capability, and solver execution remain subsequent work.
+- Slice 2b validation: GCC debug full suite (56/56); focused GCC/Clang debug, ASan, and UBSan planning
+  tests; affected clang-tidy target; formatting and whitespace checks passed. Luna implemented; Astra
+  reviewed and verified final GCC regressions, including both bond endpoints. Commit: pending user review.
+- [ ] **2c and later:** define the next small boundary after review of 2b, working toward the end-to-end
   requirements below. Keep each intermediate state fail-closed.
 
 Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,

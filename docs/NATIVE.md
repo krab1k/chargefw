@@ -122,7 +122,9 @@ coordinates are missing or non-finite.
   atom indices in the supplied collection, and whose `charge_provenance` labels those charges.
 
 For ordinary calculations, leave `fixed_charge_embedding` absent or provide an empty `sources` vector.
-Nonempty sources currently cause `assess()` to throw `std::invalid_argument` before planning begins.
+Nonempty sources must use distinct in-range molecule/atom indices, finite charges, atoms with no graph
+bonds, and leave at least one active atom in each affected molecule. After validating a nonempty
+selection, `assess()` currently throws `std::invalid_argument` before planning begins.
 
 `calculation::assess()` returns an `AssessmentResult` with read-only access to its owned source
 `molecules()`, priority-ordered `plans()`, structured `rejections()`, `default_plan()`, and applicability
