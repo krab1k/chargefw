@@ -16,6 +16,7 @@
 
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <variant>
@@ -40,6 +41,26 @@ auto make_bonded_pair() -> core::Molecule {
                           std::vector{core::Bond{0, 1}},
                           {},
                           "bonded-pair"};
+}
+
+auto make_molecule_with_positions(std::vector<core::Atom> atoms,
+                                  std::vector<std::vector<core::Position>> conformers,
+                                  std::vector<core::Bond> bonds = {}) -> core::Molecule {
+    auto conformer_values = std::vector<core::Conformer>{};
+    conformer_values.reserve(conformers.size());
+    for (auto& positions : conformers) {
+        conformer_values.emplace_back(std::move(positions));
+    }
+    return core::Molecule{std::move(atoms), std::move(bonds), std::move(conformer_values)};
+}
+
+auto assessment_error(calculation::AssessmentRequest request) -> std::string {
+    try {
+        static_cast<void>(calculation::assess(std::move(request)));
+    } catch (const std::invalid_argument& error) {
+        return error.what();
+    }
+    return {};
 }
 
 auto make_eem_parameters() -> chargefw::parameters::ParameterSet {
@@ -182,6 +203,131 @@ TEST_CASE("valid fixed charge selectors reach the unsupported planning gate",
         CHECK(std::string_view{error.what()} ==
               "fixed charge embedding sources are not supported by assessment planning");
     }
+}
+
+TEST_CASE("fixed charge embedding validates geometry only for affected molecules",
+          "[calculation][planning]") {
+    const auto make_request = [](core::MoleculeCollection molecules,
+                                 std::vector<calculation::FixedAtomCharge> sources) {
+        return calculation::AssessmentRequest{
+            .molecules = std::move(molecules),
+            .fixed_charge_embedding =
+                calculation::FixedChargeEmbedding{.sources = std::move(sources)}};
+    };
+    const auto pair_atoms = std::vector{core::Atom{6}, core::Atom{6}};
+    const auto separated_pair =
+        std::vector<std::vector<core::Position>>{{{0.0, 0.0, 0.0}, {2.0, 0.0, 0.0}}};
+
+    auto missing_conformer = make_request(
+        core::MoleculeCollection{std::vector{make_molecule_with_positions(pair_atoms, {})}},
+        {{0, 0, 1.0}});
+    CHECK(std::string_view{assessment_error(std::move(missing_conformer))}.contains(
+        "requires a conformer in molecule 0"));
+
+    for (std::size_t atom_index = 0; atom_index < 2; ++atom_index) {
+        for (std::size_t axis = 0; axis < 3; ++axis) {
+            auto later_positions = separated_pair.front();
+            auto& position = later_positions[atom_index];
+            const auto value = axis == 0   ? std::numeric_limits<double>::quiet_NaN()
+                               : axis == 1 ? std::numeric_limits<double>::infinity()
+                                           : -std::numeric_limits<double>::infinity();
+            if (axis == 0) {
+                position.x = value;
+            } else if (axis == 1) {
+                position.y = value;
+            } else {
+                position.z = value;
+            }
+            auto nonfinite = make_request(
+                core::MoleculeCollection{std::vector{make_molecule_with_positions(
+                    pair_atoms, {separated_pair.front(), std::move(later_positions)})}},
+                {{0, 0, 1.0}});
+            CHECK(std::string_view{assessment_error(std::move(nonfinite))}.contains(
+                "non-finite coordinates at molecule 0, conformer 1, atom " +
+                std::to_string(atom_index)));
+        }
+    }
+
+    auto coincident_later = make_request(
+        core::MoleculeCollection{std::vector{make_molecule_with_positions(
+            pair_atoms, {separated_pair.front(), {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}})}},
+        {{0, 0, 0.0}});
+    CHECK(std::string_view{assessment_error(std::move(coincident_later))}.contains(
+        "molecule 0, conformer 1, atom 0 coincides with active atom 1"));
+
+    auto swapped_conformers = make_request(
+        core::MoleculeCollection{std::vector{make_molecule_with_positions(
+            pair_atoms, {separated_pair.front(), {{2.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}})}},
+        {{0, 0, 0.0}});
+    CHECK(assessment_error(std::move(swapped_conformers)) ==
+          "fixed charge embedding sources are not supported by assessment planning");
+
+    auto near_nonzero =
+        make_request(core::MoleculeCollection{std::vector{make_molecule_with_positions(
+                         pair_atoms, {{{0.0, 0.0, 0.0}, {1e-200, 0.0, 0.0}}})}},
+                     {{0, 0, 0.0}});
+    CHECK(assessment_error(std::move(near_nonzero)) ==
+          "fixed charge embedding sources are not supported by assessment planning");
+
+    auto coincident_sources =
+        make_request(core::MoleculeCollection{std::vector{make_molecule_with_positions(
+                         std::vector{core::Atom{6}, core::Atom{6}, core::Atom{6}},
+                         {{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {2.0, 0.0, 0.0}}})}},
+                     {{0, 0, 0.5}, {0, 1, -0.25}});
+    CHECK(assessment_error(std::move(coincident_sources)) ==
+          "fixed charge embedding sources are not supported by assessment planning");
+
+    auto unrelated = make_request(
+        core::MoleculeCollection{std::vector{
+            make_molecule_with_positions(pair_atoms, separated_pair),
+            make_molecule_with_positions(pair_atoms, {{{0.0, 0.0, 0.0}, {3.0, 0.0, 0.0}}}),
+            make_molecule_with_positions(pair_atoms, {}),
+            make_molecule_with_positions(
+                pair_atoms,
+                {{{std::numeric_limits<double>::infinity(), 0.0, 0.0}, {4.0, 0.0, 0.0}}})}},
+        {{0, 0, 1.0}});
+    CHECK(assessment_error(std::move(unrelated)) ==
+          "fixed charge embedding sources are not supported by assessment planning");
+}
+
+TEST_CASE("fixed charge embedding validates per-molecule charge budgets",
+          "[calculation][planning]") {
+    const auto make_request = [](core::MoleculeCollection molecules,
+                                 std::vector<calculation::FixedAtomCharge> sources) {
+        return calculation::AssessmentRequest{
+            .molecules = std::move(molecules),
+            .fixed_charge_embedding =
+                calculation::FixedChargeEmbedding{.sources = std::move(sources)}};
+    };
+    const auto three_atoms = std::vector{core::Atom{6}, core::Atom{6}, core::Atom{6}};
+    const auto pair_atoms = std::vector{core::Atom{6}, core::Atom{6}};
+    const auto three_positions = std::vector<std::vector<core::Position>>{
+        {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {2.0, 0.0, 0.0}}};
+    const auto maximum = std::numeric_limits<double>::max();
+    auto overflowing_sum =
+        make_request(core::MoleculeCollection{std::vector{
+                         make_molecule_with_positions(three_atoms, three_positions)}},
+                     {{0, 0, maximum}, {0, 1, maximum}});
+    CHECK(std::string_view{assessment_error(std::move(overflowing_sum))}.contains(
+        "fixed charge source sum is non-finite in molecule 0"));
+
+    auto separate_targets = make_request(
+        core::MoleculeCollection{std::vector{
+            make_molecule_with_positions(pair_atoms, {{{0.0, 0.0, 0.0}, {2.0, 0.0, 0.0}}}),
+            make_molecule_with_positions(pair_atoms, {{{0.0, 0.0, 0.0}, {3.0, 0.0, 0.0}}})}},
+        {{0, 0, maximum}, {1, 0, maximum}});
+    CHECK(assessment_error(std::move(separate_targets)) ==
+          "fixed charge embedding sources are not supported by assessment planning");
+
+    auto mismatched_budget = calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{make_isolated_ion_pair()}},
+        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = -0.5}}}};
+    CHECK(assessment_error(mismatched_budget) ==
+          "fixed charge embedding sources are not supported by assessment planning");
+    REQUIRE(mismatched_budget.fixed_charge_embedding.has_value());
+    CHECK(mismatched_budget.fixed_charge_embedding->sources[0].charge == -0.5);
+    CHECK(core::total_formal_charge(mismatched_budget.molecules[0]) == 2.0);
 }
 
 TEST_CASE("empty fixed charge embedding is equivalent to absence", "[calculation][planning]") {
