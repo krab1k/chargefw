@@ -162,11 +162,6 @@ struct ValidatedTarget {
 
 } // namespace
 
-auto validate_fixed_charge_embedding(const core::MoleculeCollection& molecules,
-                                     const FixedChargeEmbedding& embedding) -> void {
-    static_cast<void>(validate_and_group_sources(molecules, embedding));
-}
-
 auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
                                  const FixedChargeEmbedding& embedding) -> FixedChargePartition {
     const auto validated_targets = validate_and_group_sources(molecules, embedding);

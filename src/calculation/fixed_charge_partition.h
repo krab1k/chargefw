@@ -25,9 +25,6 @@ struct FixedChargePartition {
     std::string charge_provenance;
 };
 
-auto validate_fixed_charge_embedding(const core::MoleculeCollection& molecules,
-                                     const FixedChargeEmbedding& embedding) -> void;
-
 [[nodiscard]] auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
                                                const FixedChargeEmbedding& embedding)
     -> FixedChargePartition;

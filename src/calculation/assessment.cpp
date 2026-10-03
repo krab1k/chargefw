@@ -2,6 +2,8 @@
 
 #include "fixed_charge_partition.h"
 
+#include "core/diagnostic_description.h"
+
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_registry.h>
 
@@ -171,16 +173,65 @@ auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
                   });
 }
 
+[[nodiscard]] auto remap_embedding_issue(methods::PrerequisiteIssue issue,
+                                         const detail::FixedChargePartition& partition,
+                                         const core::MoleculeCollection& original_molecules,
+                                         const parameters::ParameterSet* parameter_set)
+    -> methods::PrerequisiteIssue {
+    if (!issue.molecule_index.has_value()) {
+        return issue;
+    }
+
+    const auto molecule_index = *issue.molecule_index;
+    const auto& target = partition.targets.at(molecule_index);
+    const auto active_atom_index = issue.atom_index;
+    const auto active_bond_index = issue.bond_index;
+    const auto& original_molecule = original_molecules[molecule_index];
+
+    if (active_atom_index.has_value()) {
+        issue.atom_index = target.active_atom_indices.at(*active_atom_index);
+    }
+    if (active_bond_index.has_value()) {
+        issue.bond_index = target.active_bond_indices.at(*active_bond_index);
+    }
+
+    if (issue.kind == methods::PrerequisiteIssueKind::parameter_classification_failed &&
+        parameter_set != nullptr) {
+        if (active_atom_index.has_value()) {
+            const auto original_atom_index = target.active_atom_indices.at(*active_atom_index);
+            issue.message = "parameter set '" + std::string{parameter_set->id()} +
+                            "' has no atom parameter matching " +
+                            core::detail::atom_description(original_molecule, original_atom_index);
+        } else if (active_bond_index.has_value()) {
+            const auto original_bond_index = target.active_bond_indices.at(*active_bond_index);
+            issue.message = "parameter set '" + std::string{parameter_set->id()} +
+                            "' has no bond parameter matching " +
+                            core::detail::bond_description(original_molecule, original_bond_index);
+        }
+    } else if (issue.kind == methods::PrerequisiteIssueKind::invalid_geometry &&
+               !target.sources.empty()) {
+        issue.message = core::detail::molecule_description(original_molecule, molecule_index) +
+                        ": geometry detail uses active-subsystem atom numbering: " + issue.message;
+    }
+    return issue;
+}
+
 } // namespace
 
-AssessmentResult::AssessmentResult(core::MoleculeCollection molecules,
-                                   std::vector<parameters::ParameterSet> supplied_parameter_sets)
+AssessmentResult::AssessmentResult(
+    core::MoleculeCollection molecules,
+    std::vector<parameters::ParameterSet> supplied_parameter_sets,
+    std::unique_ptr<detail::FixedChargePartition> fixed_charge_partition)
     : parameter_sets_{std::move(supplied_parameter_sets)},
       plan_identity_{std::make_shared<PlanIdentity>()},
       molecules_{std::make_unique<core::MoleculeCollection>(std::move(molecules))},
-      prepared_molecules_{std::make_unique<features::PreparedMoleculeCollection>(*molecules_)} {}
+      fixed_charge_partition_{std::move(fixed_charge_partition)},
+      prepared_molecules_{std::make_unique<features::PreparedMoleculeCollection>(
+          fixed_charge_partition_ ? fixed_charge_partition_->active_molecules : *molecules_)} {}
 
 AssessmentResult::~AssessmentResult() = default;
+
+AssessmentResult::AssessmentResult(AssessmentResult&&) noexcept = default;
 
 ExecutionPlan::ExecutionPlan(std::shared_ptr<const PlanIdentity> identity,
                              const methods::ApplicableMethod& candidate, ExecutionPolicy policy,
@@ -206,22 +257,47 @@ auto AssessmentResult::assess_prepared(
     const ResourcePolicy& resource_policy,
     const std::unordered_map<std::string, methods::MethodOptions>& method_options,
     const ExecutionSelection& execution_selection) -> void {
+    auto applicable_methods = std::vector<const methods::Method*>{};
+    applicable_methods.reserve(selected_methods.size());
+    for (const auto* method : selected_methods) {
+        if (fixed_charge_partition_ != nullptr &&
+            !method->requirements().supports_fixed_charge_embedding) {
+            rejections_.push_back(Rejection{
+                .method_id = std::string{method->id()},
+                .parameter_set_id = std::nullopt,
+                .policy = std::nullopt,
+                .issues = {methods::PrerequisiteIssue{
+                    .kind = methods::PrerequisiteIssueKind::unsupported_embedding,
+                    .message = "method '" + std::string{method->id()} +
+                               "' does not support fixed charge embedding"}},
+            });
+            continue;
+        }
+        applicable_methods.push_back(method);
+    }
+
     applicability_ =
         methods::find_applicable_methods({.molecules = prepared_molecules(),
-                                          .methods = selected_methods,
+                                          .methods = applicable_methods,
                                           .parameter_sets = parameter_sets_,
                                           .classification_options = classification_options,
                                           .resource_policy = resource_policy,
                                           .method_options = method_options});
-    rejections_.reserve(applicability_.rejected.size());
+    rejections_.reserve(rejections_.size() + applicability_.rejected.size());
     for (const auto& candidate : applicability_.rejected) {
         auto issues = std::vector<RejectionIssue>{};
         issues.reserve(candidate.issues.size());
         for (const auto& issue : candidate.issues) {
-            issues.emplace_back(issue);
+            const auto* parameter_set = candidate.parameter_set_index.has_value()
+                                            ? &parameter_sets_[*candidate.parameter_set_index]
+                                            : nullptr;
+            issues.emplace_back(fixed_charge_partition_ != nullptr
+                                    ? remap_embedding_issue(issue, *fixed_charge_partition_,
+                                                            *molecules_, parameter_set)
+                                    : issue);
         }
         rejections_.push_back(Rejection{
-            .method_id = std::string{selected_methods[candidate.method_index]->id()},
+            .method_id = std::string{applicable_methods[candidate.method_index]->id()},
             .parameter_set_id = candidate.parameter_set_index.has_value()
                                     ? std::optional{std::string{
                                           parameter_sets_[*candidate.parameter_set_index].id()}}
@@ -258,6 +334,16 @@ auto AssessmentResult::assess_prepared(
     const auto consider_mode = [this, &policy_for, &append_rejection](
                                    const methods::ApplicableMethod& candidate,
                                    const ExecutionMode mode, const bool permit_warnings) {
+        if (fixed_charge_partition_ != nullptr) {
+            const auto assessment = methods::ExecutionAssessment{
+                .mode = mode,
+                .availability = methods::ExecutionAvailability::unsupported,
+                .issues = {{methods::ExecutionIssueKind::unsupported_execution_mode,
+                            "method '" + std::string{candidate.method->id()} +
+                                "' fixed charge embedding execution is not connected yet"}}};
+            append_rejection(candidate, mode, assessment);
+            return;
+        }
         const auto* assessment = assessment_for(candidate, mode);
         if (assessment == nullptr) {
             return;
@@ -318,16 +404,17 @@ auto AssessmentResult::default_plan() const noexcept -> const ExecutionPlan* {
 }
 
 auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResult {
+    const auto started = std::chrono::steady_clock::now();
+    auto fixed_charge_partition = std::unique_ptr<detail::FixedChargePartition>{};
     if (request.fixed_charge_embedding.has_value()) {
         if (!request.fixed_charge_embedding->sources.empty()) {
-            detail::validate_fixed_charge_embedding(request.molecules,
-                                                    *request.fixed_charge_embedding);
-            throw std::invalid_argument{
-                "fixed charge embedding sources are not supported by assessment planning"};
+            fixed_charge_partition =
+                std::make_unique<detail::FixedChargePartition>(detail::make_fixed_charge_partition(
+                    request.molecules, *request.fixed_charge_embedding));
+        } else {
+            request.fixed_charge_embedding.reset();
         }
-        request.fixed_charge_embedding.reset();
     }
-    const auto started = std::chrono::steady_clock::now();
     validate_assessment_method_options(request);
     validate_unique_parameter_set_ids(request);
     validate_resource_policy(request.resource_policy);
@@ -337,7 +424,8 @@ auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResu
     const auto resource_policy = request.resource_policy;
     retain_requested_parameter_set(request);
     auto method_options = std::move(request.method_options);
-    auto result = AssessmentResult{std::move(request.molecules), std::move(request.parameter_sets)};
+    auto result = AssessmentResult{std::move(request.molecules), std::move(request.parameter_sets),
+                                   std::move(fixed_charge_partition)};
     result.assess_prepared(selected_methods, classification_options, resource_policy,
                            method_options, execution_selection);
     result.applicability_seconds_ =

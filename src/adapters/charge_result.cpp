@@ -31,6 +31,8 @@ namespace {
         return "missing_parameters";
     case methods::PrerequisiteIssueKind::parameter_classification_failed:
         return "parameter_classification_failed";
+    case methods::PrerequisiteIssueKind::unsupported_embedding:
+        return "unsupported_embedding";
     }
     throw std::logic_error{"unknown prerequisite issue kind"};
 }

@@ -136,6 +136,12 @@ Assessment prepares a molecule collection once, performs parameter classificatio
 requirements, and expands applicable candidates into concrete plans. A plan contains the selected
 method, parameter set, validated options, execution policy, and any policy warnings.
 
+For a fixed-charge embedding request, assessment owns both the original collection and an active-molecule
+partition, then classifies capable methods against that active collection. Rejection indices map back to
+the original molecules. EEM is the currently capable method, but embedded execution is not connected to
+planning yet, so an embedded assessment returns rejections rather than runnable plans or reassembled
+charges.
+
 The effective execution mode is always one of:
 
 - `full`: calculate the complete molecular target;

@@ -38,6 +38,8 @@ auto to_string(const PrerequisiteIssueKind value) -> std::string_view {
         return "missing_parameters";
     case PrerequisiteIssueKind::parameter_classification_failed:
         return "parameter_classification_failed";
+    case PrerequisiteIssueKind::unsupported_embedding:
+        return "unsupported_embedding";
     }
     throw std::invalid_argument{"unknown prerequisite issue kind"};
 }

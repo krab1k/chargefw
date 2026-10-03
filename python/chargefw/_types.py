@@ -22,6 +22,7 @@ PrerequisiteIssueKind: TypeAlias = Literal[
     "unsupported_molecule",
     "missing_parameters",
     "parameter_classification_failed",
+    "unsupported_embedding",
 ]
 MethodOptionType: TypeAlias = Literal["boolean", "integer", "floating_point", "string"]
 ExecutionStatus: TypeAlias = Literal[

@@ -1,8 +1,8 @@
 # Fixed-Charge Embedding Implementation Plan
 
 Status: EEM implementation authorized, beginning with smaller independently reviewable slices.
-The request, validation, partition, and method-input slices (2a-2e) are committed. The EEM numerical
-fixed-source response (2f) is implemented and reviewed; facade embedding execution remains disabled.
+The request, validation, partition, method-input, and EEM numerical slices (2a-2f) are committed.
+Active-partition assessment (2g) is implemented and reviewed; facade embedding execution remains disabled.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -198,8 +198,23 @@ rather than changing seed policy.
 - Slice 2f revised validation: GCC debug full suite (57/57); focused GCC/Clang debug and release tests
   (3/3 each); sequential ASan/UBSan focused tests (3/3 each); affected clang-tidy targets and whitespace
   checks passed. Luna implemented; Astra reviewed the simplified kernel and boundary checks.
-  Commit: pending user review.
-- [ ] **2g and later:** define the next small boundary after review of 2f, working toward the end-to-end
+  Commit: `0e28b30`.
+- [x] **2g: Active-partition assessment.** Own the private partition at a stable address in assessment,
+  prepare its active collection, and retain original molecules for public identity. Reject methods
+  lacking embedding capability before parameter classification. Assess capable methods on the active
+  graph with unchanged matching, map structured diagnostic indices back to original atoms/bonds, and
+  make any active-index explanatory text explicit. Return structured unsupported-execution rejections
+  for otherwise-applicable embedded candidates in every mode; create no embedding execution plans yet.
+  Apply the temporary block in the existing per-mode planning check, without overwriting candidate
+  execution assessments or enumerating execution modes a second time.
+  Test missing-ion-parameter exclusion, strict active coverage, original mappings, ownership/moves,
+  explicit and automatic selection, and empty/default compatibility. No solver dispatch, provenance,
+  or result reconstruction is connected in this slice.
+- Slice 2g validation: full GCC debug suite (57/57), focused Clang debug and GCC/Clang release tests
+  (3/3 each), sequential ASan/UBSan calculation suites (11/11 each), affected clang-tidy targets, Ruff,
+  and whitespace checks passed. Luna implemented; Astra reviewed ownership, capability filtering, and
+  diagnostic mapping. Final integration cleanup passed focused tests and full GCC. Commit: pending review.
+- [ ] **2h and later:** define the next small boundary after review of 2g, working toward the end-to-end
   requirements below. Keep each intermediate state fail-closed.
 
 Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,

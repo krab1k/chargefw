@@ -21,6 +21,9 @@ namespace chargefw::calculation {
 class AssessmentResult;
 class CalculationObserver;
 class PlanIdentity;
+namespace detail {
+struct FixedChargePartition;
+}
 struct AssessmentRequest;
 struct ExecutionResult;
 // Copies the owned molecule and parameter inputs into the assessment result.
@@ -97,9 +100,9 @@ class AssessmentResult {
   public:
     AssessmentResult(const AssessmentResult&) = delete;
     auto operator=(const AssessmentResult&) -> AssessmentResult& = delete;
-    AssessmentResult(AssessmentResult&&) noexcept = default;
-    // Prepared features non-owningly refer to molecules_, so replacing the two independent owners
-    // cannot preserve their lifetime invariant.
+    AssessmentResult(AssessmentResult&&) noexcept;
+    // Prepared features non-owningly refer to molecules_ or the partition-owned active collection,
+    // so replacing these independent owners cannot preserve their lifetime invariant.
     auto operator=(AssessmentResult&&) noexcept -> AssessmentResult& = delete;
     ~AssessmentResult();
 
@@ -112,7 +115,8 @@ class AssessmentResult {
 
   private:
     AssessmentResult(core::MoleculeCollection molecules,
-                     std::vector<parameters::ParameterSet> parameter_sets);
+                     std::vector<parameters::ParameterSet> parameter_sets,
+                     std::unique_ptr<detail::FixedChargePartition> fixed_charge_partition);
 
     [[nodiscard]] static auto assess_owned(AssessmentRequest request) -> AssessmentResult;
 
@@ -141,6 +145,7 @@ class AssessmentResult {
     std::vector<Rejection> rejections_;
     double applicability_seconds_ = 0.0;
     std::unique_ptr<core::MoleculeCollection> molecules_;
+    std::unique_ptr<detail::FixedChargePartition> fixed_charge_partition_;
     std::unique_ptr<features::PreparedMoleculeCollection> prepared_molecules_;
 };
 

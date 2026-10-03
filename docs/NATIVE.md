@@ -144,10 +144,12 @@ bonds, and leave at least one active atom in each affected molecule. Each affect
 conformer coordinates that are finite throughout; source coordinates must not exactly coincide with an
 active atom in the same conformer. Per molecule, the original supplied formal-charge total minus the
 prescribed source-charge sum defines the active charge budget; the original total and resulting budget
-must both be finite. After validating a nonempty selection, `assess()` currently throws
-`std::invalid_argument` before planning begins.
+must both be finite. A valid nonempty selection filters methods by their embedding capability and reports
+method and execution rejections without producing plans. The
+[project design](PROJECT.md#assessment-and-execution) describes the active-molecule assessment boundary.
+Invalid source selections still throw `std::invalid_argument`.
 
-`calculation::assess()` returns an `AssessmentResult` with read-only access to its owned source
+`calculation::assess()` returns an `AssessmentResult` with read-only access to its original owned source
 `molecules()`, priority-ordered `plans()`, structured `rejections()`, `default_plan()`, and applicability
 timing. A plan exposes its applicable candidate, concrete `ExecutionPolicy`, and warnings. Plans are tied
 to the assessment that created them.
