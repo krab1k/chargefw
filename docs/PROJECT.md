@@ -123,6 +123,13 @@ Coulomb terms evaluated from angstrom coordinates. It does not iterate charge-de
 default DasGupta-Huzinaga term follows Oda and Hirono (2003); the optional Louwen-Vogt term uses the
 geometric-mean approximation of Njo, Fan, and van de Graaf (1998).
 
+Direct EEM calculations may include fixed Cartesian point sources. Their potential at active atom `i`
+is `phi_i = sum_F(kappa * q_F / r_iF)`, using the selected parameter set's common `kappa`, so the
+constrained-system right-hand side is `-A_i - phi_i`. The target charge remains the caller-supplied
+active-atom total. Sources remain fixed while active charges respond; source polarization and charge
+transfer between the active and fixed regions are excluded. Source/active distances must be valid and
+nonzero. This implemented coupling does not establish quantitative accuracy for coordinated ions.
+
 ## Assessment and execution
 
 Assessment prepares a molecule collection once, performs parameter classification, evaluates scientific

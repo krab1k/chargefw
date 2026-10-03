@@ -27,6 +27,7 @@ class EEMMethod final : public Method {
         requirements.resources.supports_cutoff = true;
         requirements.resources.supports_cover = true;
         requirements.resources.reduced_charge_policy = ReducedChargePolicy::uniform_target_global;
+        requirements.supports_fixed_charge_embedding = true;
         return requirements;
     }
 

@@ -1,8 +1,8 @@
 # Fixed-Charge Embedding Implementation Plan
 
 Status: EEM implementation authorized, beginning with smaller independently reviewable slices.
-The request, validation, and private partition slices (2a-2d) are committed. Method-level source input
-and capability declarations (2e) are revised and reviewed; no embedding solver is enabled yet.
+The request, validation, partition, and method-input slices (2a-2e) are committed. The EEM numerical
+fixed-source response (2f) is implemented and reviewed; facade embedding execution remains disabled.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -178,8 +178,28 @@ rather than changing seed policy.
   input, capability flag, and lifetime/declaration tests. All built-in implementations remain unchanged.
   GCC debug full suite (57/57), focused GCC/Clang debug tests (3/3 each), sequential ASan/UBSan focused
   tests (2/2 each), affected clang-tidy targets, and whitespace checks passed. Luna implemented; Astra
-  reviewed the reduced scope and verified final regressions. Commit: pending user review.
-- [ ] **2f and later:** define the next small boundary after review of 2e, working toward the end-to-end
+  reviewed the reduced scope and verified final regressions. Commit: `5f2c935`.
+- [x] **2f: EEM numerical fixed-source response.** Enable EEM's numerical capability and subtract
+  `sum(kappa * source_charge / distance)` from its atomic RHS, preserving the active-active matrix and
+  caller-supplied active target budget. Use the selected set's `kappa`; require no source parameters.
+  Validate basic numerical source inputs at the boundary. Use existing `core::distance` and ordinary
+  EEM arithmetic without extra per-pair or intermediate-overflow checks. Direct callers must supply
+  noncoincident source/active positions; the facade retains its existing coincidence validation.
+  Keep empty-source behavior unchanged.
+  Test an independent two-atom reference, nonunit scaling, source sign/position and budget behavior,
+  zero sources, invalid inputs, and unchanged source storage. Only EEM consumes sources; leave unrelated
+  algorithms unchanged. Assessment still rejects nonempty embedding requests until the remaining facade
+  ownership, capability/mode checks, provenance, and reconstruction are connected.
+- Slice 2f structure after user review: basic numerical source/geometry checks live in a private shared
+  validator called only by supporting methods. A small EEM-local helper sums the point potential;
+  `calculate()` remains focused on assembly, RHS adjustment, and solving. Removed special `hypot`,
+  per-operation checks, and extreme-arithmetic tests to stay consistent with existing EEM. No capability
+  guard, dispatch wrapper, kernel framework, or duplicate pair-distance pass was added.
+- Slice 2f revised validation: GCC debug full suite (57/57); focused GCC/Clang debug and release tests
+  (3/3 each); sequential ASan/UBSan focused tests (3/3 each); affected clang-tidy targets and whitespace
+  checks passed. Luna implemented; Astra reviewed the simplified kernel and boundary checks.
+  Commit: pending user review.
+- [ ] **2g and later:** define the next small boundary after review of 2f, working toward the end-to-end
   requirements below. Keep each intermediate state fail-closed.
 
 Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,

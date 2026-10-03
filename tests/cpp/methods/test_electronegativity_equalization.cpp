@@ -2,7 +2,13 @@
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
+#include <chargefw/core/position.h>
+#include <chargefw/features/conformer_features.h>
+#include <chargefw/features/prepared_molecule.h>
+#include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method_options.h>
+#include <chargefw/methods/method_registry.h>
+#include <chargefw/parameters/classification/parameter_classification.h>
 #include <chargefw/parameters/models/atom_parameters.h>
 #include <chargefw/parameters/models/bond_parameters.h>
 #include <chargefw/parameters/models/common_parameters.h>
@@ -12,12 +18,20 @@
 
 #include <array>
 #include <cmath>
+#include <cstddef>
+#include <limits>
+#include <optional>
 #include <snitch/snitch.hpp>
+#include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace parameters = chargefw::parameters;
+namespace core = chargefw::core;
+namespace features = chargefw::features;
+namespace methods = chargefw::methods;
 
 namespace {
 
@@ -25,17 +39,52 @@ auto no_parameter_sets() -> std::vector<parameters::ParameterSet> {
     return {};
 }
 
-auto make_eem_parameters() -> std::vector<parameters::ParameterSet> {
+auto make_eem_parameters(const double kappa = 1.0) -> std::vector<parameters::ParameterSet> {
     const auto parameter_set = parameters::ParameterSet{
         parameters::ParameterSetMetadata{
             .id = "test-eem", .method_id = "eem", .name = "Test EEM parameters"},
-        parameters::CommonParameters{{{.name = "kappa", .value = 1.0}}},
+        parameters::CommonParameters{{{.name = "kappa", .value = kappa}}},
         parameters::AtomParameters{
             {{.key = chargefw::test::plain_atom_key(1),
               .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 5.0}}},
              {.key = chargefw::test::plain_atom_key(8),
               .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 9.0}}}}}};
     return {parameter_set};
+}
+
+auto make_default_eem_parameters() -> std::vector<parameters::ParameterSet> {
+    return make_eem_parameters();
+}
+
+auto make_active_hydrogen_oxygen(const core::Position hydrogen = {},
+                                 const core::Position oxygen = core::Position{.x = 2.0})
+    -> core::Molecule {
+    return core::Molecule{
+        {core::Atom{1, 1}, core::Atom{8}}, {}, {core::Conformer{{hydrogen, oxygen}}}};
+}
+
+auto calculate_eem(const core::Molecule& molecule,
+                   const std::span<const methods::FixedPointSource> fixed_sources,
+                   const double target_charge, const double kappa = 1.7)
+    -> chargefw::charges::AtomicCharges {
+    const auto parameter_sets = make_eem_parameters(kappa);
+    const auto classification = parameters::ParameterClassification{
+        parameters::AtomParameterClassification{std::vector<std::size_t>{0, 1}}};
+    const auto parameter_view = parameters::ParameterView{parameter_sets[0], classification};
+    const auto prepared = features::PreparedMolecule{molecule};
+    auto geometry = std::optional<features::ConformerFeatures>{};
+    if (molecule.conformer_count() != 0) {
+        geometry.emplace(molecule);
+    }
+    const auto options = methods::MethodOptions{};
+    const auto input = methods::CalculationInput{
+        prepared,        options,      target_charge, geometry.has_value() ? &*geometry : nullptr,
+        &parameter_view, fixed_sources};
+    const auto* method = methods::method_registry().find("eem");
+    if (method == nullptr) {
+        throw std::runtime_error{"EEM method is missing from the builtin registry"};
+    }
+    return method->calculate(input);
 }
 
 auto make_qeq_parameters() -> std::vector<parameters::ParameterSet> {
@@ -127,7 +176,7 @@ struct GeometryMethodCase {
 TEST_CASE("electronegativity-equalization methods respond to changed conformer geometry",
           "[methods][eem][qeq][eqeq][eqeqc][sfkeem][abeem][smpqeq]") {
     constexpr auto methods = std::array{
-        GeometryMethodCase{"eem", 1.0e-8, make_eem_parameters},
+        GeometryMethodCase{"eem", 1.0e-8, make_default_eem_parameters},
         GeometryMethodCase{"qeq", 1.0e-8, make_qeq_parameters},
         GeometryMethodCase{"eqeq", 1.0e-8, no_parameter_sets},
         GeometryMethodCase{"eqeqc", 1.0e-8, make_eqeqc_parameters},
@@ -187,6 +236,125 @@ TEST_CASE("EEM two-atom charges obey equalization at different distances and tar
             CHECK(std::abs(charges[1] - (target - expected_hydrogen[index])) < 1.0e-12);
             CHECK(std::abs(charges.total() - target) < 1.0e-12);
         }
+    }
+}
+
+TEST_CASE("EEM includes fixed point potentials in the constrained active solve", "[methods][eem]") {
+    constexpr auto kappa = 1.7;
+    constexpr auto target_charge = -0.35;
+    const auto molecule = make_active_hydrogen_oxygen();
+    const auto sources = std::array{methods::FixedPointSource{{-1.0, 0.0, 0.0}, 0.4},
+                                    methods::FixedPointSource{{4.0, 1.0, 0.0}, -0.2}};
+    const auto empty_span = std::span<const methods::FixedPointSource>{};
+    const auto baseline = calculate_eem(molecule, empty_span, target_charge, kappa);
+    const auto fixed = calculate_eem(molecule, std::span<const methods::FixedPointSource>{sources},
+                                     target_charge, kappa);
+
+    const auto J = kappa / 2.0;
+    const auto phi_hydrogen =
+        kappa * sources[0].charge / 1.0 + kappa * sources[1].charge / std::hypot(4.0, 1.0, 0.0);
+    const auto phi_oxygen =
+        kappa * sources[0].charge / 3.0 + kappa * sources[1].charge / std::hypot(2.0, 1.0, 0.0);
+    const auto denominator = 5.0 + 9.0 - 2.0 * J;
+    const auto expected_baseline_hydrogen = (2.0 - 1.0 + (9.0 - J) * target_charge) / denominator;
+    const auto expected_fixed_hydrogen =
+        (2.0 - 1.0 + phi_oxygen - phi_hydrogen + (9.0 - J) * target_charge) / denominator;
+
+    REQUIRE(fixed.size() == 2);
+    CHECK(std::abs(baseline[0] - expected_baseline_hydrogen) < 1.0e-12);
+    CHECK(std::abs(fixed[0] - expected_fixed_hydrogen) < 1.0e-12);
+    CHECK(std::abs(fixed[1] - (target_charge - expected_fixed_hydrogen)) < 1.0e-12);
+    CHECK(fixed[0] < baseline[0]);
+    CHECK(std::abs(fixed.total() - target_charge) < 1.0e-12);
+    CHECK(molecule.atom(0).formal_charge() + molecule.atom(1).formal_charge() == 1);
+    CHECK(target_charge != molecule.atom(0).formal_charge() + molecule.atom(1).formal_charge());
+    CHECK(sources[0].position.x == -1.0);
+    CHECK(sources[0].charge == 0.4);
+    CHECK(sources[1].position.y == 1.0);
+    CHECK(sources[1].charge == -0.2);
+
+    const auto zero_source = std::array{methods::FixedPointSource{{10.0, 2.0, 0.0}, 0.0}};
+    const auto zero_source_charges = calculate_eem(
+        molecule, std::span<const methods::FixedPointSource>{zero_source}, target_charge, kappa);
+    CHECK(std::abs(zero_source_charges[0] - baseline[0]) < 1.0e-14);
+    CHECK(std::abs(zero_source_charges[1] - baseline[1]) < 1.0e-14);
+}
+
+TEST_CASE("EEM rejects invalid fixed point fields and budgets", "[methods][eem]") {
+    const auto molecule = make_active_hydrogen_oxygen();
+    const auto check_invalid = [&](const core::Molecule& active_molecule,
+                                   const std::span<const methods::FixedPointSource> sources,
+                                   const double target_charge, const std::string_view diagnostic) {
+        try {
+            static_cast<void>(calculate_eem(active_molecule, sources, target_charge));
+            CHECK(false);
+        } catch (const std::invalid_argument& error) {
+            const auto message = std::string{error.what()};
+            CAPTURE(diagnostic, message);
+            CHECK(std::string_view{message}.contains(diagnostic));
+        }
+    };
+    const auto nonfinite_values = std::array{std::numeric_limits<double>::quiet_NaN(),
+                                             std::numeric_limits<double>::infinity(),
+                                             -std::numeric_limits<double>::infinity()};
+
+    for (const auto value : nonfinite_values) {
+        const auto bad_charge = std::array{methods::FixedPointSource{{4.0, 1.0, 0.0}, value}};
+        check_invalid(molecule, bad_charge, -0.35, "fixed source 0");
+        for (std::size_t axis = 0; axis < 3; ++axis) {
+            auto position = core::Position{4.0, 1.0, 0.0};
+            if (axis == 0) {
+                position.x = value;
+            } else if (axis == 1) {
+                position.y = value;
+            } else {
+                position.z = value;
+            }
+            const auto bad_position = std::array{methods::FixedPointSource{position, 0.25}};
+            check_invalid(molecule, bad_position, -0.35, "fixed source 0");
+        }
+    }
+
+    const auto valid_source = std::array{methods::FixedPointSource{{4.0, 1.0, 0.0}, 0.25}};
+    check_invalid(molecule, valid_source, std::numeric_limits<double>::infinity(),
+                  "finite target charge");
+
+    const auto empty_molecule = core::Molecule{std::vector<core::Atom>{}};
+    check_invalid(empty_molecule, valid_source, -0.35, "requires active atoms");
+
+    const auto nonfinite_active =
+        make_active_hydrogen_oxygen({}, {std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0});
+    check_invalid(nonfinite_active, valid_source, -0.35, "active atom 1");
+}
+
+TEST_CASE("EEM fixed-source validation requires geometry for its active molecule",
+          "[methods][eem]") {
+    const auto molecule = make_active_hydrogen_oxygen();
+    const auto other_molecule = make_active_hydrogen_oxygen({}, {3.0, 0.0, 0.0});
+    const auto parameter_sets = make_eem_parameters(1.7);
+    const auto classification = parameters::ParameterClassification{
+        parameters::AtomParameterClassification{std::vector<std::size_t>{0, 1}}};
+    const auto parameter_view = parameters::ParameterView{parameter_sets[0], classification};
+    const auto prepared = features::PreparedMolecule{molecule};
+    const auto foreign_geometry = features::ConformerFeatures{other_molecule};
+    const auto options = methods::MethodOptions{};
+    const auto sources = std::array{methods::FixedPointSource{{4.0, 1.0, 0.0}, 0.25}};
+    const auto source_span = std::span<const methods::FixedPointSource>{sources};
+    const auto* eem = methods::method_registry().find("eem");
+    REQUIRE(eem != nullptr);
+
+    const auto missing_geometry =
+        methods::CalculationInput{prepared, options, -0.35, nullptr, &parameter_view, source_span};
+    CHECK_THROWS_AS(eem->calculate(missing_geometry), std::logic_error);
+
+    const auto wrong_geometry = methods::CalculationInput{
+        prepared, options, -0.35, &foreign_geometry, &parameter_view, source_span};
+    try {
+        static_cast<void>(eem->calculate(wrong_geometry));
+        CHECK(false);
+    } catch (const std::invalid_argument& error) {
+        CHECK(std::string_view{error.what()}.contains(
+            "fixed-source geometry does not belong to the active molecule"));
     }
 }
 

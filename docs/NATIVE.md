@@ -117,6 +117,14 @@ indices in `calculation::FixedChargeEmbedding`; the assessment facade does not t
 not support fixed-charge embedding require an empty span. The flag describes a caller precondition;
 it does not intercept virtual calls.
 
+EEM directly supports fixed point sources. Its `CalculationInput::target_charge()` is the total for active
+atoms only, and its returned charges cover only those active atoms; callers handle any further assembly.
+Direct callers must supply finite source values and finite geometry for the active molecule, and ensure
+that source positions do not coincide with active atom positions.
+The [project design](PROJECT.md#methods-and-parameters) describes the point-source field term. The
+assessment facade's indexed fixed-charge selection remains a separate, currently unsupported planning
+request.
+
 ## Assessment
 
 `calculation::AssessmentRequest` contains:
