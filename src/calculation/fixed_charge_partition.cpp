@@ -247,4 +247,38 @@ auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
             std::move(targets), embedding.charge_provenance};
 }
 
+auto reassemble_fixed_charge_results(const charges::ChargeSet& active_charges,
+                                     const FixedChargePartition& partition) -> charges::ChargeSet {
+    auto assignments = std::vector<charges::ChargeAssignment>{};
+    assignments.reserve(active_charges.size());
+    for (const auto& active_assignment : active_charges.assignments()) {
+        const auto molecule_index = active_assignment.target.molecule_index;
+        const auto& target = partition.targets.at(molecule_index);
+        if (active_assignment.charges.size() != target.active_atom_indices.size()) {
+            throw std::invalid_argument{"active charge count does not match fixed-charge partition "
+                                        "for molecule " +
+                                        std::to_string(molecule_index)};
+        }
+
+        auto values =
+            std::vector<double>(target.active_atom_indices.size() + target.sources.size());
+        for (std::size_t active_index = 0; active_index < target.active_atom_indices.size();
+             ++active_index) {
+            values.at(target.active_atom_indices[active_index]) =
+                active_assignment.charges.at(active_index);
+        }
+        for (const auto& source : target.sources) {
+            values.at(source.atom_index) = source.charge;
+        }
+        assignments.push_back(
+            {active_assignment.target, charges::AtomicCharges{std::move(values)}});
+    }
+
+    const auto parameter_set_id = active_charges.parameter_set_id();
+    return charges::ChargeSet{std::string{active_charges.method_id()}, std::move(assignments),
+                              parameter_set_id.has_value()
+                                  ? std::optional<std::string>{std::string{*parameter_set_id}}
+                                  : std::nullopt};
+}
+
 } // namespace chargefw::calculation::detail

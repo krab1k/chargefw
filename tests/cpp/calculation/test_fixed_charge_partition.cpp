@@ -1,3 +1,4 @@
+#include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
@@ -63,6 +64,23 @@ auto make_partition_input(const std::vector<calculation::FixedAtomCharge>& sourc
 auto make_partition_from_temporary_inputs() -> calculation::detail::FixedChargePartition {
     auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
     return calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+}
+
+auto make_active_charge_set() -> chargefw::charges::ChargeSet {
+    using chargefw::charges::AtomicCharges;
+    using chargefw::charges::ChargeAssignment;
+    using chargefw::charges::ChargeTarget;
+    return chargefw::charges::ChargeSet{
+        "test-method",
+        std::vector<ChargeAssignment>{
+            {ChargeTarget{3, 1}, AtomicCharges{{10.0, 20.0}}},
+            {ChargeTarget{0, std::nullopt}, AtomicCharges{{7.0, 8.0}}},
+            {ChargeTarget{1, 0}, AtomicCharges{{-1.0, -2.0, -3.0}}},
+            {ChargeTarget{2, std::nullopt}, AtomicCharges{{-4.0}}},
+            {ChargeTarget{3, 0}, AtomicCharges{{-10.0, -20.0}}},
+            {ChargeTarget{1, 1}, AtomicCharges{{1.0, 2.0, 3.0}}},
+        },
+        "test-parameters"};
 }
 
 } // namespace
@@ -232,6 +250,120 @@ TEST_CASE("empty fixed-charge partition is an identity copy",
         }
     }
     CHECK(partition.charge_provenance == "caller charge label");
+}
+
+TEST_CASE("fixed-charge reassembly scatters active charges and preserves assignment metadata",
+          "[calculation][fixed-charge-partition]") {
+    const auto result = [] {
+        auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
+        const auto partition =
+            calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+        const auto active_charges = make_active_charge_set();
+        const auto reassembled =
+            calculation::detail::reassemble_fixed_charge_results(active_charges, partition);
+
+        CHECK(active_charges.method_id() == "test-method");
+        REQUIRE(active_charges.parameter_set_id().has_value());
+        CHECK(*active_charges.parameter_set_id() == "test-parameters");
+        const auto original_values = std::vector<std::vector<double>>{
+            {10.0, 20.0}, {7.0, 8.0}, {-1.0, -2.0, -3.0}, {-4.0}, {-10.0, -20.0}, {1.0, 2.0, 3.0}};
+        REQUIRE(active_charges.size() == original_values.size());
+        for (std::size_t index = 0; index < original_values.size(); ++index) {
+            CHECK(std::ranges::equal(active_charges.assignment(index).charges.values(),
+                                     original_values[index]));
+        }
+        return reassembled;
+    }();
+
+    CHECK(result.method_id() == "test-method");
+    REQUIRE(result.parameter_set_id().has_value());
+    CHECK(*result.parameter_set_id() == "test-parameters");
+    REQUIRE(result.size() == 6);
+
+    CHECK(result.assignment(0).target.molecule_index == 3);
+    CHECK(result.assignment(0).target.conformer_index == 1);
+    CHECK(result.assignment(0).charges.size() == 4);
+    CHECK(result.assignment(0).charges[0] == 0.75);
+    CHECK(result.assignment(0).charges[1] == 10.0);
+    CHECK(result.assignment(0).charges[2] == 20.0);
+    CHECK(result.assignment(0).charges[3] == -0.25);
+    CHECK(result.assignment(0).charges.total() == 30.5);
+
+    CHECK(result.assignment(1).target.molecule_index == 0);
+    CHECK_FALSE(result.assignment(1).target.conformer_index.has_value());
+    CHECK(result.assignment(1).charges[0] == 7.0);
+    CHECK(result.assignment(1).charges[1] == 8.0);
+    CHECK(result.assignment(1).charges.total() == 15.0);
+
+    CHECK(result.assignment(2).target.molecule_index == 1);
+    CHECK(result.assignment(2).target.conformer_index == 0);
+    CHECK(result.assignment(2).charges[0] == -1.0);
+    CHECK(result.assignment(2).charges[1] == -2.0);
+    CHECK(result.assignment(2).charges[2] == 0.5);
+    CHECK(result.assignment(2).charges[3] == -3.0);
+    CHECK(result.assignment(2).charges.total() == -5.5);
+
+    CHECK(result.assignment(3).target.molecule_index == 2);
+    CHECK_FALSE(result.assignment(3).target.conformer_index.has_value());
+    CHECK(result.assignment(3).charges[0] == -4.0);
+
+    CHECK(result.assignment(4).target.molecule_index == 3);
+    CHECK(result.assignment(4).target.conformer_index == 0);
+    CHECK(result.assignment(4).charges[0] == 0.75);
+    CHECK(result.assignment(4).charges[1] == -10.0);
+    CHECK(result.assignment(4).charges[2] == -20.0);
+    CHECK(result.assignment(4).charges[3] == -0.25);
+    CHECK(result.assignment(4).charges.total() == -29.5);
+
+    CHECK(result.assignment(5).target.molecule_index == 1);
+    CHECK(result.assignment(5).target.conformer_index == 1);
+    CHECK(result.assignment(5).charges[0] == 1.0);
+    CHECK(result.assignment(5).charges[1] == 2.0);
+    CHECK(result.assignment(5).charges[2] == 0.5);
+    CHECK(result.assignment(5).charges[3] == 3.0);
+    CHECK(result.assignment(5).charges.total() == 6.5);
+}
+
+TEST_CASE("fixed-charge reassembly supports identity partitions and absent parameter IDs",
+          "[calculation][fixed-charge-partition]") {
+    auto input = make_partition_input({});
+    const auto partition =
+        calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+    const auto active = chargefw::charges::ChargeSet{
+        "identity-method",
+        {{chargefw::charges::ChargeTarget{1, std::nullopt},
+          chargefw::charges::AtomicCharges{{1.0, 2.0, 3.0, 4.0}}}},
+    };
+    const auto result = calculation::detail::reassemble_fixed_charge_results(active, partition);
+
+    CHECK(result.method_id() == "identity-method");
+    CHECK_FALSE(result.parameter_set_id().has_value());
+    REQUIRE(result.size() == 1);
+    CHECK(result.assignment(0).target.molecule_index == 1);
+    CHECK_FALSE(result.assignment(0).target.conformer_index.has_value());
+    CHECK(std::ranges::equal(result.assignment(0).charges.values(),
+                             std::vector<double>{1.0, 2.0, 3.0, 4.0}));
+}
+
+TEST_CASE("fixed-charge reassembly rejects target and active-size mismatches",
+          "[calculation][fixed-charge-partition]") {
+    auto input = make_partition_input({{1, 2, 0.5}});
+    const auto partition =
+        calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+    const auto wrong_size = chargefw::charges::ChargeSet{
+        "test-method",
+        {{chargefw::charges::ChargeTarget{1, std::nullopt},
+          chargefw::charges::AtomicCharges{{1.0, 2.0}}}},
+    };
+    CHECK_THROWS_AS(calculation::detail::reassemble_fixed_charge_results(wrong_size, partition),
+                    std::invalid_argument);
+
+    const auto wrong_target = chargefw::charges::ChargeSet{
+        "test-method",
+        {{chargefw::charges::ChargeTarget{99, std::nullopt}, chargefw::charges::AtomicCharges{{}}}},
+    };
+    CHECK_THROWS_AS(calculation::detail::reassemble_fixed_charge_results(wrong_target, partition),
+                    std::out_of_range);
 }
 
 TEST_CASE("fixed-charge partition factory shares source validation",
