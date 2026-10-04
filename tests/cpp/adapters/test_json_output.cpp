@@ -1,24 +1,93 @@
 #include <chargefw/adapters/charge_result.h>
+#include <chargefw/adapters/gemmi/mmcif_input.h>
 #include <chargefw/adapters/native/json_output.h>
 #include <chargefw/charges/atomic_charges.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/atom.h>
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
+#include <chargefw/core/molecule_collection.h>
+#include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/common_parameters.h>
+#include <chargefw/parameters/models/parameter_set.h>
+#include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <snitch/snitch.hpp>
+
+#include "support/test_parameters.h"
 
 #include <nlohmann/json.hpp>
 
 #include <limits>
+#include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace adapters = chargefw::adapters;
 namespace calculation = chargefw::calculation;
 namespace charges = chargefw::charges;
+namespace core = chargefw::core;
+namespace mmcif_input = chargefw::adapters::gemmi::mmcif_input;
 namespace json_output = chargefw::adapters::native::json_output;
+
+namespace {
+
+auto make_component_record(const std::string_view id,
+                           const std::vector<std::optional<std::string>>& label_components,
+                           const std::vector<std::optional<std::string>>& author_components = {})
+    -> adapters::ImportedMoleculeRecord {
+    auto conformers = std::vector<core::Conformer>{};
+    auto metadata_conformers = std::vector<adapters::SourceConformerReference>{};
+    for (std::size_t conformer_index = 0; conformer_index < label_components.size();
+         ++conformer_index) {
+        const auto author_component = author_components.empty()
+                                          ? std::optional<std::string>{}
+                                          : author_components.at(conformer_index);
+        auto source = std::optional<adapters::SourceStructuralLabels>{};
+        if (label_components[conformer_index].has_value() || author_component.has_value()) {
+            source = adapters::SourceStructuralLabels{
+                .author = {.residue = author_component},
+                .label = {.residue = label_components[conformer_index]}};
+        }
+        auto sites = std::vector<adapters::SourceAtomReference>{
+            {.position = 1, .structural_labels = std::move(source)}, {.position = 0}};
+        if (conformer_index == 0) {
+            metadata_conformers.push_back({.position = conformer_index, .sites = sites});
+        } else {
+            metadata_conformers.push_back({.position = conformer_index, .sites = std::move(sites)});
+        }
+        conformers.emplace_back(
+            std::vector{core::Position{0.0, 0.0, static_cast<double>(conformer_index)},
+                        core::Position{1.0, 0.0, static_cast<double>(conformer_index)}},
+            "model-" + std::to_string(conformer_index));
+    }
+    auto metadata =
+        adapters::MoleculeImportMetadata{.format = adapters::MolecularSourceFormat::mmcif,
+                                         .atoms = metadata_conformers.front().sites,
+                                         .conformers = std::move(metadata_conformers)};
+    return {.molecule = core::Molecule{std::vector{core::Atom{6}, core::Atom{1}},
+                                       {},
+                                       std::move(conformers),
+                                       std::string{id}},
+            .identity = {.source = "component-fixture.cif", .record_index = 0},
+            .import_metadata = std::move(metadata)};
+}
+
+auto make_component_eem_parameters() -> chargefw::parameters::ParameterSet {
+    return chargefw::parameters::ParameterSet{
+        chargefw::parameters::ParameterSetMetadata{
+            .id = "json-eem", .method_id = "eem", .name = "JSON EEM"},
+        chargefw::parameters::CommonParameters{{{.name = "kappa", .value = 2.5}}},
+        chargefw::parameters::AtomParameters{
+            {{.key = chargefw::test::plain_atom_key(1),
+              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 5.0}}},
+             {.key = chargefw::test::plain_atom_key(8),
+              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 9.0}}}}}};
+}
+
+} // namespace
 
 TEST_CASE("JSON output serializes ordered records and calculation provenance", "[adapters][json]") {
     auto sites = std::vector<adapters::SourceAtomReference>{
@@ -163,7 +232,6 @@ TEST_CASE("JSON output projects fixed-charge embedding effective provenance", "[
              .fixed_charge_embedding = calculation::FixedChargeEmbeddingProvenance{
                  .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25}},
                  .charge_provenance = "measured fixed charge",
-                 .interaction_model = "eem_kappa_over_r",
                  .charge_totals = {{.molecule_index = 0,
                                     .original_total_charge = 0.0,
                                     .active_total_charge = -0.25},
@@ -179,13 +247,174 @@ TEST_CASE("JSON output projects fixed-charge embedding effective provenance", "[
     CHECK(embedding.at("sources") ==
           nlohmann::json::array({{{"molecule_index", 0}, {"atom_index", 1}, {"charge", 0.25}}}));
     CHECK(embedding.at("charge_provenance") == "measured fixed charge");
-    CHECK(embedding.at("interaction_model") == "eem_kappa_over_r");
+    CHECK_FALSE(embedding.contains("components"));
     CHECK(embedding.at("charge_totals") == nlohmann::json::array({{{"molecule_index", 0},
                                                                    {"original_total_charge", 0.0},
                                                                    {"active_total_charge", -0.25}},
                                                                   {{"molecule_index", 1},
                                                                    {"original_total_charge", 0.0},
                                                                    {"active_total_charge", 0.0}}}));
+}
+
+TEST_CASE("JSON fixed-charge components group labeled sources without inferring unlabeled ones",
+          "[adapters][json]") {
+    auto records = std::vector<adapters::ImportedMoleculeRecord>{
+        make_component_record("ca-first", {"CA", "CA"}),
+        make_component_record("ca-second", {"CA"}),
+        make_component_record("ca-other-charge", {"CA"}),
+        make_component_record("author-fallback", {std::string{}}, {"MG"}),
+        make_component_record("unlabeled", {std::nullopt}),
+        make_component_record("conflicting-labels", {"CA", "MG"})};
+    const std::vector<double> source_charges{0.4, 0.4, 0.5, 0.4, 0.4, 0.4};
+    auto sources = std::vector<calculation::FixedAtomCharge>{};
+    auto totals = std::vector<calculation::EmbeddingChargeTotals>{};
+    auto assignments = std::vector<charges::ChargeAssignment>{};
+    for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
+        const auto charge = source_charges[molecule_index];
+        sources.push_back({molecule_index, 0, charge});
+        totals.push_back({molecule_index, 0.0, -charge});
+        for (std::size_t conformer_index = 0;
+             conformer_index < records[molecule_index].molecule.conformer_count();
+             ++conformer_index) {
+            assignments.push_back(
+                {.target = {.molecule_index = molecule_index, .conformer_index = conformer_index},
+                 .charges = charges::AtomicCharges{{charge, -charge}}});
+        }
+    }
+    const auto result = adapters::make_charge_calculation_result(
+        std::move(records), {},
+        {.charges = charges::ChargeSet{"eem", std::move(assignments), "component-groups"},
+         .effective = calculation::EffectiveCalculation{
+             .method_id = "eem",
+             .parameter_set_id = "component-groups",
+             .execution_policy = calculation::ExecutionPolicy{},
+             .fixed_charge_embedding = calculation::FixedChargeEmbeddingProvenance{
+                 .sources = std::move(sources),
+                 .charge_provenance = "explicit monatomic sources",
+                 .charge_totals = std::move(totals)}}});
+
+    auto output = std::ostringstream{};
+    json_output::JsonWriter{output}.write(result, "test");
+    const auto document = nlohmann::json::parse(output.str());
+    const auto& embedding =
+        document.at("calculation_provenance").at("effective").at("fixed_charge_embedding");
+    REQUIRE(embedding.at("sources").size() == 6);
+    const auto& components = embedding.at("components");
+    REQUIRE(components.size() == 3);
+    CHECK(components[0] == nlohmann::json{{"component_id", "CA"},
+                                          {"charge_per_instance", 0.4},
+                                          {"instances",
+                                           {{{"molecule_index", 0}, {"atom_indices", {0}}},
+                                            {{"molecule_index", 1}, {"atom_indices", {0}}}}}});
+    CHECK(components[1] ==
+          nlohmann::json{{"component_id", "CA"},
+                         {"charge_per_instance", 0.5},
+                         {"instances", {{{"molecule_index", 2}, {"atom_indices", {0}}}}}});
+    CHECK(components[2] ==
+          nlohmann::json{{"component_id", "MG"},
+                         {"charge_per_instance", 0.4},
+                         {"instances", {{{"molecule_index", 3}, {"atom_indices", {0}}}}}});
+}
+
+TEST_CASE("JSON component grouping reads labels from Gemmi imports through EEM facade results",
+          "[adapters][json]") {
+    const auto document = R"cif(data_first
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.label_entity_id
+_atom_site.pdbx_PDB_model_num
+HETATM 1 H H1 . LIG A 1 ? 0 0 0 1 20 0 1 LIG A H1 E1 1
+HETATM 2 O O1 . LIG A 1 ? 2 0 0 1 20 0 1 LIG A O1 E1 1
+HETATM 3 Mg MG . MG B 1 ? 0 3 0 1 20 2 1 MG B MG E2 1
+#
+data_second
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.label_entity_id
+_atom_site.pdbx_PDB_model_num
+HETATM 1 H H1 . LIG A 1 ? 0 0 1 1 20 0 1 LIG A H1 E1 1
+HETATM 2 O O1 . LIG A 1 ? 2 0 1 1 20 0 1 LIG A O1 E1 1
+HETATM 3 Mg MG . MG B 1 ? 0 3 1 1 20 2 1 MG B MG E2 1
+#
+)cif";
+    auto input = std::istringstream{document};
+    auto reader = mmcif_input::MmcifReader{input, "component-input.cif"};
+    auto records = std::vector<adapters::ImportedMoleculeRecord>{};
+    while (auto record = reader.next()) {
+        records.push_back(std::move(*record));
+    }
+    REQUIRE(records.size() == 2);
+    REQUIRE(records[0].import_metadata.has_value());
+    REQUIRE(records[0].import_metadata->atoms[2].structural_labels.has_value());
+    CHECK(records[0].import_metadata->atoms[2].structural_labels->label.residue == "MG");
+
+    auto molecules = std::vector<core::Molecule>{};
+    for (const auto& record : records) {
+        molecules.push_back(record.molecule);
+    }
+    const auto parameters = make_component_eem_parameters();
+    auto execution = calculation::calculate(calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::move(molecules)},
+        .parameter_sets = {parameters},
+        .method_id = "eem",
+        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .sources = {{.molecule_index = 0, .atom_index = 2, .charge = 0.4},
+                        {.molecule_index = 1, .atom_index = 2, .charge = 0.4}},
+            .charge_provenance = "imported fixed ions"}}));
+    REQUIRE(execution.calculated());
+    const auto result = adapters::make_charge_calculation_result(
+        std::move(records), {.method_id = "eem", .parameter_set_id = "json-eem"},
+        std::move(execution));
+
+    auto output = std::ostringstream{};
+    json_output::JsonWriter{output}.write(result, "test");
+    const auto json = nlohmann::json::parse(output.str());
+    const auto& embedding =
+        json.at("calculation_provenance").at("effective").at("fixed_charge_embedding");
+    REQUIRE(embedding.at("components").size() == 1);
+    CHECK(embedding.at("components")[0].at("component_id") == "MG");
+    CHECK(embedding.at("components")[0].at("charge_per_instance") == 0.4);
+    REQUIRE(embedding.at("components")[0].at("instances").size() == 2);
+    CHECK(embedding.at("components")[0].at("instances")[0] ==
+          nlohmann::json{{"molecule_index", 0}, {"atom_indices", {2}}});
+    CHECK(embedding.at("components")[0].at("instances")[1] ==
+          nlohmann::json{{"molecule_index", 1}, {"atom_indices", {2}}});
 }
 
 TEST_CASE("JSON output serializes a cancelled result without assignments", "[adapters][json]") {
@@ -202,7 +431,6 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
                 .fixed_charge_embedding = calculation::FixedChargeEmbeddingProvenance{
                     .sources = {{.molecule_index = 0, .atom_index = 0, .charge = 0.5}},
                     .charge_provenance = "",
-                    .interaction_model = "eem_kappa_over_r",
                     .charge_totals = {{.molecule_index = 0,
                                        .original_total_charge = 0.0,
                                        .active_total_charge = -0.5}}}}});
@@ -240,7 +468,6 @@ TEST_CASE("JSON output retains embedding metadata on numerical failure without c
                 .fixed_charge_embedding = calculation::FixedChargeEmbeddingProvenance{
                     .sources = {{.molecule_index = 0, .atom_index = 0, .charge = -0.2}},
                     .charge_provenance = "fixed value",
-                    .interaction_model = "eem_kappa_over_r",
                     .charge_totals = {{.molecule_index = 0,
                                        .original_total_charge = 0.0,
                                        .active_total_charge = 0.2}}}}});
@@ -254,7 +481,7 @@ TEST_CASE("JSON output retains embedding metadata on numerical failure without c
     CHECK(document.at("calculation_provenance")
               .at("effective")
               .at("fixed_charge_embedding")
-              .at("interaction_model") == "eem_kappa_over_r");
+              .contains("charge_totals"));
 }
 
 TEST_CASE("JSON output retains cancelled results without effective provenance",
@@ -288,16 +515,12 @@ TEST_CASE("result assembly validates fixed-charge embedding structure", "[adapte
     const auto valid = calculation::FixedChargeEmbeddingProvenance{
         .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.5}},
         .charge_provenance = "caller label",
-        .interaction_model = "eem_kappa_over_r",
         .charge_totals = {
             {.molecule_index = 0, .original_total_charge = 0.0, .active_total_charge = -0.5}}};
     CHECK_NOTHROW(make_result(valid));
 
     auto invalid = valid;
     invalid.sources.clear();
-    CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
-    invalid = valid;
-    invalid.interaction_model.clear();
     CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
     invalid = valid;
     invalid.sources[0].molecule_index = 1;

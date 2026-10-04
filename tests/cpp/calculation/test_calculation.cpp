@@ -5,6 +5,7 @@
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
+#include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
@@ -172,6 +173,34 @@ TEST_CASE("calculation facade reports singular solver failures with target conte
     REQUIRE(result.failure_message.has_value());
     CHECK(
         result.failure_message->contains("method 'eem', molecule 1 ('singular-eem'), conformer 1"));
+}
+
+TEST_CASE("embedded EEM retains provenance on numerical failure", "[calculation][calculation]") {
+    const auto molecule =
+        core::Molecule{std::vector{core::Atom{1, 0}, core::Atom{12, 2}, core::Atom{8, 0}},
+                       {},
+                       {core::Conformer{{{0.0, 0.0, 0.0}, {0.0, 3.0, 0.0}, {1.0, 0.0, 0.0}}}},
+                       "singular-embedded-eem"};
+    const auto result = calculation::calculate(calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{molecule}},
+        .parameter_sets = {make_singular_eem_parameter_set()},
+        .method_id = "eem",
+        .parameter_set_id = "singular-eem",
+        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25}},
+            .charge_provenance = "fixed value"}}));
+
+    CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
+    CHECK_FALSE(result.charges.has_value());
+    REQUIRE(result.effective.has_value());
+    REQUIRE(result.effective->fixed_charge_embedding.has_value());
+    const auto& provenance = *result.effective->fixed_charge_embedding;
+    REQUIRE(provenance.sources.size() == 1);
+    CHECK(provenance.sources[0].charge == 0.25);
+    CHECK(provenance.charge_provenance == "fixed value");
+    REQUIRE(provenance.charge_totals.size() == 1);
+    CHECK(provenance.charge_totals[0].original_total_charge == 2.0);
+    CHECK(provenance.charge_totals[0].active_total_charge == 1.75);
 }
 
 TEST_CASE("assessment preserves owned selection state and validates method options",

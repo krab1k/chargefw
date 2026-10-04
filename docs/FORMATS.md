@@ -251,9 +251,18 @@ memory are rounded to three decimal places.
 
 Effective provenance may also include `fixed_charge_embedding`. Its `sources` entries use zero-based
 molecule and atom indices in the original input collection and retain each fixed charge. The
-`charge_provenance` label and `interaction_model` identifier are strings. `charge_totals` has one entry
-per original molecule in collection order; each entry records the supplied original formal-charge total
-and the required total charge for that molecule's active atoms. This optional field is an additive
-extension to result schema 1.0. Consumers
+`charge_provenance` label is a string. `charge_totals` has one entry per original molecule in collection
+order; each entry records the supplied original formal-charge total and the required total charge for that
+molecule's active atoms. The applicable method, parameter set, and method options are recorded in the
+surrounding effective provenance.
+
+When imported source records provide structural residue labels for fixed atoms, `components` summarizes
+them in first-source order, grouped by component ID and exact prescribed charge. Each entry has a
+`component_id`, `charge_per_instance`, and `instances`; each current monatomic instance identifies its
+original `molecule_index` and one-element `atom_indices`. Component IDs use the label residue ID, falling
+back to the author residue ID. This is a readable summary of input labels, not a CCD lookup or assignment;
+the flat `sources` list remains authoritative and covers sources without labels or unambiguous component
+identity. `components` is omitted when no selected source has an unambiguous structural residue label.
+The optional `fixed_charge_embedding` object is an additive extension to result schema 1.0. Consumers
 validating embedded result documents should use the updated 1.0 schema; an older strict schema rejects the
 additional effective field.

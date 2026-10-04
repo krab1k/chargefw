@@ -46,7 +46,6 @@ struct EmbeddingChargeTotals {
 struct FixedChargeEmbeddingProvenance {
     std::vector<FixedAtomCharge> sources;
     std::string charge_provenance;
-    std::string interaction_model;
     std::vector<EmbeddingChargeTotals> charge_totals;
 };
 

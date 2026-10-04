@@ -1,8 +1,8 @@
 # Fixed-Charge Embedding Implementation Plan
 
 Status: EEM implementation authorized, progressing through smaller independently reviewable slices.
-Slices 2a-2i are committed; slice 2j private full-execution source plumbing is implemented and reviewed,
-pending user review. Facade embedding execution remains disabled.
+Slices 2a-2k are reviewed and complete; slice 2j is `a8f2852`, and slice 2k is recorded in git history.
+Reduced embedding and other methods remain disabled.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -89,9 +89,9 @@ target total based on prescribed source charges.
 | Validation | Reject nonfinite charges/totals/coordinates, coincident active/source sites, and invalid graph/source scope. Do not clamp distances. Do not define a universal near-contact radius or warning absent a method-specific scientific basis. |
 | Ownership | `AssessmentRequest` owns raw selectors. `AssessmentResult` owns its validated partition, source values, mappings, and geometry lifetime alongside its current molecule/prepared-feature owners. Its facade execution passes internally validated target-local context tied to the active prepared data and candidate. `CalculationInput` receives a read-only non-owning `std::span<const FixedPointSource>` (each source has `core::Position position` and `double charge`), valid throughout the method call. Coupling stays method-specific. |
 | Lower-level execution | Keep the existing public `CalculationRequest` unchanged and non-embedding initially: it consumes already prepared/classified data and cannot accept raw selectors or repartition. Only the owned assessment facade partitions, validates, executes with its tied internal context, and reassembles results at the facade boundary. |
-| Capability/resource | Add an explicit embedding capability to method requirements/assessment, independent of `full`/`cutoff`/`cover`; initially only the methods implemented in steps 2-4 advertise it, and only full execution until step 5. Unsupported candidates/modes are rejected, never silently downgraded. Resource assessment counts active solve size plus `N_active * N_source` source-field work using the existing complexity/resource mechanism; no new planner. |
-| Provenance | Add structured embedding provenance to effective/result output: source molecule/atom indices and exact prescribed charges, caller-supplied charge-provenance label, source kernel convention, per-target original and active totals. Keep it separate from execution mode/radius. The existing native `ExecutionResult` and adapter `ChargeCalculationResult` are the result boundaries; JSON serializes the structure, molecular charge arrays remain original-order. |
-| QEq | Proposed, not settled: analytic infinite-source-hardness limits from METALS.md 4.6, separately for each overlap option and without passing infinity to the finite-parameter kernel. Keep active-active behavior unchanged and identify this convention in provenance. This scientific convention requires explicit approval before step 4. |
+| Capability/resource | Add an explicit embedding capability to method requirements/assessment, independent of `full`/`cutoff`/`cover`; initially only the methods implemented in steps 2-4 advertise it, and only full execution until step 5. Unsupported candidates/modes are rejected, never silently downgraded. Resource thresholds continue to apply per active solve molecule under the existing policy; do not add a source-work estimate or count override. |
+| Provenance | Add structured embedding provenance to effective/result output: source molecule/atom indices and exact prescribed charges, caller-supplied charge-provenance label, and per-target original and active totals. The selected method, parameter set, and options already identify the coupling; do not add a separate kernel field. JSON may summarize imported structural component labels without assigning components. Keep provenance separate from execution mode/radius. The existing native `ExecutionResult` and adapter `ChargeCalculationResult` are the result boundaries; JSON serializes the structure, molecular charge arrays remain original-order. |
+| QEq | Proposed, not settled: analytic infinite-source-hardness limits from METALS.md 4.6, separately for each overlap option and without passing infinity to the finite-parameter kernel. Keep active-active behavior unchanged and document the approved convention with QEq; effective method/options provenance identifies the applied model without a separate identifier. This scientific convention requires explicit approval before step 4. |
 
 `CalculationInput` is a public method-level API, so adding its source span is a public API change, not
 an internal-only detail. It carries numerical inputs, not original-atom selection or result reassembly.
@@ -118,9 +118,9 @@ boundary. Implement the contract incrementally without enabling incomplete execu
 still requires explicit approval before step 4. For SQE and SQE+q0, incompatible active budgets reject
 rather than changing seed policy.
 
-## 2. Deliver EEM Full Execution End to End
+## 2. Deliver EEM Full Execution End to End [x]
 
-- [ ] Implement one complete native path from assessment through reconstructed output.
+- [x] Implement one complete native path from assessment through reconstructed output in slice 2k.
 
 ### Review Slices
 
@@ -254,15 +254,34 @@ rather than changing seed policy.
   `test_representative_execution`, and `test_cover_execution` passed (9/9 each). Affected clang-tidy
   targets, formatting, and whitespace checks passed. Astra reviewed the fixes, including serial-only
   capturing-method checks, the independent parameterized EEM reference, and source lifetime/identity
-  handling. Existing facade tests verify nonempty embedding requests produce no execution plans. Commit:
-  pending user review.
-- [ ] **2k and later:** define the next small boundary after review of 2j, working toward the end-to-end
-  requirements below. Keep each intermediate state fail-closed.
+  handling. At the 2j boundary, facade tests verified nonempty embedding requests produced no plans.
+  Commit: `a8f2852`.
+- The resource-accounting detour was dropped after user review; 2k integrates native EEM full-mode
+  facade execution. 2k review removed the redundant interaction-model result field introduced in 2i;
+  method ID/options remain the coupling provenance.
+- [x] **2k: Native EEM full-mode facade and JSON component summaries.** Allow only full plans for
+  validated fixed-charge EEM requests. Reuse one private dispatch/emitter path, produce embedding
+  provenance before execution, and reassemble successful results once at the facade boundary. Preserve
+  unsupported reduced modes, automatic warning policy, ordinary direct requests, and metadata on
+  failure/cancellation. JSON retains flat sources as authority and may group consistently labeled
+  monatomic sources by component ID and exact prescribed charge; labels come from imported structural
+  metadata, never CCD assignment. Do not expand Python/CLI request APIs. Astra reviewed and accepted the
+  implementation; commit recorded in git history.
+- Slice 2k validation: GCC debug full suite (57/57). Native facade suites (`test_builtin_methods`,
+  `test_planning`, `test_calculation`, `test_observer`, `test_json_output`) passed GCC/Clang debug and
+  GCC/Clang release (5/5 each); sequential ASan/UBSan with `test_fixed_charge_partition` passed (6/6
+  each). Component adapter suites (`test_json_output`, `test_mmcif`, `test_mmcif_output`, `test_pdb`)
+  passed Clang debug and GCC/Clang release and sequential ASan/UBSan (4/4 each). Component schema
+  instances validated. Affected clang-tidy targets completed with an existing Gemmi `MmcifReader`
+  special-member warning; formatting and whitespace checks passed.
+- Optional follow-on, not authorized here: user-opt-in CCD-backed monatomic component selection/assignment.
+- Step 3, the SQE family, remains the next implementation scope after user review.
 
 Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,
 `src/calculation/{assessment,calculation,full_execution,target_execution}.*`,
 `include/chargefw/methods/{calculation_input,method_requirements}.h`, and
-`src/methods/builtin/eem.cpp`.
+`src/methods/builtin/eem.cpp`, `src/adapters/native/json_output.cpp`,
+`schemas/result-1.0.schema.json`, and the calculation/JSON adapter tests.
 
 - Prepare the partition once before candidate checks. Own active molecules and their features with safe
   lifetimes; retain disconnected active components together and preserve original conformer identity.
@@ -270,15 +289,16 @@ Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,
   choose an unsupported method or reduced mode, or override resource policy to manufacture a plan.
 - Enforce embedding compatibility in candidate assessment before classification and in existing
   execution validation before dispatch. Direct method callers are responsible for declared preconditions;
-  do not add guards to algorithms that do not implement embedding or introduce a dispatch wrapper.
+  do not add guards to algorithms that do not implement embedding or introduce a separate embedding-only
+  dispatcher.
 - Assess prerequisites and classify active atoms/bonds only with the unchanged matcher. Translate active
   diagnostic indices back to original atom/bond indices.
 - Pass the active budget to the solve and subtract `sum(kappa * fixed_charge / distance)` from its RHS,
   using the selected EEM set's `kappa`. Do not read ion atom parameters.
 - Reassemble original-order charges once at the common result boundary. Fixed values are copied exactly;
   reusable plans, progress, cancellation, and result identity retain their existing guarantees.
-- Add structured embedding provenance and account for active solve size plus source-field work in
-  execution resource assessment. A simple cost term is enough; no resource-planner rewrite.
+- Add structured embedding provenance while retaining the existing resource policy for per-active-molecule
+  thresholds; do not add a source-work estimate or resource count override.
 - Document the supported native/full slice in `docs/PROJECT.md` and `docs/NATIVE.md`.
 
 Focused check: one small active pair plus a missing-parameter ion, compared with an independently
@@ -314,7 +334,8 @@ Primary file: `src/methods/builtin/qeq.cpp`.
 Keep active-active overlap behavior unchanged. Implement only the approved source coupling, subtract
 its potential, and use the active budget. If adopting the proposed limits, preserve Nishimoto-Mataga-
 Weiss's `17.28/r`, Ohno-Klopman's active-hardness softening, and `14.4/r` for the other four options.
-Validate the active-hardness domain required by the limit and identify the convention in provenance.
+Validate the active-hardness domain required by the limit and document the approved convention with QEq;
+effective method/options provenance identifies it without a separate identifier.
 
 Focused check: one table-driven kernel/reference-solve test across the supported overlap options,
 reusing the EEM fixture and budget/mapping infrastructure. Update shared/native method documentation.
@@ -422,7 +443,7 @@ These are separately reviewed extensions, not prerequisites for completing steps
   subsequent API and execution work remains outside this slice. QEq coupling approval remains pending.
 - 2026-10-03: Slice 2a implemented and reviewed. Absent/empty embedding preserves ordinary assessment;
   nonempty sources throw before planning. Stopped for user review without starting partitioning or
-  numerical execution. Step 2 remains incomplete.
+  numerical execution. Step 2 remained incomplete at that point.
 - 2026-10-03: Generalized the API name to `FixedChargeEmbedding` / `fixed_charge_embedding` at user
   request. Indexed atomic sources can also represent future frozen components; initial isolated-source
   scope and current fail-closed behavior are unchanged. Fragment validation and component-total metadata

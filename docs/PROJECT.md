@@ -138,9 +138,15 @@ method, parameter set, validated options, execution policy, and any policy warni
 
 For a fixed-charge embedding request, assessment owns both the original collection and an active-molecule
 partition, then classifies capable methods against that active collection. Rejection indices map back to
-the original molecules. EEM is the currently capable method, but embedded execution is not connected to
-planning yet, so an embedded assessment returns rejections rather than runnable plans or reassembled
-charges.
+the original molecules. EEM is the currently capable method and can be planned and executed in full mode.
+The active subsystem is solved with the prescribed source field and active charge budget; successful
+charges are reassembled into original atom order with source charges restored. Effective provenance
+retains the source selectors and values, caller label, and original/active charge totals for every
+molecule; the effective method, parameter set, and options define the coupling. Reduced modes remain
+unavailable for embedding.
+Automatic selection does not choose a full plan carrying resource warnings; explicit full selection can
+execute with its warning. Existing resource thresholds continue to use the active molecule size per
+target.
 
 The effective execution mode is always one of:
 

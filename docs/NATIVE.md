@@ -111,19 +111,20 @@ coordinates are missing or non-finite.
 Lower-level `methods::CalculationInput` accepts a trailing `std::span<const methods::FixedPointSource>`;
 each source contains a Cartesian `core::Position` and charge. The input borrows the span, so keep its
 elements alive for the input's use. These positional sources are distinct from the original-collection
-indices in `calculation::FixedChargeEmbedding`; the assessment facade does not translate between them.
+indices in `calculation::FixedChargeEmbedding`; direct method callers provide positions themselves, while
+the assessment facade validates indexed selectors and constructs sources for supported EEM execution.
 `MethodRequirements::supports_fixed_charge_embedding` reports numerical support. Direct callers of
 `Method::calculate()` must satisfy the method's requirements, including this capability; methods that do
 not support fixed-charge embedding require an empty span. The flag describes a caller precondition;
-it does not intercept virtual calls.
+it does not intercept virtual calls. The source coupling is defined by the selected method; the facade's
+effective provenance already records the method, parameter set, and method options.
 
 EEM directly supports fixed point sources. Its `CalculationInput::target_charge()` is the total for active
-atoms only, and its returned charges cover only those active atoms; callers handle any further assembly.
+atoms only, and its returned charges cover only those active atoms; direct method callers handle any
+further assembly.
 Direct callers must supply finite source values and finite geometry for the active molecule, and ensure
-that source positions do not coincide with active atom positions.
-The [project design](PROJECT.md#methods-and-parameters) describes the point-source field term. The
-assessment facade's indexed fixed-charge selection remains a separate, currently unsupported planning
-request.
+that source positions do not coincide with active atom positions. The
+[project design](PROJECT.md#methods-and-parameters) describes the point-source field term.
 
 ## Assessment
 
@@ -144,9 +145,13 @@ bonds, and leave at least one active atom in each affected molecule. Each affect
 conformer coordinates that are finite throughout; source coordinates must not exactly coincide with an
 active atom in the same conformer. Per molecule, the original supplied formal-charge total minus the
 prescribed source-charge sum defines the active charge budget; the original total and resulting budget
-must both be finite. A valid nonempty selection filters methods by their embedding capability and reports
-method and execution rejections without producing plans. The
-[project design](PROJECT.md#assessment-and-execution) describes the active-molecule assessment boundary.
+must both be finite. A valid nonempty selection filters methods by their embedding capability and assesses
+execution modes. EEM can produce full-mode plans; cutoff and cover modes remain
+unavailable for embedded targets. Automatic selection excludes a warned full plan, while explicit full
+selection may execute with its resource warning. Parameter classification and EEM execution use the
+active molecules. Successful facade results restore fixed charges in original atom order and expose
+embedding provenance through `ExecutionResult::effective`; original and active charge totals are recorded
+for every molecule. The [project design](PROJECT.md#assessment-and-execution) describes this boundary.
 Invalid source selections still throw `std::invalid_argument`.
 
 `calculation::assess()` returns an `AssessmentResult` with read-only access to its original owned source
@@ -192,10 +197,10 @@ effective calculation provenance, optional failure text, and applicability/compu
 `ExecutionResult`. JSON and generated molecular writers can therefore consume the result without a
 separately supplied molecule collection, identity list, diagnostics list, or import context.
 
-Result construction validates import-mapping dimensions, successful assignment coverage, canonical molecule/conformer order,
-uniform scope, atom dimensions, target bounds, and agreement with effective method and parameter-set
-provenance. Optional `EffectiveCalculation::fixed_charge_embedding` owns the indexed sources, caller label,
-interaction-model identifier, and per-original-molecule charge totals. Result construction checks the
+Result construction validates import-mapping dimensions, successful assignment coverage, canonical
+molecule/conformer order, uniform scope, atom dimensions, target bounds, and agreement with effective
+method and parameter-set provenance. Optional `EffectiveCalculation::fixed_charge_embedding` owns the
+indexed sources, caller label, and per-original-molecule charge totals. Result construction checks the
 metadata's source and totals structure, including when a failed or cancelled result carries effective
 provenance.
 Failed and cancelled results must not contain charge assignments.

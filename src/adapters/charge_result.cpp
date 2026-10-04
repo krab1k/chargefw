@@ -90,10 +90,6 @@ auto validate_fixed_charge_embedding(const std::span<const ImportedMoleculeRecor
     if (embedding.sources.empty()) {
         throw std::invalid_argument{"fixed-charge embedding provenance requires sources"};
     }
-    if (embedding.interaction_model.empty()) {
-        throw std::invalid_argument{"fixed-charge embedding interaction model must not be empty"};
-    }
-
     auto selectors = std::set<std::pair<std::size_t, std::size_t>>{};
     for (const auto& source : embedding.sources) {
         if (source.molecule_index >= records.size()) {

@@ -5,6 +5,8 @@
 #include <atomic>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/calculation/observer.h>
+#include <chargefw/core/atom.h>
+#include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
@@ -12,6 +14,7 @@
 #include <chargefw/methods/method_applicability.h>
 #include <chargefw/methods/method_metadata.h>
 #include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <limits>
@@ -258,6 +261,18 @@ auto make_invalid_qeq_parameters() -> chargefw::parameters::ParameterSet {
                              {.name = "hardness", .value = 13.364}}}}}};
 }
 
+auto make_embedding_eem_parameters() -> chargefw::parameters::ParameterSet {
+    return chargefw::parameters::ParameterSet{
+        chargefw::parameters::ParameterSetMetadata{
+            .id = "observer-embedding-eem", .method_id = "eem", .name = "Observer embedding EEM"},
+        chargefw::parameters::CommonParameters{{{.name = "kappa", .value = 2.0}}},
+        chargefw::parameters::AtomParameters{
+            {{.key = chargefw::test::plain_atom_key(1),
+              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 5.0}}},
+             {.key = chargefw::test::plain_atom_key(8),
+              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 9.0}}}}}};
+}
+
 auto make_separated_waters() -> core::Molecule {
     return core::Molecule{std::vector{core::Atom{8}, core::Atom{1}, core::Atom{1}, core::Atom{8},
                                       core::Atom{1}, core::Atom{1}},
@@ -441,6 +456,51 @@ TEST_CASE("cancellation produces a terminal observer event", "[calculation][obse
                   return event.phase == calculation::CalculationPhase::computation_finished;
               }) == 1);
     }
+}
+
+TEST_CASE("embedded cancellation retains effective source provenance", "[calculation][observer]") {
+    const auto observer = CancelAfterFirstTarget{};
+    const auto molecule =
+        core::Molecule{std::vector{core::Atom{1, 0}, core::Atom{12, 2}, core::Atom{8, 0}},
+                       {},
+                       {core::Conformer{{{0.0, 0.0, 0.0}, {0.0, 3.0, 0.0}, {2.0, 0.0, 0.0}}}},
+                       "cancelled-embedded-eem"};
+    const auto assessment = calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{molecule}},
+        .parameter_sets = {make_embedding_eem_parameters()},
+        .method_id = "eem",
+        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}},
+            .charge_provenance = "cancelled fixed source"}});
+    const auto result = calculation::calculate(assessment, 1, observer);
+
+    CHECK(result.status == calculation::ExecutionStatus::cancelled);
+    CHECK_FALSE(result.calculated());
+    CHECK_FALSE(result.charges.has_value());
+    REQUIRE(result.effective.has_value());
+    REQUIRE(result.effective->fixed_charge_embedding.has_value());
+    const auto& provenance = *result.effective->fixed_charge_embedding;
+    CHECK(provenance.charge_provenance == "cancelled fixed source");
+    CHECK(provenance.sources.size() == 1);
+    CHECK(provenance.sources[0].charge == 0.4);
+    REQUIRE(provenance.charge_totals.size() == 1);
+    CHECK(provenance.charge_totals[0].original_total_charge == 2.0);
+    CHECK(provenance.charge_totals[0].active_total_charge == 1.6);
+    const auto events = observer.events();
+    REQUIRE(!events.empty());
+    CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
+    CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
+    CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+              return event.phase == calculation::CalculationPhase::computation_started;
+          }) == 1);
+    CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+              return event.phase == calculation::CalculationPhase::computation_finished;
+          }) == 1);
+
+    const auto repeated = calculation::calculate(assessment);
+    REQUIRE(repeated.calculated());
+    REQUIRE(repeated.effective->fixed_charge_embedding.has_value());
+    CHECK(repeated.effective->fixed_charge_embedding->sources[0].charge == 0.4);
 }
 
 TEST_CASE("validation failures finish observation and propagate unchanged",

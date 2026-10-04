@@ -320,7 +320,7 @@
       "type": "object",
       "additionalProperties": false,
       "description": "Optional effective provenance for fixed charges and per-original-molecule charge budgets.",
-      "required": ["sources", "charge_provenance", "interaction_model", "charge_totals"],
+      "required": ["sources", "charge_provenance", "charge_totals"],
       "properties": {
         "sources": {
           "type": "array",
@@ -329,11 +329,43 @@
           "items": { "$ref": "#/$defs/fixedChargeSource" }
         },
         "charge_provenance": { "type": "string", "description": "Caller-supplied fixed-charge label." },
-        "interaction_model": { "type": "string", "minLength": 1, "description": "Identifier for the source-to-active interaction model." },
         "charge_totals": {
           "type": "array",
           "description": "Original and active charge totals, ordered by original input molecule.",
           "items": { "$ref": "#/$defs/embeddingChargeTotals" }
+        },
+        "components": {
+          "type": "array",
+          "description": "Optional summaries grouped from imported structural residue labels; these do not imply CCD assignment.",
+          "items": { "$ref": "#/$defs/fixedChargeComponent" }
+        }
+      }
+    },
+    "fixedChargeComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "charge_per_instance", "instances"],
+      "properties": {
+        "component_id": { "type": "string", "minLength": 1, "description": "Imported label residue ID, falling back to author residue ID." },
+        "charge_per_instance": { "type": "number", "description": "Prescribed charge for each listed monatomic source instance." },
+        "instances": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/fixedChargeComponentInstance" }
+        }
+      }
+    },
+    "fixedChargeComponentInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["molecule_index", "atom_indices"],
+      "properties": {
+        "molecule_index": { "type": "integer", "minimum": 0, "description": "Zero-based molecule index in the original input collection." },
+        "atom_indices": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0, "description": "Zero-based atom index in the original input molecule." }
         }
       }
     },

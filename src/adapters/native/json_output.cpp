@@ -2,14 +2,18 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <iterator>
+#include <optional>
 #include <ostream>
 #include <print>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace chargefw::adapters::native::json_output {
 namespace {
@@ -118,8 +122,52 @@ constexpr auto metric_scale = 1000.0;
     return result;
 }
 
+[[nodiscard]] auto component_id(const SourceAtomReference& reference)
+    -> std::optional<std::string> {
+    if (!reference.structural_labels.has_value()) {
+        return std::nullopt;
+    }
+    const auto& labels = *reference.structural_labels;
+    if (labels.label.residue.has_value() && !labels.label.residue->empty()) {
+        return labels.label.residue;
+    }
+    if (labels.author.residue.has_value() && !labels.author.residue->empty()) {
+        return labels.author.residue;
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] auto source_component_id(const ImportedMoleculeRecord& record,
+                                       const std::size_t atom_index) -> std::optional<std::string> {
+    if (!record.import_metadata.has_value()) {
+        return std::nullopt;
+    }
+
+    const auto& metadata = *record.import_metadata;
+    auto resolved = std::optional<std::string>{};
+    auto ambiguous = false;
+    const auto consider = [&resolved, &ambiguous](const SourceAtomReference& reference) {
+        const auto value = component_id(reference);
+        if (!value.has_value()) {
+            return;
+        }
+        if (resolved.has_value() && *resolved != *value) {
+            ambiguous = true;
+            return;
+        }
+        resolved = value;
+    };
+
+    consider(metadata.atoms.at(atom_index));
+    for (const auto& conformer : metadata.conformers) {
+        consider(conformer.sites.at(atom_index));
+    }
+    return ambiguous ? std::nullopt : resolved;
+}
+
 [[nodiscard]] auto
-fixed_charge_embedding_json(const calculation::FixedChargeEmbeddingProvenance& embedding) -> Json {
+fixed_charge_embedding_json(const calculation::FixedChargeEmbeddingProvenance& embedding,
+                            const std::span<const ImportedMoleculeRecord> records) -> Json {
     auto sources = Json::array();
     for (const auto& source : embedding.sources) {
         sources.push_back({{"molecule_index", source.molecule_index},
@@ -132,10 +180,41 @@ fixed_charge_embedding_json(const calculation::FixedChargeEmbeddingProvenance& e
                                  {"original_total_charge", totals.original_total_charge},
                                  {"active_total_charge", totals.active_total_charge}});
     }
-    return Json{{"sources", std::move(sources)},
-                {"charge_provenance", embedding.charge_provenance},
-                {"interaction_model", embedding.interaction_model},
-                {"charge_totals", std::move(charge_totals)}};
+
+    struct ComponentGroup {
+        std::string id;
+        double charge = 0.0;
+        Json instances = Json::array();
+    };
+    auto groups = std::vector<ComponentGroup>{};
+    for (const auto& source : embedding.sources) {
+        const auto id = source_component_id(records[source.molecule_index], source.atom_index);
+        if (!id.has_value()) {
+            continue;
+        }
+        auto group = std::ranges::find_if(groups, [&id, &source](const auto& candidate) {
+            return candidate.id == *id && candidate.charge == source.charge;
+        });
+        if (group == groups.end()) {
+            groups.push_back(ComponentGroup{.id = *id, .charge = source.charge});
+            group = std::prev(groups.end());
+        }
+        group->instances.push_back(
+            {{"molecule_index", source.molecule_index}, {"atom_indices", {source.atom_index}}});
+    }
+
+    auto result = Json{{"sources", std::move(sources)},
+                       {"charge_provenance", embedding.charge_provenance},
+                       {"charge_totals", std::move(charge_totals)}};
+    if (!groups.empty()) {
+        result["components"] = Json::array();
+        for (auto& group : groups) {
+            result["components"].push_back({{"component_id", std::move(group.id)},
+                                            {"charge_per_instance", group.charge},
+                                            {"instances", std::move(group.instances)}});
+        }
+    }
+    return result;
 }
 
 [[nodiscard]] auto record_json(const ImportedMoleculeRecord& record,
@@ -241,7 +320,7 @@ fixed_charge_embedding_json(const calculation::FixedChargeEmbeddingProvenance& e
             method_options_json({{value.method_id, value.method_options}});
         if (value.fixed_charge_embedding.has_value()) {
             effective["fixed_charge_embedding"] =
-                fixed_charge_embedding_json(*value.fixed_charge_embedding);
+                fixed_charge_embedding_json(*value.fixed_charge_embedding, result.inputs());
         }
     }
     Json encoded{{"requested", std::move(requested)}, {"effective", std::move(effective)}};

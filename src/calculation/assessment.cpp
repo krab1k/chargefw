@@ -334,13 +334,13 @@ auto AssessmentResult::assess_prepared(
     const auto consider_mode = [this, &policy_for, &append_rejection](
                                    const methods::ApplicableMethod& candidate,
                                    const ExecutionMode mode, const bool permit_warnings) {
-        if (fixed_charge_partition_ != nullptr) {
+        if (fixed_charge_partition_ != nullptr && mode != ExecutionMode::full) {
             const auto assessment = methods::ExecutionAssessment{
                 .mode = mode,
                 .availability = methods::ExecutionAvailability::unsupported,
                 .issues = {{methods::ExecutionIssueKind::unsupported_execution_mode,
                             "method '" + std::string{candidate.method->id()} +
-                                "' fixed charge embedding execution is not connected yet"}}};
+                                "' fixed charge embedding supports full execution only"}}};
             append_rejection(candidate, mode, assessment);
             return;
         }
