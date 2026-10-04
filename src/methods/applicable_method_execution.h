@@ -9,7 +9,8 @@
 namespace chargefw::methods::detail {
 
 auto validate_selected_candidate(const ApplicableMethod& selected,
-                                 const features::PreparedMoleculeCollection& molecules) -> void;
+                                 const features::PreparedMoleculeCollection& molecules,
+                                 bool require_fixed_charge_embedding = false) -> void;
 auto validate_coordinate_targets(const ApplicableMethod& selected,
                                  const features::PreparedMoleculeCollection& molecules) -> void;
 [[nodiscard]] auto parameter_set_id_for(const ApplicableMethod& selected)

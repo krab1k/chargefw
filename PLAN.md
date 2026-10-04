@@ -1,8 +1,8 @@
 # Fixed-Charge Embedding Implementation Plan
 
-Status: EEM implementation authorized, beginning with smaller independently reviewable slices.
-Slices 2a-2h are committed. Native and JSON embedding provenance (2i) uses descriptive field names and is reviewed;
-facade embedding execution remains disabled.
+Status: EEM implementation authorized, progressing through smaller independently reviewable slices.
+Slices 2a-2i are committed; slice 2j private full-execution source plumbing is implemented and reviewed,
+pending user review. Facade embedding execution remains disabled.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -238,8 +238,25 @@ rather than changing seed policy.
   optional-field behavior and corrected test budget/source consistency. User requested renaming `kernel`
   to `interaction_model` and `budget` to `charge_totals` with explicit original/active total field names.
   Focused GCC JSON output test (1/1), full GCC suite (57/57), schema meta-validation, and whitespace
-  checks passed after terminology update. Commit: pending.
-- [ ] **2j and later:** define the next small boundary after review of 2i, working toward the end-to-end
+  checks passed after terminology update. Commit: `2e5df43`.
+- [x] **2j: Private full-execution source plumbing.** Extend only the private full-execution entry point
+  with a trailing optional partition pointer. Require the factory-owned active molecule collection to
+  match the prepared molecules by object identity, and check the selected method's embedding capability
+  at full-execution validation. For each target, pass its active charge budget and materialize borrowed
+  point sources from the matching conformer's validated partition positions for the synchronous method
+  call. Keep ordinary no-partition calls unchanged; leave facade planning, result reconstruction,
+  provenance, and reduced execution disconnected. Test budget/source target mapping, conformer identity,
+  unsupported methods and mismatched ownership. Astra reviewed and accepted the implementation.
+- Slice 2j implementation validation: GCC debug full suite (57/57); focused `test_fixed_charge_partition`
+  passed under Clang debug and GCC/Clang release (1/1 each); sequential ASan/UBSan runs of
+  `test_calculation`, `test_planning`, `test_fixed_charge_partition`, `test_observer`,
+  `test_execution_policy`, `test_calculation_targets`, `test_reduced_execution`,
+  `test_representative_execution`, and `test_cover_execution` passed (9/9 each). Affected clang-tidy
+  targets, formatting, and whitespace checks passed. Astra reviewed the fixes, including serial-only
+  capturing-method checks, the independent parameterized EEM reference, and source lifetime/identity
+  handling. Existing facade tests verify nonempty embedding requests produce no execution plans. Commit:
+  pending user review.
+- [ ] **2k and later:** define the next small boundary after review of 2j, working toward the end-to-end
   requirements below. Keep each intermediate state fail-closed.
 
 Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,

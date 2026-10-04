@@ -8,6 +8,7 @@ chargefw_add_snitch_test(test_planning
 
 chargefw_add_snitch_test(test_fixed_charge_partition
         test_fixed_charge_partition.cpp
+        test_full_embedding_execution.cpp
 )
 target_include_directories(test_fixed_charge_partition PRIVATE
         ${PROJECT_SOURCE_DIR}/src

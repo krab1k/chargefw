@@ -8,11 +8,15 @@
 #include <cstddef>
 
 namespace chargefw::calculation {
+namespace detail {
+struct FixedChargePartition;
+}
 
-[[nodiscard]] auto calculate_full_charges(const methods::ApplicableMethod& selected,
-                                          const features::PreparedMoleculeCollection& molecules,
-                                          std::size_t max_threads,
-                                          const CalculationObserver& observer)
+[[nodiscard]] auto
+calculate_full_charges(const methods::ApplicableMethod& selected,
+                       const features::PreparedMoleculeCollection& molecules,
+                       std::size_t max_threads, const CalculationObserver& observer,
+                       const detail::FixedChargePartition* fixed_charge_partition = nullptr)
     -> charges::ChargeSet;
 
 } // namespace chargefw::calculation
