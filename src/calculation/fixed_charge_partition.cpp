@@ -236,6 +236,42 @@ auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
             std::move(targets), embedding.charge_provenance};
 }
 
+auto validate_partition_active_molecules(const features::PreparedMoleculeCollection& molecules,
+                                         const FixedChargePartition& partition) -> void {
+    if (partition.active_molecules.size() != molecules.size() ||
+        partition.targets.size() != molecules.size()) {
+        throw std::invalid_argument{
+            "prepared molecule collection does not match fixed-charge partition"};
+    }
+    for (std::size_t index = 0; index < molecules.size(); ++index) {
+        if (std::addressof(molecules[index].molecule()) !=
+            std::addressof(partition.active_molecules[index])) {
+            throw std::invalid_argument{
+                "prepared molecule collection does not match fixed-charge partition"};
+        }
+    }
+}
+
+auto materialize_fixed_point_sources(const FixedChargePartitionTarget& target,
+                                     const std::optional<std::size_t> conformer_index)
+    -> std::vector<methods::FixedPointSource> {
+    auto fixed_sources = std::vector<methods::FixedPointSource>{};
+    if (target.sources.empty()) {
+        return fixed_sources;
+    }
+    if (!conformer_index.has_value()) {
+        throw std::invalid_argument{"fixed-charge embedding requires a conformer index"};
+    }
+
+    const auto& positions = target.source_positions.at(*conformer_index);
+    fixed_sources.reserve(target.sources.size());
+    for (std::size_t source_index = 0; source_index < target.sources.size(); ++source_index) {
+        fixed_sources.push_back(methods::FixedPointSource{positions.at(source_index),
+                                                          target.sources[source_index].charge});
+    }
+    return fixed_sources;
+}
+
 auto reassemble_fixed_charge_results(const charges::ChargeSet& active_charges,
                                      const FixedChargePartition& partition) -> charges::ChargeSet {
     auto assignments = std::vector<charges::ChargeAssignment>{};

@@ -91,24 +91,21 @@ calculate_request(const CalculationRequest& request,
                                                   .method_id = request.selected.method->id(),
                                               });
 
-    if (fixed_charge_partition != nullptr &&
-        request.execution_policy.mode() != ExecutionMode::full) {
-        throw std::invalid_argument{"fixed-charge embedding supports full execution only"};
-    }
-
     switch (request.execution_policy.mode()) {
     case ExecutionMode::full:
         return CalculationResult{.charges = calculate_full_charges(
                                      request.selected, request.molecules, request.max_threads,
                                      request.observer, fixed_charge_partition)};
     case ExecutionMode::cutoff:
-        return CalculationResult{.charges = calculate_cutoff_charges(
-                                     request.selected, request.molecules, request.execution_policy,
-                                     request.max_threads, request.observer)};
+        return CalculationResult{
+            .charges = calculate_cutoff_charges(request.selected, request.molecules,
+                                                request.execution_policy, request.max_threads,
+                                                request.observer, fixed_charge_partition)};
     case ExecutionMode::cover:
-        return CalculationResult{.charges = calculate_cover_charges(
-                                     request.selected, request.molecules, request.execution_policy,
-                                     request.max_threads, request.observer)};
+        return CalculationResult{
+            .charges = calculate_cover_charges(request.selected, request.molecules,
+                                               request.execution_policy, request.max_threads,
+                                               request.observer, fixed_charge_partition)};
     }
 
     throw std::invalid_argument{"unknown execution policy"};

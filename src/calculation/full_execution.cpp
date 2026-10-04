@@ -10,6 +10,7 @@
 #include <chargefw/parameters/classification/parameter_classification.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -68,17 +69,7 @@ auto validate_calculated_charges(const methods::Method& method,
     auto target_charge = core::total_formal_charge(molecule.molecule());
     if (partition_target != nullptr) {
         target_charge = partition_target->active_charge;
-        if (!partition_target->sources.empty()) {
-            if (!conformer_index.has_value()) {
-                throw std::invalid_argument{"fixed-charge embedding requires a conformer index"};
-            }
-            const auto& positions = partition_target->source_positions.at(*conformer_index);
-            fixed_sources.reserve(partition_target->sources.size());
-            for (std::size_t index = 0; index < partition_target->sources.size(); ++index) {
-                fixed_sources.push_back(
-                    {positions.at(index), partition_target->sources.at(index).charge});
-            }
-        }
+        fixed_sources = detail::materialize_fixed_point_sources(*partition_target, conformer_index);
     }
 
     if (classification == nullptr) {
@@ -113,18 +104,7 @@ auto calculate_full_charges(const methods::ApplicableMethod& selected,
     methods::detail::validate_selected_candidate(selected, molecules,
                                                  fixed_charge_partition != nullptr);
     if (fixed_charge_partition != nullptr) {
-        if (fixed_charge_partition->active_molecules.size() != molecules.size() ||
-            fixed_charge_partition->targets.size() != molecules.size()) {
-            throw std::invalid_argument{
-                "prepared molecule collection does not match fixed-charge partition"};
-        }
-        for (std::size_t index = 0; index < molecules.size(); ++index) {
-            if (std::addressof(molecules[index].molecule()) !=
-                std::addressof(fixed_charge_partition->active_molecules[index])) {
-                throw std::invalid_argument{
-                    "prepared molecule collection does not match fixed-charge partition"};
-            }
-        }
+        detail::validate_partition_active_molecules(molecules, *fixed_charge_partition);
     }
     methods::detail::validate_coordinate_targets(selected, molecules);
 

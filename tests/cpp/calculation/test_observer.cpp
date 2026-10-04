@@ -86,13 +86,17 @@ class RecordingObserver : public calculation::CalculationObserver {
     mutable std::vector<RecordedProgress> events_;
 };
 
-// Observer that cancels after the first target_started event.
+// Observer that cancels after the first matching progress event.
 class CancelAfterFirstTarget : public calculation::CalculationObserver {
   public:
+    explicit CancelAfterFirstTarget(const calculation::CalculationPhase cancel_phase =
+                                        calculation::CalculationPhase::target_started) noexcept
+        : cancel_phase_{cancel_phase} {}
+
     void on_progress(const calculation::CalculationProgress& progress) const override {
         const std::scoped_lock lock{mutex_};
         events_.push_back(snapshot(progress));
-        if (progress.phase == calculation::CalculationPhase::target_started) {
+        if (progress.phase == cancel_phase_) {
             cancel_ = true;
         }
     }
@@ -107,6 +111,7 @@ class CancelAfterFirstTarget : public calculation::CalculationObserver {
     }
 
   private:
+    calculation::CalculationPhase cancel_phase_;
     mutable std::mutex mutex_;
     mutable std::vector<RecordedProgress> events_;
     mutable std::atomic<bool> cancel_{false};
@@ -458,49 +463,82 @@ TEST_CASE("cancellation produces a terminal observer event", "[calculation][obse
     }
 }
 
-TEST_CASE("embedded cancellation retains effective source provenance", "[calculation][observer]") {
-    const auto observer = CancelAfterFirstTarget{};
+TEST_CASE("embedded cancellation retains provenance and permits plan reuse",
+          "[calculation][observer]") {
     const auto molecule =
         core::Molecule{std::vector{core::Atom{1, 0}, core::Atom{12, 2}, core::Atom{8, 0}},
                        {},
-                       {core::Conformer{{{0.0, 0.0, 0.0}, {0.0, 3.0, 0.0}, {2.0, 0.0, 0.0}}}},
+                       {core::Conformer{{{0.0, 0.0, 0.0}, {0.0, 3.0, 0.0}, {5.0, 0.0, 0.0}}}},
                        "cancelled-embedded-eem"};
-    const auto assessment = calculation::assess(calculation::AssessmentRequest{
-        .molecules = core::MoleculeCollection{std::vector{molecule}},
-        .parameter_sets = {make_embedding_eem_parameters()},
-        .method_id = "eem",
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
-            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}},
-            .charge_provenance = "cancelled fixed source"}});
-    const auto result = calculation::calculate(assessment, 1, observer);
+    for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
+                            calculation::ExecutionMode::cover}) {
+        const auto cancel_phase = mode == calculation::ExecutionMode::full
+                                      ? calculation::CalculationPhase::target_started
+                                      : calculation::CalculationPhase::fragment_progress;
+        const auto observer = CancelAfterFirstTarget{cancel_phase};
+        const auto selection =
+            mode == calculation::ExecutionMode::full
+                ? calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}
+                : calculation::ExecutionSelection{mode == calculation::ExecutionMode::cutoff
+                                                      ? calculation::ExecutionSelectionKind::cutoff
+                                                      : calculation::ExecutionSelectionKind::cover,
+                                                  8.0};
+        const auto assessment = calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{molecule}},
+            .parameter_sets = {make_embedding_eem_parameters()},
+            .method_id = "eem",
+            .execution_selection = selection,
+            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+                .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}},
+                .charge_provenance = "cancelled fixed source"}});
+        REQUIRE(assessment.plans().size() == 1);
+        CHECK(assessment.plans()[0].policy().mode() == mode);
+        const auto result = calculation::calculate(assessment, 1, observer);
 
-    CHECK(result.status == calculation::ExecutionStatus::cancelled);
-    CHECK_FALSE(result.calculated());
-    CHECK_FALSE(result.charges.has_value());
-    REQUIRE(result.effective.has_value());
-    REQUIRE(result.effective->fixed_charge_embedding.has_value());
-    const auto& provenance = *result.effective->fixed_charge_embedding;
-    CHECK(provenance.charge_provenance == "cancelled fixed source");
-    CHECK(provenance.sources.size() == 1);
-    CHECK(provenance.sources[0].charge == 0.4);
-    REQUIRE(provenance.charge_totals.size() == 1);
-    CHECK(provenance.charge_totals[0].original_total_charge == 2.0);
-    CHECK(provenance.charge_totals[0].active_total_charge == 0.0);
-    const auto events = observer.events();
-    REQUIRE(!events.empty());
-    CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
-    CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
-    CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
-              return event.phase == calculation::CalculationPhase::computation_started;
-          }) == 1);
-    CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
-              return event.phase == calculation::CalculationPhase::computation_finished;
-          }) == 1);
+        CHECK(result.status == calculation::ExecutionStatus::cancelled);
+        CHECK_FALSE(result.calculated());
+        CHECK_FALSE(result.charges.has_value());
+        REQUIRE(result.effective.has_value());
+        REQUIRE(result.effective->fixed_charge_embedding.has_value());
+        const auto& provenance = *result.effective->fixed_charge_embedding;
+        CHECK(provenance.charge_provenance == "cancelled fixed source");
+        CHECK(provenance.sources.size() == 1);
+        CHECK(provenance.sources[0].charge == 0.4);
+        REQUIRE(provenance.charge_totals.size() == 1);
+        CHECK(provenance.charge_totals[0].original_total_charge == 2.0);
+        CHECK(provenance.charge_totals[0].active_total_charge == 0.0);
 
-    const auto repeated = calculation::calculate(assessment);
-    REQUIRE(repeated.calculated());
-    REQUIRE(repeated.effective->fixed_charge_embedding.has_value());
-    CHECK(repeated.effective->fixed_charge_embedding->sources[0].charge == 0.4);
+        const auto events = observer.events();
+        REQUIRE(!events.empty());
+        CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
+        CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
+        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                  return event.phase == calculation::CalculationPhase::computation_started;
+              }) == 1);
+        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                  return event.phase == calculation::CalculationPhase::computation_finished;
+              }) == 1);
+        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
+                  return event.phase == calculation::CalculationPhase::target_started;
+              }) == 1);
+        if (mode == calculation::ExecutionMode::full) {
+            CHECK(std::ranges::none_of(events, [](const auto& event) {
+                return event.phase == calculation::CalculationPhase::fragment_progress;
+            }));
+        } else {
+            const auto fragment_progress = std::ranges::find_if(events, [](const auto& event) {
+                return event.phase == calculation::CalculationPhase::fragment_progress;
+            });
+            REQUIRE(fragment_progress != events.end());
+            CHECK(fragment_progress->completed_fragment_count == 1);
+            CHECK(fragment_progress->fragment_count == 2);
+        }
+
+        const auto repeated = calculation::calculate(assessment);
+        REQUIRE(repeated.calculated());
+        REQUIRE(repeated.effective->fixed_charge_embedding.has_value());
+        CHECK(repeated.effective->fixed_charge_embedding->sources[0].charge == 0.4);
+    }
 }
 
 TEST_CASE("validation failures finish observation and propagate unchanged",

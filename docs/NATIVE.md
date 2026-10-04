@@ -119,12 +119,14 @@ not support fixed-charge embedding require an empty span. The flag describes a c
 it does not intercept virtual calls. The source coupling is defined by the selected method; the facade's
 effective provenance already records the method, parameter set, and method options.
 
-EEM, SQE, SQE+q0, and SQE+qp support fixed point sources in full facade execution. Their
-facade `CalculationInput::target_charge()` is set to the prepared active formal-charge sum, and direct
-method results cover only active atoms; direct callers supply method inputs and handle any further
-assembly. SQE requires neutral active connected components, SQE+q0 retains their prepared formal-charge
-seeds, and SQE+qp normalizes its fitted reference charges globally to the active target before
-bond-transfer equilibration.
+EEM, SQE, SQE+q0, and SQE+qp support fixed point sources in full, cutoff, and cover facade execution.
+Their facade `CalculationInput::target_charge()` is set to the prepared active formal-charge sum, and
+direct method results cover only active atoms; direct callers supply method inputs and handle any further
+assembly. Reduced fragments are built from active atoms and receive the complete fixed-source field,
+including sources outside the fragment radius. Conservation corrections apply to active charges; the
+facade restores fixed values once in original atom order. SQE requires neutral active connected
+components, SQE+q0 retains their prepared formal-charge seeds, and SQE+qp normalizes its fitted reference
+charges globally to the active target before bond-transfer equilibration.
 The [project design](PROJECT.md#assessment-and-execution) describes active-charge provenance.
 Direct callers must supply finite source values and finite geometry for the active molecule, and ensure
 that source positions do not coincide with active atom positions. The
@@ -152,10 +154,10 @@ atoms in the prepared molecule; selected atoms' imported formal charges do not a
 The original supplied formal-charge total is retained for audit provenance, and the modeled molecular
 total is the active total plus the prescribed source charges. A valid nonempty selection filters methods
 by their embedding capability and assesses execution modes. EEM, SQE, SQE+q0, and SQE+qp can produce
-full-mode plans; cutoff and cover modes remain
-unavailable for embedded targets. Automatic selection excludes a warned full plan, while explicit full
-selection may execute with its resource warning. Parameter classification and execution use the
-active molecules. Successful facade results restore fixed charges in original atom order and expose
+full, cutoff, and cover plans. Automatic selection may choose an un-warned reduced plan when full carries
+a resource warning; explicit full selection may execute with its warning. Parameter classification and
+execution use the active molecules. Successful facade results restore fixed charges in original atom
+order and expose
 embedding provenance through `ExecutionResult::effective`; original and active charge totals are recorded
 for every molecule. The [project design](PROJECT.md#assessment-and-execution) describes this boundary.
 Invalid source selections still throw `std::invalid_argument`.

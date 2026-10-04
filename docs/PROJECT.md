@@ -146,16 +146,17 @@ method, parameter set, validated options, execution policy, and any policy warni
 
 For a fixed-charge embedding request, assessment owns both the original collection and an active-molecule
 partition, then classifies capable methods against that active collection. Rejection indices map back to
-the original molecules. EEM, SQE, SQE+q0, and SQE+qp can be planned and executed in full mode when their
-scientific prerequisites and active charge budgets are satisfied.
-The active subsystem is solved with the prescribed source field and active charge budget; successful
-charges are reassembled into original atom order with source charges restored. Effective provenance
-retains the source selectors and values, caller label, and original/active charge totals for every
-molecule; the effective method, parameter set, and options define the coupling. Reduced modes remain
-unavailable for embedding.
-Automatic selection does not choose a full plan carrying resource warnings; explicit full selection can
-execute with its warning. Existing resource thresholds continue to use the active molecule size per
-target.
+the original molecules. EEM, SQE, SQE+q0, and SQE+qp can be planned and executed in full, cutoff, or cover
+mode when their scientific prerequisites and active charge budgets are satisfied. Reduced fragments are
+built only from active atoms; every fragment receives the complete prescribed source field, including
+sources outside its radius. Fixed atoms never become fragment centers, pivots, or charge variables.
+Conservation corrections apply to active results, then the facade restores source charges exactly once in
+original atom order. Effective provenance retains the source selectors and values, caller label, and
+original/active charge totals for every molecule; the effective method, parameter set, and options define
+the coupling.
+Automatic selection considers warnings for each supported mode and may choose a reduced plan when full
+execution carries a resource warning. Explicit selection can execute with its warning. Existing resource
+thresholds continue to use active molecule size per target.
 
 The active total is the formal-charge sum of unselected atoms in the prepared active molecule. Imported
 formal charges on selected source atoms do not enter it; fractional source values contribute only at their
@@ -169,8 +170,8 @@ component totals.
 The effective execution mode is always one of:
 
 - `full`: calculate the complete molecular target;
-- `cutoff`: solve one radius fragment per source atom and retain its mapped center charge;
-- `cover`: solve radius fragments around source-order pivots and retain charges in covered interiors.
+- `cutoff`: solve one radius fragment per active atom and retain its mapped center charge;
+- `cover`: solve radius fragments around active-atom-order pivots and retain charges in covered interiors.
 
 Automatic planning prefers full execution. For methods classified as expensive, the default resource
 policy moves to cutoff above 20,000 atoms and to cover above 80,000 atoms when those modes are supported.
@@ -180,26 +181,26 @@ full calculations. Larger radii generally improve agreement with full execution 
 molecular environment, but increase calculation time. Explicit full execution may override a resource
 threshold and returns a warning rather than changing the requested mode.
 
-Cutoff and cover are implemented for:
+For ordinary calculations, cutoff and cover are implemented for:
 
 ```text
 abeem, eem, eqeq, eqeqc, qeq, sfkeem, sqe, sqeq0, sqeqp
 ```
 
-Before spatial cutting, reduced execution assigns every source atom a method-specific reference charge.
-Each fragment inherits the sum of its source atoms' references as its target charge. After fragment
+Before spatial cutting, reduced execution assigns every active atom a method-specific reference charge.
+Each fragment inherits the sum of its active atoms' references as its target charge. After fragment
 results have been assembled, a uniform correction restores the reference total separately in each group
 whose charge the full method preserves:
 
 | Methods | Source atom reference | Conserved group |
 | --- | --- | --- |
-| ABEEM, EEM, EQeq, EQeq+C, QEq, SFKEEM | Molecular formal-charge total divided by atom count | Entire calculation target |
-| SQE | Zero | Each connected component in the original bond graph |
-| SQE+q0 | Atomic formal charge | Each connected component in the original bond graph |
-| SQE+qp | Parameterized charge, normalized once to the original target's formal-charge total | Each connected component in the original bond graph |
+| ABEEM, EEM, EQeq, EQeq+C, QEq, SFKEEM | Prepared active formal-charge total divided by active atom count | Entire calculation target |
+| SQE | Zero | Each connected component in the pre-fragment active bond graph |
+| SQE+q0 | Atomic formal charge | Each connected component in the pre-fragment active bond graph |
+| SQE+qp | Parameterized charge, normalized once to the prepared active target's formal-charge total | Each connected component in the pre-fragment active bond graph |
 
-The component labels always come from the original graph, not from pieces disconnected by an individual
-spatial cut. Components remain together in a fragment when they are spatially nearby, allowing their
+The component labels always come from the pre-fragment active graph, not from pieces disconnected by an
+individual spatial cut. Components remain together in a fragment when they are spatially nearby, allowing their
 electrostatic interactions to alter atomic charges without changing the component reference totals.
 SQE+qp retains its global normalization convention, so a component's preserved reference total need not
 equal that component's formal charge.

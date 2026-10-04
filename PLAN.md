@@ -3,8 +3,9 @@
 Status: EEM implementation authorized, progressing through smaller independently reviewable slices.
 Slices 2a-2k are reviewed and complete (2j: `a8f2852`, 2k: `98d8e2e`). Slice 3a SQE+qp/full is
 committed as `23b6918`; slice 3b's independent active-charge policy is reviewed and committed as
-`5c4b228`. EEM and all three SQE-family methods support full embedding; reduced modes and QEq remain
-disabled. QEq is explicitly deferred by the user pending approval of its scientific convention.
+`5c4b228`. EEM and all three SQE-family methods support full, cutoff, and cover embedding; step 5 is
+Astra-reviewed and complete. QEq remains disabled and explicitly deferred by the user pending approval of
+its scientific convention.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -361,18 +362,28 @@ reusing the EEM fixture and budget/mapping infrastructure. Update shared/native 
 
 ## 5. Propagate Embedding Through Cutoff and Cover
 
-- [x] **5a: Private fragment source-input plumbing.** Implemented as a default-empty borrowed source span
+- [x] Complete step 5 facade wiring and method qualification; Astra-reviewed and complete.
+- [x] **5a: Private fragment source-input plumbing (`71495e8`).** Implemented as a default-empty borrowed source span
   on `detail::calculate_fragment_charges`; the complete source list is forwarded unchanged to the method
   call. Focused tests cover EEM and SQE+qp, including a source outside the fragment radius and full-atom
   fragment agreement with direct full calculation. Astra reviewed source forwarding, lifetime, and
-  reference-target semantics; accepted and complete. This does not enable reduced embedding through
-  assessment or facade execution.
+  reference-target semantics; accepted and complete. This slice alone did not enable reduced embedding
+  through assessment or facade execution; step 5b wires those paths.
 - Slice 5a validation: focused `test_reduced_execution` passed under GCC debug, Clang debug, GCC/Clang
   release, ASan, and UBSan; full GCC debug suite passed (57/57). The affected clang-tidy target, format,
   and whitespace checks passed.
-- [ ] **5b: Executor wiring and method qualification.** Later connect cutoff and cover executors, validate
-  supported method combinations, retain active-charge conservation and fixed-source reinsertion, and
-  leave the reduced facade capability gates closed until qualification is complete.
+- [x] **5b: Executor wiring and method qualification.** Implemented cutoff/cover partition forwarding,
+  complete conformer-specific source materialization, active-to-original source-index diagnostics, and
+  facade mode planning for EEM and the SQE family. Tests cover remote sources, full/whole-active-radius
+  agreement, unaffected targets, multi-conformer mapping, automatic cutoff/cover selection, conservation,
+  and cancellation/reuse. Astra reviewed and accepted; complete.
+- Slice 5b validation: full GCC debug suite (57/57); focused `test_planning`, `test_observer`,
+  `test_reduced_execution`, `test_fixed_charge_partition`, `test_cover_execution`, `test_calculation`,
+  `test_representative_execution`, `test_builtin_methods`, `test_sqe`, `test_sqeqp`, and
+  `test_electronegativity_equalization` passed under Clang debug and GCC/Clang release, plus sequential
+  ASan/UBSan. The final parameterized `test_observer` cancellation suite also passed under GCC debug,
+  Clang debug, GCC/Clang release, ASan, and UBSan. Affected clang-tidy targets and format/whitespace
+  checks passed.
 
 Primary files: `src/calculation/{reduced_execution,cutoff_execution,cover_execution}.cpp`.
 
@@ -388,9 +399,9 @@ Primary files: `src/calculation/{reduced_execution,cutoff_execution,cover_execut
 - Preserve source-index diagnostics and finite-radius cover's existing order-dependent pivot behavior.
 - Update execution capability/resource handling and `docs/PROJECT.md` for supported combinations.
 
-Focused 5b check: extend the facade `test_reduced_execution` with a distant source outside the fragment
-radius and whole-active-radius agreement with full execution. Exercise cutoff and cover with EEM and
-SQE+qp to cover ordinary budgets and normalized component references; reuse method-level kernel tests.
+Focused 5b evidence is in `test_planning` and `test_observer`: the facade compares cutoff/cover with full
+execution for EEM and the SQE family, including remote conformer-specific sources and disconnected
+SQE+qp component references; observer tests cover fragment cancellation and repeated execution.
 
 ## 6. Expose the Policy in Python
 

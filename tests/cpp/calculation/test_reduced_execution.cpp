@@ -1,8 +1,12 @@
+#include "calculation/cover_execution.h"
+#include "calculation/cutoff_execution.h"
+#include "calculation/fixed_charge_partition.h"
 #include "calculation/reduced_execution.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
 #include <chargefw/calculation/calculation.h>
+#include <chargefw/calculation/observer.h>
 #include <chargefw/charges/atomic_charges.h>
 #include <chargefw/core/atom.h>
 #include <chargefw/core/conformer.h>
@@ -84,6 +88,39 @@ class ZeroFragmentMethod final : public methods::Method {
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {
         return charges::AtomicCharges{std::vector<double>(input.molecule().atom_count(), 0.0)};
+    }
+};
+
+class FailingEmbeddingFragmentMethod final : public methods::Method {
+  public:
+    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
+        static constexpr methods::MethodMetadata metadata{.id = "failing-embedding-fragment",
+                                                          .name = "Failing fragment",
+                                                          .full_name = "Failing fragment",
+                                                          .publication = std::nullopt,
+                                                          .priority = 0};
+        return metadata;
+    }
+
+    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
+        auto requirements = methods::MethodRequirements{};
+        requirements.coordinates = true;
+        requirements.resources.supports_cutoff = true;
+        requirements.resources.supports_cover = true;
+        requirements.resources.reduced_charge_policy =
+            methods::ReducedChargePolicy::uniform_target_global;
+        requirements.supports_fixed_charge_embedding = true;
+        return requirements;
+    }
+
+    [[nodiscard]] auto option_schema() const noexcept
+        -> std::span<const methods::MethodOptionSpec> override {
+        return {};
+    }
+
+    [[nodiscard]] auto calculate(const methods::CalculationInput&) const
+        -> charges::AtomicCharges override {
+        throw std::runtime_error{"deliberate fragment failure"};
     }
 };
 
@@ -781,4 +818,44 @@ TEST_CASE("reduced fragment calculations forward the complete fixed-source envir
     exercise("sqeqp", make_sqe_parameters("sqeqp", true), true);
     CHECK(sources[0].position.x == 50.0);
     CHECK(sources[0].charge == 1.25);
+}
+
+TEST_CASE("embedded cutoff and cover diagnostics map active centers to original atoms",
+          "[calculation][reduced-execution][embedding]") {
+    const auto original = core::MoleculeCollection{std::vector{
+        core::Molecule{std::vector{core::Atom{12, 2}, core::Atom{1, 0}},
+                       {},
+                       {core::Conformer{{core::Position{.x = 0.0}, core::Position{.x = 20.0}}}},
+                       "mapped-source"}}};
+    const auto partition = calculation::detail::make_fixed_charge_partition(
+        original, calculation::FixedChargeEmbedding{
+                      .sources = {{.molecule_index = 0, .atom_index = 0, .charge = 0.25}}});
+    const features::PreparedMoleculeCollection active{partition.active_molecules};
+    const FailingEmbeddingFragmentMethod method;
+    const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
+
+    for (const auto mode :
+         {calculation::ExecutionMode::cutoff, calculation::ExecutionMode::cover}) {
+        const auto policy = calculation::ExecutionPolicy{mode, 8.0};
+        const auto calculate = [&] {
+            if (mode == calculation::ExecutionMode::cutoff) {
+                static_cast<void>(calculation::calculate_cutoff_charges(
+                    selected, active, policy, 1, calculation::default_calculation_observer(),
+                    &partition));
+            } else {
+                static_cast<void>(calculation::calculate_cover_charges(
+                    selected, active, policy, 1, calculation::default_calculation_observer(),
+                    &partition));
+            }
+        };
+        try {
+            calculate();
+            CHECK(false);
+        } catch (const std::runtime_error& error) {
+            const auto expected = mode == calculation::ExecutionMode::cutoff
+                                      ? "cutoff fragment around source atom 2 failed"
+                                      : "cover fragment around source atom 2 failed";
+            CHECK(std::string_view{error.what()}.contains(expected));
+        }
+    }
 }

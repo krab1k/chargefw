@@ -2,8 +2,11 @@
 
 #include <chargefw/calculation/assessment.h>
 #include <chargefw/charges/charge_collection.h>
+#include <chargefw/features/prepared_molecule_collection.h>
+#include <chargefw/methods/calculation_input.h>
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -29,6 +32,13 @@ struct FixedChargePartition {
 [[nodiscard]] auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
                                                const FixedChargeEmbedding& embedding)
     -> FixedChargePartition;
+
+auto validate_partition_active_molecules(const features::PreparedMoleculeCollection& molecules,
+                                         const FixedChargePartition& partition) -> void;
+
+[[nodiscard]] auto materialize_fixed_point_sources(const FixedChargePartitionTarget& target,
+                                                   std::optional<std::size_t> conformer_index)
+    -> std::vector<methods::FixedPointSource>;
 
 // The partition must come from the validated factory and active assignments must match its active
 // molecules.

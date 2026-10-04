@@ -110,6 +110,44 @@ auto make_two_conformer_interleaved_pair(const int hydrogen_charge = 0,
         "interleaved-pair"};
 }
 
+auto make_remote_source_pair(const int hydrogen_charge) -> core::Molecule {
+    return core::Molecule{
+        std::vector{core::Atom{1, hydrogen_charge}, core::Atom{12, 2}, core::Atom{8, 0}},
+        {core::Bond{0, 2}},
+        {core::Conformer{{{0.0, 0.0, 0.0}, {50.0, 2.0, 0.0}, {1.5, 0.0, 0.0}}, "remote-source-a"},
+         core::Conformer{{{0.0, 0.0, 0.0}, {60.0, -3.0, 0.0}, {1.5, 0.0, 0.0}}, "remote-source-b"}},
+        "remote-source-pair"};
+}
+
+auto make_remote_active_pair(const int hydrogen_charge) -> core::Molecule {
+    return core::Molecule{std::vector{core::Atom{1, hydrogen_charge}, core::Atom{8, 0}},
+                          {core::Bond{0, 1}},
+                          {core::Conformer{{{0.0, 0.0, 0.0}, {1.5, 0.0, 0.0}}, "remote-active-a"},
+                           core::Conformer{{{0.0, 0.0, 0.0}, {1.5, 0.0, 0.0}}, "remote-active-b"}},
+                          "remote-active-pair"};
+}
+
+auto make_disconnected_qp_source_molecule() -> core::Molecule {
+    auto atoms = std::vector<core::Atom>{};
+    auto bonds = std::vector<core::Bond>{};
+    auto positions = std::vector<core::Position>{};
+    for (std::size_t atom_index = 0; atom_index < 12; ++atom_index) {
+        atoms.emplace_back(atom_index % 2 == 0 ? 8 : 1, 0);
+        positions.emplace_back(core::Position{.x = 1.4 * static_cast<double>(atom_index)});
+        if (atom_index != 0) {
+            bonds.emplace_back(atom_index - 1, atom_index);
+        }
+    }
+    atoms.emplace_back(1, 1);
+    positions.emplace_back(core::Position{.x = 30.0});
+    atoms.emplace_back(12, 2);
+    positions.emplace_back(core::Position{.x = 50.0, .y = 4.0});
+    return core::Molecule{std::move(atoms),
+                          std::move(bonds),
+                          {core::Conformer{std::move(positions), "disconnected-q0-source"}},
+                          "disconnected-q0-source"};
+}
+
 auto make_sqeqp_embedding_parameters() -> chargefw::parameters::ParameterSet {
     auto atoms = std::vector<chargefw::parameters::AtomParameterEntry>{
         {.key = chargefw::test::plain_atom_key(1),
@@ -249,20 +287,13 @@ TEST_CASE("valid fixed charge selectors reach EEM planning with active molecules
             .charge_provenance = "test fixed ions"}};
     const auto assessment = calculation::assess(std::move(request));
 
-    REQUIRE(assessment.plans().size() == 1);
+    REQUIRE(assessment.plans().size() == 3);
     CHECK(assessment.default_plan()->candidate().method->id() == "eem");
     CHECK(assessment.default_plan()->policy().mode() == calculation::ExecutionMode::full);
     REQUIRE(assessment.molecules().size() == 3);
     CHECK(assessment.molecules()[1].atom(1).atomic_number() == 12);
     CHECK(assessment.molecules()[1].atom(1).name() == "fixed-Mg");
-    REQUIRE(assessment.rejections().size() == 2);
-    for (const auto& rejection : assessment.rejections()) {
-        CHECK(rejection.method_id == "eem");
-        REQUIRE(rejection.policy.has_value());
-        REQUIRE(rejection.issues.size() == 1);
-        CHECK(std::get<methods::ExecutionIssue>(rejection.issues[0]).kind ==
-              methods::ExecutionIssueKind::unsupported_execution_mode);
-    }
+    CHECK(assessment.rejections().empty());
     const auto execution = calculation::calculate(assessment, 2);
     REQUIRE(execution.calculated());
     REQUIRE(execution.charges->size() == 3);
@@ -303,14 +334,15 @@ TEST_CASE("native embedded EEM executes, reassembles, and retains provenance",
             .charge_provenance = "fractional fixed magnesium"}});
     auto moved_assessment = std::move(assessment);
 
-    REQUIRE(moved_assessment.plans().size() == 1);
-    const auto& plan = moved_assessment.plans()[0];
-    CHECK(plan.candidate().method->id() == "eem");
-    CHECK(plan.policy().mode() == calculation::ExecutionMode::full);
+    REQUIRE(moved_assessment.plans().size() == 3);
+    const auto* plan = moved_assessment.default_plan();
+    REQUIRE(plan != nullptr);
+    CHECK(plan->candidate().method->id() == "eem");
+    CHECK(plan->policy().mode() == calculation::ExecutionMode::full);
 
-    const auto serial = calculation::calculate(moved_assessment, plan, 1);
-    const auto parallel = calculation::calculate(moved_assessment, plan, 2);
-    const auto repeated = calculation::calculate(moved_assessment, plan, 1);
+    const auto serial = calculation::calculate(moved_assessment, *plan, 1);
+    const auto parallel = calculation::calculate(moved_assessment, *plan, 2);
+    const auto repeated = calculation::calculate(moved_assessment, *plan, 1);
     for (const auto* result : {&serial, &parallel, &repeated}) {
         REQUIRE(result->calculated());
         REQUIRE(result->charges->size() == 3);
@@ -393,17 +425,12 @@ TEST_CASE("native embedded EEM executes, reassembles, and retains provenance",
         .resource_policy = {.cutoff_atom_threshold = 1},
         .fixed_charge_embedding = calculation::FixedChargeEmbedding{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}}}});
-    CHECK(automatic_limited_assessment.plans().empty());
-    CHECK(std::ranges::any_of(automatic_limited_assessment.rejections(), [](const auto& rejection) {
-        return rejection.policy.has_value() &&
-               rejection.policy->mode() == calculation::ExecutionMode::full &&
-               std::ranges::any_of(rejection.issues, [](const auto& issue) {
-                   const auto* execution_issue = std::get_if<methods::ExecutionIssue>(&issue);
-                   return execution_issue != nullptr &&
-                          execution_issue->kind ==
-                              methods::ExecutionIssueKind::resource_threshold_exceeded;
-               });
-    }));
+    REQUIRE(automatic_limited_assessment.default_plan() != nullptr);
+    CHECK(automatic_limited_assessment.default_plan()->policy().mode() ==
+          calculation::ExecutionMode::cutoff);
+    const auto automatic_limited = calculation::calculate(automatic_limited_assessment);
+    REQUIRE(automatic_limited.calculated());
+    CHECK(automatic_limited.charges->assignment(0).charges[1] == 0.4);
 }
 
 TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal charge",
@@ -414,10 +441,11 @@ TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal 
         .fixed_charge_embedding = calculation::FixedChargeEmbedding{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.3}},
             .charge_provenance = "fixed magnesium"}});
-    REQUIRE(assessment.plans().size() == 1);
-    const auto& plan = assessment.plans()[0];
-    CHECK(plan.candidate().method->id() == "sqeqp");
-    CHECK(plan.policy().mode() == calculation::ExecutionMode::full);
+    REQUIRE(assessment.plans().size() == 3);
+    const auto* plan = assessment.default_plan();
+    REQUIRE(plan != nullptr);
+    CHECK(plan->candidate().method->id() == "sqeqp");
+    CHECK(plan->policy().mode() == calculation::ExecutionMode::full);
     const auto interaction = [](const double distance, const double width_a, const double width_b) {
         const auto width_sum = 2.0 * width_a * width_a + 2.0 * width_b * width_b;
         return width_sum == 0.0 ? 1.0 / distance
@@ -438,9 +466,9 @@ TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal 
     const auto no_field_h = seed_h + (no_field_rhs_h - no_field_rhs_o) / denominator;
     const auto no_field_o = seed_o - (no_field_rhs_h - no_field_rhs_o) / denominator;
 
-    const auto serial = calculation::calculate(assessment, plan, 1);
-    const auto parallel = calculation::calculate(assessment, plan, 2);
-    const auto repeated = calculation::calculate(assessment, plan, 1);
+    const auto serial = calculation::calculate(assessment, *plan, 1);
+    const auto parallel = calculation::calculate(assessment, *plan, 2);
+    const auto repeated = calculation::calculate(assessment, *plan, 1);
     for (const auto* result : {&serial, &parallel, &repeated}) {
         REQUIRE(result->calculated());
         REQUIRE(result->charges->size() == 1);
@@ -467,19 +495,27 @@ TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal 
     CHECK(provenance.charge_totals[0].active_total_charge == -1.0);
     CHECK(assessment.molecules()[0].atom(1).formal_charge() == 1);
 
-    auto cutoff_assessment = calculation::assess(calculation::AssessmentRequest{
-        .molecules = core::MoleculeCollection{std::vector{make_sqeqp_embedding_molecule()}},
-        .parameter_sets = {make_sqeqp_embedding_parameters()},
-        .execution_selection =
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
-                                            calculation::minimum_reduced_radius},
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
-            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.3}}}});
-    CHECK(cutoff_assessment.plans().empty());
-    CHECK(std::ranges::any_of(cutoff_assessment.rejections(), [](const auto& rejection) {
-        return rejection.method_id == "sqeqp" && rejection.policy.has_value() &&
-               rejection.policy->mode() == calculation::ExecutionMode::cutoff;
-    }));
+    for (const auto& [selection, mode] : {std::pair{calculation::ExecutionSelectionKind::cutoff,
+                                                    calculation::ExecutionMode::cutoff},
+                                          std::pair{calculation::ExecutionSelectionKind::cover,
+                                                    calculation::ExecutionMode::cover}}) {
+        auto reduced_assessment = calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{make_sqeqp_embedding_molecule()}},
+            .parameter_sets = {make_sqeqp_embedding_parameters()},
+            .execution_selection = calculation::ExecutionSelection{selection, 8.0},
+            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+                .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.3}}}});
+        REQUIRE(reduced_assessment.plans().size() == 1);
+        CHECK(reduced_assessment.plans()[0].policy().mode() == mode);
+        const auto reduced = calculation::calculate(reduced_assessment);
+        REQUIRE(reduced.calculated());
+        const auto& full_values = serial.charges->assignment(0).charges;
+        const auto& reduced_values = reduced.charges->assignment(0).charges;
+        REQUIRE(full_values.size() == reduced_values.size());
+        for (std::size_t atom_index = 0; atom_index < full_values.size(); ++atom_index) {
+            CHECK(std::abs(full_values[atom_index] - reduced_values[atom_index]) < 1.0e-12);
+        }
+    }
 }
 
 TEST_CASE("fixed source imported charge does not change the active EEM charge",
@@ -619,7 +655,7 @@ TEST_CASE("SQE family preserves active totals with fractional fixed-source value
             .fixed_charge_embedding = calculation::FixedChargeEmbedding{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25},
                             {.molecule_index = 0, .atom_index = 3, .charge = -0.1}}}});
-        REQUIRE(assessment.plans().size() == 1);
+        REQUIRE(assessment.plans().size() == 3);
         const auto result = calculation::calculate(assessment);
         REQUIRE(result.calculated());
         const auto& charges = result.charges->assignment(0).charges;
@@ -651,79 +687,265 @@ TEST_CASE("unsupported methods reject embeddings before parameter classification
     }
 }
 
-TEST_CASE("embedded EEM permits full execution and blocks reduced modes",
-          "[calculation][planning]") {
-    const auto assess_mode = [](const calculation::ExecutionSelectionKind kind) {
-        return calculation::assess(calculation::AssessmentRequest{
+TEST_CASE("embedded EEM executes in full, cutoff, and cover modes", "[calculation][planning]") {
+    const auto make_request = [](const calculation::ExecutionSelectionKind kind,
+                                 const calculation::ResourcePolicy resource_policy = {}) {
+        auto request = calculation::AssessmentRequest{
             .molecules =
                 core::MoleculeCollection{std::vector{make_interleaved_hydrogen_magnesium_oxygen()}},
             .parameter_sets = {make_eem_parameters()},
             .method_id = "eem",
             .execution_selection =
-                calculation::ExecutionSelection{
-                    kind, kind == calculation::ExecutionSelectionKind::full
-                              ? std::optional<double>{}
-                              : std::optional{calculation::minimum_reduced_radius}},
-            .resource_policy = {.cutoff_atom_threshold = 0, .cover_atom_threshold = 0},
+                calculation::ExecutionSelection{kind,
+                                                kind == calculation::ExecutionSelectionKind::full
+                                                    ? std::optional<double>{}
+                                                    : std::optional{8.0}},
+            .resource_policy = resource_policy,
             .fixed_charge_embedding = calculation::FixedChargeEmbedding{
-                .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}});
+                .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}};
+        return request;
     };
+    const auto full_assessment =
+        calculation::assess(make_request(calculation::ExecutionSelectionKind::full));
+    REQUIRE(full_assessment.plans().size() == 1);
+    CHECK(full_assessment.default_plan()->policy().mode() == calculation::ExecutionMode::full);
+    const auto full = calculation::calculate(full_assessment);
+    REQUIRE(full.calculated());
+
+    const auto active_size_assessment = calculation::assess(
+        make_request(calculation::ExecutionSelectionKind::automatic, {.cutoff_atom_threshold = 2}));
+    REQUIRE(active_size_assessment.default_plan() != nullptr);
+    CHECK(active_size_assessment.default_plan()->policy().mode() ==
+          calculation::ExecutionMode::full);
+
     for (const auto& [selection, mode] : {std::pair{calculation::ExecutionSelectionKind::cutoff,
                                                     calculation::ExecutionMode::cutoff},
                                           std::pair{calculation::ExecutionSelectionKind::cover,
                                                     calculation::ExecutionMode::cover}}) {
-        const auto assessment = assess_mode(selection);
-        CHECK(assessment.plans().empty());
-        REQUIRE(assessment.rejections().size() == 1);
-        REQUIRE(assessment.rejections()[0].policy.has_value());
-        CHECK(assessment.rejections()[0].policy->mode() == mode);
-        REQUIRE(assessment.rejections()[0].issues.size() == 1);
-        const auto& issue = std::get<methods::ExecutionIssue>(assessment.rejections()[0].issues[0]);
-        CHECK(issue.kind == methods::ExecutionIssueKind::unsupported_execution_mode);
-        CHECK(issue.message.contains("fixed charge embedding supports full execution only"));
-    }
-
-    const auto full_assessment = calculation::assess(calculation::AssessmentRequest{
-        .molecules =
-            core::MoleculeCollection{std::vector{make_interleaved_hydrogen_magnesium_oxygen()}},
-        .parameter_sets = {make_eem_parameters()},
-        .execution_selection =
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
-            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}});
-    REQUIRE(full_assessment.plans().size() == 1);
-    CHECK(full_assessment.default_plan()->policy().mode() == calculation::ExecutionMode::full);
-    CHECK(calculation::calculate(full_assessment).calculated());
-
-    auto automatic_request = calculation::AssessmentRequest{
-        .molecules =
-            core::MoleculeCollection{std::vector{make_interleaved_hydrogen_magnesium_oxygen()}},
-        .parameter_sets = {make_eem_parameters()},
-        .resource_policy = {.cutoff_atom_threshold = 0, .cover_atom_threshold = 0},
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
-            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}};
-    const auto automatic = calculation::assess(std::move(automatic_request));
-    CHECK(automatic.plans().empty());
-    auto eem_execution_rejections = 0;
-    for (const auto& rejection : automatic.rejections()) {
-        if (rejection.method_id == "eem") {
-            ++eem_execution_rejections;
-            REQUIRE(rejection.policy.has_value());
-            REQUIRE(rejection.issues.size() == 1);
-            const auto& issue = std::get<methods::ExecutionIssue>(rejection.issues[0]);
-            CHECK(issue.kind == (rejection.policy->mode() == calculation::ExecutionMode::full
-                                     ? methods::ExecutionIssueKind::resource_threshold_exceeded
-                                     : methods::ExecutionIssueKind::unsupported_execution_mode));
-        } else {
-            CHECK_FALSE(rejection.policy.has_value());
-            REQUIRE(rejection.issues.size() == 1);
-            const auto& issue = std::get<methods::PrerequisiteIssue>(rejection.issues[0]);
-            CHECK(issue.kind == ((rejection.method_id == "sqe" || rejection.method_id == "sqeq0")
-                                     ? methods::PrerequisiteIssueKind::missing_parameters
-                                     : methods::PrerequisiteIssueKind::unsupported_embedding));
+        const auto assessment = calculation::assess(make_request(selection));
+        REQUIRE(assessment.plans().size() == 1);
+        CHECK(assessment.plans()[0].policy().mode() == mode);
+        const auto result = calculation::calculate(assessment);
+        REQUIRE(result.calculated());
+        for (std::size_t atom_index = 0; atom_index < full.charges->assignment(0).charges.size();
+             ++atom_index) {
+            CHECK(std::abs(full.charges->assignment(0).charges[atom_index] -
+                           result.charges->assignment(0).charges[atom_index]) < 1.0e-12);
         }
     }
-    CHECK(eem_execution_rejections == 3);
+
+    const auto automatic_cutoff_assessment = calculation::assess(
+        make_request(calculation::ExecutionSelectionKind::automatic, {.cutoff_atom_threshold = 0}));
+    REQUIRE(automatic_cutoff_assessment.default_plan() != nullptr);
+    CHECK(automatic_cutoff_assessment.default_plan()->policy().mode() ==
+          calculation::ExecutionMode::cutoff);
+    const auto automatic_cutoff = calculation::calculate(automatic_cutoff_assessment);
+    REQUIRE(automatic_cutoff.calculated());
+    for (std::size_t atom_index = 0; atom_index < full.charges->assignment(0).charges.size();
+         ++atom_index) {
+        CHECK(std::abs(full.charges->assignment(0).charges[atom_index] -
+                       automatic_cutoff.charges->assignment(0).charges[atom_index]) < 1.0e-12);
+    }
+
+    const auto automatic_cover_assessment =
+        calculation::assess(make_request(calculation::ExecutionSelectionKind::automatic,
+                                         {.cutoff_atom_threshold = 0, .cover_atom_threshold = 0}));
+    REQUIRE(automatic_cover_assessment.default_plan() != nullptr);
+    CHECK(automatic_cover_assessment.default_plan()->policy().mode() ==
+          calculation::ExecutionMode::cover);
+    const auto automatic_cover = calculation::calculate(automatic_cover_assessment);
+    REQUIRE(automatic_cover.calculated());
+    for (std::size_t atom_index = 0; atom_index < full.charges->assignment(0).charges.size();
+         ++atom_index) {
+        CHECK(std::abs(full.charges->assignment(0).charges[atom_index] -
+                       automatic_cover.charges->assignment(0).charges[atom_index]) < 1.0e-12);
+    }
+}
+
+TEST_CASE("fixed sources reach cutoff and cover over active fragments",
+          "[calculation][planning][embedding][reduced]") {
+    const auto exercise = [&](const std::string_view method_id,
+                              const chargefw::parameters::ParameterSet& parameter_set,
+                              const int active_hydrogen_charge) {
+        const auto source_molecules =
+            core::MoleculeCollection{std::vector{make_remote_source_pair(active_hydrogen_charge),
+                                                 make_remote_active_pair(active_hydrogen_charge)}};
+        const auto active_molecules =
+            core::MoleculeCollection{std::vector{make_remote_active_pair(active_hydrogen_charge),
+                                                 make_remote_active_pair(active_hydrogen_charge)}};
+        const auto make_assessment = [&](const bool embedded,
+                                         const calculation::ExecutionSelectionKind selection) {
+            auto request = calculation::AssessmentRequest{
+                .molecules = embedded ? source_molecules : active_molecules,
+                .parameter_sets = {parameter_set},
+                .method_id = std::string{method_id},
+                .execution_selection = calculation::ExecutionSelection{
+                    selection, selection == calculation::ExecutionSelectionKind::full
+                                   ? std::optional<double>{}
+                                   : std::optional{8.0}}};
+            if (embedded) {
+                request.fixed_charge_embedding = calculation::FixedChargeEmbedding{
+                    .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}}};
+            }
+            return calculation::assess(std::move(request));
+        };
+
+        auto full_assessment = make_assessment(true, calculation::ExecutionSelectionKind::full);
+        REQUIRE(full_assessment.plans().size() == 1);
+        const auto full = calculation::calculate(full_assessment);
+        REQUIRE(full.calculated());
+        auto no_source_assessment =
+            make_assessment(false, calculation::ExecutionSelectionKind::full);
+        REQUIRE(no_source_assessment.plans().size() == 1);
+        const auto no_source = calculation::calculate(no_source_assessment);
+        REQUIRE(no_source.calculated());
+
+        const auto first_source_position = source_molecules[0].conformers()[0].positions()[1];
+        const auto second_source_position = source_molecules[0].conformers()[1].positions()[1];
+        CHECK(first_source_position.x > 8.0);
+        CHECK(second_source_position.x > 8.0);
+
+        for (const auto& [selection, mode] : {std::pair{calculation::ExecutionSelectionKind::cutoff,
+                                                        calculation::ExecutionMode::cutoff},
+                                              std::pair{calculation::ExecutionSelectionKind::cover,
+                                                        calculation::ExecutionMode::cover}}) {
+            auto assessment = make_assessment(true, selection);
+            REQUIRE(assessment.plans().size() == 1);
+            CHECK(assessment.plans()[0].policy().mode() == mode);
+            const auto result = calculation::calculate(assessment, 2);
+            REQUIRE(result.calculated());
+            REQUIRE(result.effective->fixed_charge_embedding.has_value());
+            REQUIRE(result.charges->size() == full.charges->size());
+            const auto& totals = result.effective->fixed_charge_embedding->charge_totals;
+            REQUIRE(totals.size() == 2);
+            CHECK(totals[0].original_total_charge == active_hydrogen_charge + 2.0);
+            CHECK(totals[0].active_total_charge == active_hydrogen_charge);
+            CHECK(totals[1].original_total_charge == active_hydrogen_charge);
+            CHECK(totals[1].active_total_charge == active_hydrogen_charge);
+
+            for (std::size_t assignment_index = 0; assignment_index < result.charges->size();
+                 ++assignment_index) {
+                const auto& target = result.charges->assignment(assignment_index).target;
+                const auto& full_target = full.charges->assignment(assignment_index).target;
+                CHECK(target.molecule_index == full_target.molecule_index);
+                CHECK(target.conformer_index == full_target.conformer_index);
+                const auto& values = result.charges->assignment(assignment_index).charges;
+                const auto& full_values = full.charges->assignment(assignment_index).charges;
+                if (target.molecule_index == 0) {
+                    CHECK(values.size() == 3);
+                    CHECK(values[1] == 0.4);
+                    CHECK(std::abs(values[0] + values[2] - active_hydrogen_charge) < 1.0e-11);
+                    CHECK(std::abs(values.total() - active_hydrogen_charge - 0.4) < 1.0e-11);
+                    CHECK(std::abs(values[0] -
+                                   no_source.charges->assignment(assignment_index).charges[0]) >
+                          1.0e-9);
+                    for (std::size_t atom_index = 0; atom_index < values.size(); ++atom_index) {
+                        CHECK(std::abs(values[atom_index] - full_values[atom_index]) < 1.0e-11);
+                    }
+                } else {
+                    CHECK(values.size() == 2);
+                    for (std::size_t atom_index = 0; atom_index < values.size(); ++atom_index) {
+                        CHECK(std::abs(values[atom_index] -
+                                       no_source.charges->assignment(assignment_index)
+                                           .charges[atom_index]) < 1.0e-10);
+                        CHECK(std::abs(values[atom_index] - full_values[atom_index]) < 1.0e-10);
+                    }
+                }
+            }
+            CHECK(std::abs(result.charges->assignment(0).charges[0] -
+                           result.charges->assignment(1).charges[0]) > 1.0e-12);
+
+            const auto serial = calculation::calculate(assessment, 1);
+            const auto repeated = calculation::calculate(assessment, 1);
+            REQUIRE(serial.calculated());
+            REQUIRE(repeated.calculated());
+            for (std::size_t assignment_index = 0; assignment_index < result.charges->size();
+                 ++assignment_index) {
+                const auto& parallel_values = result.charges->assignment(assignment_index).charges;
+                const auto& serial_values = serial.charges->assignment(assignment_index).charges;
+                const auto& repeated_values =
+                    repeated.charges->assignment(assignment_index).charges;
+                for (std::size_t atom_index = 0; atom_index < parallel_values.size();
+                     ++atom_index) {
+                    CHECK(std::abs(parallel_values[atom_index] - serial_values[atom_index]) <
+                          1.0e-12);
+                    CHECK(std::abs(parallel_values[atom_index] - repeated_values[atom_index]) <
+                          1.0e-12);
+                }
+            }
+        }
+    };
+
+    exercise("eem", make_embedding_eem_parameters(), 0);
+    exercise("sqe", make_sqe_embedding_parameters("sqe"), 0);
+    exercise("sqeq0", make_sqe_embedding_parameters("sqeq0"), -1);
+    exercise("sqeqp", make_sqeqp_embedding_parameters(), -1);
+}
+
+TEST_CASE("reduced SQE+qp keeps disconnected normalized reference component totals",
+          "[calculation][planning][embedding][reduced][sqeqp]") {
+    const auto molecule = make_disconnected_qp_source_molecule();
+    const auto source_atom_index = molecule.atom_count() - 1;
+    const auto parameter_set = make_sqeqp_embedding_parameters();
+    const auto make_assessment = [&](const calculation::ExecutionSelectionKind selection,
+                                     const double radius) {
+        return calculation::assess(calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{molecule}},
+            .parameter_sets = {parameter_set},
+            .method_id = "sqeqp",
+            .execution_selection =
+                calculation::ExecutionSelection{
+                    selection, selection == calculation::ExecutionSelectionKind::full
+                                   ? std::optional<double>{}
+                                   : std::optional{radius}},
+            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+                .sources = {
+                    {.molecule_index = 0, .atom_index = source_atom_index, .charge = 0.4}}}});
+    };
+
+    const auto full_assessment = make_assessment(calculation::ExecutionSelectionKind::full, 0.0);
+    REQUIRE(full_assessment.plans().size() == 1);
+    const auto full = calculation::calculate(full_assessment);
+    REQUIRE(full.calculated());
+    const auto& full_values = full.charges->assignment(0).charges;
+    REQUIRE(full_values.size() == source_atom_index + 1);
+    CHECK(full_values[source_atom_index] == 0.4);
+    CHECK(std::abs(full_values.total() - 1.4) < 1.0e-11);
+    auto full_chain_total = 0.0;
+    for (std::size_t atom_index = 0; atom_index < 12; ++atom_index) {
+        full_chain_total += full_values[atom_index];
+    }
+    const auto full_isolated_total = full_values[12];
+    CHECK(std::abs(full_chain_total) > 1.0e-6);
+    CHECK(std::abs(full_isolated_total - 1.0) > 1.0e-6);
+
+    for (const auto& [selection, mode] : {std::pair{calculation::ExecutionSelectionKind::cutoff,
+                                                    calculation::ExecutionMode::cutoff},
+                                          std::pair{calculation::ExecutionSelectionKind::cover,
+                                                    calculation::ExecutionMode::cover}}) {
+        auto reduced_assessment = make_assessment(selection, 8.0);
+        REQUIRE(reduced_assessment.plans().size() == 1);
+        CHECK(reduced_assessment.plans()[0].policy().mode() == mode);
+        const auto reduced = calculation::calculate(reduced_assessment, 2);
+        REQUIRE(reduced.calculated());
+        const auto& values = reduced.charges->assignment(0).charges;
+        CHECK(values[source_atom_index] == 0.4);
+        CHECK(std::abs(values.total() - 1.4) < 1.0e-11);
+        auto chain_total = 0.0;
+        for (std::size_t atom_index = 0; atom_index < 12; ++atom_index) {
+            chain_total += values[atom_index];
+        }
+        CHECK(std::abs(chain_total - full_chain_total) < 1.0e-10);
+        CHECK(std::abs(values[12] - full_isolated_total) < 1.0e-10);
+
+        auto whole_active_assessment = make_assessment(selection, 100.0);
+        const auto whole_active = calculation::calculate(whole_active_assessment);
+        REQUIRE(whole_active.calculated());
+        const auto& whole_values = whole_active.charges->assignment(0).charges;
+        for (std::size_t atom_index = 0; atom_index < full_values.size(); ++atom_index) {
+            CHECK(std::abs(full_values[atom_index] - whole_values[atom_index]) < 1.0e-10);
+        }
+    }
 }
 
 TEST_CASE("embedded assessment retains original molecules and rejections after moves",

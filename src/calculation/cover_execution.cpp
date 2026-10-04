@@ -1,5 +1,6 @@
 #include "calculation/cover_execution.h"
 
+#include "calculation/fixed_charge_partition.h"
 #include "calculation/reduced_execution.h"
 #include "calculation/target_execution.h"
 #include "methods/applicable_method_execution.h"
@@ -26,11 +27,16 @@ inline constexpr double cover_retained_radius = 3.0;
     const methods::ApplicableMethod& selected, const features::PreparedMolecule& source,
     const parameters::ParameterClassification* source_classification,
     const std::size_t conformer_index, const double radius, const std::size_t max_threads,
-    const detail::ProgressContext& progress_ctx) -> charges::AtomicCharges {
+    const detail::ProgressContext& progress_ctx,
+    const detail::FixedChargePartitionTarget* partition_target) -> charges::AtomicCharges {
     const auto& source_molecule = source.molecule();
     auto values = std::vector<double>(source_molecule.atom_count());
     const auto charge_context =
         detail::prepare_reduced_charge_context(selected, source, source_classification);
+    const auto fixed_sources =
+        partition_target == nullptr
+            ? std::vector<methods::FixedPointSource>{}
+            : detail::materialize_fixed_point_sources(*partition_target, conformer_index);
     const features::ConformerFeatures source_geometry{source_molecule, conformer_index};
     const features::SpatialFragmentBuilder fragment_builder{source, source_geometry};
 
@@ -77,7 +83,7 @@ inline constexpr double cover_retained_radius = 3.0;
             try {
                 const auto fragment = fragment_builder.build(pivot_source_atom_index, radius);
                 const auto fragment_charges = detail::calculate_fragment_charges(
-                    selected, source_classification, fragment, charge_context);
+                    selected, source_classification, fragment, charge_context, fixed_sources);
                 const auto local_to_source = fragment.local_to_source_atom_indices();
                 auto assigned_count = std::size_t{0};
                 for (std::size_t local_atom_index = 0; local_atom_index < local_to_source.size();
@@ -93,8 +99,12 @@ inline constexpr double cover_retained_radius = 3.0;
                         "cover fragment did not include every owned source atom"};
                 }
             } catch (const std::exception& error) {
+                const auto original_atom_index =
+                    partition_target == nullptr
+                        ? pivot_source_atom_index
+                        : partition_target->active_atom_indices.at(pivot_source_atom_index);
                 throw std::runtime_error{"cover fragment around source atom " +
-                                         std::to_string(pivot_source_atom_index + 1) +
+                                         std::to_string(original_atom_index + 1) +
                                          " failed: " + error.what()};
             }
         });
@@ -108,8 +118,14 @@ inline constexpr double cover_retained_radius = 3.0;
 auto calculate_cover_charges(const methods::ApplicableMethod& selected,
                              const features::PreparedMoleculeCollection& molecules,
                              const ExecutionPolicy& policy, const std::size_t max_threads,
-                             const CalculationObserver& observer) -> charges::ChargeSet {
-    methods::detail::validate_selected_candidate(selected, molecules);
+                             const CalculationObserver& observer,
+                             const detail::FixedChargePartition* fixed_charge_partition)
+    -> charges::ChargeSet {
+    methods::detail::validate_selected_candidate(selected, molecules,
+                                                 fixed_charge_partition != nullptr);
+    if (fixed_charge_partition != nullptr) {
+        detail::validate_partition_active_molecules(molecules, *fixed_charge_partition);
+    }
     methods::detail::validate_coordinate_targets(selected, molecules);
     detail::validate_reduced_request(selected, policy, ExecutionMode::cover);
     const auto radius = policy.radius();
@@ -123,8 +139,12 @@ auto calculate_cover_charges(const methods::ApplicableMethod& selected,
             const parameters::ParameterClassification* classification,
             const std::optional<std::size_t> conformer_index,
             const std::size_t fragment_max_threads, const detail::ProgressContext& target_ctx) {
+            const auto* partition_target =
+                fixed_charge_partition == nullptr
+                    ? nullptr
+                    : std::addressof(fixed_charge_partition->targets.at(target_ctx.molecule_index));
             return calculate_target(selected, molecule, classification, *conformer_index, *radius,
-                                    fragment_max_threads, target_ctx);
+                                    fragment_max_threads, target_ctx, partition_target);
         });
 }
 

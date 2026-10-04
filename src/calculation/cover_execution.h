@@ -9,11 +9,14 @@
 #include <cstddef>
 
 namespace chargefw::calculation {
+namespace detail {
+struct FixedChargePartition;
+}
 
-[[nodiscard]] auto calculate_cover_charges(const methods::ApplicableMethod& selected,
-                                           const features::PreparedMoleculeCollection& molecules,
-                                           const ExecutionPolicy& policy, std::size_t max_threads,
-                                           const CalculationObserver& observer)
-    -> charges::ChargeSet;
+[[nodiscard]] auto calculate_cover_charges(
+    const methods::ApplicableMethod& selected,
+    const features::PreparedMoleculeCollection& molecules, const ExecutionPolicy& policy,
+    std::size_t max_threads, const CalculationObserver& observer,
+    const detail::FixedChargePartition* fixed_charge_partition = nullptr) -> charges::ChargeSet;
 
 } // namespace chargefw::calculation
