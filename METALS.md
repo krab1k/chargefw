@@ -14,6 +14,11 @@ Repository revision inspected: `05bbd4139d80b2fd70ab70728047ced015aea09d`.
 Follow [AGENTS.md](AGENTS.md) before implementation. The user-requested [PLAN.md](PLAN.md) now owns this
 feature's staged implementation checklist and model responsibilities: Astra handles architecture,
 critical scientific/API decisions, and review; Luna handles coding within the agreed design.
+Scope update (2026-10-04): named-component selection for monatomic ions and whole molecular components
+such as MG and SO4 is now required in PLAN.md steps 6b-6d. Explicit ion charges or complete per-atom
+molecular templates supply the charges; selection alone does not assign them. This supersedes the
+optional molecular-source recommendations in the historical research below. Embedding methods remain
+limited to EEM and the SQE family.
 Keep broader unfinished work in [TODO.md](TODO.md); once behavior exists, document it in the appropriate
 owning documents under `docs/`. Keep this research history separate from those implemented-behavior contracts. Build and
 validation commands belong to [DEVELOPMENT.md](DEVELOPMENT.md).
@@ -26,7 +31,7 @@ protein's charges.
 
 The recommended direction is **explicit, capability-checked fixed-charge electrostatic embedding**:
 
-- Calculate charges on an active subsystem, prioritizing EEM, the SQE family, and QEq.
+- Calculate charges on an active subsystem using EEM or SQE/SQE+q0/SQE+qp.
 - Represent selected ions, and eventually selected molecular fragments, by prescribed atomic charges.
 - Include their electrostatic potential in the active solve, so protein charges respond to them.
 - Keep environmental charge values fixed and preserve all original output mappings.
@@ -52,8 +57,8 @@ The scientific opportunity is more meaningful than an archive-wide percentage su
 These are composition and parameter-coverage findings, **not successful whole-protein calculations or
 charge-accuracy measurements**.
 
-Follow-up discussion on 2026-10-03 narrowed the relevant methods to EEM, SQE/SQE+q0/SQE+qp, QEq,
-ABEEM, EQeq, and possibly EQeq+C. The central requirement is to avoid needing fitted ion response
+The scope decision on 2026-10-04 limits embedding to EEM and SQE/SQE+q0/SQE+qp.
+The central requirement is to avoid needing fitted ion response
 parameters while retaining the active molecule's response to prescribed ion charges. Keep the first
 implementation small: molecular frozen-source support is optional, not a prerequisite. Sections 3.3,
 4.6, and 11 distinguish the resulting recommendations from choices still awaiting a concrete contract.
@@ -427,101 +432,19 @@ fragmentation. Do not switch to component-local normalization: that is a separat
 Changing a seed budget changes both baseline charges and the `-(H-D)*s` driving term; a post-solve charge
 correction cannot repair incorrect normalization.
 
-### 4.6 Method scope and follow-up source inspection
+### 4.6 Method scope
 
-All 22 implemented methods were inspected during the follow-up. The user identified EEM, the SQE family,
-and QEq as the main priorities; ABEEM and EQeq are relevant additions, with EQeq+C conditional. The
-findings below concern mathematical/implementation feasibility, not tested embedding accuracy. No
-embedding solver experiments or code changes were performed.
+By user direction on 2026-10-04, embedding support is limited to EEM and SQE/SQE+q0/SQE+qp.
+QEq, EQeq, EQeq+C, and ABEEM embedding proposals have been removed, rather than deferred or retained
+as optional follow-ons. Ordinary non-embedding calculations with existing methods are unchanged.
 
-Freezing a charge and choosing its source kernel are separate decisions. Exact substitution with a
-finite screened kernel can still require source hardness. Taking a source-hardness limit is a new,
-explicit coupling convention; fixed charge alone does not imply infinite hardness.
-
-| Method | Assessment for this objective |
+| Method | Source coupling |
 | --- | --- |
-| EEM | Primary; existing `kappa/r` coupling needs no source-specific parameters |
-| SQE, SQE+q0, SQE+qp | Primary; explicit point-source/Gaussian coupling and existing seed constraints |
-| QEq | Primary; choose an ion-parameter-free source kernel explicitly |
-| ABEEM | Strong additional candidate; existing `k/r` acts on atom and bond-charge sites |
-| EQeq | Additional candidate; broad elemental coverage already avoids fitted-ion-row gaps |
-| EQeq+C | Conditional; settle post-solve correction behavior at the active/fixed boundary |
-| Other implemented methods | Outside the requested scope; do not develop new response variants here |
+| EEM | Existing `kappa/r` coupling needs no source-specific parameters |
+| SQE, SQE+q0, SQE+qp | Explicit point-source/Gaussian coupling and existing seed constraints |
 
-#### ABEEM
-
-In [abeem.cpp](src/methods/builtin/abeem.cpp), nonincident interactions use the selected set's `k/r`.
-For isolated fixed ions, subtract `sum_F k*f_F/r_iF` from active atomic RHS entries and
-`sum_F k*f_F/r_bF` from active bond-site RHS entries. Bond sites lie at the existing covalent-radius-
-weighted centers. No ion atom or bond parameter is required. Driving only atomic sites is incomplete.
-The constraint sums atom-site and bond-site charges; output assigns half each bond charge to each end.
-Validate source distances to bond centers as well as nuclei. Incident atom-bond coefficients need not
-be symmetric, so describe this as restriction of the implemented linear equations, not automatically
-as a symmetric energy-Hessian construction. General atomic fragment sources are a chosen representation,
-not necessarily exact freezing of an ABEEM fragment's underlying atom and bond sites.
-
-#### QEq
-
-In [qeq.cpp](src/methods/builtin/qeq.cpp), `H_ii = hardness_i` and `RHS_i = -chi_i`. Subtract the
-source potential and constrain the active total. All six finite screened kernels require source
-hardness, but their formal `hardness_F -> +infinity` limits remove that requirement for positive active
-hardness and `r > 0`:
-
-| Overlap option | Limiting active/source kernel |
-| --- | --- |
-| Nishimoto-Mataga | `14.4/r` |
-| Nishimoto-Mataga-Weiss | `17.28/r` |
-| Ohno | `14.4/r` |
-| Ohno-Klopman | `14.4/sqrt(r*r + (14.4/(2*hardness_i))^2)` |
-| DasGupta-Huzinaga (default) | `14.4/r` |
-| Louwen-Vogt | `14.4/r` |
-
-These are empirical kernel limits, not proof of a common physical point-charge density interpretation.
-In particular, Ohno-Klopman retains active-site softening and Nishimoto-Mataga-Weiss retains its factor
-of 1.2. A universal `14.4/r` would not reproduce every limit. The default kernel's limit is a concrete
-candidate for parameter-free ion coupling, not an approved final choice. Do not implement the limit by
-passing infinite numerical parameters through the existing kernel.
-
-#### EQeq and EQeq+C
-
-[eqeq.cpp](src/methods/builtin/eqeq.cpp) derives electronegativity and hardness from built-in elemental
-IP/EA data, with a special hydrogen EA. This provides broad coverage, not guaranteed usable data for
-every element or validated coordinated-ion response. Ordinary EQeq still lets the ion charge vary;
-elemental coverage does not guarantee Mg stays at +2.
-
-Its constrained solve accepts the same negative potential RHS shift. With
-`a = sqrt(hardness_i*hardness_F)/14.4`, the existing pair kernel is:
-
-```text
-G_iF(r) = 8.64 * [1/r + exp(-a*a*r*r) * (2*a - a*a*r - 1/r)]
-```
-
-Exact finite-screening substitution still needs elemental source hardness. Its infinite-source-hardness
-limit at positive distance is `8.64/r`, not `14.4/r`. A different external Coulomb prefactor would define
-a different coupling and needs justification.
-
-[eqeqc.cpp](src/methods/builtin/eqeqc.cpp) adds all-pairs geometry corrections after EQeq:
-
-```text
-q_i = x_i + sum_(j != i) (Dz_i-Dz_j)*exp[-alpha*(r_ij-R_i-R_j)]
-```
-
-Freezing base values `x_F` does not freeze final values `q_F`. Overwriting final source values can break
-the total. The simplest candidate is to apply corrections only to active-active pairs after embedded
-EQeq; those corrections cancel pairwise in the active total and require no source `Dz`. This deliberately
-omits cross-boundary correction terms and must be named as an embedding variant. An exact restriction of
-the full correction pipeline instead requires offsetting fixed base values by their corrections and
-adjusting the active base budget; then the base field is not generated directly by the prescribed final
-charges. No correction-boundary policy was selected.
-
-#### Why the remaining methods are out of scope
-
-SMP/QEq has a suitable iterative equalization structure, but its bundled set lacks ordinary protein
-elements. SFKEEM's `2*sqrt(B_i*B_F)/cosh(sigma*r)` requires source `B` and has no useful parameter-free
-Coulomb limit. TSEF and DENR admit potential-driven extensions, while PEOE/MPEOE/GDAC and other graph
-models would need new coupling assumptions or response interpretations. An unbonded ion has no effect
-in the current PEOE-family bond-transfer algorithms. Formal and Dummy have no active response at all.
-These observations do not justify expanding this feature into a general method-development project.
+The equations above define the selected couplings, not quantitative validation of metal-site accuracy.
+Do not expand this feature into a general method-development project.
 
 ## 5. Proposed Application Architecture
 
@@ -1131,8 +1054,7 @@ remain sufficient if they disappear. The main script used six sets, including th
 ### 10.1 Focused initial scope
 
 1. Approve a concrete public request/capability contract and explicit source-charge policy.
-2. Prototype full execution for EEM and the shared SQE family; include QEq after approving its
-   ion-parameter-free source kernel. ABEEM and EQeq are additional candidates, not prerequisites.
+2. Prototype full execution for EEM and the shared SQE family only.
 3. Add owned active/frozen preparation, active-only classification, diagnostics, and source reassembly.
 4. Validate mathematical invariants and a small scientific benchmark before broad claims.
 5. Add cutoff/cover propagation and validate separately. Until supported, reject such requested combinations.
@@ -1199,9 +1121,9 @@ an existing build. Rebuild and establish a clean baseline before implementing.
 
 ## 11. Open Decisions and Recommendation
 
-The follow-up confirmed the objective and priorities: prescribe ion charges without fitted ion response
-parameters, retain the protein's response, prioritize EEM/SQE-family/QEq, and avoid overengineering.
-ABEEM and EQeq remain relevant; EQeq+C is conditional. The user explicitly accepts an ion-only feature
+The current objective is to prescribe ion charges without fitted ion response parameters, retain the
+protein's response, support only EEM and the SQE family, and avoid overengineering.
+The user explicitly accepts an ion-only feature
 if molecular fragments add substantial complexity. No commitment to a fragment library or automatic
 partial-charge assignment was made.
 
@@ -1211,12 +1133,12 @@ requiring its public interface now. Component identification, source-charge assi
 coupling are separate responsibilities; do not build a generic source-provider framework solely for
 possible future presets. Parameter-covered small molecules can remain active.
 
-Unresolved decisions include the public policy name/shape, source selection syntax, explicit CCD ionic
-charge assignment, QEq source-kernel choice, whether explicit molecular vectors are exposed initially,
-coincidence handling, all-fixed output semantics, potential ownership, and result provenance. If EQeq+C
-is included, its correction boundary also needs approval. Prefer in-target sources initially; independent
-external charge clouds and fragment-charge generation are deferred recommendations, not required scope.
-Public API and automatic chemistry choices still need approval before implementation.
+The original research left public policy shape, source selection syntax, explicit CCD ionic charge
+assignment, molecular-vector scope, coincidence handling, all-fixed output semantics, potential ownership,
+and result provenance open. PLAN.md records subsequent decisions and current implementation status.
+Prefer in-target sources initially; independent external charge clouds and fragment-charge generation
+are deferred recommendations, not required scope. New public API and automatic chemistry choices still
+need approval before implementation.
 
 The recommendation is a focused, explicit embedding capability, not new fitted metal parameters or
 external-field variants of every implemented method.
