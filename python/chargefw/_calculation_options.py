@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numbers
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from operator import index as as_index
 from types import MappingProxyType
@@ -31,6 +31,58 @@ def _normalized_nonnegative_integer(value: SupportsIndex, name: str) -> int:
     if result > np.iinfo(np.uintp).max:
         raise ValueError(f"{name} is outside the native size range")
     return result
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class FixedAtomCharge:
+    """A prescribed fixed charge on one source atom in the input collection."""
+
+    molecule_index: int
+    atom_index: int
+    charge: float
+
+    def __init__(
+        self, molecule_index: SupportsIndex, atom_index: SupportsIndex, charge: float
+    ) -> None:
+        if isinstance(charge, (bool, np.bool_)) or not isinstance(charge, numbers.Real):
+            raise TypeError("charge must be a real number")
+        try:
+            normalized_charge = float(charge)
+        except OverflowError as error:
+            raise ValueError("charge cannot be represented as a float") from error
+        object.__setattr__(
+            self,
+            "molecule_index",
+            _normalized_nonnegative_integer(molecule_index, "molecule_index"),
+        )
+        object.__setattr__(
+            self, "atom_index", _normalized_nonnegative_integer(atom_index, "atom_index")
+        )
+        object.__setattr__(self, "charge", normalized_charge)
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class FixedChargeEmbedding:
+    """Immutable prescribed source values for fixed-charge embedding."""
+
+    sources: tuple[FixedAtomCharge, ...]
+    charge_provenance: str
+
+    def __init__(
+        self,
+        sources: Iterable[FixedAtomCharge],
+        charge_provenance: str = "",
+    ) -> None:
+        try:
+            normalized_sources = tuple(sources)
+        except TypeError as error:
+            raise TypeError("sources must be an iterable of FixedAtomCharge values") from error
+        if any(not isinstance(source, FixedAtomCharge) for source in normalized_sources):
+            raise TypeError("sources must contain only FixedAtomCharge values")
+        if not isinstance(charge_provenance, str):
+            raise TypeError("charge_provenance must be a string")
+        object.__setattr__(self, "sources", normalized_sources)
+        object.__setattr__(self, "charge_provenance", charge_provenance)
 
 
 def _normalized_option_values(
@@ -100,6 +152,7 @@ class RequestedCalculation:
     cutoff_threshold: int | None
     cover_threshold: int | None
     threads: int
+    fixed_charge_embedding: FixedChargeEmbedding | None
 
     def __init__(
         self,
@@ -114,6 +167,7 @@ class RequestedCalculation:
         cutoff_threshold: int | None = 20_000,
         cover_threshold: int | None = 80_000,
         threads: int = 0,
+        fixed_charge_embedding: FixedChargeEmbedding | None = None,
     ) -> None:
         if method is not None and not isinstance(method, (str, Method)):
             raise TypeError("method must be a method ID, Method, or None")
@@ -184,6 +238,15 @@ class RequestedCalculation:
         normalized_threads = _normalized_nonnegative_integer(threads, "threads")
         if normalized_threads > _MAX_NATIVE_THREADS:
             raise ValueError("threads exceeds oneTBB's supported integer range")
+        if fixed_charge_embedding is not None and not isinstance(
+            fixed_charge_embedding, FixedChargeEmbedding
+        ):
+            raise TypeError("fixed_charge_embedding must be a FixedChargeEmbedding or None")
+        normalized_fixed_charge_embedding = (
+            None
+            if fixed_charge_embedding is None or not fixed_charge_embedding.sources
+            else fixed_charge_embedding
+        )
 
         object.__setattr__(self, "method", method_id)
         object.__setattr__(self, "parameter_set", parameter_set_id)
@@ -198,6 +261,7 @@ class RequestedCalculation:
         object.__setattr__(self, "cutoff_threshold", normalized_cutoff)
         object.__setattr__(self, "cover_threshold", normalized_cover)
         object.__setattr__(self, "threads", normalized_threads)
+        object.__setattr__(self, "fixed_charge_embedding", normalized_fixed_charge_embedding)
 
     @property
     def _permissive_types(self) -> bool:

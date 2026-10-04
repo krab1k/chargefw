@@ -82,6 +82,38 @@ ATOM 1 O O . HOH B 1 ? 3.0 0.0 0.0 1.0 20.0 0 1 HOH B O 1
 #
 """
 
+EMBEDDING_MMCIF_TEXT = """data_embedding
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.label_entity_id
+_atom_site.pdbx_PDB_model_num
+HETATM 1 H H1 . LIG A 1 ? 0 0 0 1 20 0 1 LIG A H1 E1 1
+HETATM 2 O O1 . LIG A 1 ? 2 0 0 1 20 0 1 LIG A O1 E1 1
+HETATM 3 Mg MG . MG B 1 ? 0 3 0 1 20 2 1 MG B MG E2 1
+HETATM 4 H H1 . LIG A 1 ? 0 0 0.1 1 20 0 1 LIG A H1 E1 2
+HETATM 5 O O1 . LIG A 1 ? 2 0 0.1 1 20 0 1 LIG A O1 E1 2
+HETATM 6 Mg MG . MG B 1 ? 0 3 0.1 1 20 2 1 MG B MG E2 2
+#
+"""
+
 BOND_STRATEGY_PDB = """SSBOND   1 CYS A   3    CYS A   4                          
 LINK         C   ALA A   1                 C1  LIG A   5
 ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00 20.00           N  
@@ -146,6 +178,49 @@ MOLECULE_JSON_TEXT = """{
 
 
 class NativeInputTests(unittest.TestCase):
+    def test_fixed_charge_embedding_provenance_uses_gemmi_source_labels(self) -> None:
+        molecules = chargefw_io.parse(
+            EMBEDDING_MMCIF_TEXT, format="mmcif", conformers=cast(Any, "all")
+        )
+        self.assertEqual(molecules[0].formal_charges.tolist(), [0, 0, 2])
+        embedding = chargefw.FixedChargeEmbedding(
+            [chargefw.FixedAtomCharge(0, 2, 0.4)], "Gemmi source fixture"
+        )
+        result = chargefw.calculate(
+            molecules,
+            method="eem",
+            execution="cover",
+            radius=8.0,
+            fixed_charge_embedding=embedding,
+        )
+
+        self.assertEqual(result.status, "success")
+        self.assertEqual(len(result.assignments), 2)
+        for assignment in result.assignments:
+            self.assertEqual(assignment.values[2], 0.4)
+            self.assertTrue(np.isclose(assignment.values[:2].sum(), 0.0))
+            self.assertTrue(np.isclose(assignment.values.sum(), 0.4))
+        if result.plan is None or result.plan.fixed_charge_embedding is None:
+            self.fail("embedded Gemmi result must retain effective source provenance")
+        totals = result.plan.fixed_charge_embedding.charge_totals
+        self.assertEqual(
+            totals,
+            (chargefw.EmbeddingChargeTotals(0, 2.0, 0.0),),
+        )
+
+        encoded = json.loads(chargefw_io.dumps(result, format="result-json"))
+        effective = encoded["calculation_provenance"]["effective"]["fixed_charge_embedding"]
+        self.assertEqual(effective["charge_totals"][0]["original_total_charge"], 2.0)
+        self.assertEqual(effective["charge_totals"][0]["active_total_charge"], 0.0)
+        self.assertEqual(
+            effective["charge_totals"][0]["active_total_charge"]
+            + effective["sources"][0]["charge"],
+            0.4,
+        )
+        self.assertEqual(effective["components"][0]["component_id"], "MG")
+        self.assertEqual(effective["components"][0]["charge_per_instance"], 0.4)
+        self.assertEqual(effective["components"][0]["instances"][0]["atom_indices"], [2])
+
     def test_parse_native_molecular_formats(self) -> None:
         molecules = chargefw_io.parse(MOL_TEXT, format="mol", source_name="charged.mol")
         self.assertEqual(len(molecules), 1)

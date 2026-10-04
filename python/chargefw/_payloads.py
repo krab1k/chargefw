@@ -51,12 +51,31 @@ class ExecutionPolicyPayload(TypedDict):
     radius: float | None
 
 
+class FixedAtomChargePayload(TypedDict):
+    molecule_index: int
+    atom_index: int
+    charge: float
+
+
+class EmbeddingChargeTotalsPayload(TypedDict):
+    molecule_index: int
+    original_total_charge: float
+    active_total_charge: float
+
+
+class FixedChargeEmbeddingProvenancePayload(TypedDict):
+    sources: list[FixedAtomChargePayload]
+    charge_provenance: str
+    charge_totals: list[EmbeddingChargeTotalsPayload]
+
+
 class EffectiveCalculationPayload(TypedDict):
     method_id: str
     parameter_set_id: str | None
     method_options: dict[str, MethodOptionValue]
     execution_policy: ExecutionPolicyPayload
     execution_issues: list[ExecutionIssuePayload]
+    fixed_charge_embedding: FixedChargeEmbeddingProvenancePayload | None
 
 
 class ExecutionPlanPayload(TypedDict):

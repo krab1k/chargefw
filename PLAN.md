@@ -4,8 +4,9 @@ Status: EEM implementation authorized, progressing through smaller independently
 Slices 2a-2k are reviewed and complete (2j: `a8f2852`, 2k: `98d8e2e`). Slice 3a SQE+qp/full is
 committed as `23b6918`; slice 3b's independent active-charge policy is reviewed and committed as
 `5c4b228`. EEM and all three SQE-family methods support full, cutoff, and cover embedding; step 5 is
-Astra-reviewed and complete. QEq remains disabled and explicitly deferred by the user pending approval of
-its scientific convention.
+Astra-reviewed and complete (implementation commit `3000907`). Python slice 6a is Astra-reviewed and
+complete; step 6 is complete pending user review/commit. CLI step 7 is not started. QEq remains disabled
+and explicitly deferred by the user pending approval of its scientific convention.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -405,7 +406,8 @@ SQE+qp component references; observer tests cover fragment cancellation and repe
 
 ## 6. Expose the Policy in Python
 
-- [ ] Support the same request and provenance through assessment, direct calculation, and reusable plans.
+- [x] **6a: Python request, binding, and result provenance.** Implemented for assessment, direct calculation,
+  and reusable plans; Astra-reviewed and accepted. Step 6 is complete, pending user review/commit.
 
 Primary files: `python/chargefw/{calculation,_calculation_options}.py`, `python/src/calculation.cpp`,
 associated value types, exports, and extension stubs.
@@ -417,6 +419,12 @@ graph or implement its own charge/capability policy. Update `docs/PYTHON.md`.
 Focused check: one public workflow exercising assessment, direct calculation, and plan reuse over a
 multi-conformer input, with matching native results and provenance. Run existing calculation/output
 and typing checks rather than duplicating numerical tests in Python.
+
+Validation: all nine registered Python CTest suites passed with
+`ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$' -R '^test_chargefw_python_'`
+(including `test_chargefw_python_mypy`). The focused calculation test also passed under Clang debug,
+GCC/Clang release, ASan, and UBSan; the binding target passed clang-tidy. Ruff checks and format checks
+passed for the modified Python files.
 
 ## 7. Expose the Policy in the CLI and Serialized Results
 

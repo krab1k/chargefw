@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from operator import index as as_index
 from types import MappingProxyType
 
-from ._calculation_options import RequestedCalculation
+from ._calculation_options import FixedAtomCharge, RequestedCalculation
 from ._chargefw import calculation as _native_calculation
 from ._methods import (
     ExecutionIssue,
@@ -20,6 +20,7 @@ from ._payloads import (
     EffectiveCalculationPayload,
     ExecutionIssuePayload,
     ExecutionPolicyPayload,
+    FixedChargeEmbeddingProvenancePayload,
     PrerequisiteIssuePayload,
     RejectionPayload,
 )
@@ -118,12 +119,45 @@ class Rejection:
 
 
 @dataclass(frozen=True, slots=True)
+class EmbeddingChargeTotals:
+    molecule_index: int
+    original_total_charge: float
+    active_total_charge: float
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class FixedChargeEmbeddingProvenance:
+    sources: tuple[FixedAtomCharge, ...]
+    charge_provenance: str
+    charge_totals: tuple[EmbeddingChargeTotals, ...]
+
+    def __init__(
+        self,
+        sources: Iterable[FixedAtomCharge],
+        charge_provenance: str,
+        charge_totals: Iterable[EmbeddingChargeTotals],
+    ) -> None:
+        normalized_sources = tuple(sources)
+        normalized_totals = tuple(charge_totals)
+        if any(not isinstance(source, FixedAtomCharge) for source in normalized_sources):
+            raise TypeError("sources must contain only FixedAtomCharge values")
+        if any(not isinstance(total, EmbeddingChargeTotals) for total in normalized_totals):
+            raise TypeError("charge_totals must contain only EmbeddingChargeTotals values")
+        if not isinstance(charge_provenance, str):
+            raise TypeError("charge_provenance must be a string")
+        object.__setattr__(self, "sources", normalized_sources)
+        object.__setattr__(self, "charge_provenance", charge_provenance)
+        object.__setattr__(self, "charge_totals", normalized_totals)
+
+
+@dataclass(frozen=True, slots=True)
 class ExecutedPlan:
     method: Method
     parameter_set: ParameterSet | None
     options: Mapping[str, MethodOptionValue]
     policy: ExecutionPolicy
     warnings: tuple[ExecutionIssue, ...]
+    fixed_charge_embedding: FixedChargeEmbeddingProvenance | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "options", MappingProxyType(dict(self.options)))
@@ -190,6 +224,18 @@ def _execution_policy(value: ExecutionPolicyPayload) -> ExecutionPolicy:
     )
 
 
+def _fixed_charge_embedding_provenance(
+    value: FixedChargeEmbeddingProvenancePayload | None,
+) -> FixedChargeEmbeddingProvenance | None:
+    if value is None:
+        return None
+    return FixedChargeEmbeddingProvenance(
+        sources=tuple(FixedAtomCharge(**source) for source in value["sources"]),
+        charge_provenance=value["charge_provenance"],
+        charge_totals=tuple(EmbeddingChargeTotals(**total) for total in value["charge_totals"]),
+    )
+
+
 def _executed_plan(
     value: EffectiveCalculationPayload | None,
     methods: MethodCatalog,
@@ -203,6 +249,7 @@ def _executed_plan(
         options=value["method_options"],
         policy=_execution_policy(value["execution_policy"]),
         warnings=tuple(_execution_issue(issue) for issue in value["execution_issues"]),
+        fixed_charge_embedding=_fixed_charge_embedding_provenance(value["fixed_charge_embedding"]),
     )
 
 

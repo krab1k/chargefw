@@ -37,6 +37,20 @@ def water(conformers: int = 1) -> chargefw.Molecule:
     )
 
 
+def embedded_water(*, magnesium_formal_charge: int = 0) -> chargefw.Molecule:
+    return chargefw.Molecule(
+        [8, 12, 1, 1],
+        formal_charges=[0, magnesium_formal_charge, 0, 0],
+        bonds=[[0, 2, 1], [0, 3, 1]],
+        coordinates=[
+            [[0.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]],
+            [[0.1, 0.0, 0.1], [0.1, 3.2, 0.1], [1.06, 0.0, 0.1], [-0.14, 0.93, 0.1]],
+        ],
+        atom_names=["O", "MG", "H1", "H2"],
+        name="embedded-water",
+    )
+
+
 def calculate_formal(molecules: Any) -> chargefw.CalculationResult:
     return chargefw.calculate(molecules, method="formal", execution="full", threads=1)
 
@@ -146,6 +160,218 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(fragments[-1].target_index, 0)
         self.assertEqual(fragments[-1].target_count, 1)
 
+    def test_fixed_charge_embedding_snapshots_sources_and_runs_each_eem_mode(self) -> None:
+        source_values = [chargefw.FixedAtomCharge(np.int64(0), np.int64(1), np.float64(2.0))]
+        embedding = chargefw.FixedChargeEmbedding(source_values, "Python fixed source")
+        source_values.clear()
+        self.assertIsInstance(embedding.sources, tuple)
+        self.assertEqual(embedding.sources, (chargefw.FixedAtomCharge(0, 1, 2.0),))
+        self.assertEqual(embedding.charge_provenance, "Python fixed source")
+        with self.assertRaises(AttributeError):
+            cast(Any, embedding).sources = ()
+        with self.assertRaises(AttributeError):
+            cast(Any, embedding.sources[0]).charge = 1.0
+        requested_snapshot = chargefw.RequestedCalculation(fixed_charge_embedding=embedding)
+        with self.assertRaises(AttributeError):
+            cast(Any, requested_snapshot).fixed_charge_embedding = None
+
+        molecule = embedded_water()
+        active_with_source = []
+        for execution in ("full", "cutoff", "cover"):
+            with self.subTest(execution=execution):
+                radius = None if execution == "full" else 8.0
+                no_source = chargefw.calculate(
+                    molecule,
+                    method="eem",
+                    parameter_set="EEM_Baek1991",
+                    execution=cast(Any, execution),
+                    radius=radius,
+                    threads=1,
+                    fixed_charge_embedding=chargefw.FixedChargeEmbedding(
+                        [chargefw.FixedAtomCharge(0, 1, 0.0)]
+                    ),
+                )
+                assessment = chargefw.assess(
+                    molecule,
+                    method="eem",
+                    parameter_set="EEM_Baek1991",
+                    execution=cast(Any, execution),
+                    radius=radius,
+                    fixed_charge_embedding=embedding,
+                )
+                plan = assessment.default_plan
+                if plan is None:
+                    self.fail("assessment must produce an EEM fixed-charge plan")
+                planned = chargefw.calculate(molecule, plan, threads=1)
+                direct = chargefw.calculate(
+                    molecule,
+                    method="eem",
+                    parameter_set="EEM_Baek1991",
+                    execution=cast(Any, execution),
+                    radius=radius,
+                    threads=1,
+                    fixed_charge_embedding=embedding,
+                )
+
+                self.assertEqual(planned.status, "success")
+                self.assertEqual(plan.policy.mode, execution)
+                self.assertEqual(planned.requested.fixed_charge_embedding, embedding)
+                requested_embedding = planned.requested.fixed_charge_embedding
+                if requested_embedding is None:
+                    self.fail("requested calculation must retain its embedding value")
+                self.assertIsInstance(requested_embedding.sources, tuple)
+                with self.assertRaises(AttributeError):
+                    cast(Any, planned.requested).fixed_charge_embedding = None
+                with self.assertRaises(TypeError):
+                    cast(Any, requested_embedding.sources)[0] = chargefw.FixedAtomCharge(0, 1, 3.0)
+                if planned.plan is None:
+                    self.fail("executed embedding plan must retain effective provenance")
+                effective = planned.plan.fixed_charge_embedding
+                if effective is None:
+                    self.fail("executed embedding plan must report fixed sources")
+                self.assertEqual(effective.sources, embedding.sources)
+                self.assertEqual(effective.charge_provenance, embedding.charge_provenance)
+                self.assertEqual(
+                    effective.charge_totals, (chargefw.EmbeddingChargeTotals(0, 0.0, 0.0),)
+                )
+                self.assertEqual(len(planned.assignments), 2)
+                for assignment, direct_assignment in zip(
+                    planned.assignments, direct.assignments, strict=True
+                ):
+                    self.assertEqual(assignment.values[1], 2.0)
+                    active_values = assignment.values[[0, 2, 3]]
+                    self.assertTrue(np.isclose(active_values.sum(), 0.0))
+                    self.assertTrue(np.isclose(assignment.values.sum(), 2.0))
+                    np.testing.assert_allclose(assignment.values, direct_assignment.values)
+                for conformer_index, assignment in enumerate(planned.assignments):
+                    active_values = assignment.values[[0, 2, 3]]
+                    baseline_values = no_source.assignments[conformer_index].values[[0, 2, 3]]
+                    self.assertGreater(np.max(np.abs(active_values - baseline_values)), 1.0e-5)
+                    if execution == "full":
+                        active_with_source.append(np.array(active_values, copy=True))
+                with self.assertRaisesRegex(TypeError, "selection arguments"):
+                    chargefw.calculate(molecule, plan, fixed_charge_embedding=embedding)
+
+        self.assertGreater(np.max(np.abs(active_with_source[0] - active_with_source[1])), 1.0e-6)
+        self.assertEqual(molecule.formal_charges.tolist(), [0, 0, 0, 0])
+
+    def test_fixed_charge_embedding_validates_python_values_and_native_selectors(self) -> None:
+        with self.assertRaisesRegex(TypeError, "molecule_index"):
+            chargefw.FixedAtomCharge(True, 0, 0.5)
+        with self.assertRaisesRegex(TypeError, "atom_index"):
+            chargefw.FixedAtomCharge(0, cast(Any, 1.0), 0.5)
+        with self.assertRaisesRegex(ValueError, "atom_index"):
+            chargefw.FixedAtomCharge(0, -1, 0.5)
+        with self.assertRaisesRegex(TypeError, "charge"):
+            chargefw.FixedAtomCharge(0, 0, True)
+        with self.assertRaisesRegex(TypeError, "FixedAtomCharge"):
+            chargefw.FixedChargeEmbedding(cast(Any, [(0, 1, 0.5)]))
+        with self.assertRaisesRegex(TypeError, "charge_provenance"):
+            chargefw.FixedChargeEmbedding([], cast(Any, 1))
+
+        empty = chargefw.FixedChargeEmbedding([], "empty is ordinary input")
+        requested = chargefw.RequestedCalculation(fixed_charge_embedding=empty)
+        self.assertIsNone(requested.fixed_charge_embedding)
+        plain = chargefw.calculate(water(), method="formal")
+        empty_result = chargefw.calculate(water(), method="formal", fixed_charge_embedding=empty)
+        self.assertIsNone(empty_result.requested.fixed_charge_embedding)
+        np.testing.assert_array_equal(
+            plain.assignments[0].values, empty_result.assignments[0].values
+        )
+
+        with self.assertRaises(ValueError):
+            chargefw.assess(
+                embedded_water(),
+                method="eem",
+                fixed_charge_embedding=chargefw.FixedChargeEmbedding(
+                    [chargefw.FixedAtomCharge(0, 1, float("inf"))]
+                ),
+            )
+        with self.assertRaises(ValueError):
+            chargefw.assess(
+                embedded_water(),
+                method="eem",
+                fixed_charge_embedding=chargefw.FixedChargeEmbedding(
+                    [chargefw.FixedAtomCharge(0, 1, 0.5), chargefw.FixedAtomCharge(0, 1, 0.7)]
+                ),
+            )
+        with self.assertRaises(ValueError):
+            chargefw.assess(
+                embedded_water(),
+                method="eem",
+                fixed_charge_embedding=chargefw.FixedChargeEmbedding(
+                    [chargefw.FixedAtomCharge(0, 0, 0.5)]
+                ),
+            )
+
+        unsupported = chargefw.assess(
+            embedded_water(),
+            method="qeq",
+            parameter_set="QEq_original",
+            execution="full",
+            fixed_charge_embedding=chargefw.FixedChargeEmbedding(
+                [chargefw.FixedAtomCharge(0, 1, 0.5)]
+            ),
+        )
+        self.assertFalse(unsupported.plans)
+        self.assertIn(
+            "unsupported_embedding",
+            [issue.kind for rejection in unsupported.rejections for issue in rejection.issues],
+        )
+
+        sqeqp_parameters = next(iter(chargefw.methods["sqeqp"].parameter_sets.values()))
+        charged_active = chargefw.Molecule(
+            [8, 12, 1, 1],
+            formal_charges=[0, 0, -1, 0],
+            bonds=[[0, 2, 1], [0, 3, 1]],
+            coordinates=embedded_water().coordinates,
+        )
+        qp = chargefw.calculate(
+            charged_active,
+            method="sqeqp",
+            parameter_set=sqeqp_parameters,
+            execution="full",
+            fixed_charge_embedding=chargefw.FixedChargeEmbedding(
+                [chargefw.FixedAtomCharge(0, 1, 2.0)]
+            ),
+        )
+        self.assertEqual(qp.status, "success")
+        self.assertTrue(np.isclose(qp.assignments[0].values[[0, 2, 3]].sum(), -1.0))
+        self.assertEqual(qp.assignments[0].values[1], 2.0)
+        self.assertTrue(np.isclose(qp.assignments[0].values.sum(), 1.0))
+
+    def test_fixed_charge_embedding_plan_and_result_outlive_python_sources(self) -> None:
+        def make_plan() -> tuple[chargefw.Molecule, chargefw.Plan]:
+            molecule = embedded_water()
+            source_values = [chargefw.FixedAtomCharge(0, 1, 0.4)]
+            embedding = chargefw.FixedChargeEmbedding(source_values, "owned source")
+            assessment = chargefw.assess(
+                molecule,
+                method="eem",
+                execution="full",
+                fixed_charge_embedding=embedding,
+            )
+            plan = assessment.default_plan
+            if plan is None:
+                raise AssertionError("assessment must produce an EEM embedding plan")
+            return molecule, plan
+
+        molecule, plan = make_plan()
+        gc.collect()
+        result = chargefw.calculate(molecule, plan, threads=2)
+        self.assertEqual(result.status, "success")
+        self.assertEqual(result.requested.threads, 2)
+        requested_embedding = result.requested.fixed_charge_embedding
+        executed = result.plan
+        if requested_embedding is None or executed is None:
+            self.fail("embedding calculation must retain requested and effective provenance")
+        self.assertEqual(requested_embedding.sources, (chargefw.FixedAtomCharge(0, 1, 0.4),))
+        effective_embedding = executed.fixed_charge_embedding
+        if effective_embedding is None:
+            self.fail("executed plan must retain source provenance")
+        self.assertEqual(effective_embedding.sources, requested_embedding.sources)
+        self.assertIs(result.molecules[0], molecule)
+
     def test_observer_receives_parallel_target_progress(self) -> None:
         class CountingObserver(chargefw.CalculationObserver):
             def __init__(self) -> None:
@@ -184,27 +410,65 @@ class CalculationTests(unittest.TestCase):
             def cancelled(self) -> bool:
                 return self.cancel_requested
 
-        molecule = water()
-        plan = chargefw.assess(molecule, method="eem", execution="full").default_plan
-        if plan is None:
-            self.fail("assessment must produce a default plan")
-        observer = CancellingObserver()
+        cases = (
+            (water(), None),
+            (
+                embedded_water(),
+                chargefw.FixedChargeEmbedding(
+                    [chargefw.FixedAtomCharge(0, 1, 0.4)], "cancelled source"
+                ),
+            ),
+        )
+        for molecule, embedding in cases:
+            with self.subTest(embedding=embedding is not None):
+                observer = CancellingObserver()
+                assessment = chargefw.assess(
+                    molecule,
+                    method="eem",
+                    execution="full",
+                    fixed_charge_embedding=embedding,
+                )
+                plan = assessment.default_plan
+                if plan is None:
+                    self.fail("assessment must produce a default plan")
 
-        with self.assertRaises(chargefw.CalculationCancelledError) as raised:
-            chargefw.calculate(molecule, plan, threads=1, observer=observer)
+                with self.assertRaises(chargefw.CalculationCancelledError) as raised:
+                    chargefw.calculate(molecule, plan, threads=1, observer=observer)
 
-        self.assertEqual(raised.exception.result.status, "cancelled")
-        self.assertEqual(raised.exception.result.assignments, ())
-        self.assertEqual(observer.phases[0], "computation_started")
-        self.assertIn("target_started", observer.phases)
-        self.assertEqual(observer.phases[-1], "computation_finished")
+                cancelled = raised.exception.result
+                self.assertEqual(cancelled.status, "cancelled")
+                self.assertEqual(cancelled.assignments, ())
+                self.assertEqual(observer.phases[0], "computation_started")
+                self.assertIn("target_started", observer.phases)
+                self.assertEqual(observer.phases[-1], "computation_finished")
+                self.assertEqual(
+                    cancelled.requested.fixed_charge_embedding,
+                    embedding,
+                )
+                if embedding is not None:
+                    effective = cancelled.plan
+                    if effective is None or effective.fixed_charge_embedding is None:
+                        self.fail("cancelled embedding result must preserve effective provenance")
+                    self.assertEqual(effective.fixed_charge_embedding.sources, embedding.sources)
+                    self.assertEqual(effective.fixed_charge_embedding.sources[0].charge, 0.4)
 
-        result = chargefw.calculate(molecule, plan, threads=1)
-        self.assertEqual(result.status, "success")
-        self.assertEqual(len(result.assignments), 1)
-        self.assertEqual(result.assignments[0].values.shape, (molecule.atom_count,))
-        self.assertTrue(np.all(np.isfinite(result.assignments[0].values)))
-        self.assertTrue(np.isclose(result.assignments[0].values.sum(), 0.0))
+                result = chargefw.calculate(molecule, plan, threads=1)
+                self.assertEqual(result.status, "success")
+                self.assertEqual(len(result.assignments), len(molecule.coordinates))
+                self.assertTrue(
+                    all(
+                        assignment.values.shape == (molecule.atom_count,)
+                        for assignment in result.assignments
+                    )
+                )
+                self.assertTrue(
+                    all(np.all(np.isfinite(assignment.values)) for assignment in result.assignments)
+                )
+                if embedding is not None:
+                    executed = result.plan
+                    if executed is None or executed.fixed_charge_embedding is None:
+                        self.fail("reused embedding plan must retain effective provenance")
+                    self.assertEqual(executed.fixed_charge_embedding.sources, embedding.sources)
 
     def test_observer_must_use_public_base_class(self) -> None:
         with self.assertRaisesRegex(TypeError, "CalculationObserver"):

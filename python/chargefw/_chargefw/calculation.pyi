@@ -36,4 +36,5 @@ def _make_assessment(
     cutoff_threshold: int | None,
     cover_threshold: int | None,
     max_threads: int,
+    fixed_charge_embedding: tuple[tuple[tuple[int, int, float], ...], str] | None = None,
 ) -> _NativeAssessment: ...

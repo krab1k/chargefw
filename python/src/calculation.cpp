@@ -17,6 +17,8 @@
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/tuple.h>
+#include <nanobind/stl/vector.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -27,6 +29,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -36,6 +39,9 @@ namespace nb = nanobind;
 
 namespace chargefw::python {
 namespace {
+
+using NativeFixedChargeEmbedding =
+    std::tuple<std::vector<std::tuple<std::size_t, std::size_t, double>>, std::string>;
 
 auto method_options(const nb::dict& values)
     -> std::unordered_map<std::string, methods::MethodOptions> {
@@ -140,6 +146,32 @@ auto effective_calculation(const calculation::EffectiveCalculation& effective) -
         issues.append(execution_issue(issue));
     }
     result["execution_issues"] = std::move(issues);
+    if (effective.fixed_charge_embedding.has_value()) {
+        const auto& embedding = *effective.fixed_charge_embedding;
+        auto embedding_value = nb::dict{};
+        auto sources = nb::list{};
+        for (const auto& source : embedding.sources) {
+            auto source_value = nb::dict{};
+            source_value["molecule_index"] = source.molecule_index;
+            source_value["atom_index"] = source.atom_index;
+            source_value["charge"] = source.charge;
+            sources.append(std::move(source_value));
+        }
+        embedding_value["sources"] = std::move(sources);
+        embedding_value["charge_provenance"] = embedding.charge_provenance;
+        auto totals = nb::list{};
+        for (const auto& charge_total : embedding.charge_totals) {
+            auto total_value = nb::dict{};
+            total_value["molecule_index"] = charge_total.molecule_index;
+            total_value["original_total_charge"] = charge_total.original_total_charge;
+            total_value["active_total_charge"] = charge_total.active_total_charge;
+            totals.append(std::move(total_value));
+        }
+        embedding_value["charge_totals"] = std::move(totals);
+        result["fixed_charge_embedding"] = std::move(embedding_value);
+    } else {
+        result["fixed_charge_embedding"] = nb::none();
+    }
     return result;
 }
 
@@ -385,16 +417,15 @@ class NativeAssessment {
     std::shared_ptr<NativeAssessmentState> state_;
 };
 
-auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_metadata,
-                     const nb::sequence& identities, const nb::sequence& caller_atom_ids,
-                     std::string molecule_collection_name, const NativeParameterCatalog& catalog,
-                     std::optional<std::string> method_id,
-                     std::optional<std::string> parameter_set_id, const nb::dict& options,
-                     const bool permissive_types, const std::string& execution,
-                     const std::optional<double> radius,
-                     const std::optional<std::size_t> cutoff_threshold,
-                     const std::optional<std::size_t> cover_threshold,
-                     const std::size_t max_threads) -> NativeAssessment {
+auto make_assessment(
+    const nb::sequence& molecules, const nb::sequence& input_metadata,
+    const nb::sequence& identities, const nb::sequence& caller_atom_ids,
+    std::string molecule_collection_name, const NativeParameterCatalog& catalog,
+    std::optional<std::string> method_id, std::optional<std::string> parameter_set_id,
+    const nb::dict& options, const bool permissive_types, const std::string& execution,
+    const std::optional<double> radius, const std::optional<std::size_t> cutoff_threshold,
+    const std::optional<std::size_t> cover_threshold, const std::size_t max_threads,
+    std::optional<NativeFixedChargeEmbedding> fixed_charge_embedding) -> NativeAssessment {
     // Convert Python values to stable native references before releasing the GIL. The remaining
     // work copies native-owned input values and prepares the assessment without accessing Python
     // objects.
@@ -443,6 +474,20 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
                                                  .execution_kind = execution,
                                                  .execution_radius = radius,
                                                  .method_options = std::move(requested_options)};
+    auto native_fixed_charge_embedding = std::optional<calculation::FixedChargeEmbedding>{};
+    if (fixed_charge_embedding.has_value()) {
+        auto& [sources, provenance] = *fixed_charge_embedding;
+        if (!sources.empty()) {
+            auto embedding = calculation::FixedChargeEmbedding{
+                .sources = {}, .charge_provenance = std::move(provenance)};
+            embedding.sources.reserve(sources.size());
+            for (const auto& [molecule_index, atom_index, charge] : sources) {
+                embedding.sources.push_back(calculation::FixedAtomCharge{
+                    .molecule_index = molecule_index, .atom_index = atom_index, .charge = charge});
+            }
+            native_fixed_charge_embedding = std::move(embedding);
+        }
+    }
     nb::gil_scoped_release release;
     auto inputs = std::vector<adapters::ImportedMoleculeRecord>{};
     inputs.reserve(source_molecules.size());
@@ -474,6 +519,7 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
                 calculation::execution_selection_kind_from_string(execution), radius},
         .resource_policy = {.cutoff_atom_threshold = cutoff_threshold,
                             .cover_atom_threshold = cover_threshold},
+        .fixed_charge_embedding = std::move(native_fixed_charge_embedding),
     };
     return NativeAssessment{calculation::assess(std::move(request)), std::move(inputs),
                             std::move(requested), max_threads};
@@ -501,7 +547,8 @@ void bind_calculation(nb::module_& module) {
                nb::arg("molecule_collection_name"), nb::arg("catalog"), nb::arg("method_id"),
                nb::arg("parameter_set_id"), nb::arg("method_options"), nb::arg("permissive_types"),
                nb::arg("execution"), nb::arg("radius"), nb::arg("cutoff_threshold"),
-               nb::arg("cover_threshold"), nb::arg("max_threads"));
+               nb::arg("cover_threshold"), nb::arg("max_threads"),
+               nb::arg("fixed_charge_embedding") = nb::none());
 }
 
 } // namespace chargefw::python
