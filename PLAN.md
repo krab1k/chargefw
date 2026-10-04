@@ -1,8 +1,8 @@
 # Fixed-Charge Embedding Implementation Plan
 
 Status: EEM implementation authorized, beginning with smaller independently reviewable slices.
-The request, validation, partition, method-input, EEM numerical, and assessment slices (2a-2g) are
-committed. Private result reconstruction (2h) is implemented and reviewed; facade embedding execution remains disabled.
+Slices 2a-2h are committed. Native and JSON embedding provenance (2i) uses descriptive field names and is reviewed;
+facade embedding execution remains disabled.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -27,13 +27,14 @@ and implemented contracts in the owning `docs/` files. Do not duplicate this che
 - **GPT-6 Astra owns architecture, public API design, scientific/coupling decisions, and code review.**
   Astra resolves critical choices before delegating a coding slice; an agent review does not substitute
   for user approval where this plan requires it.
-- **GPT-6 Luna is used only for coding**, including focused tests and implementation-driven documentation
-  updates within Astra's agreed design. If coding exposes an architectural or scientific ambiguity,
-  Luna reports it to Astra rather than choosing a new contract or expanding scope.
+- **GPT-6 Luna owns coding and routine validation** within Astra's agreed design, including documentation
+  updates, compilation, tests, formatting, linting, and sanitizer runs. Astra delegates these commands
+  to Luna rather than running them itself. Luna reports architectural or scientific ambiguities to Astra
+  rather than choosing a new contract or expanding scope.
 - For each slice, Astra defines the boundary, Luna implements and runs the relevant checks, and Astra
   reviews correctness, scientific conventions, ownership/mapping, and regressions. Luna addresses review
-  findings; Astra verifies the fixes before reporting the slice ready for user review. Stop at that
-  boundary instead of starting the next step automatically.
+  findings; Astra verifies fixes by inspecting code and Luna's validation evidence, delegating additional
+  checks to Luna. Report the slice ready for user review and stop instead of starting the next step.
 - Split numbered steps into smaller review units, normally one commit each. Stop after each slice for
   user review, including API preparation before end-to-end execution. Keep intermediate states usable:
   unsupported combinations must reject explicitly rather than silently omit the field.
@@ -223,8 +224,22 @@ rather than changing seed policy.
 - Slice 2h validation: full GCC debug suite (57/57), focused GCC and Clang debug/release tests,
   sequential ASan/UBSan calculation suites (9/9 each), affected clang-tidy targets, and whitespace
   checks passed. Luna implemented; Astra reviewed scatter mappings, exact fixed-value insertion, and
-  metadata preservation and verified full GCC regressions. Commit: pending user review.
-- [ ] **2i and later:** define the next small boundary after review of 2h, working toward the end-to-end
+  metadata preservation and verified full GCC regressions. Commit: `255e0e2`.
+- [x] **2i: Native and JSON embedding provenance.** Add optional structured embedding metadata to
+  `EffectiveCalculation`: original-index sources and charges, caller provenance label, interaction-model
+  identifier, and original/active charge totals once per original molecule. Serialize it under effective provenance
+  only when present; ordinary JSON remains unchanged. Extend the result schema with the optional field
+  and test synthetic successful/failed results without enabling plans. Adapter checks cover structural
+  metadata validity, not a second scientific assessment. Keep Python typed snapshots/request options,
+  CLI source input, and execution integration for later slices.
+- Slice 2i validation: full GCC debug suite (57/57), focused GCC/Clang debug JSON tests, sequential
+  ASan/UBSan JSON tests, affected clang-tidy target, and whitespace checks passed. Emitted synthetic JSON
+  validated against the updated schema using installed jsonschema. Luna implemented; Astra reviewed
+  optional-field behavior and corrected test budget/source consistency. User requested renaming `kernel`
+  to `interaction_model` and `budget` to `charge_totals` with explicit original/active total field names.
+  Focused GCC JSON output test (1/1), full GCC suite (57/57), schema meta-validation, and whitespace
+  checks passed after terminology update. Commit: pending.
+- [ ] **2j and later:** define the next small boundary after review of 2i, working toward the end-to-end
   requirements below. Keep each intermediate state fail-closed.
 
 Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,

@@ -248,3 +248,12 @@ Effective provenance records the resolved method, parameter set, complete option
 warnings. When supplied by the application, metrics include UTC start/end timestamps through result
 finalization, parsing, applicability and computation runtimes, and peak resident memory. Durations and
 memory are rounded to three decimal places.
+
+Effective provenance may also include `fixed_charge_embedding`. Its `sources` entries use zero-based
+molecule and atom indices in the original input collection and retain each fixed charge. The
+`charge_provenance` label and `interaction_model` identifier are strings. `charge_totals` has one entry
+per original molecule in collection order; each entry records the supplied original formal-charge total
+and the required total charge for that molecule's active atoms. This optional field is an additive
+extension to result schema 1.0. Consumers
+validating embedded result documents should use the updated 1.0 schema; an older strict schema rejects the
+additional effective field.

@@ -4,8 +4,10 @@
 #include <chargefw/methods/method_prerequisites.h>
 
 #include <algorithm>
+#include <cmath>
 #include <optional>
 #include <ranges>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -78,8 +80,62 @@ auto validate_import_metadata(const std::span<const ImportedMoleculeRecord> reco
     }
 }
 
+auto validate_fixed_charge_embedding(const std::span<const ImportedMoleculeRecord> records,
+                                     const calculation::EffectiveCalculation& effective) -> void {
+    if (!effective.fixed_charge_embedding.has_value()) {
+        return;
+    }
+
+    const auto& embedding = *effective.fixed_charge_embedding;
+    if (embedding.sources.empty()) {
+        throw std::invalid_argument{"fixed-charge embedding provenance requires sources"};
+    }
+    if (embedding.interaction_model.empty()) {
+        throw std::invalid_argument{"fixed-charge embedding interaction model must not be empty"};
+    }
+
+    auto selectors = std::set<std::pair<std::size_t, std::size_t>>{};
+    for (const auto& source : embedding.sources) {
+        if (source.molecule_index >= records.size()) {
+            throw std::invalid_argument{"fixed-charge embedding source molecule index is outside "
+                                        "the input"};
+        }
+        if (source.atom_index >= records[source.molecule_index].molecule.atom_count()) {
+            throw std::invalid_argument{"fixed-charge embedding source atom index is outside its "
+                                        "molecule"};
+        }
+        if (!std::isfinite(source.charge)) {
+            throw std::invalid_argument{"fixed-charge embedding source charge must be finite"};
+        }
+        if (!selectors.emplace(source.molecule_index, source.atom_index).second) {
+            throw std::invalid_argument{"fixed-charge embedding source selectors must be unique"};
+        }
+    }
+
+    if (embedding.charge_totals.size() != records.size()) {
+        throw std::invalid_argument{
+            "fixed-charge embedding charge-total count does not match input "
+            "molecule count"};
+    }
+    for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
+        const auto& totals = embedding.charge_totals[molecule_index];
+        if (totals.molecule_index != molecule_index) {
+            throw std::invalid_argument{
+                "fixed-charge embedding charge totals must follow input molecule "
+                "order"};
+        }
+        if (!std::isfinite(totals.original_total_charge) ||
+            !std::isfinite(totals.active_total_charge)) {
+            throw std::invalid_argument{"fixed-charge embedding charge totals must be finite"};
+        }
+    }
+}
+
 auto validate_assignments(const std::span<const ImportedMoleculeRecord> records,
                           const calculation::ExecutionResult& result) -> void {
+    if (result.effective.has_value()) {
+        validate_fixed_charge_embedding(records, *result.effective);
+    }
     if (result.status != calculation::ExecutionStatus::success) {
         if (!result.charges.has_value()) {
             return;

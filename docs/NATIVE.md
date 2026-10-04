@@ -194,7 +194,11 @@ separately supplied molecule collection, identity list, diagnostics list, or imp
 
 Result construction validates import-mapping dimensions, successful assignment coverage, canonical molecule/conformer order,
 uniform scope, atom dimensions, target bounds, and agreement with effective method and parameter-set
-provenance. Failed and cancelled results must not contain charge assignments.
+provenance. Optional `EffectiveCalculation::fixed_charge_embedding` owns the indexed sources, caller label,
+interaction-model identifier, and per-original-molecule charge totals. Result construction checks the
+metadata's source and totals structure, including when a failed or cancelled result carries effective
+provenance.
+Failed and cancelled results must not contain charge assignments.
 
 The status is one of `success`, `invalid_input_or_request`, `no_executable_plan`, `numerical_failure`, or
 `cancelled`. Invalid native API inputs generally throw `std::invalid_argument`; the owned facade converts

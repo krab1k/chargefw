@@ -312,7 +312,49 @@
             }
           }
         },
-        "method_options": { "$ref": "#/$defs/methodOptions" }
+        "method_options": { "$ref": "#/$defs/methodOptions" },
+        "fixed_charge_embedding": { "$ref": "#/$defs/fixedChargeEmbedding" }
+      }
+    },
+    "fixedChargeEmbedding": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional effective provenance for fixed charges and per-original-molecule charge budgets.",
+      "required": ["sources", "charge_provenance", "interaction_model", "charge_totals"],
+      "properties": {
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Fixed charges indexed in the original input molecule collection.",
+          "items": { "$ref": "#/$defs/fixedChargeSource" }
+        },
+        "charge_provenance": { "type": "string", "description": "Caller-supplied fixed-charge label." },
+        "interaction_model": { "type": "string", "minLength": 1, "description": "Identifier for the source-to-active interaction model." },
+        "charge_totals": {
+          "type": "array",
+          "description": "Original and active charge totals, ordered by original input molecule.",
+          "items": { "$ref": "#/$defs/embeddingChargeTotals" }
+        }
+      }
+    },
+    "fixedChargeSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["molecule_index", "atom_index", "charge"],
+      "properties": {
+        "molecule_index": { "type": "integer", "minimum": 0, "description": "Zero-based molecule index in the original input collection." },
+        "atom_index": { "type": "integer", "minimum": 0, "description": "Zero-based atom index in the original input molecule." },
+        "charge": { "type": "number", "description": "Prescribed source charge in elementary-charge units." }
+      }
+    },
+    "embeddingChargeTotals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["molecule_index", "original_total_charge", "active_total_charge"],
+      "properties": {
+        "molecule_index": { "type": "integer", "minimum": 0, "description": "Zero-based molecule index in the original input collection." },
+        "original_total_charge": { "type": "number", "description": "Supplied original formal-charge total." },
+        "active_total_charge": { "type": "number", "description": "Required total charge for that molecule's active atoms." }
       }
     },
     "optionalId": {

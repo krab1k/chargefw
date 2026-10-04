@@ -118,6 +118,26 @@ constexpr auto metric_scale = 1000.0;
     return result;
 }
 
+[[nodiscard]] auto
+fixed_charge_embedding_json(const calculation::FixedChargeEmbeddingProvenance& embedding) -> Json {
+    auto sources = Json::array();
+    for (const auto& source : embedding.sources) {
+        sources.push_back({{"molecule_index", source.molecule_index},
+                           {"atom_index", source.atom_index},
+                           {"charge", source.charge}});
+    }
+    auto charge_totals = Json::array();
+    for (const auto& totals : embedding.charge_totals) {
+        charge_totals.push_back({{"molecule_index", totals.molecule_index},
+                                 {"original_total_charge", totals.original_total_charge},
+                                 {"active_total_charge", totals.active_total_charge}});
+    }
+    return Json{{"sources", std::move(sources)},
+                {"charge_provenance", embedding.charge_provenance},
+                {"interaction_model", embedding.interaction_model},
+                {"charge_totals", std::move(charge_totals)}};
+}
+
 [[nodiscard]] auto record_json(const ImportedMoleculeRecord& record,
                                const calculation::ExecutionResult& execution,
                                const std::size_t molecule_index,
@@ -219,6 +239,10 @@ constexpr auto metric_scale = 1000.0;
                                   {"radius_angstrom", value.execution_policy.radius()}};
         effective["method_options"] =
             method_options_json({{value.method_id, value.method_options}});
+        if (value.fixed_charge_embedding.has_value()) {
+            effective["fixed_charge_embedding"] =
+                fixed_charge_embedding_json(*value.fixed_charge_embedding);
+        }
     }
     Json encoded{{"requested", std::move(requested)}, {"effective", std::move(effective)}};
     if (execution_metrics.has_value()) {

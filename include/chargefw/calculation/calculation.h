@@ -5,6 +5,7 @@
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -36,6 +37,19 @@ struct CalculationMetrics {
     double computation_seconds = 0.0;
 };
 
+struct EmbeddingChargeTotals {
+    std::size_t molecule_index = 0;
+    double original_total_charge = 0.0;
+    double active_total_charge = 0.0;
+};
+
+struct FixedChargeEmbeddingProvenance {
+    std::vector<FixedAtomCharge> sources;
+    std::string charge_provenance;
+    std::string interaction_model;
+    std::vector<EmbeddingChargeTotals> charge_totals;
+};
+
 // The concrete candidate and execution policy selected by the application-facing facade.
 struct EffectiveCalculation {
     std::string method_id;
@@ -43,6 +57,7 @@ struct EffectiveCalculation {
     methods::MethodOptions method_options;
     ExecutionPolicy execution_policy;
     std::vector<methods::ExecutionIssue> execution_issues;
+    std::optional<FixedChargeEmbeddingProvenance> fixed_charge_embedding{};
 };
 
 enum class ExecutionStatus : std::uint8_t {
