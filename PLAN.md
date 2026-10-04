@@ -1,8 +1,8 @@
 # Fixed-Charge Embedding Implementation Plan
 
 Status: EEM implementation authorized, progressing through smaller independently reviewable slices.
-Slices 2a-2k are reviewed and complete; slice 2j is `a8f2852`, and slice 2k is recorded in git history.
-Reduced embedding and other methods remain disabled.
+Slices 2a-2k are reviewed and complete (2j: `a8f2852`, 2k: `98d8e2e`). Slice 3a SQE+qp/full is
+reviewed and complete, pending user review/commit; SQE, SQE+q0, reduced modes, and QEq remain disabled.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -308,22 +308,25 @@ tests for crossing bonds, invalid selections/geometry, unsupported modes, and mi
 
 ## 3. Add the SQE Family
 
-- [ ] Enable full embedding for SQE, SQE+q0, and SQE+qp through the shared solver.
+- [ ] Complete SQE-family embedding after method-specific source-field and budget compatibility slices.
 
 Primary files: `src/methods/builtin/{sqe,sqeq0,sqeqp}.cpp` and method prerequisite checks.
 
-- Subtract the external potential before incidence projection. Preserve the existing `-H*s + D*s`
-  seed correction and all active-active/bond-hardness terms.
-- Couple each point source using the active Gaussian width:
-  `erf(r / (sqrt(2) * abs(width))) / r`, with `1/r` for zero width. No extra Coulomb factor.
-- Preserve ordinary SQE component neutrality and SQE+q0 formal seed totals. Reject incompatible budgets.
-- Normalize SQE+qp fitted seeds once over the whole active target to `Q_active`; fixed sources neither
-  require fitted `q0` nor participate in normalization. Do not switch to per-component normalization.
-- Update method capability and the shared/native documentation for this supported slice.
-
-Focused check: extend existing `test_sqe`/`test_sqeqp` fixtures with a prescribed source and a small
-explicit RHS reference, including charged SQE+qp normalization and SQE+q0 budget rejection. Parameterize
-the kernel edge checks rather than creating a separate test suite for each family member.
+- [x] **3a: Shared source field and SQE+qp full capability.** Validate sources before SQE-core empty/no-bond
+  returns. Subtract the active-width Gaussian-to-point potential before transfer projection, preserving
+  `-H*s + D*s`, active-active terms, and bond hardness. Enable full embedding capability only for SQE+qp;
+  keep SQE and SQE+q0 disabled pending budget compatibility. Preserve SQE+qp's once-global seed
+  normalization to `Q_active` and component seed totals. Validate scalar RHS, width sign/zero, invalid
+  source inputs before no-bond returns, disconnected components, and facade source mapping. Astra reviewed
+  field sign and seed preservation, including the strengthened facade scalar reference; commit pending user
+  review.
+- Slice 3a validation: GCC debug full suite (57/57); focused `test_sqeqp`, `test_sqe`,
+  `test_builtin_methods`, `test_planning`, `test_calculation`, and `test_fixed_charge_partition` passed
+  under Clang debug and GCC/Clang release (6/6 each) and sequential ASan/UBSan (6/6 each). Affected
+  clang-tidy targets, formatting, and whitespace checks passed. Commit pending user review.
+- [ ] **3b: SQE and SQE+q0 budget compatibility.** Implement the approved rejection checks for embedded
+  active budgets incompatible with SQE's neutral-component conservation or SQE+q0's formal-charge seed
+  totals before enabling their facade capability. Not implemented in 3a.
 
 ## 4. Add QEq With the Approved Source Kernel
 

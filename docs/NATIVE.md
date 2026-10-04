@@ -112,16 +112,17 @@ Lower-level `methods::CalculationInput` accepts a trailing `std::span<const meth
 each source contains a Cartesian `core::Position` and charge. The input borrows the span, so keep its
 elements alive for the input's use. These positional sources are distinct from the original-collection
 indices in `calculation::FixedChargeEmbedding`; direct method callers provide positions themselves, while
-the assessment facade validates indexed selectors and constructs sources for supported EEM execution.
+the assessment facade validates indexed selectors and constructs sources for embedding-capable methods.
 `MethodRequirements::supports_fixed_charge_embedding` reports numerical support. Direct callers of
 `Method::calculate()` must satisfy the method's requirements, including this capability; methods that do
 not support fixed-charge embedding require an empty span. The flag describes a caller precondition;
 it does not intercept virtual calls. The source coupling is defined by the selected method; the facade's
 effective provenance already records the method, parameter set, and method options.
 
-EEM directly supports fixed point sources. Its `CalculationInput::target_charge()` is the total for active
-atoms only, and its returned charges cover only those active atoms; direct method callers handle any
-further assembly.
+EEM and SQE+qp directly support fixed point sources in full facade execution. Their
+`CalculationInput::target_charge()` is the total for active atoms only, and direct method results cover
+only those active atoms; direct method callers handle any further assembly. SQE+qp normalizes its fitted
+reference charges globally to this target before bond-transfer equilibration.
 Direct callers must supply finite source values and finite geometry for the active molecule, and ensure
 that source positions do not coincide with active atom positions. The
 [project design](PROJECT.md#methods-and-parameters) describes the point-source field term.
@@ -146,9 +147,9 @@ conformer coordinates that are finite throughout; source coordinates must not ex
 active atom in the same conformer. Per molecule, the original supplied formal-charge total minus the
 prescribed source-charge sum defines the active charge budget; the original total and resulting budget
 must both be finite. A valid nonempty selection filters methods by their embedding capability and assesses
-execution modes. EEM can produce full-mode plans; cutoff and cover modes remain
+execution modes. EEM and SQE+qp can produce full-mode plans; cutoff and cover modes remain
 unavailable for embedded targets. Automatic selection excludes a warned full plan, while explicit full
-selection may execute with its resource warning. Parameter classification and EEM execution use the
+selection may execute with its resource warning. Parameter classification and execution use the
 active molecules. Successful facade results restore fixed charges in original atom order and expose
 embedding provenance through `ExecutionResult::effective`; original and active charge totals are recorded
 for every molecule. The [project design](PROJECT.md#assessment-and-execution) describes this boundary.

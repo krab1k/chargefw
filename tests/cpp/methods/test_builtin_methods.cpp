@@ -260,7 +260,8 @@ TEST_CASE("built-in method registry matches the conformance manifest",
         CHECK(requirements.resources.supports_cutoff == expected.supports_cutoff);
         CHECK(requirements.resources.supports_cover == expected.supports_cover);
         CHECK(requirements.resources.reduced_charge_policy == expected.reduced_charge_policy);
-        CHECK(requirements.supports_fixed_charge_embedding == (expected.id == "eem"));
+        CHECK(requirements.supports_fixed_charge_embedding ==
+              (expected.id == "eem" || expected.id == "sqeqp"));
     }
 }
 

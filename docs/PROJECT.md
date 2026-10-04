@@ -130,6 +130,13 @@ active-atom total. Sources remain fixed while active charges respond; source pol
 transfer between the active and fixed regions are excluded. Source/active distances must be valid and
 nonzero. This implemented coupling does not establish quantitative accuracy for coordinated ions.
 
+Full-mode SQE+qp also accepts fixed point sources. At active atom `i`, each source produces the potential
+`phi_iF = q_F * erf(r_iF / (sqrt(2) * abs(width_i))) / r_iF`, with `q_F / r_iF` at zero width. The
+potential is subtracted from the atom right-hand side before bond-transfer projection, with no extra
+Coulomb factor.
+The parameterized `q0` reference charges are still normalized once globally to the active target charge;
+the source field changes active transfers without changing that budget.
+
 ## Assessment and execution
 
 Assessment prepares a molecule collection once, performs parameter classification, evaluates scientific
@@ -138,7 +145,7 @@ method, parameter set, validated options, execution policy, and any policy warni
 
 For a fixed-charge embedding request, assessment owns both the original collection and an active-molecule
 partition, then classifies capable methods against that active collection. Rejection indices map back to
-the original molecules. EEM is the currently capable method and can be planned and executed in full mode.
+the original molecules. EEM and SQE+qp can be planned and executed in full mode.
 The active subsystem is solved with the prescribed source field and active charge budget; successful
 charges are reassembled into original atom order with source charges restored. Effective provenance
 retains the source selectors and values, caller label, and original/active charge totals for every

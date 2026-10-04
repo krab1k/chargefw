@@ -1,8 +1,10 @@
 #include "methods/builtin/sqe.h"
 
 #include "features/topology_helpers.h"
+#include "methods/fixed_source_validation.h"
 
 #include <chargefw/core/molecule.h>
+#include <chargefw/core/position.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
 #include <Eigen/LU>
@@ -56,9 +58,11 @@ auto SQEMethod::add_method_specific_prerequisite_issues(const MethodPrerequisite
 auto sqe_core::calculate(const CalculationInput& input,
                          const std::span<const double> initial_charge_values)
     -> std::vector<double> {
+    detail::validate_fixed_source_input(input, "SQE-family");
     const auto& molecule = input.molecule();
     const auto& geometry = input.geometry();
     const auto& parameters = input.parameters();
+    const auto fixed_sources = input.fixed_sources();
 
     const auto atom_count = molecule.atom_count();
     const auto bond_count = molecule.bond_count();
@@ -103,6 +107,11 @@ auto sqe_core::calculate(const CalculationInput& input,
         const auto i = static_cast<Eigen::Index>(atom_index);
         charge_matrix(i, i) = hardness[atom_index];
         charge_rhs(i) = -electronegativity[atom_index];
+        const auto& position = geometry.position(atom_index);
+        for (const auto& source : fixed_sources) {
+            const auto distance = core::distance(position, source.position);
+            charge_rhs(i) -= source.charge * interaction(distance, width[atom_index], 0.0);
+        }
 
         for (std::size_t other_atom_index = atom_index + 1; other_atom_index < atom_count;
              ++other_atom_index) {

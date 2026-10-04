@@ -108,6 +108,37 @@ auto make_two_conformer_interleaved_pair() -> core::Molecule {
         "interleaved-pair"};
 }
 
+auto make_sqeqp_embedding_parameters() -> chargefw::parameters::ParameterSet {
+    auto atoms = std::vector<chargefw::parameters::AtomParameterEntry>{
+        {.key = chargefw::test::plain_atom_key(1),
+         .parameters = {{.name = "electronegativity", .value = 4.528},
+                        {.name = "hardness", .value = 13.8904},
+                        {.name = "width", .value = 1.0},
+                        {.name = "q0", .value = 0.3}}},
+        {.key = chargefw::test::plain_atom_key(8),
+         .parameters = {{.name = "electronegativity", .value = 8.741},
+                        {.name = "hardness", .value = 13.364},
+                        {.name = "width", .value = -0.5},
+                        {.name = "q0", .value = 0.1}}}};
+    auto bonds = std::vector<chargefw::parameters::BondParameterEntry>{
+        {.key = chargefw::test::single_bond_key(1, 8),
+         .parameters = {{.name = "kappa", .value = 1.0}}}};
+    return chargefw::parameters::ParameterSet{
+        chargefw::parameters::ParameterSetMetadata{
+            .id = "embedding-sqeqp", .method_id = "sqeqp", .name = "Embedding SQE+qp"},
+        {},
+        chargefw::parameters::AtomParameters{std::move(atoms)},
+        chargefw::parameters::BondParameters{std::move(bonds)}};
+}
+
+auto make_sqeqp_embedding_molecule() -> core::Molecule {
+    return core::Molecule{
+        std::vector{core::Atom{1, 0}, core::Atom{12, 1}, core::Atom{8, 0}},
+        {core::Bond{0, 2}},
+        {core::Conformer{{{0.0, 0.0, 0.0}, {0.0, 2.0, 0.0}, {1.5, 0.0, 0.0}}, "ion-interleaved"}},
+        "sqeqp-embedding"};
+}
+
 auto make_hydrogen_only_eem_parameters() -> chargefw::parameters::ParameterSet {
     return chargefw::parameters::ParameterSet{
         chargefw::parameters::ParameterSetMetadata{
@@ -331,9 +362,86 @@ TEST_CASE("native embedded EEM executes, reassembles, and retains provenance",
     }));
 }
 
+TEST_CASE("native SQE+qp automatically plans full embedding with active charge budget",
+          "[calculation][planning]") {
+    auto assessment = calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{make_sqeqp_embedding_molecule()}},
+        .parameter_sets = {make_sqeqp_embedding_parameters()},
+        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.3}},
+            .charge_provenance = "fixed magnesium"}});
+    REQUIRE(assessment.plans().size() == 1);
+    const auto& plan = assessment.plans()[0];
+    CHECK(plan.candidate().method->id() == "sqeqp");
+    CHECK(plan.policy().mode() == calculation::ExecutionMode::full);
+
+    const auto interaction = [](const double distance, const double width_a, const double width_b) {
+        const auto width_sum = 2.0 * width_a * width_a + 2.0 * width_b * width_b;
+        return width_sum == 0.0 ? 1.0 / distance
+                                : std::erf(distance / std::sqrt(width_sum)) / distance;
+    };
+    constexpr auto seed_h = 0.45;
+    constexpr auto seed_o = 0.25;
+    const auto active_interaction = interaction(1.5, 1.0, -0.5);
+    const auto source_rhs_h =
+        -4.528 - 0.3 * interaction(2.0, 1.0, 0.0) - active_interaction * seed_o;
+    const auto source_rhs_o =
+        -8.741 - 0.3 * interaction(2.5, -0.5, 0.0) - active_interaction * seed_h;
+    const auto no_field_rhs_h = -4.528 - active_interaction * seed_o;
+    const auto no_field_rhs_o = -8.741 - active_interaction * seed_h;
+    const auto denominator = 13.8904 + 13.364 - 2.0 * active_interaction + 1.0;
+    const auto expected_h = seed_h + (source_rhs_h - source_rhs_o) / denominator;
+    const auto expected_o = seed_o - (source_rhs_h - source_rhs_o) / denominator;
+    const auto no_field_h = seed_h + (no_field_rhs_h - no_field_rhs_o) / denominator;
+    const auto no_field_o = seed_o - (no_field_rhs_h - no_field_rhs_o) / denominator;
+
+    const auto serial = calculation::calculate(assessment, plan, 1);
+    const auto parallel = calculation::calculate(assessment, plan, 2);
+    const auto repeated = calculation::calculate(assessment, plan, 1);
+    for (const auto* result : {&serial, &parallel, &repeated}) {
+        REQUIRE(result->calculated());
+        REQUIRE(result->charges->size() == 1);
+        REQUIRE(result->effective->fixed_charge_embedding.has_value());
+        const auto& values = result->charges->assignment(0).charges;
+        CHECK(values[1] == 0.3);
+        CHECK(std::abs(values[0] + values[2] - 0.7) < 1e-12);
+        CHECK(std::abs(values.total() - 1.0) < 1e-12);
+    }
+    CHECK(std::abs(serial.charges->assignment(0).charges[0] - expected_h) < 1e-12);
+    CHECK(std::abs(serial.charges->assignment(0).charges[2] - expected_o) < 1e-12);
+    CHECK(std::abs(serial.charges->assignment(0).charges[0] - no_field_h) > 1e-4);
+    CHECK(std::abs(serial.charges->assignment(0).charges[2] - no_field_o) > 1e-4);
+    CHECK(std::ranges::equal(serial.charges->assignment(0).charges.values(),
+                             parallel.charges->assignment(0).charges.values()));
+    CHECK(std::ranges::equal(serial.charges->assignment(0).charges.values(),
+                             repeated.charges->assignment(0).charges.values()));
+    const auto& provenance = *serial.effective->fixed_charge_embedding;
+    REQUIRE(provenance.sources.size() == 1);
+    CHECK(provenance.sources[0].atom_index == 1);
+    CHECK(provenance.sources[0].charge == 0.3);
+    REQUIRE(provenance.charge_totals.size() == 1);
+    CHECK(provenance.charge_totals[0].original_total_charge == 1.0);
+    CHECK(provenance.charge_totals[0].active_total_charge == 0.7);
+    CHECK(assessment.molecules()[0].atom(1).formal_charge() == 1);
+
+    auto cutoff_assessment = calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{make_sqeqp_embedding_molecule()}},
+        .parameter_sets = {make_sqeqp_embedding_parameters()},
+        .execution_selection =
+            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
+                                            calculation::minimum_reduced_radius},
+        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.3}}}});
+    CHECK(cutoff_assessment.plans().empty());
+    CHECK(std::ranges::any_of(cutoff_assessment.rejections(), [](const auto& rejection) {
+        return rejection.method_id == "sqeqp" && rejection.policy.has_value() &&
+               rejection.policy->mode() == calculation::ExecutionMode::cutoff;
+    }));
+}
+
 TEST_CASE("unsupported methods reject embeddings before parameter classification",
           "[calculation][planning]") {
-    for (const auto method_id : {"formal", "peoe"}) {
+    for (const auto method_id : {"formal", "peoe", "sqe", "sqeq0"}) {
         auto request = calculation::AssessmentRequest{
             .molecules =
                 core::MoleculeCollection{std::vector{make_interleaved_hydrogen_magnesium_oxygen()}},

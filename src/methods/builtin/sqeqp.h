@@ -12,8 +12,8 @@ class SQEqpMethod final : public Method {
             .name = "SQE+qp",
             .full_name = "Split-charge Equilibration with Parameterized Initial Charges",
             .publication = "10.1186/s13321-021-00528-w",
-            .notes = "Parameterized reference charges are normalized globally to the molecule's "
-                     "formal-charge total before equilibration.",
+            .notes = "Parameterized reference charges are normalized globally to the calculation "
+                     "target charge before equilibration.",
             .priority = 210};
 
         return metadata;
@@ -30,6 +30,7 @@ class SQEqpMethod final : public Method {
         requirements.resources.supports_cover = true;
         requirements.resources.reduced_charge_policy =
             ReducedChargePolicy::parameterized_charge_components;
+        requirements.supports_fixed_charge_embedding = true;
         return requirements;
     }
 
