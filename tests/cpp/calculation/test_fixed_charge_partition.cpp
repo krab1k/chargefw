@@ -130,7 +130,7 @@ TEST_CASE("fixed-charge partition preserves original ordering and owned mappings
     CHECK(first_target.sources[0].atom_index == 2);
     CHECK(first_target.sources[0].charge == 0.5);
     CHECK(first_target.original_charge == 2.0);
-    CHECK(first_target.active_charge == 1.5);
+    CHECK(first_target.active_charge == 0.0);
     REQUIRE(first_target.source_positions.size() == 2);
     REQUIRE(first_target.source_positions[0].size() == 1);
     REQUIRE(first_target.source_positions[1].size() == 1);
@@ -175,7 +175,7 @@ TEST_CASE("fixed-charge partition preserves original ordering and owned mappings
     CHECK(last_target.sources[1].atom_index == 3);
     CHECK(last_target.sources[1].charge == -0.25);
     CHECK(last_target.original_charge == 0.0);
-    CHECK(last_target.active_charge == -0.5);
+    CHECK(last_target.active_charge == 0.0);
     REQUIRE(last_target.source_positions.size() == 2);
     REQUIRE(last_target.source_positions[0].size() == 2);
     REQUIRE(last_target.source_positions[1].size() == 2);
@@ -216,7 +216,7 @@ TEST_CASE("fixed-charge partition retains disconnected active components as one 
     REQUIRE(partition.active_molecules.size() == 1);
     REQUIRE(partition.targets.size() == 1);
     CHECK(partition.targets[0].active_atom_indices == std::vector<std::size_t>{0, 2, 3});
-    CHECK(partition.targets[0].active_charge == 9.25);
+    CHECK(partition.targets[0].active_charge == 8.0);
     CHECK(core::total_formal_charge(partition.active_molecules[0]) == 8.0);
     CHECK(partition.active_molecules[0].atom_count() == 3);
     REQUIRE(partition.active_molecules[0].bond_count() == 1);

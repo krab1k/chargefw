@@ -234,7 +234,7 @@ TEST_CASE("JSON output projects fixed-charge embedding effective provenance", "[
                  .charge_provenance = "measured fixed charge",
                  .charge_totals = {{.molecule_index = 0,
                                     .original_total_charge = 0.0,
-                                    .active_total_charge = -0.25},
+                                    .active_total_charge = 0.0},
                                    {.molecule_index = 1,
                                     .original_total_charge = 0.0,
                                     .active_total_charge = 0.0}}}}});
@@ -250,7 +250,7 @@ TEST_CASE("JSON output projects fixed-charge embedding effective provenance", "[
     CHECK_FALSE(embedding.contains("components"));
     CHECK(embedding.at("charge_totals") == nlohmann::json::array({{{"molecule_index", 0},
                                                                    {"original_total_charge", 0.0},
-                                                                   {"active_total_charge", -0.25}},
+                                                                   {"active_total_charge", 0.0}},
                                                                   {{"molecule_index", 1},
                                                                    {"original_total_charge", 0.0},
                                                                    {"active_total_charge", 0.0}}}));
@@ -407,6 +407,21 @@ HETATM 3 Mg MG . MG B 1 ? 0 3 1 1 20 2 1 MG B MG E2 1
     const auto json = nlohmann::json::parse(output.str());
     const auto& embedding =
         json.at("calculation_provenance").at("effective").at("fixed_charge_embedding");
+    const auto& charge_totals = embedding.at("charge_totals");
+    REQUIRE(charge_totals.size() == 2);
+    for (std::size_t molecule_index = 0; molecule_index < charge_totals.size(); ++molecule_index) {
+        CHECK(charge_totals[molecule_index].at("original_total_charge") == 2.0);
+        CHECK(charge_totals[molecule_index].at("active_total_charge") == 0.0);
+        auto prescribed_total = 0.0;
+        for (const auto& source : embedding.at("sources")) {
+            if (source.at("molecule_index") == molecule_index) {
+                prescribed_total += source.at("charge").get<double>();
+            }
+        }
+        CHECK(charge_totals[molecule_index].at("active_total_charge").get<double>() +
+                  prescribed_total ==
+              0.4);
+    }
     REQUIRE(embedding.at("components").size() == 1);
     CHECK(embedding.at("components")[0].at("component_id") == "MG");
     CHECK(embedding.at("components")[0].at("charge_per_instance") == 0.4);
@@ -433,7 +448,7 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
                     .charge_provenance = "",
                     .charge_totals = {{.molecule_index = 0,
                                        .original_total_charge = 0.0,
-                                       .active_total_charge = -0.5}}}}});
+                                       .active_total_charge = 0.0}}}}});
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(owned, "test");
@@ -470,7 +485,7 @@ TEST_CASE("JSON output retains embedding metadata on numerical failure without c
                     .charge_provenance = "fixed value",
                     .charge_totals = {{.molecule_index = 0,
                                        .original_total_charge = 0.0,
-                                       .active_total_charge = 0.2}}}}});
+                                       .active_total_charge = 0.0}}}}});
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(result, "test");
     const auto document = nlohmann::json::parse(output.str());
@@ -516,7 +531,7 @@ TEST_CASE("result assembly validates fixed-charge embedding structure", "[adapte
         .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.5}},
         .charge_provenance = "caller label",
         .charge_totals = {
-            {.molecule_index = 0, .original_total_charge = 0.0, .active_total_charge = -0.5}}};
+            {.molecule_index = 0, .original_total_charge = 0.0, .active_total_charge = 0.0}}};
     CHECK_NOTHROW(make_result(valid));
 
     auto invalid = valid;

@@ -107,7 +107,7 @@ TEST_CASE("full execution supplies partition budgets and conformer-local sources
     const auto serial = calculation::calculate_full_charges(
         selected, prepared, 1, calculation::default_calculation_observer(), &partition);
     REQUIRE(serial.size() == 3);
-    CHECK(method.target_charges == std::vector<double>{2.75, 2.75, -1.0});
+    CHECK(method.target_charges == std::vector<double>{1.0, 1.0, -1.0});
     REQUIRE(method.observed_sources.size() == 3);
     REQUIRE(method.observed_sources[0].size() == 1);
     CHECK(method.observed_sources[0][0].charge == 0.25);
@@ -115,7 +115,7 @@ TEST_CASE("full execution supplies partition budgets and conformer-local sources
     CHECK(method.observed_sources[1][0].position.z == 1.0);
     CHECK(method.observed_sources[2].empty());
     CHECK(serial.assignment(0).charges.size() == 1);
-    CHECK(serial.assignment(0).charges[0] == 2.75);
+    CHECK(serial.assignment(0).charges[0] == 1.0);
 
     CHECK(partition.targets[0].sources[0].charge == 0.25);
 }
@@ -195,7 +195,7 @@ TEST_CASE("parameterized full EEM uses partition sources and active budgets",
 
     const auto expected_pair = [](const double source_potential_first,
                                   const double source_potential_second) {
-        constexpr auto active_charge = 1.6;
+        constexpr auto active_charge = 0.0;
         constexpr auto cross_interaction = kappa / 2.0;
         const auto rhs_difference = -1.0 - source_potential_first + 2.0 + source_potential_second;
         const auto first = (rhs_difference + (9.0 - cross_interaction) * active_charge) /
@@ -226,7 +226,7 @@ TEST_CASE("parameterized full EEM uses partition sources and active budgets",
         const auto& values = serial.assignment(conformer).charges;
         CHECK(std::abs(values[0] - expected[0]) < 1e-10);
         CHECK(std::abs(values[1] - expected[1]) < 1e-10);
-        CHECK(std::abs(values.total() - 1.6) < 1e-12);
+        CHECK(std::abs(values.total()) < 1e-12);
     }
     CHECK(std::abs(serial.assignment(2).charges[0] + 1.0) < 1e-12);
     CHECK(partition.targets[0].sources[0].charge == 0.4);

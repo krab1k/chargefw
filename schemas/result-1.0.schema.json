@@ -385,8 +385,8 @@
       "required": ["molecule_index", "original_total_charge", "active_total_charge"],
       "properties": {
         "molecule_index": { "type": "integer", "minimum": 0, "description": "Zero-based molecule index in the original input collection." },
-        "original_total_charge": { "type": "number", "description": "Supplied original formal-charge total." },
-        "active_total_charge": { "type": "number", "description": "Required total charge for that molecule's active atoms." }
+        "original_total_charge": { "type": "number", "description": "Supplied original formal-charge total retained for audit provenance." },
+        "active_total_charge": { "type": "number", "description": "Formal-charge sum of unselected active atoms in the prepared molecule. The modeled total is this value plus prescribed source charges." }
       }
     },
     "optionalId": {

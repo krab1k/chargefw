@@ -252,9 +252,10 @@ memory are rounded to three decimal places.
 Effective provenance may also include `fixed_charge_embedding`. Its `sources` entries use zero-based
 molecule and atom indices in the original input collection and retain each fixed charge. The
 `charge_provenance` label is a string. `charge_totals` has one entry per original molecule in collection
-order; each entry records the supplied original formal-charge total and the required total charge for that
-molecule's active atoms. The applicable method, parameter set, and method options are recorded in the
-surrounding effective provenance.
+order. `original_total_charge` records the supplied input formal-charge sum for audit; `active_total_charge`
+is the formal-charge sum of unselected atoms in the prepared molecule. The modeled total is the active
+total plus prescribed source charges and may differ from the original input total. The applicable method,
+parameter set, and method options are recorded in the surrounding effective provenance.
 
 When imported source records provide structural residue labels for fixed atoms, `components` summarizes
 them in first-source order, grouped by component ID and exact prescribed charge. Each entry has a

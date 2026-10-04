@@ -234,7 +234,9 @@ Recommended scope, without making optional fragment features a release requireme
   declared total and graph boundary. This adds preparation/interface checks, not a new charge solver.
 - Defer automatic fragment charge generation, a general functional-group rule engine, molecular preset
   libraries, covalent cutting/capping, and independent external charge clouds. Start with sources that
-  belong to the original target; the distinct external-only budget semantics remain in section 4.1.
+  belong to the original target. For any external source field, the prepared active charge remains the
+  formal-charge sum of active atoms and prescribed source charges contribute separately to the modeled
+  total, as in section 4.1.
 
 Formal-charge or chemistry-based rules are possible **explicit approximations**, not forbidden inputs.
 For example, `q_S = 0` and four `q_O = -0.5` give a symmetric sulfate source with total -2, avoiding an
@@ -261,14 +263,13 @@ need to be built into the initial embedding feature.
 ### 4.1 Charge budget and fixed-value substitution
 
 Let A denote active atoms, F fixed atoms belonging to the original target, and f their prescribed charges.
+The original proposal used the original-target convention below; that policy is retained here as research
+history and was superseded for the current implementation by the dated follow-up after this section.
 
 ```text
 Q_A = Q_total - sum(f)
 phi_i = sum_F G_iF(r_iF) * f_F
 ```
-
-For example, a protein of formal charge -5 plus Mg2+ has total -3. The active protein budget remains -5;
-it must not be calculated at -3 and then receive another +2 in the output.
 
 For a quadratic atom-charge model with energy `chi^T q + 0.5*q^T H*q`, fixing the environmental charges
 gives:
@@ -286,9 +287,42 @@ that parameter from a method's pair kernel.
 
 Solving the whole system normally and overwriting fixed atoms afterward is not equivalent.
 
-If a later API accepts external sources that are **not part of the original calculation target**, their
-charges must not automatically be subtracted from that target's budget. Keep that case distinct from
-partitioning source atoms out of the original molecular target.
+#### Active-charge policy follow-up (2026-10-04)
+
+The current ChargeFW model instead takes its active target directly from the prepared active chemistry:
+
+```text
+Q_active = sum_{i in A} formal_charge_i(prepared molecule)
+Q_model = Q_active + sum_F f_F
+Q_original = sum_i formal_charge_i(original imported molecule)  # audit provenance only
+```
+
+`Q_active` is computed from unselected atoms, without using selected atoms' imported formal charges or
+subtracting prescribed charges from the original sum. The prescribed values define fixed sites and their
+external field; the modeled molecular total includes them exactly once. `Q_original` remains unchanged
+provenance and can differ from `Q_model`. For example, an active neutral protein and a prescribed Mg charge
+of +2 have `Q_active = 0` and `Q_model = +2`, whether the selected Mg atom's imported formal charge is 0
+or +2. An active prepared protein formal charge of -5 with the same source has `Q_model = -3`.
+
+This is ChargeFW's explicit independent-active-charge model interpretation; the cited embedding equations
+support adding a fixed external potential to the active Hamiltonian, but do not validate ChargeFW's active
+charge policy or its quantitative accuracy for metal sites. MG and CA CCD records list monatomic formal
+charges of +2; a polyatomic CCD component's formal charge is not a partial-charge distribution [16]. The
+point-charge embedding literature supports adding the external MM potential to the one-electron/core
+Hamiltonian, not inferring the active charge from imported source formal charges [17].
+
+SQE starts from zero and conserves zero charge in each active connected component; SQE+q0 uses prepared
+formal-charge seeds, which address SQE's long-zwitterion limitation [15]. SQE+qp normalizes fitted seeds
+globally to the active target [1]; subsequent component-local transfers preserve each component's
+normalized seed sum, which need not equal its formal-charge total. The peptide paper reports Table 3 BA
+typing training-subset RMSDs of 0.0302 for SQE, 0.0188 for SQE+q0, and 0.0133 for SQE+qp. The subset is
+part of a 60 di-/tripeptide dataset split 80/20, not all 60 molecules used as training data. Heterogeneous-
+set RMSDs favor SQE over q0 (0.0233 vs 0.0290 and 0.0282 vs 0.0350) [1]. These dataset-specific metrics
+are not evidence that one variant is generally superior or that any variant is accurate for protein-metal
+embedding.
+Fixed divalent-ion models can omit induction and charge transfer [18]; this workflow does not add either
+response, predict protein protonation, or perform chemical preparation. Input atom formal charges remain
+unchanged.
 
 ### 4.2 EEM
 
@@ -1236,6 +1270,16 @@ counts or the fact that related approximations are standard elsewhere.
     DOI: <https://doi.org/10.1063/1.2346671>. Original SQE formulation.
 15. Verstraelen et al. (2012), *Assessment of atomic charge models for gas-phase computations on
     polypeptides*. DOI: <https://doi.org/10.1021/ct200512e>. SQE-family polypeptide/initial-charge context.
+16. RCSB Protein Data Bank Chemical Component Dictionary records: magnesium `MG` formal charge +2,
+    <https://files.rcsb.org/ligands/view/MG.cif>; calcium `CA` formal charge +2,
+    <https://files.rcsb.org/ligands/view/CA.cif>. Monatomic component records, not a polyatomic
+    partial-charge assignment.
+17. External molecular-mechanics point-charge potential in the one-electron/core Hamiltonian.
+    DOI: <https://doi.org/10.1002/jcc.27532>. This supports external-field coupling, not ChargeFW's
+    active-charge budget or metal-site accuracy.
+18. Fixed divalent-ion model limitations regarding induction and charge transfer.
+    DOI: <https://doi.org/10.1021/ct400751u>;
+    <https://pmc.ncbi.nlm.nih.gov/articles/PMC3960013/>.
 
 Primary archive sources: <https://www.ebi.ac.uk/pdbe/search/pdb/select>,
 <https://www.ebi.ac.uk/pdbe/api/>, and <https://search.rcsb.org/>.

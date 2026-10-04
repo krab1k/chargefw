@@ -106,7 +106,8 @@ formal charge and supports charged molecules while conserving the molecular form
 connected component must be formally neutral for DelRe and ordinary SQE because their implemented
 bond-transfer formulations start from zero and conserve zero charge within each component. Connected,
 net-neutral zwitterions remain supported. SQE+q0 and SQE+qp include initial charges and support charged
-molecules when their other requirements are met.
+molecules when their other requirements are met. SQE+q0 preserves the formal-charge seed total of each
+active connected component; SQE+qp normalizes its fitted reference charges globally to the active target.
 
 Charge2 implements the neutral-molecule inductive scheme from Abraham, Griffiths, and Loftus (1982).
 Its one-, two-, and three-bond effects are applied as conservative bond transfers, and its iterative
@@ -130,12 +131,12 @@ active-atom total. Sources remain fixed while active charges respond; source pol
 transfer between the active and fixed regions are excluded. Source/active distances must be valid and
 nonzero. This implemented coupling does not establish quantitative accuracy for coordinated ions.
 
-Full-mode SQE+qp also accepts fixed point sources. At active atom `i`, each source produces the potential
-`phi_iF = q_F * erf(r_iF / (sqrt(2) * abs(width_i))) / r_iF`, with `q_F / r_iF` at zero width. The
-potential is subtracted from the atom right-hand side before bond-transfer projection, with no extra
-Coulomb factor.
-The parameterized `q0` reference charges are still normalized once globally to the active target charge;
-the source field changes active transfers without changing that budget.
+Full-mode SQE, SQE+q0, and SQE+qp accept fixed point sources. At active atom `i`, each source produces
+the potential `phi_iF = q_F * erf(r_iF / (sqrt(2) * abs(width_i))) / r_iF`, with `q_F / r_iF` at zero
+width. The potential is subtracted from the atom right-hand side before bond-transfer projection, with
+no extra Coulomb factor. For SQE+qp, the parameterized `q0` reference charges are normalized once
+globally to the active target charge; the source field changes active transfers without changing that
+budget.
 
 ## Assessment and execution
 
@@ -145,7 +146,8 @@ method, parameter set, validated options, execution policy, and any policy warni
 
 For a fixed-charge embedding request, assessment owns both the original collection and an active-molecule
 partition, then classifies capable methods against that active collection. Rejection indices map back to
-the original molecules. EEM and SQE+qp can be planned and executed in full mode.
+the original molecules. EEM, SQE, SQE+q0, and SQE+qp can be planned and executed in full mode when their
+scientific prerequisites and active charge budgets are satisfied.
 The active subsystem is solved with the prescribed source field and active charge budget; successful
 charges are reassembled into original atom order with source charges restored. Effective provenance
 retains the source selectors and values, caller label, and original/active charge totals for every
@@ -154,6 +156,15 @@ unavailable for embedding.
 Automatic selection does not choose a full plan carrying resource warnings; explicit full selection can
 execute with its warning. Existing resource thresholds continue to use the active molecule size per
 target.
+
+The active total is the formal-charge sum of unselected atoms in the prepared active molecule. Imported
+formal charges on selected source atoms do not enter it; fractional source values contribute only at their
+fixed sites. The modeled molecular total is `Q_model = Q_active + sum(fixed source charges)`. The original
+supplied formal-charge total remains in provenance for audit and may differ from the modeled total.
+Assessment and execution do not change input atoms or infer chemical preparation. EEM constrains its solve
+to the active total, and SQE+qp globally normalizes its fitted seeds to that target; SQE requires its
+existing neutral active connected components, and SQE+q0 retains the active formal-charge seeds and
+component totals.
 
 The effective execution mode is always one of:
 

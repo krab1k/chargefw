@@ -485,7 +485,7 @@ TEST_CASE("embedded cancellation retains effective source provenance", "[calcula
     CHECK(provenance.sources[0].charge == 0.4);
     REQUIRE(provenance.charge_totals.size() == 1);
     CHECK(provenance.charge_totals[0].original_total_charge == 2.0);
-    CHECK(provenance.charge_totals[0].active_total_charge == 1.6);
+    CHECK(provenance.charge_totals[0].active_total_charge == 0.0);
     const auto events = observer.events();
     REQUIRE(!events.empty());
     CHECK(events.front().phase == calculation::CalculationPhase::computation_started);

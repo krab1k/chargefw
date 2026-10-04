@@ -2,7 +2,9 @@
 
 Status: EEM implementation authorized, progressing through smaller independently reviewable slices.
 Slices 2a-2k are reviewed and complete (2j: `a8f2852`, 2k: `98d8e2e`). Slice 3a SQE+qp/full is
-reviewed and complete, pending user review/commit; SQE, SQE+q0, reduced modes, and QEq remain disabled.
+committed as `23b6918`; slice 3b's independent active-charge policy is reviewed and complete. EEM and all
+three SQE-family methods support full embedding; reduced modes and QEq remain disabled. QEq's scientific
+convention still requires user approval.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -72,12 +74,11 @@ struct AssessmentRequest {
 };
 ```
 
-Use the original supplied formal-charge sum as `Q_original`; for each affected target,
-`Q_active = Q_original - sum(fixed charges)`. Imported `core::Atom::formal_charge()` is an integer
-defaulting to zero with no presence flag, so a fixed Mg charge of +2 does not repair an imported formal
-charge of zero. Callers must intentionally prepare the target's formal charges when they need a
-nonzero original total. Do not infer charge from element/component ID, apply CCD rules, or change the
-target total based on prescribed source charges.
+For each affected target, calculate `Q_active` as the formal-charge sum of unselected atoms in the
+prepared active molecule. Prescribed fixed charges define the source sites but do not alter `Q_active`;
+the modeled total is `Q_model = Q_active + sum(fixed charges)`. Preserve the original supplied formal-charge
+sum as audit provenance even when it differs from `Q_model`. Do not infer charge from element/component ID,
+apply CCD rules, modify input atoms, or change prepared active formal charges.
 
 ### Contract Decisions Proposed For Approval
 
@@ -85,7 +86,7 @@ target total based on prescribed source charges.
 | --- | --- |
 | Scope and selection | Sources belong to the same input molecule/target as active atoms; no cross-record or external point cloud. Each source is an explicitly indexed atom with a finite real prescribed charge. Initial support is isolated atoms only: reject duplicate indices, out-of-range indices, selected atoms with any graph bond, and a target with no active atoms. An empty source list normalizes to embedding disabled before capability checks and produces no embedding provenance. No element-based inference. |
 | Coordinates and identity | Use original target conformer coordinates for each calculation target. A source index identifies the same atom across conformers; evaluate its position in the corresponding conformer. Preserve original molecule, conformer, and atom order in returned results. |
-| Budget | Preserve the original supplied formal-charge sum as `Q_original`; calculate `Q_active = Q_original - sum(fixed charges)`. Fixed charges are included exactly once in reconstructed output. A prescribed Mg +2 does not repair an imported formal-charge total of zero; callers must prepare formal charges intentionally. SQE and SQE+q0 reject budgets incompatible with their existing component/seed constraints; never renormalize them. |
+| Charge model | `Q_active` is the formal-charge sum of unselected atoms in the prepared active molecule; selected atoms' imported formal charges do not affect it. The modeled total is `Q_active + sum(fixed charges)`, and fixed values appear exactly once in reassembled output. Preserve the original supplied formal-charge sum as audit provenance, not as a constraint on the modeled total. Do not alter prepared input atoms. |
 | Validation | Reject nonfinite charges/totals/coordinates, coincident active/source sites, and invalid graph/source scope. Do not clamp distances. Do not define a universal near-contact radius or warning absent a method-specific scientific basis. |
 | Ownership | `AssessmentRequest` owns raw selectors. `AssessmentResult` owns its validated partition, source values, mappings, and geometry lifetime alongside its current molecule/prepared-feature owners. Its facade execution passes internally validated target-local context tied to the active prepared data and candidate. `CalculationInput` receives a read-only non-owning `std::span<const FixedPointSource>` (each source has `core::Position position` and `double charge`), valid throughout the method call. Coupling stays method-specific. |
 | Lower-level execution | Keep the existing public `CalculationRequest` unchanged and non-embedding initially: it consumes already prepared/classified data and cannot accept raw selectors or repartition. Only the owned assessment facade partitions, validates, executes with its tied internal context, and reassembles results at the facade boundary. |
@@ -109,14 +110,15 @@ No CCD charge assignment, fragment-charge generation, automatic chemistry policy
 change is part of this proposal. Python should expose the same zero-based `(molecule_index, atom_index,
 charge)` values and charge provenance through `assess`/`calculate` and plan snapshots; CLI `calculate`
 and `applicability` should accept a simple repeatable source selector with the same explicit indices,
-charge, and provenance. Both use original supplied formal-charge sums. Exact Python/CLI spelling remains
+charge, and provenance. Both use prepared active formal-charge sums; original input sums remain audit
+provenance. Exact Python/CLI spelling remains
 for their implementation steps and is not a step-1 selector-syntax approval; neither may parse chemistry
 or create its own partition policy.
 
 Review outcome: user authorized starting EEM implementation, with API preparation as a smaller review
 boundary. Implement the contract incrementally without enabling incomplete execution paths. QEq coupling
-still requires explicit approval before step 4. For SQE and SQE+q0, incompatible active budgets reject
-rather than changing seed policy.
+still requires explicit approval before step 4. Astra adopted the independent active-charge model for the
+current 3b follow-up; see the dated evidence note in METALS.md.
 
 ## 2. Deliver EEM Full Execution End to End [x]
 
@@ -142,12 +144,14 @@ rather than changing seed policy.
 - Slice 2b validation: GCC debug full suite (56/56); focused GCC/Clang debug, ASan, and UBSan planning
   tests; affected clang-tidy target; formatting and whitespace checks passed. Luna implemented; Astra
   reviewed and verified final GCC regressions, including both bond endpoints. Commit: `9d787b9`.
-- [x] **2c: Geometry and charge-budget validation.** For each affected molecule, require conformers and
+- [x] **2c: Geometry and charge-budget validation (original total policy).** For each affected molecule, require conformers and
   finite coordinates for every atom in every conformer; reject exact active/source coincidence without
   a distance clamp or near-contact threshold. Validate finite prescribed-source sums and the budget
   `Q_active = Q_original - sum(fixed charges)`, using the original supplied formal-charge total. Keep
   source selection, geometry, and totals target-local; do not infer formal charges or require prescribed
-  charges to equal them. Valid nonempty requests still reach the unsupported-execution gate. No owned
+  charges to equal them. This original-minus-source budget rule is superseded by the independent active
+  charge policy adopted in the 2026-10-04 follow-up; the validation record below describes the 2c
+  implementation at that time. Valid nonempty requests still reach the unsupported-execution gate. No owned
   partition, solver, method capability, or public API change belongs to this slice.
 - Slice 2c validation: GCC debug full suite (56/56); focused Clang debug, GCC/Clang release, ASan, and
   UBSan planning tests; affected clang-tidy target; formatting and whitespace checks passed. Luna
@@ -293,7 +297,8 @@ Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,
   dispatcher.
 - Assess prerequisites and classify active atoms/bonds only with the unchanged matcher. Translate active
   diagnostic indices back to original atom/bond indices.
-- Pass the active budget to the solve and subtract `sum(kappa * fixed_charge / distance)` from its RHS,
+- Pass the prepared active formal-charge sum to the solve and subtract
+  `sum(kappa * fixed_charge / distance)` from its RHS,
   using the selected EEM set's `kappa`. Do not read ion atom parameters.
 - Reassemble original-order charges once at the common result boundary. Fixed values are copied exactly;
   reusable plans, progress, cancellation, and result identity retain their existing guarantees.
@@ -302,13 +307,15 @@ Primary files: `include/chargefw/calculation/{assessment,calculation}.h`,
 - Document the supported native/full slice in `docs/PROJECT.md` and `docs/NATIVE.md`.
 
 Focused check: one small active pair plus a missing-parameter ion, compared with an independently
-assembled constrained EEM system. Demonstrate nonzero active response, exact fixed charge, conserved
-total, and reusable original-order output. Add a compact invalid-request table to existing planning
-tests for crossing bonds, invalid selections/geometry, unsupported modes, and missing active coverage.
+assembled constrained EEM system. Demonstrate nonzero active response, exact fixed charge, the modeled
+total as active plus prescribed charges, and reusable original-order output. Add a compact invalid-request
+table to existing planning tests for crossing bonds, invalid selections/geometry, unsupported modes, and
+missing active coverage.
 
 ## 3. Add the SQE Family
 
-- [ ] Complete SQE-family embedding after method-specific source-field and budget compatibility slices.
+- [x] Complete SQE-family full embedding with its shared source field and independent active-charge policy;
+  Astra-reviewed and complete.
 
 Primary files: `src/methods/builtin/{sqe,sqeq0,sqeqp}.cpp` and method prerequisite checks.
 
@@ -318,15 +325,23 @@ Primary files: `src/methods/builtin/{sqe,sqeq0,sqeqp}.cpp` and method prerequisi
   keep SQE and SQE+q0 disabled pending budget compatibility. Preserve SQE+qp's once-global seed
   normalization to `Q_active` and component seed totals. Validate scalar RHS, width sign/zero, invalid
   source inputs before no-bond returns, disconnected components, and facade source mapping. Astra reviewed
-  field sign and seed preservation, including the strengthened facade scalar reference; commit pending user
-  review.
+  field sign and seed preservation, including the strengthened facade scalar reference.
 - Slice 3a validation: GCC debug full suite (57/57); focused `test_sqeqp`, `test_sqe`,
   `test_builtin_methods`, `test_planning`, `test_calculation`, and `test_fixed_charge_partition` passed
   under Clang debug and GCC/Clang release (6/6 each) and sequential ASan/UBSan (6/6 each). Affected
-  clang-tidy targets, formatting, and whitespace checks passed. Commit pending user review.
-- [ ] **3b: SQE and SQE+q0 budget compatibility.** Implement the approved rejection checks for embedded
-  active budgets incompatible with SQE's neutral-component conservation or SQE+q0's formal-charge seed
-  totals before enabling their facade capability. Not implemented in 3a.
+  clang-tidy targets, formatting, and whitespace checks passed. Commit: `23b6918`.
+- [x] **3b: Independent active-charge policy and SQE/SQE+q0 full capability.** Calculate the active target
+  from prepared formal charges on unselected atoms; keep selected imported formal charges in original-total
+  audit provenance only, and report modeled total as active plus prescribed sources. Remove obsolete
+  prerequisite/runtime budget gates and public budget-selection API; retain SQE neutral-component
+  prerequisites, SQE+q0 formal seeds, and SQE+qp global seed normalization. Preserve finite prescribed
+  source-value and source/active-geometry checks. Astra reviewed and accepted; complete.
+- Slice 3b validation: GCC debug full suite (57/57); focused `test_fixed_charge_partition`,
+  `test_calculation`, `test_planning`, `test_sqe`, `test_sqeqp`, `test_builtin_methods`,
+  `test_method_prerequisites`, `test_method_applicability`, and `test_json_output` passed under Clang
+  debug and GCC/Clang release (9/9 each). The same set plus `test_observer` passed sequential ASan/UBSan
+  runs (10/10 each). Affected clang-tidy targets completed with an existing Gemmi `MmcifReader`
+  special-member warning; schema meta-validation, formatting, and whitespace checks passed.
 
 ## 4. Add QEq With the Approved Source Kernel
 

@@ -200,7 +200,7 @@ TEST_CASE("embedded EEM retains provenance on numerical failure", "[calculation]
     CHECK(provenance.charge_provenance == "fixed value");
     REQUIRE(provenance.charge_totals.size() == 1);
     CHECK(provenance.charge_totals[0].original_total_charge == 2.0);
-    CHECK(provenance.charge_totals[0].active_total_charge == 1.75);
+    CHECK(provenance.charge_totals[0].active_total_charge == 0.0);
 }
 
 TEST_CASE("assessment preserves owned selection state and validates method options",

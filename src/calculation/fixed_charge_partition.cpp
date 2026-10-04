@@ -129,23 +129,12 @@ struct ValidatedTarget {
             }
         }
 
-        auto source_charge_sum = 0.0;
-        for (auto source = first; source != last; ++source) {
-            source_charge_sum += source->charge;
-            if (!std::isfinite(source_charge_sum)) {
-                throw std::invalid_argument{"fixed charge source sum is non-finite in molecule " +
-                                            std::to_string(molecule_index)};
-            }
-        }
         target.original_charge = core::total_formal_charge(molecule);
-        if (!std::isfinite(target.original_charge)) {
-            throw std::invalid_argument{"original formal charge is non-finite in molecule " +
-                                        std::to_string(molecule_index)};
-        }
-        target.active_charge = target.original_charge - source_charge_sum;
-        if (!std::isfinite(target.active_charge)) {
-            throw std::invalid_argument{"active charge total is non-finite in molecule " +
-                                        std::to_string(molecule_index)};
+        target.active_charge = 0.0;
+        for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
+            if (!selected_mask[atom_index]) {
+                target.active_charge += molecule.atom(atom_index).formal_charge();
+            }
         }
         first = last;
     }
