@@ -35,6 +35,9 @@ target_link_libraries(test_calculation_targets PRIVATE
 chargefw_add_snitch_test(test_reduced_execution
         test_reduced_execution.cpp
 )
+target_include_directories(test_reduced_execution PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+)
 
 chargefw_add_snitch_test(test_representative_execution
         test_representative_execution.cpp

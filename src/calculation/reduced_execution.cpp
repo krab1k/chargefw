@@ -127,7 +127,8 @@ auto enforce_conserved_charges(std::vector<double>& values, const ReducedChargeC
 auto calculate_fragment_charges(const methods::ApplicableMethod& selected,
                                 const parameters::ParameterClassification* source_classification,
                                 const features::SpatialFragment& fragment,
-                                const ReducedChargeContext& charge_context)
+                                const ReducedChargeContext& charge_context,
+                                const std::span<const methods::FixedPointSource> fixed_sources)
     -> charges::AtomicCharges {
     const features::PreparedMolecule prepared_fragment{fragment.molecule()};
     const features::ConformerFeatures geometry{fragment.molecule(), 0};
@@ -146,9 +147,13 @@ auto calculate_fragment_charges(const methods::ApplicableMethod& selected,
             : std::optional<parameters::ParameterView>{std::in_place, *selected.parameter_set,
                                                        projected_classification};
 
-    const methods::CalculationInput input{
-        prepared_fragment, selected.method_options, target_charge, &geometry,
-        parameter_view ? std::addressof(*parameter_view) : nullptr};
+    const methods::CalculationInput input{prepared_fragment,
+                                          selected.method_options,
+                                          target_charge,
+                                          &geometry,
+                                          parameter_view ? std::addressof(*parameter_view)
+                                                         : nullptr,
+                                          fixed_sources};
     const auto charges = selected.method->calculate(input);
     if (charges.size() != fragment.molecule().atom_count()) {
         throw std::runtime_error{"method '" + std::string{selected.method->id()} + "' produced " +

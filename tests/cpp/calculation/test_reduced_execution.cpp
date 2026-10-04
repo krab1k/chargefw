@@ -1,3 +1,4 @@
+#include "calculation/reduced_execution.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
@@ -12,19 +13,25 @@
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/features/spatial_fragment.h>
+#include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_metadata.h>
 #include <chargefw/methods/method_options.h>
+#include <chargefw/methods/method_registry.h>
 #include <chargefw/methods/method_requirements.h>
+#include <chargefw/parameters/classification/parameter_classifier.h>
 #include <chargefw/parameters/models/atom_parameters.h>
 #include <chargefw/parameters/models/bond_parameters.h>
 #include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_key.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
+#include <chargefw/parameters/models/parameter_view.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <numeric>
 #include <optional>
 #include <snitch/snitch.hpp>
 #include <span>
@@ -689,4 +696,89 @@ TEST_CASE("reduced execution preserves mixed source target order",
         CHECK(result.charges.assignment(2).target.molecule_index == 1);
         CHECK(result.charges.assignment(2).target.conformer_index == std::optional<std::size_t>{0});
     }
+}
+
+TEST_CASE("reduced fragment calculations forward the complete fixed-source environment",
+          "[calculation][reduced-execution][embedding]") {
+    const auto molecule = make_extended_components(1);
+    const auto source = methods::FixedPointSource{core::Position{.x = 50.0, .y = 2.0}, 1.25};
+    const auto sources = std::array{source};
+
+    const auto exercise = [&](const std::string_view method_id,
+                              const parameters::ParameterSet& parameter_set,
+                              const bool expect_global_seed_target) {
+        const features::PreparedMolecule prepared{molecule};
+        const features::ConformerFeatures geometry{molecule, 0};
+        const auto classification =
+            parameters::classify_parameters(molecule, prepared.topology(), parameter_set);
+        const auto* method = methods::method_registry().find(method_id);
+        REQUIRE(method != nullptr);
+        const auto options = methods::make_default_options(method->option_schema());
+        const methods::ApplicableMethod selected{.method = method,
+                                                 .parameter_set = &parameter_set,
+                                                 .method_options = options,
+                                                 .classifications = {classification}};
+        const auto charge_context = calculation::detail::prepare_reduced_charge_context(
+            selected, prepared, &classification);
+        const features::SpatialFragmentBuilder builder{prepared, geometry};
+        constexpr auto fragment_radius = 8.0;
+        const auto fragment = builder.build(0, fragment_radius);
+        REQUIRE(fragment.molecule().atom_count() < molecule.atom_count());
+        CHECK(source.position.x > fragment_radius);
+
+        const auto fragment_target =
+            calculation::detail::fragment_target_charge(charge_context, fragment);
+        if (expect_global_seed_target) {
+            CHECK(std::abs(fragment_target - core::total_formal_charge(fragment.molecule())) >
+                  1.0e-6);
+        }
+
+        const auto no_source_fragment = calculation::detail::calculate_fragment_charges(
+            selected, &classification, fragment, charge_context);
+        const auto zero_source = std::array{methods::FixedPointSource{source.position, 0.0}};
+        const auto zero_source_fragment = calculation::detail::calculate_fragment_charges(
+            selected, &classification, fragment, charge_context, zero_source);
+        const auto sourced_fragment = calculation::detail::calculate_fragment_charges(
+            selected, &classification, fragment, charge_context, sources);
+        CHECK(std::abs(std::accumulate(no_source_fragment.values().begin(),
+                                       no_source_fragment.values().end(), 0.0) -
+                       fragment_target) < 1.0e-10);
+        CHECK(std::abs(std::accumulate(sourced_fragment.values().begin(),
+                                       sourced_fragment.values().end(), 0.0) -
+                       fragment_target) < 1.0e-10);
+        for (std::size_t atom_index = 0; atom_index < sourced_fragment.size(); ++atom_index) {
+            CHECK(std::abs(zero_source_fragment[atom_index] - no_source_fragment[atom_index]) <
+                  1.0e-14);
+        }
+        const auto center = fragment.center_local_atom_index();
+        CHECK(std::abs(sourced_fragment[center] - no_source_fragment[center]) > 1.0e-9);
+
+        const auto full_fragment = builder.build(0, 100.0);
+        REQUIRE(full_fragment.molecule().atom_count() == molecule.atom_count());
+        const auto no_source_whole = calculation::detail::calculate_fragment_charges(
+            selected, &classification, full_fragment, charge_context);
+        const auto sourced_whole = calculation::detail::calculate_fragment_charges(
+            selected, &classification, full_fragment, charge_context, sources);
+        const parameters::ParameterView parameter_view{parameter_set, classification};
+        const auto full_target = core::total_formal_charge(molecule);
+        const methods::CalculationInput full_input{prepared,  options,         full_target,
+                                                   &geometry, &parameter_view, sources};
+        const auto full_reference = method->calculate(full_input);
+        const methods::CalculationInput no_source_input{prepared, options, full_target, &geometry,
+                                                        &parameter_view};
+        const auto no_source_reference = method->calculate(no_source_input);
+        const auto source_indices = full_fragment.local_to_source_atom_indices();
+        REQUIRE(source_indices.size() == molecule.atom_count());
+        for (std::size_t local_index = 0; local_index < source_indices.size(); ++local_index) {
+            const auto source_index = source_indices[local_index];
+            CHECK(std::abs(sourced_whole[local_index] - full_reference[source_index]) < 1.0e-11);
+            CHECK(std::abs(no_source_whole[local_index] - no_source_reference[source_index]) <
+                  1.0e-11);
+        }
+    };
+
+    exercise("eem", make_eem_parameters(), false);
+    exercise("sqeqp", make_sqe_parameters("sqeqp", true), true);
+    CHECK(sources[0].position.x == 50.0);
+    CHECK(sources[0].charge == 1.25);
 }

@@ -2,9 +2,9 @@
 
 Status: EEM implementation authorized, progressing through smaller independently reviewable slices.
 Slices 2a-2k are reviewed and complete (2j: `a8f2852`, 2k: `98d8e2e`). Slice 3a SQE+qp/full is
-committed as `23b6918`; slice 3b's independent active-charge policy is reviewed and complete. EEM and all
-three SQE-family methods support full embedding; reduced modes and QEq remain disabled. QEq's scientific
-convention still requires user approval.
+committed as `23b6918`; slice 3b's independent active-charge policy is reviewed and committed as
+`5c4b228`. EEM and all three SQE-family methods support full embedding; reduced modes and QEq remain
+disabled. QEq is explicitly deferred by the user pending approval of its scientific convention.
 Branch: `fragments`. Research baseline: `4324b11` ([METALS.md](METALS.md)).
 
 ## Goal and Scope
@@ -345,7 +345,8 @@ Primary files: `src/methods/builtin/{sqe,sqeq0,sqeqp}.cpp` and method prerequisi
 
 ## 4. Add QEq With the Approved Source Kernel
 
-- [ ] Enable QEq/full after the step 1 coupling decision is recorded.
+- [ ] QEq is deferred by explicit user direction. Do not begin implementation until the user approves its
+  scientific source-coupling convention.
 
 Primary file: `src/methods/builtin/qeq.cpp`.
 
@@ -360,12 +361,25 @@ reusing the EEM fixture and budget/mapping infrastructure. Update shared/native 
 
 ## 5. Propagate Embedding Through Cutoff and Cover
 
-- [ ] Enable reduced embedding only where its method-specific path is complete.
+- [x] **5a: Private fragment source-input plumbing.** Implemented as a default-empty borrowed source span
+  on `detail::calculate_fragment_charges`; the complete source list is forwarded unchanged to the method
+  call. Focused tests cover EEM and SQE+qp, including a source outside the fragment radius and full-atom
+  fragment agreement with direct full calculation. Astra reviewed source forwarding, lifetime, and
+  reference-target semantics; accepted and complete. This does not enable reduced embedding through
+  assessment or facade execution.
+- Slice 5a validation: focused `test_reduced_execution` passed under GCC debug, Clang debug, GCC/Clang
+  release, ASan, and UBSan; full GCC debug suite passed (57/57). The affected clang-tidy target, format,
+  and whitespace checks passed.
+- [ ] **5b: Executor wiring and method qualification.** Later connect cutoff and cover executors, validate
+  supported method combinations, retain active-charge conservation and fixed-source reinsertion, and
+  leave the reduced facade capability gates closed until qualification is complete.
 
 Primary files: `src/calculation/{reduced_execution,cutoff_execution,cover_execution}.cpp`.
 
-- Build references and conserved groups on the active graph with the active target budget, not its
-  unadjusted formal total. Preserve the one-time SQE+qp normalization from step 3.
+5b qualification requirements:
+
+- Build references and conserved groups on the active graph using the prepared active formal-charge total.
+  Preserve the one-time SQE+qp normalization from step 3.
 - Supply the complete fixed-source environment to every fragment, including sources beyond its radius.
   Start by reusing direct source evaluation; precompute/project potentials only if necessary, without
   introducing a cache framework or changing coupling conventions.
@@ -374,9 +388,9 @@ Primary files: `src/calculation/{reduced_execution,cutoff_execution,cover_execut
 - Preserve source-index diagnostics and finite-radius cover's existing order-dependent pivot behavior.
 - Update execution capability/resource handling and `docs/PROJECT.md` for supported combinations.
 
-Focused check: extend `test_reduced_execution` with a distant source outside the fragment radius and
-whole-active-radius agreement with full execution. Exercise cutoff and cover with EEM and SQE+qp to
-cover ordinary budgets and normalized component references; reuse method-level kernel tests.
+Focused 5b check: extend the facade `test_reduced_execution` with a distant source outside the fragment
+radius and whole-active-radius agreement with full execution. Exercise cutoff and cover with EEM and
+SQE+qp to cover ordinary budgets and normalized component references; reuse method-level kernel tests.
 
 ## 6. Expose the Policy in Python
 

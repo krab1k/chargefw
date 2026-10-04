@@ -5,11 +5,13 @@
 #include <chargefw/core/molecule.h>
 #include <chargefw/features/prepared_molecule.h>
 #include <chargefw/features/spatial_fragment.h>
+#include <chargefw/methods/calculation_input.h>
 #include <chargefw/methods/method_applicability.h>
 #include <chargefw/methods/method_requirements.h>
 #include <chargefw/parameters/classification/parameter_classification.h>
 
 #include <cstddef>
+#include <span>
 #include <vector>
 
 namespace chargefw::calculation::detail {
@@ -28,10 +30,11 @@ auto validate_reduced_request(const methods::ApplicableMethod& selected,
                                           const features::SpatialFragment& fragment) -> double;
 auto enforce_conserved_charges(std::vector<double>& values, const ReducedChargeContext& context)
     -> void;
-[[nodiscard]] auto
-calculate_fragment_charges(const methods::ApplicableMethod& selected,
-                           const parameters::ParameterClassification* source_classification,
-                           const features::SpatialFragment& fragment,
-                           const ReducedChargeContext& charge_context) -> charges::AtomicCharges;
+// fixed_sources is borrowed and forwarded unchanged during the synchronous method call.
+[[nodiscard]] auto calculate_fragment_charges(
+    const methods::ApplicableMethod& selected,
+    const parameters::ParameterClassification* source_classification,
+    const features::SpatialFragment& fragment, const ReducedChargeContext& charge_context,
+    std::span<const methods::FixedPointSource> fixed_sources = {}) -> charges::AtomicCharges;
 
 } // namespace chargefw::calculation::detail
