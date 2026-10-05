@@ -2,16 +2,16 @@
 
 ## Objective
 
-Provide opt-in fixed-charge embedding for EEM, SQE, SQE+q0, and SQE+qp. Explicitly selected,
+Provide opt-in fixed-charge groups for EEM, SQE, SQE+q0, and SQE+qp. Explicitly selected,
 fixed-charge components create a field to which active atoms respond; their charges are not appended
 to an unperturbed calculation. The existing solver, cutoff, and cover machinery is reused.
 
 The priority is SQE, SQE+q0, and SQE+qp. EEM remains supported as a secondary method, not as a reason
-to prioritize broader legacy parameter coverage. Embedding does not require fitted parameters for
+to prioritize broader legacy parameter coverage. Fixed-charge groups do not require fitted parameters for
 the selected fixed components; ordinary strict parameter matching remains in force for the active
 graph. A parameter-covered component such as sulfate remains active unless the caller selects it.
 
-Embedding defaults off. Python `assess()` and `calculate()` accept named component groups independently of
+Fixed-charge groups default off. Python `assess()` and `calculate()` accept named component groups independently of
 candidate method or parameter coverage:
 
 ```python
@@ -35,7 +35,7 @@ resolution. `COMMON_IONS` and a charge-model selector are not part of the API.
 - Fixed component templates are bundled, immutable, versioned data. A named ion template assigns its
   formal charge, validates component identity, element, and complete atom coverage, and applies only
   to a matching instance in the same target. PDB/mmCIF use must not require network access or depend
-  on an embedded charge table being present. Different identities such as FE and FE2 are distinct.
+  on a component-supplied charge table being present. Different identities such as FE and FE2 are distinct.
 - Do not infer oxidation state from element alone. Do not silently select components because a
   candidate lacks their parameters. Selection is caller intent and is independent of candidate
   coverage.
@@ -51,7 +51,7 @@ resolution. `COMMON_IONS` and a charge-model selector are not part of the API.
 - Expose the same immutable native resolution through assess/calculate and reusable Python plans. The CLI
   integration remains future work. Keep provenance explicit: preset ID/version, resolved values, and any
   approximation warning.
-- Keep execution policy distinct from the embedding approximation. Existing full, cutoff, and cover
+- Keep execution policy distinct from the fixed-charge approximation. Existing full, cutoff, and cover
   machinery supplies fixed sources to every relevant solve, including sources beyond a fragment radius.
 
 ## Named-Ion Resolution

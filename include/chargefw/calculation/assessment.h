@@ -73,7 +73,7 @@ struct FixedAtomCharge {
     double charge;
 };
 
-struct FixedChargeEmbedding {
+struct FixedChargeGroups {
     std::vector<FixedAtomCharge> sources;
     std::string charge_provenance;
 };
@@ -92,7 +92,7 @@ struct AssessmentRequest {
     parameters::ClassificationOptions classification_options{};
     ExecutionSelection execution_selection{};
     ResourcePolicy resource_policy{};
-    std::optional<FixedChargeEmbedding> fixed_charge_embedding{};
+    std::optional<FixedChargeGroups> fixed_charge_groups{};
 };
 
 // Owns prepared application inputs and reusable concrete execution plans.

@@ -266,10 +266,11 @@ auto make_invalid_qeq_parameters() -> chargefw::parameters::ParameterSet {
                              {.name = "hardness", .value = 13.364}}}}}};
 }
 
-auto make_embedding_eem_parameters() -> chargefw::parameters::ParameterSet {
+auto make_fixed_charge_groups_eem_parameters() -> chargefw::parameters::ParameterSet {
     return chargefw::parameters::ParameterSet{
-        chargefw::parameters::ParameterSetMetadata{
-            .id = "observer-embedding-eem", .method_id = "eem", .name = "Observer embedding EEM"},
+        chargefw::parameters::ParameterSetMetadata{.id = "observer-fixed-charge-eem",
+                                                   .method_id = "eem",
+                                                   .name = "Observer fixed-charge groups EEM"},
         chargefw::parameters::CommonParameters{{{.name = "kappa", .value = 2.0}}},
         chargefw::parameters::AtomParameters{
             {{.key = chargefw::test::plain_atom_key(1),
@@ -463,13 +464,13 @@ TEST_CASE("cancellation produces a terminal observer event", "[calculation][obse
     }
 }
 
-TEST_CASE("embedded cancellation retains provenance and permits plan reuse",
+TEST_CASE("fixed-charge cancellation retains provenance and permits plan reuse",
           "[calculation][observer]") {
     const auto molecule =
         core::Molecule{std::vector{core::Atom{1, 0}, core::Atom{12, 2}, core::Atom{8, 0}},
                        {},
                        {core::Conformer{{{0.0, 0.0, 0.0}, {0.0, 3.0, 0.0}, {5.0, 0.0, 0.0}}}},
-                       "cancelled-embedded-eem"};
+                       "cancelled-fixed-charge-eem"};
     for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
                             calculation::ExecutionMode::cover}) {
         const auto cancel_phase = mode == calculation::ExecutionMode::full
@@ -485,10 +486,10 @@ TEST_CASE("embedded cancellation retains provenance and permits plan reuse",
                                                   8.0};
         const auto assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{molecule}},
-            .parameter_sets = {make_embedding_eem_parameters()},
+            .parameter_sets = {make_fixed_charge_groups_eem_parameters()},
             .method_id = "eem",
             .execution_selection = selection,
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}},
                 .charge_provenance = "cancelled fixed source"}});
         REQUIRE(assessment.plans().size() == 1);
@@ -499,8 +500,8 @@ TEST_CASE("embedded cancellation retains provenance and permits plan reuse",
         CHECK_FALSE(result.calculated());
         CHECK_FALSE(result.charges.has_value());
         REQUIRE(result.effective.has_value());
-        REQUIRE(result.effective->fixed_charge_embedding.has_value());
-        const auto& provenance = *result.effective->fixed_charge_embedding;
+        REQUIRE(result.effective->fixed_charge_groups.has_value());
+        const auto& provenance = *result.effective->fixed_charge_groups;
         CHECK(provenance.charge_provenance == "cancelled fixed source");
         CHECK(provenance.sources.size() == 1);
         CHECK(provenance.sources[0].charge == 0.4);
@@ -536,8 +537,8 @@ TEST_CASE("embedded cancellation retains provenance and permits plan reuse",
 
         const auto repeated = calculation::calculate(assessment);
         REQUIRE(repeated.calculated());
-        REQUIRE(repeated.effective->fixed_charge_embedding.has_value());
-        CHECK(repeated.effective->fixed_charge_embedding->sources[0].charge == 0.4);
+        REQUIRE(repeated.effective->fixed_charge_groups.has_value());
+        CHECK(repeated.effective->fixed_charge_groups->sources[0].charge == 0.4);
     }
 }
 

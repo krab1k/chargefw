@@ -264,7 +264,7 @@ warnings. When supplied by the application, metrics include UTC start/end timest
 finalization, parsing, applicability and computation runtimes, and peak resident memory. Durations and
 memory are rounded to three decimal places.
 
-Effective provenance may also include `fixed_charge_embedding`. Its `sources` entries use zero-based
+Effective provenance may also include `fixed_charge_groups`. Its `sources` entries use zero-based
 molecule and atom indices in the original input collection and retain each fixed charge. The
 `charge_provenance` label is a string. `charge_totals` has one entry per original molecule in collection
 order. `original_total_charge` records the supplied input formal-charge sum for audit; `active_total_charge`
@@ -279,6 +279,6 @@ original `molecule_index` and one-element `atom_indices`. Component IDs use the 
 back to the author residue ID. This is a readable summary of input labels, not a CCD lookup or assignment;
 the flat `sources` list remains authoritative and covers sources without labels or unambiguous component
 identity. `components` is omitted when no selected source has an unambiguous structural residue label.
-The optional `fixed_charge_embedding` object is an additive extension to result schema 1.0. Consumers
-validating embedded result documents should use the updated 1.0 schema; an older strict schema rejects the
-additional effective field.
+The optional `fixed_charge_groups` object is an additive extension to result schema 1.0. Consumers
+validating result documents with fixed-charge groups should use the updated 1.0 schema; an older strict
+schema rejects the additional effective field.

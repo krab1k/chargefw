@@ -87,10 +87,10 @@ auto make_eem_parameters() -> chargefw::parameters::ParameterSet {
               .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 10.0}}}}}};
 }
 
-auto make_embedding_eem_parameters() -> chargefw::parameters::ParameterSet {
+auto make_fixed_charge_groups_eem_parameters() -> chargefw::parameters::ParameterSet {
     return chargefw::parameters::ParameterSet{
         chargefw::parameters::ParameterSetMetadata{
-            .id = "embedding-eem", .method_id = "eem", .name = "Embedding EEM"},
+            .id = "fixed-charge-eem", .method_id = "eem", .name = "Fixed-charge groups EEM"},
         chargefw::parameters::CommonParameters{{{.name = "kappa", .value = 2.5}}},
         chargefw::parameters::AtomParameters{
             {{.key = chargefw::test::plain_atom_key(1),
@@ -148,7 +148,7 @@ auto make_disconnected_qp_source_molecule() -> core::Molecule {
                           "disconnected-q0-source"};
 }
 
-auto make_sqeqp_embedding_parameters() -> chargefw::parameters::ParameterSet {
+auto make_sqeqp_fixed_charge_groups_parameters() -> chargefw::parameters::ParameterSet {
     auto atoms = std::vector<chargefw::parameters::AtomParameterEntry>{
         {.key = chargefw::test::plain_atom_key(1),
          .parameters = {{.name = "electronegativity", .value = 4.528},
@@ -165,18 +165,18 @@ auto make_sqeqp_embedding_parameters() -> chargefw::parameters::ParameterSet {
          .parameters = {{.name = "kappa", .value = 1.0}}}};
     return chargefw::parameters::ParameterSet{
         chargefw::parameters::ParameterSetMetadata{
-            .id = "embedding-sqeqp", .method_id = "sqeqp", .name = "Embedding SQE+qp"},
+            .id = "fixed-charge-sqeqp", .method_id = "sqeqp", .name = "Fixed-charge groups SQE+qp"},
         {},
         chargefw::parameters::AtomParameters{std::move(atoms)},
         chargefw::parameters::BondParameters{std::move(bonds)}};
 }
 
-auto make_sqeqp_embedding_molecule(const int magnesium_charge = 1) -> core::Molecule {
+auto make_sqeqp_fixed_charge_groups_molecule(const int magnesium_charge = 1) -> core::Molecule {
     return core::Molecule{
         std::vector{core::Atom{1, -1}, core::Atom{12, magnesium_charge}, core::Atom{8, 0}},
         {core::Bond{0, 2}},
         {core::Conformer{{{0.0, 0.0, 0.0}, {0.0, 2.0, 0.0}, {1.5, 0.0, 0.0}}, "ion-interleaved"}},
-        "sqeqp-embedding"};
+        "sqeqp-fixed-charge-groups"};
 }
 
 auto make_sqe_active_molecule(const int hydrogen_charge, const int magnesium_charge)
@@ -198,7 +198,7 @@ auto make_fractional_sqe_source_molecule() -> core::Molecule {
         "fractional-sqe-sources"};
 }
 
-auto make_sqe_embedding_parameters(const std::string_view method_id)
+auto make_sqe_fixed_charge_groups_parameters(const std::string_view method_id)
     -> chargefw::parameters::ParameterSet {
     auto atoms = std::vector<chargefw::parameters::AtomParameterEntry>{
         {.key = chargefw::test::plain_atom_key(1),
@@ -214,8 +214,9 @@ auto make_sqe_embedding_parameters(const std::string_view method_id)
          .parameters = {{.name = "kappa", .value = 1.0}}}};
     const auto method = std::string{method_id};
     return chargefw::parameters::ParameterSet{
-        chargefw::parameters::ParameterSetMetadata{
-            .id = "embedding-" + method, .method_id = method, .name = "Embedding " + method},
+        chargefw::parameters::ParameterSetMetadata{.id = "fixed-charge-" + method,
+                                                   .method_id = method,
+                                                   .name = "Fixed-charge groups " + method},
         {},
         chargefw::parameters::AtomParameters{std::move(atoms)},
         chargefw::parameters::BondParameters{std::move(bonds)}};
@@ -280,7 +281,7 @@ TEST_CASE("valid fixed charge selectors reach EEM planning with active molecules
                                                  make_interleaved_hydrogen_magnesium_oxygen()}},
         .parameter_sets = {make_eem_parameters()},
         .method_id = "eem",
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 2, .atom_index = 1, .charge = -0.5},
                         {.molecule_index = 1, .atom_index = 1, .charge = 0.0},
                         {.molecule_index = 0, .atom_index = 1, .charge = 0.25}},
@@ -298,8 +299,8 @@ TEST_CASE("valid fixed charge selectors reach EEM planning with active molecules
     REQUIRE(execution.calculated());
     REQUIRE(execution.charges->size() == 3);
     REQUIRE(execution.effective.has_value());
-    REQUIRE(execution.effective->fixed_charge_embedding.has_value());
-    const auto& provenance = *execution.effective->fixed_charge_embedding;
+    REQUIRE(execution.effective->fixed_charge_groups.has_value());
+    const auto& provenance = *execution.effective->fixed_charge_groups;
     CHECK(provenance.charge_provenance == "test fixed ions");
     REQUIRE(provenance.sources.size() == 3);
     CHECK(provenance.sources[0].molecule_index == 0);
@@ -319,7 +320,7 @@ TEST_CASE("valid fixed charge selectors reach EEM planning with active molecules
     CHECK(execution.charges->assignment(2).charges[1] == -0.5);
 }
 
-TEST_CASE("native embedded EEM executes, reassembles, and retains provenance",
+TEST_CASE("native fixed-charge groups execute, reassemble, and retain provenance",
           "[calculation][planning]") {
     auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{
@@ -328,8 +329,8 @@ TEST_CASE("native embedded EEM executes, reassembles, and retains provenance",
                            {},
                            {core::Conformer{{{8.0, 0.0, 0.0}}, "unaffected"}},
                            "unaffected"}}},
-        .parameter_sets = {make_embedding_eem_parameters()},
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .parameter_sets = {make_fixed_charge_groups_eem_parameters()},
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}},
             .charge_provenance = "fractional fixed magnesium"}});
     auto moved_assessment = std::move(assessment);
@@ -347,7 +348,7 @@ TEST_CASE("native embedded EEM executes, reassembles, and retains provenance",
         REQUIRE(result->calculated());
         REQUIRE(result->charges->size() == 3);
         REQUIRE(result->effective.has_value());
-        REQUIRE(result->effective->fixed_charge_embedding.has_value());
+        REQUIRE(result->effective->fixed_charge_groups.has_value());
     }
 
     const auto expected_pair = [](const double source_potential_h,
@@ -388,27 +389,26 @@ TEST_CASE("native embedded EEM executes, reassembles, and retains provenance",
         CHECK(std::abs(values[0] + values[2]) < 1e-12);
     }
     CHECK(serial.charges->assignment(2).charges[0] == -1.0);
-    CHECK(serial.effective->fixed_charge_embedding->charge_provenance ==
-          "fractional fixed magnesium");
-    REQUIRE(serial.effective->fixed_charge_embedding->sources.size() == 1);
-    CHECK(serial.effective->fixed_charge_embedding->sources[0].molecule_index == 0);
-    CHECK(serial.effective->fixed_charge_embedding->sources[0].atom_index == 1);
-    CHECK(serial.effective->fixed_charge_embedding->sources[0].charge == 0.4);
-    REQUIRE(serial.effective->fixed_charge_embedding->charge_totals.size() == 2);
-    CHECK(serial.effective->fixed_charge_embedding->charge_totals[0].original_total_charge == 2.0);
-    CHECK(serial.effective->fixed_charge_embedding->charge_totals[0].active_total_charge == 0.0);
-    CHECK(serial.effective->fixed_charge_embedding->charge_totals[1].original_total_charge == -1.0);
-    CHECK(serial.effective->fixed_charge_embedding->charge_totals[1].active_total_charge == -1.0);
+    CHECK(serial.effective->fixed_charge_groups->charge_provenance == "fractional fixed magnesium");
+    REQUIRE(serial.effective->fixed_charge_groups->sources.size() == 1);
+    CHECK(serial.effective->fixed_charge_groups->sources[0].molecule_index == 0);
+    CHECK(serial.effective->fixed_charge_groups->sources[0].atom_index == 1);
+    CHECK(serial.effective->fixed_charge_groups->sources[0].charge == 0.4);
+    REQUIRE(serial.effective->fixed_charge_groups->charge_totals.size() == 2);
+    CHECK(serial.effective->fixed_charge_groups->charge_totals[0].original_total_charge == 2.0);
+    CHECK(serial.effective->fixed_charge_groups->charge_totals[0].active_total_charge == 0.0);
+    CHECK(serial.effective->fixed_charge_groups->charge_totals[1].original_total_charge == -1.0);
+    CHECK(serial.effective->fixed_charge_groups->charge_totals[1].active_total_charge == -1.0);
     CHECK(moved_assessment.molecules()[0].atom(1).formal_charge() == 2);
 
     auto warning_assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_two_conformer_interleaved_pair()}},
-        .parameter_sets = {make_embedding_eem_parameters()},
+        .parameter_sets = {make_fixed_charge_groups_eem_parameters()},
         .method_id = "eem",
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
         .resource_policy = {.cutoff_atom_threshold = 1},
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}}}});
     REQUIRE(warning_assessment.default_plan() != nullptr);
     REQUIRE(warning_assessment.default_plan()->warnings().size() == 1);
@@ -416,14 +416,14 @@ TEST_CASE("native embedded EEM executes, reassembles, and retains provenance",
           methods::ExecutionIssueKind::resource_threshold_exceeded);
     const auto warning_result = calculation::calculate(warning_assessment);
     REQUIRE(warning_result.calculated());
-    CHECK(warning_result.effective->fixed_charge_embedding.has_value());
+    CHECK(warning_result.effective->fixed_charge_groups.has_value());
 
     auto automatic_limited_assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_two_conformer_interleaved_pair()}},
-        .parameter_sets = {make_embedding_eem_parameters()},
+        .parameter_sets = {make_fixed_charge_groups_eem_parameters()},
         .method_id = "eem",
         .resource_policy = {.cutoff_atom_threshold = 1},
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}}}});
     REQUIRE(automatic_limited_assessment.default_plan() != nullptr);
     CHECK(automatic_limited_assessment.default_plan()->policy().mode() ==
@@ -436,9 +436,10 @@ TEST_CASE("native embedded EEM executes, reassembles, and retains provenance",
 TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal charge",
           "[calculation][planning]") {
     auto assessment = calculation::assess(calculation::AssessmentRequest{
-        .molecules = core::MoleculeCollection{std::vector{make_sqeqp_embedding_molecule()}},
-        .parameter_sets = {make_sqeqp_embedding_parameters()},
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .molecules =
+            core::MoleculeCollection{std::vector{make_sqeqp_fixed_charge_groups_molecule()}},
+        .parameter_sets = {make_sqeqp_fixed_charge_groups_parameters()},
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.3}},
             .charge_provenance = "fixed magnesium"}});
     REQUIRE(assessment.plans().size() == 3);
@@ -472,7 +473,7 @@ TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal 
     for (const auto* result : {&serial, &parallel, &repeated}) {
         REQUIRE(result->calculated());
         REQUIRE(result->charges->size() == 1);
-        REQUIRE(result->effective->fixed_charge_embedding.has_value());
+        REQUIRE(result->effective->fixed_charge_groups.has_value());
         const auto& values = result->charges->assignment(0).charges;
         CHECK(values[1] == 0.3);
         CHECK(std::abs(values[0] + values[2] + 1.0) < 1e-12);
@@ -486,7 +487,7 @@ TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal 
                              parallel.charges->assignment(0).charges.values()));
     CHECK(std::ranges::equal(serial.charges->assignment(0).charges.values(),
                              repeated.charges->assignment(0).charges.values()));
-    const auto& provenance = *serial.effective->fixed_charge_embedding;
+    const auto& provenance = *serial.effective->fixed_charge_groups;
     REQUIRE(provenance.sources.size() == 1);
     CHECK(provenance.sources[0].atom_index == 1);
     CHECK(provenance.sources[0].charge == 0.3);
@@ -500,10 +501,11 @@ TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal 
                                           std::pair{calculation::ExecutionSelectionKind::cover,
                                                     calculation::ExecutionMode::cover}}) {
         auto reduced_assessment = calculation::assess(calculation::AssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{make_sqeqp_embedding_molecule()}},
-            .parameter_sets = {make_sqeqp_embedding_parameters()},
+            .molecules =
+                core::MoleculeCollection{std::vector{make_sqeqp_fixed_charge_groups_molecule()}},
+            .parameter_sets = {make_sqeqp_fixed_charge_groups_parameters()},
             .execution_selection = calculation::ExecutionSelection{selection, 8.0},
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.3}}}});
         REQUIRE(reduced_assessment.plans().size() == 1);
         CHECK(reduced_assessment.plans()[0].policy().mode() == mode);
@@ -519,20 +521,20 @@ TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal 
 }
 
 TEST_CASE("fixed source imported charge does not change the active EEM charge",
-          "[calculation][planning][embedding]") {
+          "[calculation][planning][fixed-charge-groups]") {
     auto results = std::vector<calculation::ExecutionResult>{};
     for (const auto magnesium_charge : {0, 2}) {
         auto assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{
                 make_two_conformer_interleaved_pair(0, magnesium_charge)}},
-            .parameter_sets = {make_embedding_eem_parameters()},
+            .parameter_sets = {make_fixed_charge_groups_eem_parameters()},
             .method_id = "eem",
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}});
         const auto result = calculation::calculate(assessment);
         REQUIRE(result.calculated());
-        REQUIRE(result.effective->fixed_charge_embedding.has_value());
-        const auto& totals = result.effective->fixed_charge_embedding->charge_totals[0];
+        REQUIRE(result.effective->fixed_charge_groups.has_value());
+        const auto& totals = result.effective->fixed_charge_groups->charge_totals[0];
         CHECK(totals.original_total_charge == magnesium_charge);
         CHECK(totals.active_total_charge == 0.0);
         for (const auto& assignment : result.charges->assignments()) {
@@ -551,32 +553,32 @@ TEST_CASE("fixed source imported charge does not change the active EEM charge",
 
     auto changed_field = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_two_conformer_interleaved_pair()}},
-        .parameter_sets = {make_embedding_eem_parameters()},
+        .parameter_sets = {make_fixed_charge_groups_eem_parameters()},
         .method_id = "eem",
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 1.0}}}});
     const auto changed = calculation::calculate(changed_field);
     REQUIRE(changed.calculated());
-    CHECK(changed.effective->fixed_charge_embedding->charge_totals[0].active_total_charge == 0.0);
+    CHECK(changed.effective->fixed_charge_groups->charge_totals[0].active_total_charge == 0.0);
     CHECK(std::abs(changed.charges->assignment(0).charges.total() - 1.0) < 1.0e-12);
     CHECK(std::abs(changed.charges->assignment(0).charges[0] -
                    results[1].charges->assignment(0).charges[0]) > 1.0e-4);
 }
 
 TEST_CASE("prepared active formal charge sets EEM and SQE+qp totals",
-          "[calculation][planning][embedding]") {
+          "[calculation][planning][fixed-charge-groups]") {
     auto sqeqp_results = std::vector<calculation::ExecutionResult>{};
     for (const auto magnesium_charge : {0, 2}) {
         auto eem_assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{
                 make_two_conformer_interleaved_pair(-1, magnesium_charge)}},
-            .parameter_sets = {make_embedding_eem_parameters()},
+            .parameter_sets = {make_fixed_charge_groups_eem_parameters()},
             .method_id = "eem",
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}});
         const auto eem = calculation::calculate(eem_assessment);
         REQUIRE(eem.calculated());
-        const auto& eem_totals = eem.effective->fixed_charge_embedding->charge_totals[0];
+        const auto& eem_totals = eem.effective->fixed_charge_groups->charge_totals[0];
         CHECK(eem_totals.original_total_charge == magnesium_charge - 1);
         CHECK(eem_totals.active_total_charge == -1.0);
         for (const auto& assignment : eem.charges->assignments()) {
@@ -586,14 +588,14 @@ TEST_CASE("prepared active formal charge sets EEM and SQE+qp totals",
 
         auto sqeqp_assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{
-                make_sqeqp_embedding_molecule(magnesium_charge)}},
-            .parameter_sets = {make_sqeqp_embedding_parameters()},
+                make_sqeqp_fixed_charge_groups_molecule(magnesium_charge)}},
+            .parameter_sets = {make_sqeqp_fixed_charge_groups_parameters()},
             .method_id = "sqeqp",
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}});
         const auto sqeqp = calculation::calculate(sqeqp_assessment);
         REQUIRE(sqeqp.calculated());
-        const auto& sqeqp_totals = sqeqp.effective->fixed_charge_embedding->charge_totals[0];
+        const auto& sqeqp_totals = sqeqp.effective->fixed_charge_groups->charge_totals[0];
         CHECK(sqeqp_totals.original_total_charge == magnesium_charge - 1);
         CHECK(sqeqp_totals.active_total_charge == -1.0);
         CHECK(std::abs(sqeqp.charges->assignment(0).charges[0] +
@@ -612,18 +614,18 @@ TEST_CASE("SQE+q0 retains prepared component charges while source atoms are fixe
         auto assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{
                 make_sqe_active_molecule(-1, magnesium_charge)}},
-            .parameter_sets = {make_sqe_embedding_parameters("sqeq0")},
+            .parameter_sets = {make_sqe_fixed_charge_groups_parameters("sqeq0")},
             .method_id = "sqeq0",
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}});
         const auto result = calculation::calculate(assessment);
         REQUIRE(result.calculated());
-        REQUIRE(result.effective->fixed_charge_embedding.has_value());
+        REQUIRE(result.effective->fixed_charge_groups.has_value());
         const auto& values = result.charges->assignment(0).charges;
         CHECK(values[1] == 2.0);
         CHECK(std::abs(values[0] + values[2] + 1.0) < 1.0e-12);
         CHECK(std::abs(values.total() - 1.0) < 1.0e-12);
-        const auto& totals = result.effective->fixed_charge_embedding->charge_totals[0];
+        const auto& totals = result.effective->fixed_charge_groups->charge_totals[0];
         CHECK(totals.original_total_charge == magnesium_charge - 1);
         CHECK(totals.active_total_charge == -1.0);
         results.push_back(result);
@@ -634,7 +636,7 @@ TEST_CASE("SQE+q0 retains prepared component charges while source atoms are fixe
     const auto sqe_assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_sqe_active_molecule(-1, 2)}},
         .method_id = "sqe",
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}});
     CHECK(sqe_assessment.plans().empty());
     REQUIRE(sqe_assessment.rejections().size() == 1);
@@ -650,9 +652,9 @@ TEST_CASE("SQE family preserves active totals with fractional fixed-source value
         auto assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules =
                 core::MoleculeCollection{std::vector{make_fractional_sqe_source_molecule()}},
-            .parameter_sets = {make_sqe_embedding_parameters(method_id)},
+            .parameter_sets = {make_sqe_fixed_charge_groups_parameters(method_id)},
             .method_id = method_id,
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25},
                             {.molecule_index = 0, .atom_index = 3, .charge = -0.1}}}});
         REQUIRE(assessment.plans().size() == 3);
@@ -666,14 +668,14 @@ TEST_CASE("SQE family preserves active totals with fractional fixed-source value
     }
 }
 
-TEST_CASE("unsupported methods reject embeddings before parameter classification",
+TEST_CASE("unsupported methods reject fixed-charge groups before parameter classification",
           "[calculation][planning]") {
     for (const auto method_id : {"formal", "peoe"}) {
         auto request = calculation::AssessmentRequest{
             .molecules =
                 core::MoleculeCollection{std::vector{make_interleaved_hydrogen_magnesium_oxygen()}},
             .method_id = method_id,
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}};
         const auto assessment = calculation::assess(std::move(request));
 
@@ -683,11 +685,12 @@ TEST_CASE("unsupported methods reject embeddings before parameter classification
         CHECK_FALSE(assessment.rejections()[0].policy.has_value());
         REQUIRE(assessment.rejections()[0].issues.size() == 1);
         CHECK(std::get<methods::PrerequisiteIssue>(assessment.rejections()[0].issues[0]).kind ==
-              methods::PrerequisiteIssueKind::unsupported_embedding);
+              methods::PrerequisiteIssueKind::unsupported_fixed_charge_groups);
     }
 }
 
-TEST_CASE("embedded EEM executes in full, cutoff, and cover modes", "[calculation][planning]") {
+TEST_CASE("fixed-charge groups execute in full, cutoff, and cover modes",
+          "[calculation][planning]") {
     const auto make_request = [](const calculation::ExecutionSelectionKind kind,
                                  const calculation::ResourcePolicy resource_policy = {}) {
         auto request = calculation::AssessmentRequest{
@@ -701,7 +704,7 @@ TEST_CASE("embedded EEM executes in full, cutoff, and cover modes", "[calculatio
                                                     ? std::optional<double>{}
                                                     : std::optional{8.0}},
             .resource_policy = resource_policy,
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}};
         return request;
     };
@@ -763,7 +766,7 @@ TEST_CASE("embedded EEM executes in full, cutoff, and cover modes", "[calculatio
 }
 
 TEST_CASE("fixed sources reach cutoff and cover over active fragments",
-          "[calculation][planning][embedding][reduced]") {
+          "[calculation][planning][fixed-charge-groups][reduced]") {
     const auto exercise = [&](const std::string_view method_id,
                               const chargefw::parameters::ParameterSet& parameter_set,
                               const int active_hydrogen_charge) {
@@ -773,18 +776,18 @@ TEST_CASE("fixed sources reach cutoff and cover over active fragments",
         const auto active_molecules =
             core::MoleculeCollection{std::vector{make_remote_active_pair(active_hydrogen_charge),
                                                  make_remote_active_pair(active_hydrogen_charge)}};
-        const auto make_assessment = [&](const bool embedded,
+        const auto make_assessment = [&](const bool has_fixed_sources,
                                          const calculation::ExecutionSelectionKind selection) {
             auto request = calculation::AssessmentRequest{
-                .molecules = embedded ? source_molecules : active_molecules,
+                .molecules = has_fixed_sources ? source_molecules : active_molecules,
                 .parameter_sets = {parameter_set},
                 .method_id = std::string{method_id},
                 .execution_selection = calculation::ExecutionSelection{
                     selection, selection == calculation::ExecutionSelectionKind::full
                                    ? std::optional<double>{}
                                    : std::optional{8.0}}};
-            if (embedded) {
-                request.fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            if (has_fixed_sources) {
+                request.fixed_charge_groups = calculation::FixedChargeGroups{
                     .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}}};
             }
             return calculation::assess(std::move(request));
@@ -814,9 +817,9 @@ TEST_CASE("fixed sources reach cutoff and cover over active fragments",
             CHECK(assessment.plans()[0].policy().mode() == mode);
             const auto result = calculation::calculate(assessment, 2);
             REQUIRE(result.calculated());
-            REQUIRE(result.effective->fixed_charge_embedding.has_value());
+            REQUIRE(result.effective->fixed_charge_groups.has_value());
             REQUIRE(result.charges->size() == full.charges->size());
-            const auto& totals = result.effective->fixed_charge_embedding->charge_totals;
+            const auto& totals = result.effective->fixed_charge_groups->charge_totals;
             REQUIRE(totals.size() == 2);
             CHECK(totals[0].original_total_charge == active_hydrogen_charge + 2.0);
             CHECK(totals[0].active_total_charge == active_hydrogen_charge);
@@ -876,17 +879,17 @@ TEST_CASE("fixed sources reach cutoff and cover over active fragments",
         }
     };
 
-    exercise("eem", make_embedding_eem_parameters(), 0);
-    exercise("sqe", make_sqe_embedding_parameters("sqe"), 0);
-    exercise("sqeq0", make_sqe_embedding_parameters("sqeq0"), -1);
-    exercise("sqeqp", make_sqeqp_embedding_parameters(), -1);
+    exercise("eem", make_fixed_charge_groups_eem_parameters(), 0);
+    exercise("sqe", make_sqe_fixed_charge_groups_parameters("sqe"), 0);
+    exercise("sqeq0", make_sqe_fixed_charge_groups_parameters("sqeq0"), -1);
+    exercise("sqeqp", make_sqeqp_fixed_charge_groups_parameters(), -1);
 }
 
 TEST_CASE("reduced SQE+qp keeps disconnected normalized reference component totals",
-          "[calculation][planning][embedding][reduced][sqeqp]") {
+          "[calculation][planning][fixed-charge-groups][reduced][sqeqp]") {
     const auto molecule = make_disconnected_qp_source_molecule();
     const auto source_atom_index = molecule.atom_count() - 1;
-    const auto parameter_set = make_sqeqp_embedding_parameters();
+    const auto parameter_set = make_sqeqp_fixed_charge_groups_parameters();
     const auto make_assessment = [&](const calculation::ExecutionSelectionKind selection,
                                      const double radius) {
         return calculation::assess(calculation::AssessmentRequest{
@@ -898,7 +901,7 @@ TEST_CASE("reduced SQE+qp keeps disconnected normalized reference component tota
                     selection, selection == calculation::ExecutionSelectionKind::full
                                    ? std::optional<double>{}
                                    : std::optional{radius}},
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {
                     {.molecule_index = 0, .atom_index = source_atom_index, .charge = 0.4}}}});
     };
@@ -948,7 +951,7 @@ TEST_CASE("reduced SQE+qp keeps disconnected normalized reference component tota
     }
 }
 
-TEST_CASE("embedded assessment retains original molecules and rejections after moves",
+TEST_CASE("fixed-charge assessment retains original molecules and rejections after moves",
           "[calculation][planning]") {
     const auto create_assessment = [] {
         auto request = calculation::AssessmentRequest{
@@ -958,7 +961,7 @@ TEST_CASE("embedded assessment retains original molecules and rejections after m
             .method_id = "eem",
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-            .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+            .fixed_charge_groups = calculation::FixedChargeGroups{
                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}},
                 .charge_provenance = "owned sources"}};
         return calculation::assess(std::move(request));
@@ -974,17 +977,17 @@ TEST_CASE("embedded assessment retains original molecules and rejections after m
     const auto moved_result = calculation::calculate(moved_assessment);
     REQUIRE(moved_result.calculated());
     REQUIRE(moved_result.effective.has_value());
-    REQUIRE(moved_result.effective->fixed_charge_embedding.has_value());
+    REQUIRE(moved_result.effective->fixed_charge_groups.has_value());
 }
 
-TEST_CASE("embedded parameter rejections use original atom indices and descriptions",
+TEST_CASE("fixed-charge parameter rejections use original atom indices and descriptions",
           "[calculation][planning]") {
     const auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules =
             core::MoleculeCollection{std::vector{make_interleaved_hydrogen_magnesium_oxygen()}},
         .parameter_sets = {make_hydrogen_only_eem_parameters()},
         .method_id = "eem",
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}});
 
     CHECK(assessment.plans().empty());
@@ -999,14 +1002,14 @@ TEST_CASE("embedded parameter rejections use original atom indices and descripti
     CHECK(issue.message.contains("atom 3 (source name 'active-O', O, formal charge 0)"));
 }
 
-TEST_CASE("embedded geometry diagnostics label active-subsystem atom numbering",
+TEST_CASE("fixed-charge geometry diagnostics label active-subsystem atom numbering",
           "[calculation][planning]") {
     const auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{
             make_interleaved_hydrogen_magnesium_oxygen(core::Position{0.0, 0.0, 0.0})}},
         .parameter_sets = {make_eem_parameters()},
         .method_id = "eem",
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 2.0}}}});
 
     CHECK(assessment.plans().empty());
@@ -1019,14 +1022,13 @@ TEST_CASE("embedded geometry diagnostics label active-subsystem atom numbering",
     CHECK(issue.message.contains("active-subsystem atom numbering"));
 }
 
-TEST_CASE("fixed charge embedding source selectors are validated", "[calculation][planning]") {
+TEST_CASE("fixed-charge group sources are validated", "[calculation][planning]") {
     const auto check_invalid = [](std::vector<core::Molecule> molecules,
                                   std::vector<calculation::FixedAtomCharge> sources,
                                   const std::string_view diagnostic) {
         auto request = calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::move(molecules)},
-            .fixed_charge_embedding =
-                calculation::FixedChargeEmbedding{.sources = std::move(sources)}};
+            .fixed_charge_groups = calculation::FixedChargeGroups{.sources = std::move(sources)}};
         auto rejected = false;
         try {
             static_cast<void>(calculation::assess(std::move(request)));
@@ -1053,17 +1055,16 @@ TEST_CASE("fixed charge embedding source selectors are validated", "[calculation
     check_invalid({make_bonded_pair()}, {{0, 1, 0.5}}, "is bonded to atom 0");
     check_invalid({make_bonded_pair()}, {{0, 0, 0.5}, {0, 1, -0.5}}, "is bonded to atom 1");
     check_invalid({core::Molecule{std::vector{core::Atom{6}}}, ion_pair}, {{0, 0, 0.0}},
-                  "leaves no active atoms in molecule 0");
+                  "fixed-charge groups leave no active atoms in molecule 0");
 }
 
-TEST_CASE("fixed charge embedding validates geometry only for affected molecules",
+TEST_CASE("fixed-charge group geometry is validated only for affected molecules",
           "[calculation][planning]") {
     const auto make_request = [](core::MoleculeCollection molecules,
                                  std::vector<calculation::FixedAtomCharge> sources) {
         return calculation::AssessmentRequest{
             .molecules = std::move(molecules),
-            .fixed_charge_embedding =
-                calculation::FixedChargeEmbedding{.sources = std::move(sources)}};
+            .fixed_charge_groups = calculation::FixedChargeGroups{.sources = std::move(sources)}};
     };
     const auto pair_atoms = std::vector{core::Atom{6}, core::Atom{6}};
     const auto separated_pair =
@@ -1073,7 +1074,7 @@ TEST_CASE("fixed charge embedding validates geometry only for affected molecules
         core::MoleculeCollection{std::vector{make_molecule_with_positions(pair_atoms, {})}},
         {{0, 0, 1.0}});
     CHECK(std::string_view{assessment_error(std::move(missing_conformer))}.contains(
-        "requires a conformer in molecule 0"));
+        "fixed-charge groups require a conformer in molecule 0"));
 
     for (std::size_t atom_index = 0; atom_index < 2; ++atom_index) {
         for (std::size_t axis = 0; axis < 3; ++axis) {
@@ -1145,7 +1146,7 @@ TEST_CASE("fixed charge embedding validates geometry only for affected molecules
     CHECK_FALSE(unrelated_assessment.rejections().empty());
 }
 
-TEST_CASE("fixed charge embedding records active and original totals independently",
+TEST_CASE("fixed-charge groups record active and original totals independently",
           "[calculation][planning]") {
     auto audit_vs_model_request = calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_isolated_ion_pair()}},
@@ -1153,30 +1154,30 @@ TEST_CASE("fixed charge embedding records active and original totals independent
         .method_id = "eem",
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-        .fixed_charge_embedding = calculation::FixedChargeEmbedding{
+        .fixed_charge_groups = calculation::FixedChargeGroups{
             .sources = {{.molecule_index = 0, .atom_index = 1, .charge = -0.5}}}};
     const auto assessment = calculation::assess(audit_vs_model_request);
     REQUIRE(assessment.plans().size() == 1);
-    REQUIRE(audit_vs_model_request.fixed_charge_embedding.has_value());
-    CHECK(audit_vs_model_request.fixed_charge_embedding->sources[0].charge == -0.5);
+    REQUIRE(audit_vs_model_request.fixed_charge_groups.has_value());
+    CHECK(audit_vs_model_request.fixed_charge_groups->sources[0].charge == -0.5);
     CHECK(core::total_formal_charge(audit_vs_model_request.molecules[0]) == 2.0);
     const auto result = calculation::calculate(assessment);
     REQUIRE(result.calculated());
-    REQUIRE(result.effective->fixed_charge_embedding.has_value());
-    CHECK(result.effective->fixed_charge_embedding->charge_totals[0].original_total_charge == 2.0);
-    CHECK(result.effective->fixed_charge_embedding->charge_totals[0].active_total_charge == 0.0);
+    REQUIRE(result.effective->fixed_charge_groups.has_value());
+    CHECK(result.effective->fixed_charge_groups->charge_totals[0].original_total_charge == 2.0);
+    CHECK(result.effective->fixed_charge_groups->charge_totals[0].active_total_charge == 0.0);
     CHECK(result.charges->assignment(0).charges[1] == -0.5);
     CHECK(std::abs(result.charges->assignment(0).charges.total() + 0.5) < 1.0e-12);
 }
 
-TEST_CASE("empty fixed charge embedding is equivalent to absence", "[calculation][planning]") {
-    auto make_request = [](const bool with_empty_embedding) {
+TEST_CASE("empty fixed-charge groups are equivalent to absence", "[calculation][planning]") {
+    auto make_request = [](const bool with_empty_fixed_charge_groups) {
         auto request = calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
             .parameter_sets = {make_eem_parameters()}};
-        if (with_empty_embedding) {
-            request.fixed_charge_embedding =
-                calculation::FixedChargeEmbedding{.charge_provenance = "ignored when empty"};
+        if (with_empty_fixed_charge_groups) {
+            request.fixed_charge_groups =
+                calculation::FixedChargeGroups{.charge_provenance = "ignored when empty"};
         }
         return request;
     };
@@ -1195,8 +1196,8 @@ TEST_CASE("empty fixed charge embedding is equivalent to absence", "[calculation
     const auto empty_result = calculation::calculate(empty);
     REQUIRE(ordinary_result.calculated());
     REQUIRE(empty_result.calculated());
-    CHECK_FALSE(ordinary_result.effective->fixed_charge_embedding.has_value());
-    CHECK_FALSE(empty_result.effective->fixed_charge_embedding.has_value());
+    CHECK_FALSE(ordinary_result.effective->fixed_charge_groups.has_value());
+    CHECK_FALSE(empty_result.effective->fixed_charge_groups.has_value());
     CHECK(std::ranges::equal(empty_result.charges->assignment(0).charges.values(),
                              ordinary_result.charges->assignment(0).charges.values()));
 }

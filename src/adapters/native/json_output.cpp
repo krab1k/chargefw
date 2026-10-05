@@ -166,16 +166,16 @@ constexpr auto metric_scale = 1000.0;
 }
 
 [[nodiscard]] auto
-fixed_charge_embedding_json(const calculation::FixedChargeEmbeddingProvenance& embedding,
-                            const std::span<const ImportedMoleculeRecord> records) -> Json {
+fixed_charge_groups_json(const calculation::FixedChargeGroupsProvenance& fixed_charge_groups,
+                         const std::span<const ImportedMoleculeRecord> records) -> Json {
     auto sources = Json::array();
-    for (const auto& source : embedding.sources) {
+    for (const auto& source : fixed_charge_groups.sources) {
         sources.push_back({{"molecule_index", source.molecule_index},
                            {"atom_index", source.atom_index},
                            {"charge", source.charge}});
     }
     auto charge_totals = Json::array();
-    for (const auto& totals : embedding.charge_totals) {
+    for (const auto& totals : fixed_charge_groups.charge_totals) {
         charge_totals.push_back({{"molecule_index", totals.molecule_index},
                                  {"original_total_charge", totals.original_total_charge},
                                  {"active_total_charge", totals.active_total_charge}});
@@ -187,7 +187,7 @@ fixed_charge_embedding_json(const calculation::FixedChargeEmbeddingProvenance& e
         Json instances = Json::array();
     };
     auto groups = std::vector<ComponentGroup>{};
-    for (const auto& source : embedding.sources) {
+    for (const auto& source : fixed_charge_groups.sources) {
         const auto id = source_component_id(records[source.molecule_index], source.atom_index);
         if (!id.has_value()) {
             continue;
@@ -204,7 +204,7 @@ fixed_charge_embedding_json(const calculation::FixedChargeEmbeddingProvenance& e
     }
 
     auto result = Json{{"sources", std::move(sources)},
-                       {"charge_provenance", embedding.charge_provenance},
+                       {"charge_provenance", fixed_charge_groups.charge_provenance},
                        {"charge_totals", std::move(charge_totals)}};
     if (!groups.empty()) {
         result["components"] = Json::array();
@@ -318,9 +318,9 @@ fixed_charge_embedding_json(const calculation::FixedChargeEmbeddingProvenance& e
                                   {"radius_angstrom", value.execution_policy.radius()}};
         effective["method_options"] =
             method_options_json({{value.method_id, value.method_options}});
-        if (value.fixed_charge_embedding.has_value()) {
-            effective["fixed_charge_embedding"] =
-                fixed_charge_embedding_json(*value.fixed_charge_embedding, result.inputs());
+        if (value.fixed_charge_groups.has_value()) {
+            effective["fixed_charge_groups"] =
+                fixed_charge_groups_json(*value.fixed_charge_groups, result.inputs());
         }
     }
     Json encoded{{"requested", std::move(requested)}, {"effective", std::move(effective)}};

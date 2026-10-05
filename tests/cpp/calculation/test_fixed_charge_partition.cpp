@@ -22,7 +22,7 @@ namespace {
 
 struct PartitionInput {
     core::MoleculeCollection molecules;
-    calculation::FixedChargeEmbedding embedding;
+    calculation::FixedChargeGroups fixed_charge_groups;
 };
 
 auto make_partition_input(const std::vector<calculation::FixedAtomCharge>& sources)
@@ -57,13 +57,13 @@ auto make_partition_input(const std::vector<calculation::FixedAtomCharge>& sourc
                 std::vector{core::Atom{9, 0, "between-F"}}, {}, {}, "unaffected-between"},
             std::move(second_affected)},
         "named-collection"};
-    return {std::move(molecules),
-            calculation::FixedChargeEmbedding{sources, "caller charge label"}};
+    return {std::move(molecules), calculation::FixedChargeGroups{sources, "caller charge label"}};
 }
 
 auto make_partition_from_temporary_inputs() -> calculation::detail::FixedChargePartition {
     auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
-    return calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+    return calculation::detail::make_fixed_charge_partition(input.molecules,
+                                                            input.fixed_charge_groups);
 }
 
 auto make_active_charge_set() -> chargefw::charges::ChargeSet {
@@ -88,21 +88,21 @@ auto make_active_charge_set() -> chargefw::charges::ChargeSet {
 TEST_CASE("fixed-charge partition preserves original ordering and owned mappings",
           "[calculation][fixed-charge-partition]") {
     auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
-    const auto partition =
-        calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+    const auto partition = calculation::detail::make_fixed_charge_partition(
+        input.molecules, input.fixed_charge_groups);
 
     CHECK(input.molecules.name() == "named-collection");
     CHECK(input.molecules[1].atom_count() == 4);
     CHECK(input.molecules[1].bond_count() == 2);
     CHECK(input.molecules[1].atom(2).name() == "Mg2");
     CHECK(input.molecules[1].conformer(1).positions()[2].z == 1.0);
-    REQUIRE(input.embedding.sources.size() == 3);
-    CHECK(input.embedding.sources[0].molecule_index == 3);
-    CHECK(input.embedding.sources[0].atom_index == 3);
-    CHECK(input.embedding.sources[0].charge == -0.25);
-    CHECK(input.embedding.sources[1].molecule_index == 1);
-    CHECK(input.embedding.sources[1].atom_index == 2);
-    CHECK(input.embedding.sources[1].charge == 0.5);
+    REQUIRE(input.fixed_charge_groups.sources.size() == 3);
+    CHECK(input.fixed_charge_groups.sources[0].molecule_index == 3);
+    CHECK(input.fixed_charge_groups.sources[0].atom_index == 3);
+    CHECK(input.fixed_charge_groups.sources[0].charge == -0.25);
+    CHECK(input.fixed_charge_groups.sources[1].molecule_index == 1);
+    CHECK(input.fixed_charge_groups.sources[1].atom_index == 2);
+    CHECK(input.fixed_charge_groups.sources[1].charge == 0.5);
 
     CHECK(partition.active_molecules.name() == "named-collection");
     CHECK(partition.active_molecules.size() == 4);
@@ -210,8 +210,9 @@ TEST_CASE("fixed-charge partition retains disconnected active components as one 
         std::vector{core::Bond{3, 2}},
         {core::Conformer{{{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {2.0, 0.0, 0.0}, {3.0, 0.0, 0.0}}}},
         "disconnected-active"}}};
-    const auto embedding = calculation::FixedChargeEmbedding{{{0, 1, 0.75}}, "components"};
-    const auto partition = calculation::detail::make_fixed_charge_partition(molecules, embedding);
+    const auto fixed_charge_groups = calculation::FixedChargeGroups{{{0, 1, 0.75}}, "components"};
+    const auto partition =
+        calculation::detail::make_fixed_charge_partition(molecules, fixed_charge_groups);
 
     REQUIRE(partition.active_molecules.size() == 1);
     REQUIRE(partition.targets.size() == 1);
@@ -227,8 +228,8 @@ TEST_CASE("fixed-charge partition retains disconnected active components as one 
 TEST_CASE("empty fixed-charge partition is an identity copy",
           "[calculation][fixed-charge-partition]") {
     auto input = make_partition_input({});
-    const auto partition =
-        calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+    const auto partition = calculation::detail::make_fixed_charge_partition(
+        input.molecules, input.fixed_charge_groups);
 
     REQUIRE(partition.active_molecules.size() == input.molecules.size());
     REQUIRE(partition.targets.size() == input.molecules.size());
@@ -256,8 +257,8 @@ TEST_CASE("fixed-charge reassembly scatters active charges and preserves assignm
           "[calculation][fixed-charge-partition]") {
     const auto result = [] {
         auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
-        const auto partition =
-            calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+        const auto partition = calculation::detail::make_fixed_charge_partition(
+            input.molecules, input.fixed_charge_groups);
         const auto active_charges = make_active_charge_set();
         const auto reassembled =
             calculation::detail::reassemble_fixed_charge_results(active_charges, partition);
@@ -327,8 +328,8 @@ TEST_CASE("fixed-charge reassembly scatters active charges and preserves assignm
 TEST_CASE("fixed-charge reassembly supports identity partitions and absent parameter IDs",
           "[calculation][fixed-charge-partition]") {
     auto input = make_partition_input({});
-    const auto partition =
-        calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+    const auto partition = calculation::detail::make_fixed_charge_partition(
+        input.molecules, input.fixed_charge_groups);
     const auto active = chargefw::charges::ChargeSet{
         "identity-method",
         {{chargefw::charges::ChargeTarget{1, std::nullopt},
@@ -348,8 +349,8 @@ TEST_CASE("fixed-charge reassembly supports identity partitions and absent param
 TEST_CASE("fixed-charge reassembly rejects target and active-size mismatches",
           "[calculation][fixed-charge-partition]") {
     auto input = make_partition_input({{1, 2, 0.5}});
-    const auto partition =
-        calculation::detail::make_fixed_charge_partition(input.molecules, input.embedding);
+    const auto partition = calculation::detail::make_fixed_charge_partition(
+        input.molecules, input.fixed_charge_groups);
     const auto wrong_size = chargefw::charges::ChargeSet{
         "test-method",
         {{chargefw::charges::ChargeTarget{1, std::nullopt},
@@ -376,17 +377,18 @@ TEST_CASE("fixed-charge partition factory shares source validation",
         std::vector{core::Molecule{std::vector{core::Atom{6}, core::Atom{6}},
                                    std::vector{core::Bond{0, 1}},
                                    {core::Conformer{{{0.0, 0.0, 0.0}, {2.0, 0.0, 0.0}}}}}}};
-    const auto embedding = calculation::FixedChargeEmbedding{{{0, 0, 1.0}}, {}};
+    const auto fixed_charge_groups = calculation::FixedChargeGroups{{{0, 0, 1.0}}, {}};
 
     CHECK_THROWS_AS(calculation::detail::make_fixed_charge_partition(
-                        unbonded, calculation::FixedChargeEmbedding{{{1, 0, 1.0}}, {}}),
+                        unbonded, calculation::FixedChargeGroups{{{1, 0, 1.0}}, {}}),
                     std::invalid_argument);
-    CHECK_THROWS_AS(calculation::detail::make_fixed_charge_partition(bonded, embedding),
+    CHECK_THROWS_AS(calculation::detail::make_fixed_charge_partition(bonded, fixed_charge_groups),
                     std::invalid_argument);
     const auto coincident = core::MoleculeCollection{
         std::vector{core::Molecule{std::vector{core::Atom{6}, core::Atom{6}},
                                    {},
                                    {core::Conformer{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}}}}}};
-    CHECK_THROWS_AS(calculation::detail::make_fixed_charge_partition(coincident, embedding),
-                    std::invalid_argument);
+    CHECK_THROWS_AS(
+        calculation::detail::make_fixed_charge_partition(coincident, fixed_charge_groups),
+        std::invalid_argument);
 }

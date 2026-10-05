@@ -50,7 +50,7 @@ struct MethodRequirements {
 
     ResourceRequirements resources{};
     // Numerical/scientific support, independent of cutoff and cover execution support.
-    bool supports_fixed_charge_embedding = false;
+    bool supports_fixed_charge_groups = false;
 
     [[nodiscard]] auto requires_common_parameters() const noexcept -> bool {
         return !common_parameters.empty();

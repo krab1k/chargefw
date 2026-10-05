@@ -37,16 +37,16 @@ struct CalculationMetrics {
     double computation_seconds = 0.0;
 };
 
-struct EmbeddingChargeTotals {
+struct FixedChargeGroupChargeTotals {
     std::size_t molecule_index = 0;
     double original_total_charge = 0.0;
     double active_total_charge = 0.0;
 };
 
-struct FixedChargeEmbeddingProvenance {
+struct FixedChargeGroupsProvenance {
     std::vector<FixedAtomCharge> sources;
     std::string charge_provenance;
-    std::vector<EmbeddingChargeTotals> charge_totals;
+    std::vector<FixedChargeGroupChargeTotals> charge_totals;
 };
 
 // The concrete candidate and execution policy selected by the application-facing facade.
@@ -56,7 +56,7 @@ struct EffectiveCalculation {
     methods::MethodOptions method_options;
     ExecutionPolicy execution_policy;
     std::vector<methods::ExecutionIssue> execution_issues;
-    std::optional<FixedChargeEmbeddingProvenance> fixed_charge_embedding{};
+    std::optional<FixedChargeGroupsProvenance> fixed_charge_groups{};
 };
 
 enum class ExecutionStatus : std::uint8_t {

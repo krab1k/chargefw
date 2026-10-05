@@ -51,9 +51,10 @@ class ComputationFinishedEmitter {
     std::chrono::steady_clock::time_point started_;
 };
 
-[[nodiscard]] auto make_embedding_provenance(const detail::FixedChargePartition& partition)
-    -> FixedChargeEmbeddingProvenance {
-    auto provenance = FixedChargeEmbeddingProvenance{
+[[nodiscard]] auto
+make_fixed_charge_groups_provenance(const detail::FixedChargePartition& partition)
+    -> FixedChargeGroupsProvenance {
+    auto provenance = FixedChargeGroupsProvenance{
         .sources = {}, .charge_provenance = partition.charge_provenance, .charge_totals = {}};
     auto source_count = std::size_t{0};
     for (const auto& target : partition.targets) {
@@ -150,10 +151,10 @@ auto calculate(const AssessmentResult& assessment, const ExecutionPlan& plan,
         .method_options = selected.method_options,
         .execution_policy = plan.policy(),
         .execution_issues = {plan.warnings().begin(), plan.warnings().end()},
-        .fixed_charge_embedding =
+        .fixed_charge_groups =
             fixed_charge_partition == nullptr
                 ? std::nullopt
-                : std::optional{make_embedding_provenance(*fixed_charge_partition)}};
+                : std::optional{make_fixed_charge_groups_provenance(*fixed_charge_partition)}};
 
     const auto computation_started = std::chrono::steady_clock::now();
     auto status = ExecutionStatus::success;

@@ -313,10 +313,10 @@
           }
         },
         "method_options": { "$ref": "#/$defs/methodOptions" },
-        "fixed_charge_embedding": { "$ref": "#/$defs/fixedChargeEmbedding" }
+        "fixed_charge_groups": { "$ref": "#/$defs/fixedChargeGroups" }
       }
     },
-    "fixedChargeEmbedding": {
+    "fixedChargeGroups": {
       "type": "object",
       "additionalProperties": false,
       "description": "Optional effective provenance for fixed charges and per-original-molecule charge budgets.",
@@ -332,7 +332,7 @@
         "charge_totals": {
           "type": "array",
           "description": "Original and active charge totals, ordered by original input molecule.",
-          "items": { "$ref": "#/$defs/embeddingChargeTotals" }
+          "items": { "$ref": "#/$defs/fixedChargeGroupChargeTotals" }
         },
         "components": {
           "type": "array",
@@ -379,7 +379,7 @@
         "charge": { "type": "number", "description": "Prescribed source charge in elementary-charge units." }
       }
     },
-    "embeddingChargeTotals": {
+    "fixedChargeGroupChargeTotals": {
       "type": "object",
       "additionalProperties": false,
       "required": ["molecule_index", "original_total_charge", "active_total_charge"],

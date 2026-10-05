@@ -30,7 +30,7 @@ struct FixedChargePartition {
 };
 
 [[nodiscard]] auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
-                                               const FixedChargeEmbedding& embedding)
+                                               const FixedChargeGroups& fixed_charge_groups)
     -> FixedChargePartition;
 
 auto validate_partition_active_molecules(const features::PreparedMoleculeCollection& molecules,

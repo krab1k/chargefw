@@ -13,9 +13,10 @@ candidate parameters: sulfate and other covered chemistry remains active unless 
 SQE/SQE+q0/SQE+qp; EEM remains secondary, not a justification for prioritizing old parameter coverage.
 Existing full, cutoff, and cover machinery supplies the fixed sources to relevant solves.
 
-This is one-way embedding: active charges respond; source polarization and active/fixed charge transfer
-are absent. QM/MM electrostatic embedding is an analogy, not validation of ChargeFW response. Organic
-response parameters are not certified for metal fields; quantitative metal-site accuracy is unvalidated.
+This is a one-way fixed-charge group treatment: active charges respond; source polarization and
+active/fixed charge transfer are absent. QM/MM point-charge methods provide an analogy, not validation
+of ChargeFW response. Organic response parameters are not certified for metal fields; quantitative
+metal-site accuracy is unvalidated.
 
 Charge accounting uses the independent active-charge model:
 
@@ -32,8 +33,8 @@ reason to renormalize active atoms or sources.
 Bundled immutable named-component templates provide deterministic charges when structure input omits
 them. Validate component identity, element identity, and complete atom mapping; do not infer oxidation
 state from element alone (FE and FE2 are distinct). PDB/mmCIF use must not require a network lookup or
-embedded input charge table. A multiatom component's formal total does not determine its partial-charge
-distribution.
+component-supplied input charge table. A multiatom component's formal total does not determine its
+partial-charge distribution.
 
 ## Structure-Index Evidence
 
@@ -149,7 +150,7 @@ possibilities; their identity and public option remain unsettled.
   <https://doi.org/10.1186/s13321-021-00528-w>.
 - Senn and Thiel (2009), QM/MM methods for biomolecular systems. DOI:
   <https://doi.org/10.1002/anie.200802019>.
-- Cisneros, Piquemal, and Darden (2006), electrostatic embedding and short-range limitations. DOI:
+- Cisneros, Piquemal, and Darden (2006), external electrostatic potentials and short-range limitations. DOI:
   <https://doi.org/10.1021/jp062768x>.
 - Li and Merz (2017), metal-ion modeling, polarization, and charge-transfer limitations. DOI:
   <https://doi.org/10.1021/acs.chemrev.6b00440>.

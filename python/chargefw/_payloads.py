@@ -57,16 +57,16 @@ class FixedAtomChargePayload(TypedDict):
     charge: float
 
 
-class EmbeddingChargeTotalsPayload(TypedDict):
+class FixedChargeGroupChargeTotalsPayload(TypedDict):
     molecule_index: int
     original_total_charge: float
     active_total_charge: float
 
 
-class FixedChargeEmbeddingProvenancePayload(TypedDict):
+class FixedChargeGroupsProvenancePayload(TypedDict):
     sources: list[FixedAtomChargePayload]
     charge_provenance: str
-    charge_totals: list[EmbeddingChargeTotalsPayload]
+    charge_totals: list[FixedChargeGroupChargeTotalsPayload]
 
 
 class EffectiveCalculationPayload(TypedDict):
@@ -75,7 +75,7 @@ class EffectiveCalculationPayload(TypedDict):
     method_options: dict[str, MethodOptionValue]
     execution_policy: ExecutionPolicyPayload
     execution_issues: list[ExecutionIssuePayload]
-    fixed_charge_embedding: FixedChargeEmbeddingProvenancePayload | None
+    fixed_charge_groups: FixedChargeGroupsProvenancePayload | None
 
 
 class ExecutionPlanPayload(TypedDict):

@@ -28,7 +28,7 @@ namespace mmcif = chargefw::adapters::gemmi::mmcif_input;
 
 namespace {
 auto mmcif_water_and_magnesium() -> ImportedMoleculeRecord {
-    std::istringstream input{R"cif(data_embedding
+    std::istringstream input{R"cif(data_fixed_charge_groups
 loop_
 _atom_site.group_PDB
 _atom_site.id
@@ -92,14 +92,14 @@ auto ion_record(const std::string& component, const int atomic_number, const std
 auto run_sqeqp(const chargefw::core::MoleculeCollection& molecules,
                const chargefw::parameters::ParameterSet& parameter_set,
                const calculation::ExecutionSelection execution,
-               const std::optional<calculation::FixedChargeEmbedding>& embedding = {})
+               const std::optional<calculation::FixedChargeGroups>& fixed_charge_groups = {})
     -> calculation::ExecutionResult {
     auto request = calculation::AssessmentRequest{.molecules = molecules,
                                                   .parameter_sets = {parameter_set},
                                                   .method_id = "sqeqp",
                                                   .parameter_set_id = "SQEqp_Schindler2021_CCD_gen",
                                                   .execution_selection = execution,
-                                                  .fixed_charge_embedding = embedding};
+                                                  .fixed_charge_groups = fixed_charge_groups};
     const auto assessment = calculation::assess(std::move(request));
     return calculation::calculate(assessment);
 }
@@ -113,25 +113,25 @@ TEST_CASE("private fixed-charge groups resolve exact ion identities in input ord
         ion_record("K", 19, "K", "5", -1),    ion_record("CA", 20, "CA", "6", -1),
         ion_record("CL", 17, "CL", "7", 1),   ion_record("ZN", 30, "ZN", "8", -1)};
     const std::vector<std::string> request{"ZN", "FE", "CA", "K", "NA", "CL", "MG", "FE2"};
-    const auto embedding = detail::resolve_fixed_charge_groups(records, request);
-    REQUIRE(embedding.sources.size() == 8);
-    CHECK(embedding.sources[0].molecule_index == 0);
-    CHECK(embedding.sources[0].charge == 2.0);
-    CHECK(embedding.sources[1].molecule_index == 1);
-    CHECK(embedding.sources[1].charge == 2.0);
-    CHECK(embedding.sources[2].molecule_index == 2);
-    CHECK(embedding.sources[2].charge == 3.0);
-    CHECK(embedding.sources[3].charge == 1.0);
-    CHECK(embedding.sources[4].charge == 1.0);
-    CHECK(embedding.sources[5].charge == 2.0);
-    CHECK(embedding.sources[6].charge == -1.0);
-    CHECK(embedding.sources[7].charge == 2.0);
+    const auto fixed_charge_groups = detail::resolve_fixed_charge_groups(records, request);
+    REQUIRE(fixed_charge_groups.sources.size() == 8);
+    CHECK(fixed_charge_groups.sources[0].molecule_index == 0);
+    CHECK(fixed_charge_groups.sources[0].charge == 2.0);
+    CHECK(fixed_charge_groups.sources[1].molecule_index == 1);
+    CHECK(fixed_charge_groups.sources[1].charge == 2.0);
+    CHECK(fixed_charge_groups.sources[2].molecule_index == 2);
+    CHECK(fixed_charge_groups.sources[2].charge == 3.0);
+    CHECK(fixed_charge_groups.sources[3].charge == 1.0);
+    CHECK(fixed_charge_groups.sources[4].charge == 1.0);
+    CHECK(fixed_charge_groups.sources[5].charge == 2.0);
+    CHECK(fixed_charge_groups.sources[6].charge == -1.0);
+    CHECK(fixed_charge_groups.sources[7].charge == 2.0);
     for (std::size_t i = 0; i < records.size(); ++i) {
-        CHECK(embedding.sources[i].atom_index == 0);
+        CHECK(fixed_charge_groups.sources[i].atom_index == 0);
     }
-    CHECK(embedding.charge_provenance == "chargefw:fixed-charge-ions:v1");
+    CHECK(fixed_charge_groups.charge_provenance == "chargefw:fixed-charge-ions:v1");
     for (std::size_t i = 0; i < records.size(); ++i) {
-        CHECK(records[i].molecule.atom(0).formal_charge() != embedding.sources[i].charge);
+        CHECK(records[i].molecule.atom(0).formal_charge() != fixed_charge_groups.sources[i].charge);
     }
     CHECK(records[0].molecule.atom(0).formal_charge() == 4);
 }
@@ -147,10 +147,11 @@ TEST_CASE("private fixed-charge groups resolve repeated instances in atom order"
     record.import_metadata->components = {{"MG", {1}}, {"MG", {0}}};
 
     const std::vector<std::string> request{"MG", "MG"};
-    const auto embedding = detail::resolve_fixed_charge_groups(std::vector{record}, request);
-    REQUIRE(embedding.sources.size() == 2);
-    CHECK(embedding.sources[0].atom_index == 0);
-    CHECK(embedding.sources[1].atom_index == 1);
+    const auto fixed_charge_groups =
+        detail::resolve_fixed_charge_groups(std::vector{record}, request);
+    REQUIRE(fixed_charge_groups.sources.size() == 2);
+    CHECK(fixed_charge_groups.sources[0].atom_index == 0);
+    CHECK(fixed_charge_groups.sources[1].atom_index == 1);
 }
 
 TEST_CASE("private fixed-charge groups preserve atom order within one record",
@@ -185,14 +186,14 @@ TEST_CASE("private fixed-charge groups preserve atom order within one record",
 
     const std::vector records{record};
     const std::vector<std::string> request{"FE", "MG", "FE2", "MG"};
-    const auto embedding = detail::resolve_fixed_charge_groups(records, request);
-    REQUIRE(embedding.sources.size() == 3);
-    CHECK(embedding.sources[0].atom_index == 0);
-    CHECK(embedding.sources[0].charge == 2.0);
-    CHECK(embedding.sources[1].atom_index == 1);
-    CHECK(embedding.sources[1].charge == 2.0);
-    CHECK(embedding.sources[2].atom_index == 2);
-    CHECK(embedding.sources[2].charge == 3.0);
+    const auto fixed_charge_groups = detail::resolve_fixed_charge_groups(records, request);
+    REQUIRE(fixed_charge_groups.sources.size() == 3);
+    CHECK(fixed_charge_groups.sources[0].atom_index == 0);
+    CHECK(fixed_charge_groups.sources[0].charge == 2.0);
+    CHECK(fixed_charge_groups.sources[1].atom_index == 1);
+    CHECK(fixed_charge_groups.sources[1].charge == 2.0);
+    CHECK(fixed_charge_groups.sources[2].atom_index == 2);
+    CHECK(fixed_charge_groups.sources[2].charge == 3.0);
     CHECK(records[0].molecule.atom(0).formal_charge() == 0);
     CHECK(records[0].molecule.atom(1).formal_charge() == 7);
     CHECK(records[0].molecule.atom(2).formal_charge() == -4);
@@ -233,9 +234,9 @@ TEST_CASE("private fixed-charge groups use explicit components without hierarchy
     record.import_metadata->atoms[0].structural_labels.reset();
     const std::vector records{record};
     const std::vector<std::string> request{"MG"};
-    const auto embedding = detail::resolve_fixed_charge_groups(records, request);
-    REQUIRE(embedding.sources.size() == 1);
-    CHECK(embedding.sources[0].charge == 2.0);
+    const auto fixed_charge_groups = detail::resolve_fixed_charge_groups(records, request);
+    REQUIRE(fixed_charge_groups.sources.size() == 1);
+    CHECK(fixed_charge_groups.sources[0].charge == 2.0);
 }
 
 TEST_CASE("private fixed-charge groups use canonical component IDs and validate partitions",
@@ -400,29 +401,29 @@ TEST_CASE("mmCIF named-ion resolution feeds SQE+qp full and whole-radius calcula
     const auto parameter_set = chargefw::parameters::load_parameter_set_json_file(
         std::filesystem::path{CHARGEFW_TEST_PARAMETER_DIR} / "SQEqp_Schindler2021_CCD_gen.json");
 
-    const auto unembedded =
+    const auto unsupported_assessment =
         calculation::assess({.molecules = original,
                              .parameter_sets = {parameter_set},
                              .method_id = "sqeqp",
                              .parameter_set_id = "SQEqp_Schindler2021_CCD_gen"});
-    CHECK(unembedded.plans().empty());
+    CHECK(unsupported_assessment.plans().empty());
 
-    const auto embedded = run_sqeqp(
+    const auto fixed_source_result = run_sqeqp(
         original, parameter_set,
         calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}, resolved);
-    const auto manual = run_sqeqp(
-        original, parameter_set,
-        calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-        calculation::FixedChargeEmbedding{{{0, 3, 2.0}}, "chargefw:fixed-charge-ions:v1"});
+    const auto manual =
+        run_sqeqp(original, parameter_set,
+                  calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
+                  calculation::FixedChargeGroups{{{0, 3, 2.0}}, "chargefw:fixed-charge-ions:v1"});
     const auto omitted =
         run_sqeqp(active, parameter_set,
                   calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full});
-    REQUIRE(embedded.calculated());
+    REQUIRE(fixed_source_result.calculated());
     REQUIRE(manual.calculated());
     REQUIRE(omitted.calculated());
-    REQUIRE(embedded.charges->size() == 2);
+    REQUIRE(fixed_source_result.charges->size() == 2);
     for (std::size_t conformer = 0; conformer < 2; ++conformer) {
-        const auto& got = embedded.charges->assignment(conformer);
+        const auto& got = fixed_source_result.charges->assignment(conformer);
         const auto& expected = manual.charges->assignment(conformer);
         CHECK(got.target.conformer_index == conformer);
         REQUIRE(got.charges.size() == 4);
@@ -439,10 +440,10 @@ TEST_CASE("mmCIF named-ion resolution feeds SQE+qp full and whole-radius calcula
         const auto reduced = run_sqeqp(original, parameter_set,
                                        calculation::ExecutionSelection{kind, 8.0}, resolved);
         REQUIRE(reduced.calculated());
-        REQUIRE(reduced.charges->size() == embedded.charges->size());
+        REQUIRE(reduced.charges->size() == fixed_source_result.charges->size());
         for (std::size_t assignment = 0; assignment < reduced.charges->size(); ++assignment) {
             const auto& reduced_values = reduced.charges->assignment(assignment).charges;
-            const auto& full_values = embedded.charges->assignment(assignment).charges;
+            const auto& full_values = fixed_source_result.charges->assignment(assignment).charges;
             REQUIRE(reduced_values.size() == full_values.size());
             for (std::size_t atom = 0; atom < full_values.size(); ++atom) {
                 CHECK(std::abs(reduced_values[atom] - full_values[atom]) < 1.0e-10);

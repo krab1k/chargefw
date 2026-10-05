@@ -145,31 +145,31 @@ auto effective_calculation(const calculation::EffectiveCalculation& effective) -
         issues.append(execution_issue(issue));
     }
     result["execution_issues"] = std::move(issues);
-    if (effective.fixed_charge_embedding.has_value()) {
-        const auto& embedding = *effective.fixed_charge_embedding;
-        auto embedding_value = nb::dict{};
+    if (effective.fixed_charge_groups.has_value()) {
+        const auto& fixed_charge_groups = *effective.fixed_charge_groups;
+        auto fixed_charge_groups_value = nb::dict{};
         auto sources = nb::list{};
-        for (const auto& source : embedding.sources) {
+        for (const auto& source : fixed_charge_groups.sources) {
             auto source_value = nb::dict{};
             source_value["molecule_index"] = source.molecule_index;
             source_value["atom_index"] = source.atom_index;
             source_value["charge"] = source.charge;
             sources.append(std::move(source_value));
         }
-        embedding_value["sources"] = std::move(sources);
-        embedding_value["charge_provenance"] = embedding.charge_provenance;
+        fixed_charge_groups_value["sources"] = std::move(sources);
+        fixed_charge_groups_value["charge_provenance"] = fixed_charge_groups.charge_provenance;
         auto totals = nb::list{};
-        for (const auto& charge_total : embedding.charge_totals) {
+        for (const auto& charge_total : fixed_charge_groups.charge_totals) {
             auto total_value = nb::dict{};
             total_value["molecule_index"] = charge_total.molecule_index;
             total_value["original_total_charge"] = charge_total.original_total_charge;
             total_value["active_total_charge"] = charge_total.active_total_charge;
             totals.append(std::move(total_value));
         }
-        embedding_value["charge_totals"] = std::move(totals);
-        result["fixed_charge_embedding"] = std::move(embedding_value);
+        fixed_charge_groups_value["charge_totals"] = std::move(totals);
+        result["fixed_charge_groups"] = std::move(fixed_charge_groups_value);
     } else {
-        result["fixed_charge_embedding"] = nb::none();
+        result["fixed_charge_groups"] = nb::none();
     }
     return result;
 }
@@ -493,7 +493,7 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
                 : source_metadata[index]->make_record(molecule));
         owned_molecules.push_back(std::move(molecule));
     }
-    auto resolved_embedding =
+    auto resolved_fixed_charge_groups =
         adapters::detail::resolve_fixed_charge_groups(inputs, fixed_charge_groups);
     auto request = calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::move(owned_molecules),
@@ -508,9 +508,9 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
                 calculation::execution_selection_kind_from_string(execution), radius},
         .resource_policy = {.cutoff_atom_threshold = cutoff_threshold,
                             .cover_atom_threshold = cover_threshold},
-        .fixed_charge_embedding = resolved_embedding.sources.empty()
-                                      ? std::nullopt
-                                      : std::optional{std::move(resolved_embedding)},
+        .fixed_charge_groups = resolved_fixed_charge_groups.sources.empty()
+                                   ? std::nullopt
+                                   : std::optional{std::move(resolved_fixed_charge_groups)},
     };
     return NativeAssessment{calculation::assess(std::move(request)), std::move(inputs),
                             std::move(requested), max_threads};

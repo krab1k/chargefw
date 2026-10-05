@@ -209,19 +209,19 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(result.assignments[0].values[3], 2.0)
         np.testing.assert_allclose(result.assignments[0].values, direct.assignments[0].values)
         self.assertEqual(molecules[0].formal_charges.tolist(), [0, 0, 0, 0])
-        if result.plan is None or result.plan.fixed_charge_embedding is None:
+        if result.plan is None or result.plan.fixed_charge_groups is None:
             self.fail("executed plan must retain effective source provenance")
         self.assertEqual(
-            result.plan.fixed_charge_embedding.sources,
+            result.plan.fixed_charge_groups.sources,
             (chargefw.FixedAtomCharge(0, 3, 2.0),),
         )
         self.assertEqual(
-            result.plan.fixed_charge_embedding.charge_provenance,
+            result.plan.fixed_charge_groups.charge_provenance,
             "chargefw:fixed-charge-ions:v1",
         )
         self.assertEqual(
-            result.plan.fixed_charge_embedding.charge_totals,
-            (chargefw.EmbeddingChargeTotals(0, 0.0, 0.0),),
+            result.plan.fixed_charge_groups.charge_totals,
+            (chargefw.FixedChargeGroupChargeTotals(0, 0.0, 0.0),),
         )
         with self.assertRaises(AttributeError):
             cast(Any, result.requested).fixed_charge_groups = ("CA",)
@@ -242,11 +242,11 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(absent.requested.fixed_charge_groups, ("CA",))
         if absent.plan is None:
             self.fail("formal calculation must produce a plan")
-        self.assertIsNone(absent.plan.fixed_charge_embedding)
+        self.assertIsNone(absent.plan.fixed_charge_groups)
         duplicate = chargefw.calculate(molecules, method="eem", fixed_charge_groups=["MG", "MG"])
-        if duplicate.plan is None or duplicate.plan.fixed_charge_embedding is None:
+        if duplicate.plan is None or duplicate.plan.fixed_charge_groups is None:
             self.fail("duplicate names must resolve to one fixed source")
-        self.assertEqual(len(duplicate.plan.fixed_charge_embedding.sources), 1)
+        self.assertEqual(len(duplicate.plan.fixed_charge_groups.sources), 1)
         self.assertEqual(chargefw.RequestedCalculation().fixed_charge_groups, ())
 
         plain = chargefw.calculate(water(), method="formal")
@@ -259,7 +259,7 @@ class CalculationTests(unittest.TestCase):
         )
         self.assertFalse(unsupported.plans)
         self.assertIn(
-            "unsupported_embedding",
+            "unsupported_fixed_charge_groups",
             [issue.kind for rejection in unsupported.rejections for issue in rejection.issues],
         )
         with self.assertRaisesRegex(ValueError, "component metadata"):
@@ -334,10 +334,10 @@ class CalculationTests(unittest.TestCase):
                 if groups is not None:
                     self.assertIsNotNone(cancelled.plan)
                     assert cancelled.plan is not None
-                    self.assertIsNotNone(cancelled.plan.fixed_charge_embedding)
-                    assert cancelled.plan.fixed_charge_embedding is not None
+                    self.assertIsNotNone(cancelled.plan.fixed_charge_groups)
+                    assert cancelled.plan.fixed_charge_groups is not None
                     self.assertEqual(
-                        cancelled.plan.fixed_charge_embedding.sources,
+                        cancelled.plan.fixed_charge_groups.sources,
                         (chargefw.FixedAtomCharge(0, 3, 2.0),),
                     )
 

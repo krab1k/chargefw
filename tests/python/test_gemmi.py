@@ -83,7 +83,7 @@ ATOM 1 O O . HOH B 1 ? 3.0 0.0 0.0 1.0 20.0 0 1 HOH B O 1
 #
 """
 
-EMBEDDING_MMCIF_TEXT = """data_embedding
+FIXED_GROUPS_MMCIF_TEXT = """data_fixed_charge_groups
 loop_
 _atom_site.group_PDB
 _atom_site.id
@@ -183,7 +183,7 @@ MOLECULE_JSON_TEXT = """{
 class NativeInputTests(unittest.TestCase):
     def test_fixed_charge_groups_resolve_gemmi_components_and_provenance(self) -> None:
         molecules = chargefw_io.parse(
-            EMBEDDING_MMCIF_TEXT,
+            FIXED_GROUPS_MMCIF_TEXT,
             format="mmcif",
             conformers=cast(Any, "all"),
             bonds="templates",
@@ -211,24 +211,24 @@ class NativeInputTests(unittest.TestCase):
             self.assertEqual(assignment.values[3], 2.0)
             self.assertTrue(np.isclose(assignment.values[:3].sum(), 0.0))
             self.assertTrue(np.isclose(assignment.values.sum(), 2.0))
-        if result.plan is None or result.plan.fixed_charge_embedding is None:
-            self.fail("embedded Gemmi result must retain effective source provenance")
-        totals = result.plan.fixed_charge_embedding.charge_totals
+        if result.plan is None or result.plan.fixed_charge_groups is None:
+            self.fail("fixed-charge group result must retain effective source provenance")
+        totals = result.plan.fixed_charge_groups.charge_totals
         self.assertEqual(
-            result.plan.fixed_charge_embedding.charge_provenance,
+            result.plan.fixed_charge_groups.charge_provenance,
             "chargefw:fixed-charge-ions:v1",
         )
         self.assertEqual(
-            result.plan.fixed_charge_embedding.sources,
+            result.plan.fixed_charge_groups.sources,
             (chargefw.FixedAtomCharge(0, 3, 2.0),),
         )
         self.assertEqual(
             totals,
-            (chargefw.EmbeddingChargeTotals(0, 0.0, 0.0),),
+            (chargefw.FixedChargeGroupChargeTotals(0, 0.0, 0.0),),
         )
 
         encoded = json.loads(chargefw_io.dumps(result, format="result-json"))
-        effective = encoded["calculation_provenance"]["effective"]["fixed_charge_embedding"]
+        effective = encoded["calculation_provenance"]["effective"]["fixed_charge_groups"]
         self.assertEqual(effective["charge_totals"][0]["original_total_charge"], 0.0)
         self.assertEqual(effective["charge_totals"][0]["active_total_charge"], 0.0)
         self.assertEqual(

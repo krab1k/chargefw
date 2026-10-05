@@ -19,10 +19,10 @@ struct ValidatedTarget {
 };
 
 [[nodiscard]] auto validate_and_group_sources(const core::MoleculeCollection& molecules,
-                                              const FixedChargeEmbedding& embedding)
+                                              const FixedChargeGroups& fixed_charge_groups)
     -> std::vector<ValidatedTarget> {
-    auto selected_sources = embedding.sources;
-    for (const auto& source : embedding.sources) {
+    auto selected_sources = fixed_charge_groups.sources;
+    for (const auto& source : fixed_charge_groups.sources) {
         if (source.molecule_index >= molecules.size()) {
             throw std::invalid_argument{
                 "fixed charge source molecule index " + std::to_string(source.molecule_index) +
@@ -87,13 +87,12 @@ struct ValidatedTarget {
         }
         if (static_cast<std::size_t>(std::ranges::count(selected_mask, true)) ==
             molecule.atom_count()) {
-            throw std::invalid_argument{
-                "fixed charge embedding leaves no active atoms in molecule " +
-                std::to_string(molecule_index)};
+            throw std::invalid_argument{"fixed-charge groups leave no active atoms in molecule " +
+                                        std::to_string(molecule_index)};
         }
 
         if (molecule.conformer_count() == 0) {
-            throw std::invalid_argument{"fixed charge embedding requires a conformer in molecule " +
+            throw std::invalid_argument{"fixed-charge groups require a conformer in molecule " +
                                         std::to_string(molecule_index)};
         }
         for (std::size_t conformer_index = 0; conformer_index < molecule.conformer_count();
@@ -104,7 +103,7 @@ struct ValidatedTarget {
                 if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
                     !std::isfinite(position.z)) {
                     throw std::invalid_argument{
-                        "fixed charge embedding has non-finite coordinates at molecule " +
+                        "fixed-charge groups have non-finite coordinates at molecule " +
                         std::to_string(molecule_index) + ", conformer " +
                         std::to_string(conformer_index) + ", atom " + std::to_string(atom_index)};
                 }
@@ -152,8 +151,9 @@ struct ValidatedTarget {
 } // namespace
 
 auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
-                                 const FixedChargeEmbedding& embedding) -> FixedChargePartition {
-    const auto validated_targets = validate_and_group_sources(molecules, embedding);
+                                 const FixedChargeGroups& fixed_charge_groups)
+    -> FixedChargePartition {
+    const auto validated_targets = validate_and_group_sources(molecules, fixed_charge_groups);
     auto active_molecules = std::vector<core::Molecule>{};
     auto targets = std::vector<FixedChargePartitionTarget>(molecules.size());
     active_molecules.reserve(molecules.size());
@@ -233,7 +233,7 @@ auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
     }
 
     return {core::MoleculeCollection{std::move(active_molecules), std::string{molecules.name()}},
-            std::move(targets), embedding.charge_provenance};
+            std::move(targets), fixed_charge_groups.charge_provenance};
 }
 
 auto validate_partition_active_molecules(const features::PreparedMoleculeCollection& molecules,
@@ -260,7 +260,7 @@ auto materialize_fixed_point_sources(const FixedChargePartitionTarget& target,
         return fixed_sources;
     }
     if (!conformer_index.has_value()) {
-        throw std::invalid_argument{"fixed-charge embedding requires a conformer index"};
+        throw std::invalid_argument{"fixed-charge source requires a conformer index"};
     }
 
     const auto& positions = target.source_positions.at(*conformer_index);

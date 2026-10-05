@@ -426,7 +426,7 @@ plan. This `ExecutedPlan` is metadata, not a reusable `Plan`. To repeat an asses
 `Plan` from `assessment.plans` or `assessment.default_plan`, as shown in
 [Advanced assessment and plan reuse](#advanced-assessment-and-plan-reuse).
 For fixed-charge calculations, `result.requested.fixed_charge_groups` retains the submitted names and
-`result.plan.fixed_charge_embedding` exposes the effective source values and per-molecule charge totals.
+`result.plan.fixed_charge_groups` exposes the effective source values and per-molecule charge totals.
 
 Each `ChargeAssignment` contains a newly owned, read-only, C-contiguous `float64` vector together with its
 molecule index, optional conformer index, `SourceIdentity`, and atom IDs.

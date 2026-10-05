@@ -39,8 +39,8 @@ namespace {
 
 class CapturingMethod final : public methods::Method {
   public:
-    explicit CapturingMethod(const bool embedding_supported)
-        : embedding_supported_{embedding_supported} {}
+    explicit CapturingMethod(const bool supports_fixed_charge_groups)
+        : supports_fixed_charge_groups_{supports_fixed_charge_groups} {}
 
     [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
         static constexpr methods::MethodMetadata value{.id = "capture",
@@ -54,7 +54,7 @@ class CapturingMethod final : public methods::Method {
     [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
         auto value = methods::MethodRequirements{};
         value.coordinates = true;
-        value.supports_fixed_charge_embedding = embedding_supported_;
+        value.supports_fixed_charge_groups = supports_fixed_charge_groups_;
         return value;
     }
 
@@ -77,7 +77,7 @@ class CapturingMethod final : public methods::Method {
     mutable std::vector<std::vector<methods::FixedPointSource>> observed_sources;
 
   private:
-    bool embedding_supported_;
+    bool supports_fixed_charge_groups_;
 };
 
 auto make_execution_partition() -> calculation::detail::FixedChargePartition {
@@ -92,7 +92,7 @@ auto make_execution_partition() -> calculation::detail::FixedChargePartition {
                                    {core::Conformer{{{5.0, 0.0, 0.0}}, "identity"}},
                                    "unaffected"}}};
     return calculation::detail::make_fixed_charge_partition(
-        molecules, calculation::FixedChargeEmbedding{{{0, 1, 0.25}}, "test"});
+        molecules, calculation::FixedChargeGroups{{{0, 1, 0.25}}, "test"});
 }
 
 } // namespace
@@ -120,8 +120,9 @@ TEST_CASE("full execution supplies partition budgets and conformer-local sources
     CHECK(partition.targets[0].sources[0].charge == 0.25);
 }
 
-TEST_CASE("full execution rejects unsupported embedding and mismatched prepared ownership",
-          "[calculation][fixed-charge-execution]") {
+TEST_CASE(
+    "full execution rejects unsupported fixed-charge groups and mismatched prepared ownership",
+    "[calculation][fixed-charge-execution]") {
     const auto partition = make_execution_partition();
     const features::PreparedMoleculeCollection prepared{partition.active_molecules};
     const CapturingMethod unsupported{false};
@@ -172,7 +173,7 @@ TEST_CASE("parameterized full EEM uses partition sources and active budgets",
                        {core::Conformer{{{8.0, 0.0, 0.0}}, "unaffected"}},
                        "unaffected"}}};
     const auto partition = calculation::detail::make_fixed_charge_partition(
-        original, calculation::FixedChargeEmbedding{{{0, 2, 0.4}}, "reference"});
+        original, calculation::FixedChargeGroups{{{0, 2, 0.4}}, "reference"});
     const features::PreparedMoleculeCollection prepared{partition.active_molecules};
     const auto parameter_set = chargefw::parameters::ParameterSet{
         chargefw::parameters::ParameterSetMetadata{

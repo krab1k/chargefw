@@ -46,8 +46,8 @@ auto context(const std::size_t molecule_index, const std::size_t atom_index,
 
 auto resolve_fixed_charge_groups(const std::span<const ImportedMoleculeRecord> records,
                                  const std::span<const std::string> component_ids)
-    -> calculation::FixedChargeEmbedding {
-    calculation::FixedChargeEmbedding result;
+    -> calculation::FixedChargeGroups {
+    calculation::FixedChargeGroups result;
     if (component_ids.empty()) {
         return result;
     }

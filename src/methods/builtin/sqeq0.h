@@ -30,7 +30,7 @@ class SQEq0Method final : public Method {
         requirements.resources.supports_cover = true;
         requirements.resources.reduced_charge_policy =
             ReducedChargePolicy::formal_charge_components;
-        requirements.supports_fixed_charge_embedding = true;
+        requirements.supports_fixed_charge_groups = true;
         return requirements;
     }
 

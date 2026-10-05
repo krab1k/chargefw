@@ -91,7 +91,7 @@ TEST_CASE("SQE variants respond to changed conformer geometry", "[methods][sqe][
     }
 }
 
-TEST_CASE("SQE embedding right-hand sides preserve conserved pair totals",
+TEST_CASE("SQE fixed-charge group right-hand sides preserve conserved pair totals",
           "[methods][sqe][sqeq0]") {
     using namespace chargefw;
     const auto make_pair = [](const int hydrogen_charge, const int oxygen_charge) {
@@ -99,7 +99,7 @@ TEST_CASE("SQE embedding right-hand sides preserve conserved pair totals",
             std::vector{core::Atom{1, hydrogen_charge}, core::Atom{8, oxygen_charge}},
             {core::Bond{0, 1}},
             {core::Conformer{{core::Position{}, core::Position{.x = 1.0}}}},
-            "embedded-pair"};
+            "fixed-charge-group-pair"};
     };
     const std::array source{
         methods::FixedPointSource{.position = core::Position{.x = 2.0}, .charge = 0.5}};
