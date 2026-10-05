@@ -238,7 +238,11 @@ TEST_CASE("JSON output projects fixed ion provenance", "[adapters][json]") {
     const auto document = nlohmann::json::parse(output.str());
     const auto& fixed_ions = document.at("calculation_provenance").at("effective").at("fixed_ions");
     CHECK(fixed_ions.is_array());
-    CHECK(fixed_ions.empty());
+    REQUIRE(fixed_ions.size() == 1);
+    CHECK(fixed_ions[0].at("component_id").is_null());
+    CHECK(fixed_ions[0].at("charge") == 0.25);
+    CHECK(fixed_ions[0].at("instances") ==
+          nlohmann::json::array({{{"molecule_index", 0}, {"atom_index", 1}}}));
 
     auto schema_input = std::ifstream{CHARGEFW_TEST_SOURCE_DIR "/schemas/result-1.0.schema.json"};
     REQUIRE(schema_input.is_open());
@@ -248,10 +252,13 @@ TEST_CASE("JSON output projects fixed ion provenance", "[adapters][json]") {
     CHECK(fixed_schema.at("items").at("$ref") == "#/$defs/fixedIon");
     CHECK(schema.at("$defs").at("fixedIon").at("required") ==
           nlohmann::json::array({"component_id", "charge", "instances"}));
+    const auto& component_id_schema =
+        schema.at("$defs").at("fixedIon").at("properties").at("component_id");
+    CHECK(component_id_schema.at("oneOf")[1].at("type") == "null");
     CHECK_FALSE(schema.at("$defs").contains("fixedIonChargeTotals"));
 }
 
-TEST_CASE("JSON fixed-ion components group labeled sources without inferring unlabeled ones",
+TEST_CASE("JSON fixed ions retain sources with missing or ambiguous component labels",
           "[adapters][json]") {
     auto records = std::vector<adapters::ImportedMoleculeRecord>{
         make_component_record("ca-first", {"CA", "CA"}),
@@ -287,7 +294,7 @@ TEST_CASE("JSON fixed-ion components group labeled sources without inferring unl
     json_output::JsonWriter{output}.write(result, "test");
     const auto document = nlohmann::json::parse(output.str());
     const auto& fixed_ions = document.at("calculation_provenance").at("effective").at("fixed_ions");
-    REQUIRE(fixed_ions.size() == 3);
+    REQUIRE(fixed_ions.size() == 4);
     CHECK(fixed_ions[0] == nlohmann::json{{"component_id", "CA"},
                                           {"charge", 0.4},
                                           {"instances",
@@ -301,6 +308,11 @@ TEST_CASE("JSON fixed-ion components group labeled sources without inferring unl
           nlohmann::json{{"component_id", "MG"},
                          {"charge", 0.4},
                          {"instances", {{{"molecule_index", 3}, {"atom_index", 0}}}}});
+    CHECK(fixed_ions[3].at("component_id").is_null());
+    CHECK(fixed_ions[3].at("charge") == 0.4);
+    CHECK(fixed_ions[3].at("instances") ==
+          nlohmann::json::array({{{"molecule_index", 4}, {"atom_index", 0}},
+                                 {{"molecule_index", 5}, {"atom_index", 0}}}));
 }
 
 TEST_CASE("JSON component grouping reads labels from Gemmi imports through EEM facade results",

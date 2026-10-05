@@ -168,21 +168,18 @@ constexpr auto metric_scale = 1000.0;
 [[nodiscard]] auto fixed_ions_json(const calculation::FixedIons& fixed_ions,
                                    const std::span<const ImportedMoleculeRecord> records) -> Json {
     struct IonSummary {
-        std::string id;
+        std::optional<std::string> id;
         double charge = 0.0;
         Json instances = Json::array();
     };
     auto groups = std::vector<IonSummary>{};
     for (const auto& source : fixed_ions.sources) {
         const auto id = source_component_id(records[source.molecule_index], source.atom_index);
-        if (!id.has_value()) {
-            continue;
-        }
         auto group = std::ranges::find_if(groups, [&id, &source](const auto& candidate) {
-            return candidate.id == *id && candidate.charge == source.charge;
+            return candidate.id == id && candidate.charge == source.charge;
         });
         if (group == groups.end()) {
-            groups.push_back(IonSummary{.id = *id, .charge = source.charge});
+            groups.push_back(IonSummary{.id = id, .charge = source.charge});
             group = std::prev(groups.end());
         }
         group->instances.push_back(
@@ -191,7 +188,7 @@ constexpr auto metric_scale = 1000.0;
 
     auto result = Json::array();
     for (auto& group : groups) {
-        result.push_back({{"component_id", std::move(group.id)},
+        result.push_back({{"component_id", group.id.has_value() ? Json(*group.id) : Json(nullptr)},
                           {"charge", group.charge},
                           {"instances", std::move(group.instances)}});
     }

@@ -326,7 +326,7 @@
       "additionalProperties": false,
       "required": ["component_id", "charge", "instances"],
       "properties": {
-        "component_id": { "type": "string", "minLength": 1, "description": "Imported label residue ID, falling back to author residue ID." },
+        "component_id": { "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }], "description": "Imported label residue ID, falling back to author residue ID; null when no unambiguous imported identity is available." },
         "charge": { "type": "number", "description": "Prescribed charge in elementary-charge units for each listed instance." },
         "instances": {
           "type": "array",

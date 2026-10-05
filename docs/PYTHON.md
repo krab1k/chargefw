@@ -260,7 +260,7 @@ Direct `calculate()` accepts keyword-only policy arguments:
 | `cutoff_threshold` | Automatic full-to-cutoff threshold; default `20_000`, `None` is unlimited |
 | `cover_threshold` | Automatic cutoff-to-cover threshold; default `80_000`, `None` is unlimited |
 | `threads` | Non-negative oneTBB thread limit; omitted or `0` delegates to oneTBB |
-| `fixed_ions` | Sequence of named imported components; default `None` |
+| `fixed_ions` | Sequence of named imported monatomic ion components with no graph bonds; default `None` |
 
 Finite thresholds are non-negative integers with `cutoff_threshold <= cover_threshold`. To make both
 thresholds unlimited, pass `cutoff_threshold=None, cover_threshold=None`; setting only
@@ -270,8 +270,9 @@ thresholds unlimited, pass `cutoff_threshold=None, cover_threshold=None`; settin
 The [project design](PROJECT.md#assessment-and-execution) defines the shared execution modes, automatic
 selection policy, conservation behavior, and approximation limits.
 
-Pass the same named component selection to `assess()` or direct `calculate()` to apply the fixed-charge
-model. The request snapshots names to an immutable tuple; `None` and an empty sequence disable the model.
+Pass the same named ion selection to `assess()` or direct `calculate()` to apply fixed-ion handling. Each
+selected component must contain one atom of its catalog element and have no graph bonds. The request
+snapshots names to an immutable tuple; `None` and an empty sequence disable fixed-ion handling.
 The [project design](PROJECT.md#assessment-and-execution) describes how imported components are resolved,
 which methods support the model, and its active-charge contract.
 
@@ -433,7 +434,7 @@ charge assignments. Assessment itself is not observed.
 plan. This `ExecutedPlan` is metadata, not a reusable `Plan`. To repeat an assessed calculation, retain a
 `Plan` from `assessment.plans` or `assessment.default_plan`, as shown in
 [Advanced assessment and plan reuse](#advanced-assessment-and-plan-reuse).
-For fixed-charge calculations, `result.requested.fixed_ions` retains the submitted names and
+For fixed-ion calculations, `result.requested.fixed_ions` retains the submitted names and
 `result.plan.fixed_ions` is a `FixedIons` record whose immutable `sources` tuple contains
 `FixedAtomCharge` values with original molecule/atom indices and assigned charges.
 

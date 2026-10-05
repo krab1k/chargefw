@@ -265,9 +265,12 @@ finalization, parsing, applicability and computation runtimes, and peak resident
 memory are rounded to three decimal places.
 
 Effective provenance may also include `fixed_ions`, an array grouped by component ID and prescribed
-charge. Each entry has `component_id`, `charge`, and `instances`; each monatomic instance identifies
+charge. A component ID may occur in multiple entries when its instances have different charges. Each
+entry has `component_id`, `charge`, and `instances`; each monatomic instance identifies
 its zero-based `molecule_index` in the original input collection and its zero-based `atom_index` in
 that molecule. Component IDs use the imported label residue ID, falling back to the author residue ID.
+When an explicit native fixed charge has no unambiguous imported component identity, its entry uses
+`component_id: null`; it is still included and grouped with other unidentified sources of the same charge.
 The optional `fixed_ions` array is an additive extension to result schema 1.0. Consumers
 validating result documents with fixed ions should use the updated 1.0 schema; an older strict
 schema rejects the additional effective field.
