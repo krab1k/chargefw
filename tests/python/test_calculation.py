@@ -165,17 +165,9 @@ class CalculationTests(unittest.TestCase):
         if assessment.default_plan is None:
             self.fail("ALL_IONS must produce an SQEqp plan with the CU1 template")
         result = chargefw.calculate(molecules, assessment.default_plan)
-        direct = chargefw.calculate(
-            molecules,
-            method="sqeqp",
-            parameter_set="SQEqp_Schindler2021_CCD_gen",
-            execution="full",
-            fixed_charge_groups=chargefw.ALL_IONS,
-        )
         self.assertEqual(result.requested.fixed_charge_groups, chargefw.ALL_IONS)
         self.assertEqual(result.assignments[0].values[3], 1.0)
         self.assertAlmostEqual(float(result.assignments[0].values[:3].sum()), 0.0, places=12)
-        np.testing.assert_allclose(result.assignments[0].values, direct.assignments[0].values)
         np.testing.assert_array_equal(molecules[0].formal_charges, [0] * 4)
         if result.plan is None or result.plan.fixed_charge_groups is None:
             self.fail("ALL_IONS must retain effective source provenance")

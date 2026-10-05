@@ -281,48 +281,31 @@ TEST_CASE("fixed-charge reassembly scatters active charges and preserves assignm
     CHECK(*result.parameter_set_id() == "test-parameters");
     REQUIRE(result.size() == 6);
 
-    CHECK(result.assignment(0).target.molecule_index == 3);
-    CHECK(result.assignment(0).target.conformer_index == 1);
-    CHECK(result.assignment(0).charges.size() == 4);
-    CHECK(result.assignment(0).charges[0] == 0.75);
-    CHECK(result.assignment(0).charges[1] == 10.0);
-    CHECK(result.assignment(0).charges[2] == 20.0);
-    CHECK(result.assignment(0).charges[3] == -0.25);
+    const auto expected = chargefw::charges::ChargeSet{
+        "test-method",
+        {{chargefw::charges::ChargeTarget{3, 1},
+          chargefw::charges::AtomicCharges{{0.75, 10.0, 20.0, -0.25}}},
+         {chargefw::charges::ChargeTarget{0, std::nullopt},
+          chargefw::charges::AtomicCharges{{7.0, 8.0}}},
+         {chargefw::charges::ChargeTarget{1, 0},
+          chargefw::charges::AtomicCharges{{-1.0, -2.0, 0.5, -3.0}}},
+         {chargefw::charges::ChargeTarget{2, std::nullopt},
+          chargefw::charges::AtomicCharges{{-4.0}}},
+         {chargefw::charges::ChargeTarget{3, 0},
+          chargefw::charges::AtomicCharges{{0.75, -10.0, -20.0, -0.25}}},
+         {chargefw::charges::ChargeTarget{1, 1},
+          chargefw::charges::AtomicCharges{{1.0, 2.0, 0.5, 3.0}}}},
+    };
+    for (std::size_t index = 0; index < expected.size(); ++index) {
+        CAPTURE(index);
+        const auto& actual = result.assignment(index);
+        const auto& reference = expected.assignment(index);
+        CHECK(actual.target.molecule_index == reference.target.molecule_index);
+        CHECK(actual.target.conformer_index == reference.target.conformer_index);
+        CHECK(std::ranges::equal(actual.charges.values(), reference.charges.values()));
+    }
     CHECK(result.assignment(0).charges.total() == 30.5);
-
-    CHECK(result.assignment(1).target.molecule_index == 0);
-    CHECK_FALSE(result.assignment(1).target.conformer_index.has_value());
-    CHECK(result.assignment(1).charges[0] == 7.0);
-    CHECK(result.assignment(1).charges[1] == 8.0);
-    CHECK(result.assignment(1).charges.total() == 15.0);
-
-    CHECK(result.assignment(2).target.molecule_index == 1);
-    CHECK(result.assignment(2).target.conformer_index == 0);
-    CHECK(result.assignment(2).charges[0] == -1.0);
-    CHECK(result.assignment(2).charges[1] == -2.0);
-    CHECK(result.assignment(2).charges[2] == 0.5);
-    CHECK(result.assignment(2).charges[3] == -3.0);
     CHECK(result.assignment(2).charges.total() == -5.5);
-
-    CHECK(result.assignment(3).target.molecule_index == 2);
-    CHECK_FALSE(result.assignment(3).target.conformer_index.has_value());
-    CHECK(result.assignment(3).charges[0] == -4.0);
-
-    CHECK(result.assignment(4).target.molecule_index == 3);
-    CHECK(result.assignment(4).target.conformer_index == 0);
-    CHECK(result.assignment(4).charges[0] == 0.75);
-    CHECK(result.assignment(4).charges[1] == -10.0);
-    CHECK(result.assignment(4).charges[2] == -20.0);
-    CHECK(result.assignment(4).charges[3] == -0.25);
-    CHECK(result.assignment(4).charges.total() == -29.5);
-
-    CHECK(result.assignment(5).target.molecule_index == 1);
-    CHECK(result.assignment(5).target.conformer_index == 1);
-    CHECK(result.assignment(5).charges[0] == 1.0);
-    CHECK(result.assignment(5).charges[1] == 2.0);
-    CHECK(result.assignment(5).charges[2] == 0.5);
-    CHECK(result.assignment(5).charges[3] == 3.0);
-    CHECK(result.assignment(5).charges.total() == 6.5);
 }
 
 TEST_CASE("fixed-charge reassembly supports identity partitions and absent parameter IDs",

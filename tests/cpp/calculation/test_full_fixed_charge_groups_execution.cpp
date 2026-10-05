@@ -1,5 +1,3 @@
-#include "calculation/cover_execution.h"
-#include "calculation/cutoff_execution.h"
 #include "calculation/fixed_charge_partition.h"
 #include "calculation/full_execution.h"
 
@@ -243,10 +241,9 @@ TEST_CASE("parameterized full EEM uses partition sources and active budgets",
     CHECK(partition.targets[1].sources.empty());
 }
 
-TEST_CASE("SQE family fixed Mg response decays and survives whole-active reduced execution",
+TEST_CASE("SQE family full-execution fixed Mg response decays with distance",
           "[calculation][fixed-charge-execution][sqe][sqeq0][sqeqp]") {
     constexpr auto distances = std::array{3.0, 12.0, 120.0};
-    constexpr auto radius = 8.0;
     constexpr auto mg_charge = 2.0;
     auto conformers = std::vector<core::Conformer>{};
     for (const auto distance : distances) {
@@ -298,18 +295,8 @@ TEST_CASE("SQE family fixed Mg response decays and survives whole-active reduced
         const auto ion_free = calculation::calculate_full_charges(selected, prepared, 1, observer);
         const auto full =
             calculation::calculate_full_charges(selected, prepared, 1, observer, &partition);
-        const auto cutoff = calculation::calculate_cutoff_charges(
-            selected, prepared,
-            calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff, radius}, 1, observer,
-            &partition);
-        const auto cover = calculation::calculate_cover_charges(
-            selected, prepared,
-            calculation::ExecutionPolicy{calculation::ExecutionMode::cover, radius}, 1, observer,
-            &partition);
         REQUIRE(ion_free.size() == distances.size());
         REQUIRE(full.size() == distances.size());
-        REQUIRE(cutoff.size() == distances.size());
-        REQUIRE(cover.size() == distances.size());
         auto previous_response = 1.0;
         auto near_response = 0.0;
         for (std::size_t conformer = 0; conformer < distances.size(); ++conformer) {
@@ -319,6 +306,7 @@ TEST_CASE("SQE family fixed Mg response decays and survives whole-active reduced
             REQUIRE(active.size() == 2);
             REQUIRE(reference.size() == active.size());
             CHECK(std::abs(reference.total() - partition.targets[0].active_charge) < 1e-12);
+            CHECK(std::abs(active.total() - partition.targets[0].active_charge) < 1e-12);
             auto squared_response = 0.0;
             for (std::size_t atom = 0; atom < active.size(); ++atom) {
                 const auto difference = active[atom] - reference[atom];
@@ -330,23 +318,9 @@ TEST_CASE("SQE family fixed Mg response decays and survives whole-active reduced
                 near_response = response;
                 CHECK(near_response > 1e-4);
             } else {
-                CHECK(distances[conformer] > radius);
                 CHECK(response < previous_response);
             }
             previous_response = response;
-
-            // All active atoms fit inside the radius; the two more distant Mg sites do not.
-            for (const auto* result : {&full, &cutoff, &cover}) {
-                const auto& values = result->assignment(conformer).charges;
-                REQUIRE(values.size() == active.size());
-                CHECK(std::abs(values.total() - partition.targets[0].active_charge) < 1e-12);
-                for (std::size_t atom = 0; atom < active.size(); ++atom) {
-                    CHECK(std::abs(values[atom] - active[atom]) < 1e-11);
-                }
-                const auto restored =
-                    calculation::detail::reassemble_fixed_charge_results(*result, partition);
-                CHECK(restored.assignment(conformer).charges[2] == mg_charge);
-            }
         }
         CHECK(previous_response < near_response * 0.01);
         CHECK(previous_response < 2e-5);

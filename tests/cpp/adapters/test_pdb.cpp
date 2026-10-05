@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 namespace gemmi_adapter = chargefw::adapters::gemmi;
 namespace pdb = gemmi_adapter::pdb_input;
@@ -169,33 +170,30 @@ HETATM   12  C1  LIG A   5       8.200   3.200   0.000  1.00 20.00           C
 CONECT   11   12
 END
 )pdb";
-        const auto read_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
+        const auto read_strategy = [&](const gemmi_adapter::BondStrategy strategy) {
             std::istringstream strategy_stream{strategy_input};
             auto strategy_reader = pdb::PdbReader{strategy_stream, {}, {.bond_strategy = strategy}};
-            const auto record = strategy_reader.next();
+            auto record = strategy_reader.next();
             REQUIRE(record.has_value());
-            return record->molecule.bond_count();
+            return std::move(*record);
         };
 
-        CHECK(read_bond_count(gemmi_adapter::BondStrategy::none) == 0);
-        CHECK(read_bond_count(gemmi_adapter::BondStrategy::templates) == 8);
-        CHECK(read_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 2);
-        CHECK(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 10);
+        CHECK(read_strategy(gemmi_adapter::BondStrategy::none).molecule.bond_count() == 0);
+        const auto peptide = read_strategy(gemmi_adapter::BondStrategy::templates);
+        CHECK(peptide.molecule.bond_count() == 8);
+        CHECK(read_strategy(gemmi_adapter::BondStrategy::explicit_bonds).molecule.bond_count() ==
+              2);
+        CHECK(read_strategy(gemmi_adapter::BondStrategy::hybrid).molecule.bond_count() == 10);
 
-        std::istringstream peptide_input{strategy_input};
-        auto peptide_reader = pdb::PdbReader{
-            peptide_input, {}, {.bond_strategy = gemmi_adapter::BondStrategy::templates}};
-        const auto peptide = peptide_reader.next();
-        REQUIRE(peptide.has_value());
-        REQUIRE(peptide->import_metadata.has_value());
-        const auto& components = peptide->import_metadata->components;
+        REQUIRE(peptide.import_metadata.has_value());
+        const auto& components = peptide.import_metadata->components;
         REQUIRE(components.size() == 5);
         CHECK(components[0].component_id == "ALA");
         CHECK(components[0].atom_indices.size() == 5);
         CHECK(components[1].component_id == "GLY");
         CHECK(components[1].atom_indices.size() == 4);
         bool peptide_link = false;
-        for (const auto& bond : peptide->molecule.bonds()) {
+        for (const auto& bond : peptide.molecule.bonds()) {
             peptide_link = peptide_link ||
                            (bond.first_atom_index() == 2 && bond.second_atom_index() == 5) ||
                            (bond.first_atom_index() == 5 && bond.second_atom_index() == 2);

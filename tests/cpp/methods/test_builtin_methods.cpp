@@ -360,21 +360,7 @@ TEST_CASE("every built-in completes its declared full workflow", "[methods][buil
         }
 
         if (expected.id != "formal" && expected.id != "dummy") {
-            const auto water = chargefw::test::make_water();
-            const auto water_collection =
-                chargefw::core::MoleculeCollection{std::vector{water}, "water"};
-            const auto water_prepared = features::PreparedMoleculeCollection{water_collection};
-            const auto water_applicability =
-                methods::find_applicable_methods({.molecules = water_prepared,
-                                                  .methods = candidates,
-                                                  .parameter_sets = candidate_parameter_sets});
-            REQUIRE_FALSE(water_applicability.applicable.empty());
-            const auto& water_selected = water_applicability.applicable.front();
-
-            const auto water_result = chargefw::calculation::calculate(
-                {.molecules = water_prepared, .selected = water_selected});
-            REQUIRE(water_result.charges.size() == 1);
-            chargefw::test::assert_neutral_water_charges(water_result.charges.assignment(0).charges,
+            chargefw::test::assert_neutral_water_charges(result.charges.assignment(0).charges,
                                                          1.0e-10);
         }
 
@@ -382,8 +368,8 @@ TEST_CASE("every built-in completes its declared full workflow", "[methods][buil
             selected.parameter_set == nullptr
                 ? std::vector<parameters::ParameterSet>{}
                 : std::vector<parameters::ParameterSet>{*selected.parameter_set};
-        chargefw::test::assert_water_charges_labeling_invariant(expected.id,
-                                                                selected_parameter_sets);
+        chargefw::test::assert_water_charges_labeling_invariant(
+            expected.id, result.charges.assignment(0).charges, selected_parameter_sets);
     }
 }
 

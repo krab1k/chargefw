@@ -106,14 +106,11 @@ inline auto assert_same_charges(const charges::AtomicCharges& actual,
 /// bond-flipped water against the plain-water reference.
 inline auto
 assert_water_charges_labeling_invariant(std::string_view method_id,
+                                        const charges::AtomicCharges& reference_charges,
                                         std::vector<parameters::ParameterSet> parameter_sets = {},
                                         const methods::MethodOptions* method_options = nullptr,
                                         const double tolerance = 1.0e-9) -> void {
     static constexpr std::array new_to_old{std::size_t{2}, std::size_t{0}, std::size_t{1}};
-
-    const auto reference =
-        calculate_single_method(make_water(), method_id, parameter_sets, method_options);
-    const auto& reference_charges = reference.assignment(0).charges;
 
     const auto relabeled = calculate_single_method(relabel_atoms(make_water(), new_to_old),
                                                    method_id, parameter_sets, method_options);

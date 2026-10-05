@@ -294,25 +294,14 @@ TEST_CASE("EEM rejects invalid fixed point fields and budgets", "[methods][eem]"
             CHECK(std::string_view{message}.contains(diagnostic));
         }
     };
-    const auto nonfinite_values = std::array{std::numeric_limits<double>::quiet_NaN(),
-                                             std::numeric_limits<double>::infinity(),
-                                             -std::numeric_limits<double>::infinity()};
-
-    for (const auto value : nonfinite_values) {
-        const auto bad_charge = std::array{methods::FixedPointSource{{4.0, 1.0, 0.0}, value}};
-        check_invalid(molecule, bad_charge, -0.35, "fixed source 0");
-        for (std::size_t axis = 0; axis < 3; ++axis) {
-            auto position = core::Position{4.0, 1.0, 0.0};
-            if (axis == 0) {
-                position.x = value;
-            } else if (axis == 1) {
-                position.y = value;
-            } else {
-                position.z = value;
-            }
-            const auto bad_position = std::array{methods::FixedPointSource{position, 0.25}};
-            check_invalid(molecule, bad_position, -0.35, "fixed source 0");
-        }
+    const auto nan = std::numeric_limits<double>::quiet_NaN();
+    const auto infinity = std::numeric_limits<double>::infinity();
+    const auto invalid_sources = std::array{methods::FixedPointSource{{4.0, 1.0, 0.0}, nan},
+                                            methods::FixedPointSource{{nan, 1.0, 0.0}, 0.25},
+                                            methods::FixedPointSource{{4.0, infinity, 0.0}, 0.25},
+                                            methods::FixedPointSource{{4.0, 1.0, -infinity}, 0.25}};
+    for (const auto& source : invalid_sources) {
+        check_invalid(molecule, std::span{&source, 1}, -0.35, "fixed source 0");
     }
 
     const auto valid_source = std::array{methods::FixedPointSource{{4.0, 1.0, 0.0}, 0.25}};

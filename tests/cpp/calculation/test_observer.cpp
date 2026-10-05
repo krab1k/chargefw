@@ -510,15 +510,7 @@ TEST_CASE("fixed-charge cancellation retains provenance and permits plan reuse",
         CHECK(provenance.charge_totals[0].active_total_charge == 0.0);
 
         const auto events = observer.events();
-        REQUIRE(!events.empty());
-        CHECK(events.front().phase == calculation::CalculationPhase::computation_started);
-        CHECK(events.back().phase == calculation::CalculationPhase::computation_finished);
-        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
-                  return event.phase == calculation::CalculationPhase::computation_started;
-              }) == 1);
-        CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
-                  return event.phase == calculation::CalculationPhase::computation_finished;
-              }) == 1);
+        assert_computation_boundary(events, mode);
         CHECK(std::count_if(events.begin(), events.end(), [](const auto& event) {
                   return event.phase == calculation::CalculationPhase::target_started;
               }) == 1);

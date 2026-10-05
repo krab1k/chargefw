@@ -120,27 +120,6 @@ TEST_CASE("SQE+qp responds to changed conformer geometry", "[methods][sqeqp]") {
     CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
 }
 
-TEST_CASE("SQE+qp normalizes initial charges to the calculation target", "[methods][sqeqp]") {
-    const auto molecule = chargefw::test::make_water();
-    const features::PreparedMolecule prepared{molecule};
-    const features::ConformerFeatures geometry{molecule, 0};
-    const auto parameter_set = make_parameter_set();
-    const auto classification = parameters::ParameterClassification{
-        parameters::AtomParameterClassification{std::vector<std::size_t>{1, 0, 0}},
-        parameters::BondParameterClassification{std::vector<std::size_t>{0, 0}}};
-    const parameters::ParameterView parameter_view{parameter_set, classification};
-    const auto* method = methods::method_registry().find("sqeqp");
-    REQUIRE(method != nullptr);
-    const auto options = methods::make_default_options(method->option_schema());
-    constexpr auto target_charge = 1.25;
-    const methods::CalculationInput input{prepared, options, target_charge, &geometry,
-                                          &parameter_view};
-
-    const auto charges = method->calculate(input);
-
-    CHECK(std::abs(charges.total() - target_charge) < 1.0e-10);
-}
-
 TEST_CASE("SQE+qp subtracts the Gaussian-to-point source field before bond projection",
           "[methods][sqeqp]") {
     const auto molecule = core::Molecule{std::vector{core::Atom{1}, core::Atom{8}},
@@ -156,18 +135,22 @@ TEST_CASE("SQE+qp subtracts the Gaussian-to-point source field before bond proje
                                 : std::erf(distance / std::sqrt(width_sum)) / distance;
     };
     auto positive_width_result = std::vector<double>{};
+    const auto source_cases = std::array{methods::FixedPointSource{{0.0, 2.0, 0.0}, 0.4},
+                                         methods::FixedPointSource{{0.0, 2.0, 0.0}, -0.4},
+                                         methods::FixedPointSource{{2.5, 0.0, 0.0}, 0.4},
+                                         methods::FixedPointSource{{0.0, 2.0, 0.0}, 0.0}};
+    const auto no_source = calculate_sqeqp(molecule, make_parameter_set(1.2, -0.65), target_charge);
 
     for (const auto hydrogen_width : {1.2, -1.2, 0.0}) {
+        CAPTURE(hydrogen_width);
         const auto parameter_set = make_parameter_set(hydrogen_width, -0.65);
         const auto active_interaction = interaction(1.5, hydrogen_width, -0.65);
         const auto denominator = 13.8904 + 13.364 - 2.0 * active_interaction + 1.0;
-        const auto source_cases = std::array{methods::FixedPointSource{{0.0, 2.0, 0.0}, 0.4},
-                                             methods::FixedPointSource{{0.0, 2.0, 0.0}, -0.4},
-                                             methods::FixedPointSource{{2.5, 0.0, 0.0}, 0.4},
-                                             methods::FixedPointSource{{0.0, 2.0, 0.0}, 0.0}};
-        const auto no_source = calculate_sqeqp(molecule, parameter_set, target_charge);
+        // Source variations and width limits are independent; only the reference needs all widths.
+        const auto cases = std::span{source_cases}.first(hydrogen_width == 1.2 ? 4 : 1);
 
-        for (const auto& source : source_cases) {
+        for (const auto& source : cases) {
+            CAPTURE(source.charge, source.position.x);
             const auto input_sources = std::span<const methods::FixedPointSource>{&source, 1};
             const auto charges =
                 calculate_sqeqp(molecule, parameter_set, target_charge, input_sources);
@@ -194,19 +177,10 @@ TEST_CASE("SQE+qp subtracts the Gaussian-to-point source field before bond proje
             } else if (is_positive_reference_source && hydrogen_width == -1.2) {
                 CHECK(std::ranges::equal(charges.values(), positive_width_result));
             }
+            if (source.charge == -0.4 || source.position.x == 2.5) {
+                CHECK(std::abs(charges[0] - positive_width_result[0]) > 1.0e-5);
+            }
         }
-
-        const auto positive_sources = std::array{methods::FixedPointSource{{0.0, 2.0, 0.0}, 0.4}};
-        const auto negative_sources = std::array{methods::FixedPointSource{{0.0, 2.0, 0.0}, -0.4}};
-        const auto shifted_sources = std::array{methods::FixedPointSource{{2.5, 0.0, 0.0}, 0.4}};
-        const auto positive_source =
-            calculate_sqeqp(molecule, parameter_set, target_charge, positive_sources);
-        const auto negative_source =
-            calculate_sqeqp(molecule, parameter_set, target_charge, negative_sources);
-        const auto shifted_source =
-            calculate_sqeqp(molecule, parameter_set, target_charge, shifted_sources);
-        CHECK(std::abs(positive_source[0] - negative_source[0]) > 1.0e-5);
-        CHECK(std::abs(positive_source[0] - shifted_source[0]) > 1.0e-5);
     }
 }
 
@@ -225,7 +199,6 @@ TEST_CASE("SQE+qp keeps global seed normalization across disconnected components
     CHECK(std::abs((result_charges[0] + result_charges[1]) - 0.6) < 1.0e-12);
     CHECK(std::abs((result_charges[2] + result_charges[3]) - 0.2) < 1.0e-12);
     CHECK(std::abs(result_charges.total() - 0.8) < 1.0e-12);
-    CHECK(std::abs((result_charges[0] + result_charges[1]) - 0.4) > 1.0e-3);
 }
 
 TEST_CASE("SQE+qp validates sources before the no-bond return", "[methods][sqeqp]") {

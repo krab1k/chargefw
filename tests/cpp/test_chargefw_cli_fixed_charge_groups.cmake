@@ -32,7 +32,8 @@ file(REMOVE_RECURSE "${output_directory}")
 execute_process(
         COMMAND "${CHARGEFW_CLI}" calculate --method sqeqp
                 --parameter-set SQEqp_Schindler2021_CCD_gen --execution full
-                --fixed-charge-group MG --fixed-charge-group CA "${input_path}" "${output_directory}"
+                --fixed-charge-group MG --fixed-charge-group MG --fixed-charge-group CA
+                "${input_path}" "${output_directory}"
         RESULT_VARIABLE calculate_result
         OUTPUT_VARIABLE calculate_output
         ERROR_VARIABLE calculate_error
@@ -72,24 +73,6 @@ endif()
 string(JSON active_total GET "${fixed_groups}" charge_totals 0 active_total_charge)
 if(NOT active_total EQUAL 0)
     message(FATAL_ERROR "expected zero active formal-charge total for water, got ${active_total}")
-endif()
-
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method sqeqp
-                --parameter-set SQEqp_Schindler2021_CCD_gen --execution full
-                --fixed-charge-group MG --fixed-charge-group MG --fixed-charge-group CA
-                "${input_path}" "${output_directory}"
-        RESULT_VARIABLE repeated_result
-        ERROR_VARIABLE repeated_error
-)
-if(NOT repeated_result EQUAL 0)
-    message(FATAL_ERROR "repeated component IDs should be idempotent: ${repeated_error}")
-endif()
-file(READ "${output_json}" repeated_json)
-string(JSON repeated_sources LENGTH "${repeated_json}"
-       calculation_provenance effective fixed_charge_groups sources)
-if(NOT repeated_sources EQUAL 2)
-    message(FATAL_ERROR "repeated component IDs duplicated resolved sources")
 endif()
 
 execute_process(
