@@ -79,35 +79,39 @@ should include only the individual adapter headers it uses.
 
 ## Change discipline
 
-1. Inspect the relevant public headers, implementation, tests, and user documentation section first.
-2. Make the smallest coherent change and run clang-format each time on modified files.
-3. Add focused tests for behavior changes, especially numerical, mapping, applicability, and policy
-   cases.
-4. Follow the validation cadence below. Build the directly affected target and run its focused test first;
-   do not make the full compiler/sanitizer matrix part of every edit cycle.
-5. Stop for approval before heavyweight dependencies, broad rewrites, destructive commands, automatic
-   chemistry policy, or public API changes beyond the requested scope.
-6. Remove a TODO only when its full deliverable and validation are complete. Update the owning user
-   document with durable implemented behavior.
+Use existing context and inspect the affected code and contracts. Delegate substantial work with a concise,
+phase-specific brief and one owner; reuse that worker for the same slice. Handle small local edits directly
+and avoid duplicate exploration. Handoffs should report the diff, relevant evidence, and unresolved issues.
+
+For design-sensitive API, ownership, scientific, or representation changes, first produce a small
+representative code sketch and request user architectural review before full tests or propagation to
+bindings and documentation. Label unqualified designs as drafts. A small experiment or compile check is
+appropriate when it helps resolve the design. Once the design is accepted, straightforward fixes within
+that design proceed directly to implementation. For routine changes within agreed architecture, implement
+the smallest coherent change without a separate design phase.
+
+Format changed C++ before review. Delivered behavior requires focused regression tests and updates to its
+owning user documentation. Remove a TODO only when its complete deliverable is qualified. Stop for user
+approval before out-of-scope public API changes, automatic chemistry policy, heavyweight dependencies,
+destructive commands, or broad rewrites. Preserve the scientific and architectural rules above.
 
 ### Validation cadence
 
-- Use `gcc-debug` for the rapid edit/build/focused-test loop. After a coherent change, run its full
-  test suite.
-- Use `clang-debug` for cross-compiler validation when changing templates, conversions, overloads,
-  headers, or compiler-sensitive C++ behavior; run its focused test before substantial work is complete.
-- Use `gcc-release` and `clang-release` for optimization- or `NDEBUG`-sensitive behavior, numerical
-  methods, Eigen code, and before completing substantial changes. Run the affected test under both
-  release configurations when practical.
-- Use `clang-asan` for ownership, lifetime, bounds, mapping, parser, container, view, and pointer
-  changes. Use `clang-ubsan` for arithmetic, conversions, shifts, alignment, indexing, and other
-  undefined-behavior risks. Run the focused sanitizer test first and the full relevant sanitizer suite
-  before completing substantial risk-sensitive work. Run the sanitizer workflows sequentially and with
+- After design is stable, build the affected `gcc-debug` target and run its focused regression test.
+  Review the architectural diff before expensive qualification. Run the full `gcc-debug` test suite once
+  for a coherent feature that is ready to commit, not for every edit or review correction. Documentation-
+  only changes need relevant content/link checks, not builds; check executable examples when affected.
+- Select additional profiles by risk: `clang-debug` for compiler-sensitive behavior such as templates,
+  conversions, or overloads; release profiles for numerical methods, Eigen, optimization-, or
+  `NDEBUG`-sensitive behavior; `clang-asan` for lifetime, bounds, mapping, parser, container, view, or
+  pointer risks; and `clang-ubsan` for arithmetic, conversion, alignment, indexing, or other undefined-
+  behavior risks. Run focused checks after design stabilizes; run sanitizer workflows sequentially with
   conservative parallelism.
-- Run `clang-tidy` after meaningful implementation or public-interface changes and before a milestone;
-  it is static analysis, not a replacement for compiler or runtime tests.
-- Before a substantial merge or milestone, run the full debug, release, sanitizer, and clang-tidy
-  matrix. CI may distribute those configurations across independent jobs.
+- Run `clang-tidy` on affected implementation at qualification, not during sketch iterations; tests and
+  profiles establish delivered behavior, so speculative drafts do not need full qualification. A broad
+  debug, release, sanitizer, and clang-tidy matrix is for major integration or release qualification, or
+  when requested; applicable CI evidence may supply it. Fixes rerun affected checks and do not
+  automatically trigger the full matrix. Report failures rather than hiding them.
 
 The executable commands for every preset and check are maintained in
 [DEVELOPMENT.md](DEVELOPMENT.md).

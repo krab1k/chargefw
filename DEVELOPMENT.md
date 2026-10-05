@@ -38,7 +38,7 @@ build/gcc-debug/_install/bin/chargefw parameters
 Gemmi registers its internal `cpptest` unconditionally even though that executable is excluded from
 normal builds. Exclude it when invoking CTest directly.
 
-For a quick edit cycle, build the affected target and run its test by name:
+After design is stable, build the affected target and run its focused regression test first. For example:
 
 ```bash
 cmake --build build/gcc-debug --target test_molecule
@@ -92,8 +92,8 @@ systemd-run --user --scope \
     cmake --build build/clang-asan --parallel 8
 ```
 
-The expected validation depth for different changes is listed in
-[AGENTS.md](AGENTS.md#validation-cadence).
+Choose validation by risk and qualification stage using [AGENTS.md](AGENTS.md#validation-cadence).
+The full-suite and profile examples above document how to run selected checks, not a per-edit checklist.
 
 ## Python checks
 

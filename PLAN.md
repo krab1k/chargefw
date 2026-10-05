@@ -82,8 +82,7 @@ and indexed values may still feed numerical source coupling.
 
 ## Workflow
 
-Astra owns architecture, scientific/API decisions, and review. Luna Fast implements and validates smaller
-agreed slices. Stop after each slice for user review; do not treat an agent review as user approval.
-Follow [AGENTS.md](AGENTS.md) and executable contributor workflows in [DEVELOPMENT.md](DEVELOPMENT.md).
-Git owns implementation and validation history; this file tracks only current decisions and unfinished
-work.
+Astra owns design and review; Luna owns substantial implementation, with Astra handling small local edits.
+Follow the design-review and qualification workflow in [AGENTS.md](AGENTS.md); agent review is not user
+approval. Commands belong in [DEVELOPMENT.md](DEVELOPMENT.md), implementation history in git, and only
+current decisions and unfinished work here.
