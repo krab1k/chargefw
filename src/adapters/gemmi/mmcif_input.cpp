@@ -140,14 +140,17 @@ auto MmcifReader::next() -> std::optional<ImportedMoleculeRecord> {
             throw std::runtime_error{"structural input contains no models"};
         }
         ::gemmi::add_entity_types(structure, false);
-        const auto selected_models =
+        auto selected_models =
             selection::select_models(structure, options_.selection, options_.conformers);
+        auto source_models = make_source_mappings(block, selected_models);
+        for (std::size_t index = 0; index < selected_models.size(); ++index) {
+            selected_models[index].normalize_component_names(source_models[index].conformer.sites);
+        }
         auto explicit_bonds = std::vector<core::Bond>{};
         if (options_.bond_strategy == BondStrategy::explicit_bonds ||
             options_.bond_strategy == BondStrategy::hybrid) {
             explicit_bonds = bonds::explicit_mmcif(structure, block, selected_models.front());
         }
-        auto source_models = make_source_mappings(block, selected_models);
         const auto current_record_index = record_index_++;
         auto record = structure_import::make_record(
             structure, selected_models,

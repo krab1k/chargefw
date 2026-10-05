@@ -138,6 +138,21 @@ are errors.
 Structural mappings retain original atom/site IDs, model identity, selected alternate locations, entity,
 insertion code, segment where available, and distinct mmCIF author and label atom/residue/chain/sequence
 identities. PDB populates its known author hierarchy and leaves unavailable label identity absent.
+Each structural import also retains a component-instance partition from selected residue membership. The
+record-local `component_instance_id` is the entry's zero-based position in this table, not the component
+name and not a separate stored field. The component name prefers a nonempty mmCIF label residue name, then
+the author residue name, then Gemmi's residue name. Each atom-index list is sorted in calculation order;
+table order follows the first calculation atom. These are selected structural residues, including polymer
+residues, rather than graph-connected components. The partition is stable across retained conformers, and
+source hierarchy strings remain unchanged alongside it. Nonstructural imports do not infer component
+instances from names or connectivity.
+
+Structural residue template matching uses that same label-first component name and label-first atom names,
+falling back to author names and then the parsed Gemmi names when a source label is unavailable. This applies
+to built-in templates and mmCIF `_chem_comp_bond` rows; source-address connections continue to resolve against
+the parsed structure. Names are normalized only in the private selected-residue view, so molecule atom names
+and retained author/label mappings remain as imported. Duplicate canonical atom names in one selected
+residue are rejected after alternate-location selection.
 
 ### Structural selection
 

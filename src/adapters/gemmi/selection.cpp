@@ -41,9 +41,11 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
                 continue;
             }
 
-            SelectedResidue selected{
-                .residue = std::addressof(residue), .chain_name = chain.name, .atom_indices = {}};
-            selected.atom_indices.reserve(residue.atoms.size());
+            SelectedResidue selected{.residue = std::addressof(residue),
+                                     .chain_name = chain.name,
+                                     .component_name = residue.name,
+                                     .atoms = {}};
+            selected.atoms.reserve(residue.atoms.size());
             // Select one alternate location per atom name: the first source-order occurrence.
             auto seen_names = std::unordered_set<std::string_view>{};
             seen_names.reserve(residue.atoms.size());
@@ -57,7 +59,7 @@ SelectedModel::SelectedModel(const ::gemmi::Model& model, const RecordSelection 
                 sites_.push_back(::gemmi::const_CRA{.chain = std::addressof(chain),
                                                     .residue = std::addressof(residue),
                                                     .atom = std::addressof(atom)});
-                selected.atom_indices.emplace_back(atom.name, atom_index);
+                selected.atoms.push_back({atom.name, atom_index});
                 atom_indices_.emplace(std::addressof(atom), atom_index);
                 serial_indices_.emplace(atom.serial, atom_index++);
             }
@@ -94,13 +96,39 @@ auto SelectedModel::atom_index_by_serial(const int serial) const -> std::optiona
     return found->second;
 }
 
-auto SelectedResidue::find_atom(const std::string_view name) const -> std::optional<std::size_t> {
-    for (const auto& [atom_name, index] : atom_indices) {
-        if (atom_name == name) {
-            return index;
-        }
+void SelectedModel::normalize_component_names(
+    const std::span<const SourceAtomReference> source_atoms) {
+    if (source_atoms.size() != atoms_.size()) {
+        throw std::runtime_error{"structural source mapping does not match selected atoms"};
     }
-    return std::nullopt;
+    for (auto& residue : residues_) {
+        auto component_name = std::string{};
+        auto names = std::unordered_set<std::string_view>{};
+        names.reserve(residue.atoms.size());
+        for (auto& atom : residue.atoms) {
+            const auto& labels = source_atoms[atom.index].structural_labels;
+            const auto canonical_component =
+                detail::canonical_component_name(labels, residue.residue->name);
+            const auto canonical_atom =
+                detail::canonical_atom_name(labels, atoms_[atom.index]->name);
+            if (canonical_component.empty() || canonical_atom.empty()) {
+                throw std::runtime_error{
+                    "selected structural component has an empty canonical name"};
+            }
+            if (component_name.empty()) {
+                component_name = canonical_component;
+            } else if (component_name != canonical_component) {
+                throw std::runtime_error{
+                    "selected structural residue has inconsistent component names"};
+            }
+            if (!names.emplace(canonical_atom).second) {
+                throw std::runtime_error{
+                    "selected structural component has ambiguous canonical atom names"};
+            }
+            atom.name = canonical_atom;
+        }
+        residue.component_name = std::move(component_name);
+    }
 }
 
 auto select_models(const ::gemmi::Structure& structure, const RecordSelection selection,

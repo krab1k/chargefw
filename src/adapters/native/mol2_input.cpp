@@ -185,6 +185,7 @@ auto read_to_atom_section(std::istream& input, std::size_t& line) -> void {
         .bond_strategy = std::nullopt,
         .source_connectivity =
             bond_count == 0 ? SourceConnectivity::explicitly_empty : SourceConnectivity::present,
+        .components = {},
     };
     return common::make_record(
         std::move(atoms), std::move(bonds), {core::Conformer{std::move(positions), "input"}},

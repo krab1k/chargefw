@@ -241,6 +241,7 @@ auto require_array(const Json& value, const std::string& context) -> void {
                                    ? SourceConnectivity::absent
                                    : (bonds_value->empty() ? SourceConnectivity::explicitly_empty
                                                            : SourceConnectivity::present),
+        .components = {},
     };
     return common::make_record(std::move(atoms), std::move(bonds), std::move(conformers),
                                std::move(identity), std::move(name), {}, std::move(metadata));

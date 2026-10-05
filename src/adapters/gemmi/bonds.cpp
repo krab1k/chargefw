@@ -137,8 +137,10 @@ void add_sequential_bonds(BondAccumulator& bonds,
     for (std::size_t index = 1; index < residues.size(); ++index) {
         const auto& previous = residues[index - 1];
         const auto& current = residues[index];
-        const auto* const previous_template = component_templates::find(previous.residue->name);
-        const auto* const current_template = component_templates::find(current.residue->name);
+        const auto previous_component = previous.component();
+        const auto current_component = current.component();
+        const auto* const previous_template = component_templates::find(previous_component.name);
+        const auto* const current_template = component_templates::find(current_component.name);
         if (previous_template == nullptr || current_template == nullptr ||
             previous_template->kind != kind || current_template->kind != kind ||
             previous.chain_name != current.chain_name ||
@@ -146,8 +148,8 @@ void add_sequential_bonds(BondAccumulator& bonds,
             continue;
         }
 
-        const auto first = previous.find_atom(previous_atom);
-        const auto second = current.find_atom(current_atom);
+        const auto first = previous_component.find_atom(previous_atom);
+        const auto second = current_component.find_atom(current_atom);
         if (first.has_value() && second.has_value()) {
             bonds.add(*first, *second, core::BondOrder::SINGLE);
         }
@@ -177,11 +179,11 @@ void add_sequential_bonds(BondAccumulator& bonds,
     return std::nullopt;
 }
 
-void add_component_bonds(BondAccumulator& result, const selection::SelectedResidue& residue,
+void add_component_bonds(BondAccumulator& result, const detail::ComponentView component,
                          const auto& bonds) {
     for (const auto& bond : bonds) {
-        const auto first = residue.find_atom(bond.first);
-        const auto second = residue.find_atom(bond.second);
+        const auto first = component.find_atom(bond.first);
+        const auto second = component.find_atom(bond.second);
         if (first.has_value() && second.has_value()) {
             result.add(*first, *second, bond.order);
         }
@@ -194,12 +196,13 @@ void add_component_bonds(BondAccumulator& result, const selection::SelectedResid
     const auto& residues = model.residues();
 
     for (const auto& residue : residues) {
-        const auto* const component_template = component_templates::find(residue.residue->name);
+        const auto component = residue.component();
+        const auto* const component_template = component_templates::find(component.name);
         if (component_template == nullptr) {
             continue;
         }
 
-        add_component_bonds(result, residue, component_template->bonds);
+        add_component_bonds(result, component, component_template->bonds);
     }
 
     add_sequential_bonds(result, residues, component_templates::ComponentKind::amino_acid, "C",
@@ -268,9 +271,10 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
     }
 
     for (const auto& residue : residues) {
-        const auto found = component_bonds.find(residue.residue->name);
+        const auto component = residue.component();
+        const auto found = component_bonds.find(std::string{component.name});
         if (found != component_bonds.end()) {
-            add_component_bonds(result, residue, found->second);
+            add_component_bonds(result, component, found->second);
         }
     }
 

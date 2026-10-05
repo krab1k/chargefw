@@ -28,6 +28,35 @@ struct ModelAtoms {
     std::vector<core::Position> positions;
 };
 
+[[nodiscard]] auto components(const selection::SelectedModel& model,
+                              const std::span<const std::size_t> order)
+    -> std::vector<SourceComponentInstance> {
+    auto old_to_new = std::vector<std::size_t>(order.size());
+    for (std::size_t index = 0; index < order.size(); ++index) {
+        old_to_new[order[index]] = index;
+    }
+    std::vector<SourceComponentInstance> result;
+    for (const auto& residue : model.residues()) {
+        SourceComponentInstance instance{.component_id = std::string{residue.component().name},
+                                         .atom_indices = {}};
+        for (const auto& atom : residue.atoms) {
+            const auto old_index = atom.index;
+            if (old_index >= old_to_new.size()) {
+                throw std::runtime_error{"selected residue has an invalid atom index"};
+            }
+            const auto atom_index = old_to_new[old_index];
+            instance.atom_indices.push_back(atom_index);
+        }
+        if (!instance.atom_indices.empty()) {
+            std::ranges::sort(instance.atom_indices);
+            result.push_back(std::move(instance));
+        }
+    }
+    std::ranges::sort(result, {},
+                      [](const auto& instance) { return instance.atom_indices.front(); });
+    return result;
+}
+
 [[nodiscard]] auto source_order(const std::span<const SourceAtomReference> references)
     -> std::vector<std::size_t> {
     auto result = std::vector<std::size_t>(references.size());
@@ -192,6 +221,7 @@ auto make_record(const ::gemmi::Structure& structure,
     }
     first.atoms = reordered(std::move(first.atoms), source_orders.front());
     first.positions = reordered(std::move(first.positions), source_orders.front());
+    auto component_instances = components(selected_model, source_orders.front());
 
     std::vector<core::Conformer> conformers;
     conformers.reserve(retained_model_count);
@@ -201,6 +231,11 @@ auto make_record(const ::gemmi::Structure& structure,
     for (std::size_t index = 1;
          index < structure.models.size() && conformer_selection == ConformerSelection::all;
          ++index) {
+        const auto model_components = components(selected_models[index], source_orders[index]);
+        if (model_components != component_instances) {
+            throw std::runtime_error{
+                "structural models do not contain the same selected component instances"};
+        }
         auto positions = conformer_positions(
             selected_models[index], first.atoms, source_models.front().conformer.sites,
             source_models[index].conformer.sites, source_orders[index]);
@@ -230,6 +265,7 @@ auto make_record(const ::gemmi::Structure& structure,
         .conformer_selection = std::string{::chargefw::adapters::to_string(conformer_selection)},
         .bond_strategy = std::string{::chargefw::adapters::gemmi::to_string(bond_strategy)},
         .source_connectivity = source_connectivity,
+        .components = std::move(component_instances),
     };
 
     return native_common::make_record(std::move(first.atoms), std::move(bonds),

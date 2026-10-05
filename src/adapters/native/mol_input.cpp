@@ -337,6 +337,7 @@ auto parse_v3000(std::istream& input, std::size_t& line) -> ParsedMolecule {
         .conformer_selection = "all",
         .bond_strategy = std::nullopt,
         .source_connectivity = parsed.source_connectivity,
+        .components = {},
     };
     return common::make_record(std::move(parsed.atoms), std::move(parsed.bonds),
                                {core::Conformer{std::move(parsed.positions), "input"}},

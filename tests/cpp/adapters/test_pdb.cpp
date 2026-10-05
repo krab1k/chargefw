@@ -71,6 +71,8 @@ END
     CHECK(mapping.source_connectivity == chargefw::adapters::SourceConnectivity::present);
     CHECK(mapping.alternate_location_selection == "first-source-order");
     REQUIRE(mapping.conformers.size() == 2);
+    REQUIRE(mapping.components.size() == 1);
+    CHECK(mapping.components[0] == chargefw::adapters::SourceComponentInstance{"HOH", {0, 1}});
     CHECK(mapping.conformers[0].id == "1");
     CHECK(mapping.conformers[1].id == "2");
     CHECK(mapping.conformers[0].sites[0].position == 0);
@@ -88,12 +90,23 @@ END
 HETATM    2  C1  LIG A   2       1.000   0.000   0.000  1.00 20.00           C  
 HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O  
 HETATM    4  O   WAT A   4       3.000   0.000   0.000  1.00 20.00           O
+HETATM    5  O   HOH B   3       4.000   0.000   0.000  1.00 20.00           O
 END
 )pdb"};
         auto all_reader = pdb::PdbReader{selection_input};
         const auto all_record = all_reader.next();
         REQUIRE(all_record.has_value());
-        CHECK(all_record->molecule.atom_count() == 4);
+        CHECK(all_record->molecule.atom_count() == 5);
+        REQUIRE(all_record->import_metadata.has_value());
+        const auto& components = all_record->import_metadata->components;
+        REQUIRE(components.size() == 5);
+        CHECK(components[0] == chargefw::adapters::SourceComponentInstance{"ALA", {0}});
+        CHECK(components[1] == chargefw::adapters::SourceComponentInstance{"LIG", {1}});
+        CHECK(components[2] == chargefw::adapters::SourceComponentInstance{"HOH", {2}});
+        CHECK(components[3] == chargefw::adapters::SourceComponentInstance{"WAT", {3}});
+        CHECK(components[4] == chargefw::adapters::SourceComponentInstance{"HOH", {4}});
+        CHECK(all_record->import_metadata->atoms[2].structural_labels->author.chain == "A");
+        CHECK(all_record->import_metadata->atoms[4].structural_labels->author.chain == "B");
 
         std::istringstream ligands_input{
             R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  
@@ -168,6 +181,26 @@ END
         CHECK(read_bond_count(gemmi_adapter::BondStrategy::templates) == 8);
         CHECK(read_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 2);
         CHECK(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 10);
+
+        std::istringstream peptide_input{strategy_input};
+        auto peptide_reader = pdb::PdbReader{
+            peptide_input, {}, {.bond_strategy = gemmi_adapter::BondStrategy::templates}};
+        const auto peptide = peptide_reader.next();
+        REQUIRE(peptide.has_value());
+        REQUIRE(peptide->import_metadata.has_value());
+        const auto& components = peptide->import_metadata->components;
+        REQUIRE(components.size() == 5);
+        CHECK(components[0].component_id == "ALA");
+        CHECK(components[0].atom_indices.size() == 5);
+        CHECK(components[1].component_id == "GLY");
+        CHECK(components[1].atom_indices.size() == 4);
+        bool peptide_link = false;
+        for (const auto& bond : peptide->molecule.bonds()) {
+            peptide_link = peptide_link ||
+                           (bond.first_atom_index() == 2 && bond.second_atom_index() == 5) ||
+                           (bond.first_atom_index() == 5 && bond.second_atom_index() == 2);
+        }
+        CHECK(peptide_link);
     }
 
     {
@@ -209,6 +242,9 @@ END
     CHECK(record->molecule.conformer(0)[0].x == 0.0);
     CHECK(record->molecule.conformer(0)[1].x == 1.0);
     REQUIRE(record->import_metadata.has_value());
+    REQUIRE(record->import_metadata->components.size() == 1);
+    CHECK(record->import_metadata->components[0] ==
+          chargefw::adapters::SourceComponentInstance{"LIG", {0, 1}});
     CHECK_FALSE(record->import_metadata->conformers[0].id.has_value());
     CHECK(record->import_metadata->atoms[0].position == 0);
     CHECK(record->import_metadata->atoms[0].id == "1");

@@ -94,6 +94,91 @@ _atom_site.pdbx_PDB_model_num
     }
 }
 
+TEST_CASE("mmCIF templates use canonical labels and reject ambiguous selected names",
+          "[adapters][mmcif]") {
+    const auto make_input = [](const std::string_view atom_rows) {
+        return std::string{R"cif(data_canonical
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+)cif"} + std::string{atom_rows} +
+               "\n#\n";
+    };
+
+    std::istringstream input{make_input("ATOM 1 N N . ALA A 1 ? 0 0 0 1 20 0 9 AUTHOR A N1 1\n"
+                                        "ATOM 2 C CA . ALA A 1 ? 1 0 0 1 20 0 9 AUTHOR A CA1 1")};
+    auto reader =
+        mmcif::MmcifReader{input, {}, {.bond_strategy = gemmi_adapter::BondStrategy::templates}};
+    const auto record = reader.next();
+    REQUIRE(record.has_value());
+    CHECK(record->molecule.atom(0).name() == "N1");
+    CHECK(record->molecule.atom(1).name() == "CA1");
+    REQUIRE(record->molecule.bond_count() == 1);
+    CHECK(record->molecule.bond(0).order() == chargefw::core::BondOrder::SINGLE);
+    REQUIRE(record->import_metadata.has_value());
+    CHECK(record->import_metadata->components[0].component_id == "ALA");
+    CHECK(record->import_metadata->atoms[0].structural_labels->label.atom == "N");
+    CHECK(record->import_metadata->atoms[0].structural_labels->author.atom == "N1");
+
+    auto explicit_input = make_input("ATOM 1 N N . ALA A 1 ? 0 0 0 1 20 0 9 AUTHOR A N1 1\n"
+                                     "ATOM 2 C CA . ALA A 1 ? 1 0 0 1 20 0 9 AUTHOR A CA1 1");
+    explicit_input += R"cif(loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.value_order
+ALA N CA SING
+#
+)cif";
+    std::istringstream explicit_stream{explicit_input};
+    auto explicit_reader = mmcif::MmcifReader{
+        explicit_stream, {}, {.bond_strategy = gemmi_adapter::BondStrategy::explicit_bonds}};
+    const auto explicit_record = explicit_reader.next();
+    REQUIRE(explicit_record.has_value());
+    REQUIRE(explicit_record->molecule.bond_count() == 1);
+    CHECK(explicit_record->molecule.bond(0).order() == chargefw::core::BondOrder::SINGLE);
+
+    std::istringstream fallback{make_input("ATOM 1 N . . . A 1 ? 0 0 0 1 20 0 9 ALA A N 1\n"
+                                           "ATOM 2 C . . . A 1 ? 1 0 0 1 20 0 9 ALA A CA 1")};
+    auto fallback_reader =
+        mmcif::MmcifReader{fallback, {}, {.bond_strategy = gemmi_adapter::BondStrategy::templates}};
+    const auto fallback_record = fallback_reader.next();
+    REQUIRE(fallback_record.has_value());
+    CHECK(fallback_record->molecule.bond_count() == 1);
+    CHECK(fallback_record->import_metadata->components[0].component_id == "ALA");
+
+    std::istringstream ambiguous{make_input("HETATM 1 C C1 . LIG A 1 ? 0 0 0 1 20 0 9 LIG A X1 1\n"
+                                            "HETATM 2 O C1 . LIG A 1 ? 1 0 0 1 20 0 9 LIG A X2 1")};
+    auto ambiguous_reader = mmcif::MmcifReader{ambiguous};
+    CHECK_THROWS_AS(ambiguous_reader.next(), std::runtime_error);
+
+    std::istringstream alternates{
+        make_input("HETATM 1 C C1 A LIG A 1 ? 0 0 0 1 20 0 9 LIG A X1 1\n"
+                   "HETATM 2 C C1 B LIG A 1 ? 1 0 0 1 20 0 9 LIG A X1 1")};
+    auto alternate_reader = mmcif::MmcifReader{alternates};
+    const auto alternate_record = alternate_reader.next();
+    REQUIRE(alternate_record.has_value());
+    CHECK(alternate_record->molecule.atom_count() == 1);
+}
+
 TEST_CASE("mmCIF input preserves records, models, selection, and bond strategy",
           "[adapters][mmcif]") {
     std::istringstream input{R"cif(data_first
@@ -453,6 +538,11 @@ LIG C1 N1 SING
     CHECK(record->import_metadata->atoms[0].id == "Csite");
     CHECK(record->import_metadata->atoms[1].id == "Osite");
     CHECK(record->import_metadata->atoms[2].id == "Nsite");
+    REQUIRE(record->import_metadata->components.size() == 2);
+    CHECK(record->import_metadata->components[0] ==
+          chargefw::adapters::SourceComponentInstance{"LIG", {0, 2}});
+    CHECK(record->import_metadata->components[1] ==
+          chargefw::adapters::SourceComponentInstance{"LIG", {1}});
 }
 
 TEST_CASE("mmCIF input rejects incompatible conformer atom sequences", "[adapters][mmcif]") {
@@ -481,9 +571,16 @@ _atom_site.pdbx_PDB_model_num
 HETATM 1 C C1 . LIG A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 LIG A C1 1
 HETATM 2 O O1 . LIG A 1 ? 1.0 0.0 0.0 1.0 20.0 0 1 LIG A O1 1
 HETATM 3 C C1 . LIG A 1 ? 0.1 0.0 0.0 1.0 20.0 0 1 LIG A C1 2
+HETATM 4 O O1 . LIG A 1 ? 1.1 0.0 0.0 1.0 20.0 0 1 LIG B O1 2
 #
 )cif";
     std::istringstream input{incompatible_input};
     auto reader = mmcif::MmcifReader{input};
-    CHECK_THROWS_AS(reader.next(), std::exception);
+    auto message = std::string{};
+    try {
+        static_cast<void>(reader.next());
+    } catch (const std::exception& error) {
+        message = error.what();
+    }
+    CHECK(message.find("same selected component instances") != std::string::npos);
 }

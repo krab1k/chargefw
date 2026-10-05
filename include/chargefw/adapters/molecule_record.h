@@ -123,6 +123,15 @@ struct SourceConformerReference {
     [[nodiscard]] auto operator==(const SourceConformerReference&) const -> bool = default;
 };
 
+// One selected structural residue instance. Its vector position in metadata.components is its
+// record-local ID; atom_indices are in calculation-atom order.
+struct SourceComponentInstance {
+    std::string component_id;
+    std::vector<std::size_t> atom_indices;
+
+    [[nodiscard]] auto operator==(const SourceComponentInstance&) const -> bool = default;
+};
+
 // Small adapter-owned metadata retained with the normalized molecule. Structural labels are added
 // by the structural-reader boundary rather than by core::Molecule.
 struct MoleculeImportMetadata {
@@ -134,6 +143,7 @@ struct MoleculeImportMetadata {
     std::optional<std::string> conformer_selection;
     std::optional<std::string> bond_strategy;
     SourceConnectivity source_connectivity = SourceConnectivity::absent;
+    std::vector<SourceComponentInstance> components;
 };
 
 // Identifies one source record without imposing a file-format or toolkit dependency.

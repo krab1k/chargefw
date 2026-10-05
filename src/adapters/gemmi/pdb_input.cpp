@@ -224,15 +224,18 @@ PdbReader::PdbReader(std::istream& input, std::string source,
     }
     ::gemmi::add_entity_types(structure, false);
     const auto name = structure.name.empty() ? source : structure.name;
-    const auto selected_models =
+    auto selected_models =
         selection::select_models(structure, options.selection, options.conformers);
+    const auto parsed_source = parse_source(contents);
+    auto mappings = source_models(structure, options, selected_models, parsed_source.models);
+    for (std::size_t index = 0; index < selected_models.size(); ++index) {
+        selected_models[index].normalize_component_names(mappings[index].conformer.sites);
+    }
     auto explicit_bonds = std::vector<core::Bond>{};
     if (options.bond_strategy == BondStrategy::explicit_bonds ||
         options.bond_strategy == BondStrategy::hybrid) {
         explicit_bonds = bonds::explicit_pdb(structure, selected_models.front());
     }
-    const auto parsed_source = parse_source(contents);
-    auto mappings = source_models(structure, options, selected_models, parsed_source.models);
     record_ = structure_import::make_record(
         structure, selected_models,
         MoleculeRecordIdentity{.source = std::move(source), .record_index = 0, .record_id = name},
