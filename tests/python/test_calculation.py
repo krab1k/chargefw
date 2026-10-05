@@ -973,11 +973,13 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(eem.memory_complexity, "O(n^2)")
         self.assertTrue(eem.supports_cutoff)
         self.assertTrue(eem.supports_cover)
+        self.assertTrue(eem.supports_fixed_point_sources)
         self.assertEqual(
             tuple(eem.parameter_sets),
             tuple(chargefw.parameter_sets.for_method("eem")),
         )
         peoe = methods["peoe"]
+        self.assertFalse(peoe.supports_fixed_point_sources)
         self.assertIn("initial_charges=formal", peoe.notes)
         self.assertEqual(len(peoe.options), 2)
         self.assertIsInstance(peoe.options, Mapping)

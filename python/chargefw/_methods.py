@@ -70,6 +70,7 @@ class Method:
     memory_complexity: str
     supports_cutoff: bool
     supports_cover: bool
+    supports_fixed_point_sources: bool
     options: MethodOptionCatalog
     parameter_sets: ParameterSetCatalog
 
@@ -101,6 +102,7 @@ def _method_descriptor(
         memory_complexity=value["memory_complexity"],
         supports_cutoff=value["supports_cutoff"],
         supports_cover=value["supports_cover"],
+        supports_fixed_point_sources=value["supports_fixed_point_sources"],
         options=MethodOptionCatalog(
             tuple(
                 MethodOption(

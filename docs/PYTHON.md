@@ -231,9 +231,11 @@ print(iterations.default, iterations.minimum)
 ```
 
 Method descriptors expose names, publication metadata, human-readable `notes`, priority, coordinate
-requirements, Big-O time and memory complexity, reduced-mode capabilities, options, and associated
-parameter sets. Notes describe important implementation scope or input behavior; assessment remains the
-authoritative applicability check for a specific molecule and parameter set.
+requirements, Big-O time and memory complexity, reduced-mode capabilities, fixed point source support,
+options, and associated parameter sets. `supports_fixed_point_sources` reports whether the method can
+numerically account for fixed external point charges; it does not establish applicability for a particular
+molecule and parameter set. Notes describe important implementation scope or input behavior; assessment
+remains the authoritative applicability check for a specific request.
 `requires_coordinates=True` means every input molecule must have coordinates and every conformer must
 contain finite, non-coincident coordinates; the method then produces one assignment per conformer.
 Complexity uses `n` for atoms and `m` for bonds, as defined in the

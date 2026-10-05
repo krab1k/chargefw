@@ -139,6 +139,7 @@ class MethodDescriptorPayload(TypedDict):
     memory_complexity: str
     supports_cutoff: bool
     supports_cover: bool
+    supports_fixed_point_sources: bool
     options: list[MethodOptionDescriptorPayload]
 
 
