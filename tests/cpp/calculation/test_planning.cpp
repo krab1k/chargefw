@@ -845,6 +845,7 @@ TEST_CASE("fixed-charge parameter rejections use original atom indices and descr
     CHECK(issue.kind == methods::PrerequisiteIssueKind::parameter_classification_failed);
     CHECK(issue.molecule_index == 0);
     CHECK(issue.atom_index == 2);
+    CHECK(issue.message.starts_with("molecule 1 ('interleaved-H-Mg-O'): "));
     CHECK(issue.message.contains("parameter set 'test-eem-h-only'"));
     CHECK(issue.message.contains("atom 3 (source name 'active-O', O, formal charge 0)"));
 }

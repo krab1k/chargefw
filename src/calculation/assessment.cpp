@@ -199,12 +199,14 @@ auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
         parameter_set != nullptr) {
         if (active_atom_index.has_value()) {
             const auto original_atom_index = target.active_atom_indices.at(*active_atom_index);
-            issue.message = "parameter set '" + std::string{parameter_set->id()} +
+            issue.message = core::detail::molecule_description(original_molecule, molecule_index) +
+                            ": parameter set '" + std::string{parameter_set->id()} +
                             "' has no atom parameter matching " +
                             core::detail::atom_description(original_molecule, original_atom_index);
         } else if (active_bond_index.has_value()) {
             const auto original_bond_index = target.active_bond_indices.at(*active_bond_index);
-            issue.message = "parameter set '" + std::string{parameter_set->id()} +
+            issue.message = core::detail::molecule_description(original_molecule, molecule_index) +
+                            ": parameter set '" + std::string{parameter_set->id()} +
                             "' has no bond parameter matching " +
                             core::detail::bond_description(original_molecule, original_bond_index);
         }
