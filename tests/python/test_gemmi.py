@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, cast, get_type_hints
@@ -340,6 +341,7 @@ class GemmiAdapterTests(unittest.TestCase):
         self.assertIsNotNone(mapping)
         assert mapping is not None
         self.assertEqual(mapping.format, "pdb")
+        self.assertEqual(mapping.components, (chargefw.SourceComponentInstance("HOH", (0, 1)),))
         self.assertEqual(mapping.alternate_location_selection, "first-source-order")
         self.assertEqual([value.id for value in mapping.conformers], ["1", "2"])
         labels = mapping.atoms[1].structural_labels
@@ -433,11 +435,19 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         self.assertIsNotNone(labels)
         assert labels is not None
         self.assertEqual(labels.author.atom, "AUTHOR")
+        self.assertEqual(labels.author.residue, "AUTH")
         self.assertEqual(labels.author.chain, "AC")
         self.assertEqual(labels.label.atom, "LABEL")
+        self.assertEqual(labels.label.residue, "LIG")
         self.assertEqual(labels.label.chain, "LC")
+        self.assertEqual(mapping.components, (chargefw.SourceComponentInstance("LIG", (0,)),))
+        self.assertIsInstance(mapping.components, tuple)
+        self.assertIsInstance(mapping.components[0].atom_indices, tuple)
+        with self.assertRaises(FrozenInstanceError):
+            setattr(mapping.components[0], "component_id", "AUTHOR")
 
         result = calculate(molecule, method="formal")
+        self.assertEqual(result.molecules[0].source_mapping, mapping)
         imported = json.loads(chargefw_io.dumps(result, format="result-json"))["results"][0][
             "input"
         ]["import"]

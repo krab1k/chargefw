@@ -42,6 +42,7 @@ NO_CHARGES
             ),
         )
         self.assertEqual(mapping.conformers[0].sites, mapping.atoms)
+        self.assertEqual(mapping.components, ())
         with self.assertRaises(FrozenInstanceError):
             setattr(mapping, "format", "mol")
 

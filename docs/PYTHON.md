@@ -194,7 +194,10 @@ The mapping also reports source format, record-local selection/conformer/bond po
 policy, and whether source connectivity was absent, explicitly empty, or present. Imported `atom_ids` use
 exact source IDs when present and source positions otherwise. A newly constructed molecule, including one
 built from an imported molecule's arrays, has `source_mapping is None` and does not inherit verified
-correspondence.
+correspondence. Structural imports expose their selected residue partition as immutable
+`source_mapping.components` entries (`SourceComponentInstance`), each with a canonical `component_id` and
+calculation-ordered `atom_indices`; see the [format reference](FORMATS.md#pdb-and-mmcif-input) for its
+ordering and conformer contract.
 
 Atomic numbers 1–100 are accepted because they are represented by the bundled periodic table; individual
 methods and parameter sets may support a smaller subset. Only bond orders 1, 2, and 3 are accepted. Self

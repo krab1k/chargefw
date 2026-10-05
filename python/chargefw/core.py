@@ -98,6 +98,14 @@ class SourceConformerReference:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceComponentInstance:
+    """Selected structural residue membership in calculation-atom order."""
+
+    component_id: str
+    atom_indices: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class SourceMapping:
     """Read-only source correspondence retained for an imported molecule."""
 
@@ -109,6 +117,7 @@ class SourceMapping:
     alternate_location_selection: str | None = None
     conformer_selection: str | None = None
     bond_strategy: str | None = None
+    components: tuple[SourceComponentInstance, ...] = ()
 
 
 class Molecule:

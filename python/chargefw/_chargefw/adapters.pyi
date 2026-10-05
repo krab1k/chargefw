@@ -20,6 +20,7 @@ class StructuralLabelsPayload(TypedDict):
 
 AtomReferencePayload: TypeAlias = tuple[int, str | None, StructuralLabelsPayload | None]
 ConformerReferencePayload: TypeAlias = tuple[int, str | None, list[AtomReferencePayload]]
+ComponentInstancePayload: TypeAlias = tuple[str, list[int]]
 
 class ImportMetadataPayload(TypedDict):
     format: Literal["mol", "sdf", "mol2", "molecule-json", "pdb", "mmcif"]
@@ -30,6 +31,7 @@ class ImportMetadataPayload(TypedDict):
     conformer_selection: str | None
     bond_strategy: str | None
     source_connectivity: Literal["absent", "explicitly-empty", "present"]
+    components: list[ComponentInstancePayload]
 
 class MoleculePayload(TypedDict):
     atomic_numbers: list[int]

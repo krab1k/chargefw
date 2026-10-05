@@ -11,6 +11,7 @@ from ..core import (
     Molecule,
     MoleculeCollection,
     SourceAtomReference,
+    SourceComponentInstance,
     SourceConformerReference,
     SourceHierarchyLabels,
     SourceMapping,
@@ -80,6 +81,10 @@ def _molecule(payload: _native_adapters.MoleculePayload) -> Molecule:
             alternate_location_selection=import_metadata["alternate_location_selection"],
             conformer_selection=import_metadata["conformer_selection"],
             bond_strategy=import_metadata["bond_strategy"],
+            components=tuple(
+                SourceComponentInstance(component_id, tuple(atom_indices))
+                for component_id, atom_indices in import_metadata["components"]
+            ),
         )
     )
     result = _ImportedMolecule(

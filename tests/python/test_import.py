@@ -26,6 +26,7 @@ def test_import_surface() -> None:
         "PortableId",
         "SourceIdentity",
         "SourceAtomReference",
+        "SourceComponentInstance",
         "SourceConformerReference",
         "SourceHierarchyLabels",
         "SourceStructuralLabels",

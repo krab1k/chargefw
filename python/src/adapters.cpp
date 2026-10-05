@@ -127,6 +127,10 @@ struct MoleculePayload {
             nb::make_tuple(conformer.position, conformer.id, atom_references(conformer.sites)));
     }
     auto result = nb::dict{};
+    auto components = nb::list{};
+    for (const auto& component : metadata.components) {
+        components.append(nb::make_tuple(component.component_id, component.atom_indices));
+    }
     result["format"] = std::string{format_name(metadata.format)};
     result["atoms"] = atom_references(metadata.atoms);
     result["conformers"] = std::move(conformers);
@@ -135,6 +139,7 @@ struct MoleculePayload {
     result["conformer_selection"] = metadata.conformer_selection;
     result["bond_strategy"] = metadata.bond_strategy;
     result["source_connectivity"] = std::string{connectivity_name(metadata.source_connectivity)};
+    result["components"] = std::move(components);
     return result;
 }
 
