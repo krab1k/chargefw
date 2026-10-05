@@ -129,6 +129,35 @@ class RecipeTests(unittest.TestCase):
                 "_sb_ncbr_partial_atomic_charges.", document.sole_block().get_mmcif_category_names()
             )
 
+    def test_fixed_ion_recipe(self) -> None:
+        with TemporaryDirectory() as directory:
+            input_path = (
+                PROJECT_ROOT / "tests" / "fixtures" / "synthetic" / "cif" / "fixed_ions.cif"
+            )
+            output_path = Path(directory) / "charges.json"
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(RECIPES / "calculate_with_fixed_ions.py"),
+                    str(input_path),
+                    "--format",
+                    "mmcif",
+                    "--ion",
+                    "MG",
+                    "--ion",
+                    "CA",
+                    "--result-json",
+                    str(output_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertIn("Fixed ion: molecule=0 atom=3 charge=+2.0 e", completed.stdout)
+            self.assertIn("molecule=0 conformer=0: [", completed.stdout)
+            result = json.loads(output_path.read_text(encoding="utf-8"))
+            self.assertEqual(result["status"], "success")
+
     @unittest.skipUnless(importlib.util.find_spec("rdkit"), "RDKit is not installed")
     def test_rdkit_conformer_recipe(self) -> None:
         completed = subprocess.run(

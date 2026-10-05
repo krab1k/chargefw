@@ -56,6 +56,21 @@ python docs/recipes/charge_gemmi_document.py input.cif charged.cif --format mmci
 
 The recipe uses EEM by default and lets ChargeFW select an applicable bundled parameter set.
 
+## Calculate with a fixed ion
+
+[`calculate_with_fixed_ions.py`](calculate_with_fixed_ions.py) reads a PDB or mmCIF structure, selects one
+or more monatomic ion components as fixed sources, calculates the remaining active atoms, and prints the
+resolved ion indices and charges. You can also write the complete result JSON.
+
+```bash
+python docs/recipes/calculate_with_fixed_ions.py structure.cif \
+    --format mmcif --ion MG --ion CA --result-json charges.json
+```
+
+The selected components should be present in the input. The recipe uses `sqeqp` with
+`SQEqp_Schindler2021_CCD_gen` by default; override the method or parameter set when the active structure
+requires another model.
+
 ## Analyze conformer-dependent charges
 
 [`analyze_rdkit_conformer_charges.py`](analyze_rdkit_conformer_charges.py) generates an unoptimized,
