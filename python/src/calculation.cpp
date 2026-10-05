@@ -3,7 +3,7 @@
 #include "native_input_metadata.h"
 #include "native_parameter_catalog.h"
 
-#include "adapters/fixed_charge_groups.h"
+#include "adapters/fixed_ions.h"
 
 #include <chargefw/adapters/charge_result.h>
 #include <chargefw/calculation/assessment.h>
@@ -145,31 +145,21 @@ auto effective_calculation(const calculation::EffectiveCalculation& effective) -
         issues.append(execution_issue(issue));
     }
     result["execution_issues"] = std::move(issues);
-    if (effective.fixed_charge_groups.has_value()) {
-        const auto& fixed_charge_groups = *effective.fixed_charge_groups;
-        auto fixed_charge_groups_value = nb::dict{};
+    if (effective.fixed_ions.has_value()) {
+        const auto& fixed_ions = *effective.fixed_ions;
+        auto fixed_ions_value = nb::dict{};
         auto sources = nb::list{};
-        for (const auto& source : fixed_charge_groups.sources) {
+        for (const auto& source : fixed_ions.sources) {
             auto source_value = nb::dict{};
             source_value["molecule_index"] = source.molecule_index;
             source_value["atom_index"] = source.atom_index;
             source_value["charge"] = source.charge;
             sources.append(std::move(source_value));
         }
-        fixed_charge_groups_value["sources"] = std::move(sources);
-        fixed_charge_groups_value["charge_provenance"] = fixed_charge_groups.charge_provenance;
-        auto totals = nb::list{};
-        for (const auto& charge_total : fixed_charge_groups.charge_totals) {
-            auto total_value = nb::dict{};
-            total_value["molecule_index"] = charge_total.molecule_index;
-            total_value["original_total_charge"] = charge_total.original_total_charge;
-            total_value["active_total_charge"] = charge_total.active_total_charge;
-            totals.append(std::move(total_value));
-        }
-        fixed_charge_groups_value["charge_totals"] = std::move(totals);
-        result["fixed_charge_groups"] = std::move(fixed_charge_groups_value);
+        fixed_ions_value["sources"] = std::move(sources);
+        result["fixed_ions"] = std::move(fixed_ions_value);
     } else {
-        result["fixed_charge_groups"] = nb::none();
+        result["fixed_ions"] = nb::none();
     }
     return result;
 }
@@ -425,7 +415,7 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
                      const std::optional<double> radius,
                      const std::optional<std::size_t> cutoff_threshold,
                      const std::optional<std::size_t> cover_threshold,
-                     const std::size_t max_threads, std::vector<std::string> fixed_charge_groups)
+                     const std::size_t max_threads, std::vector<std::string> fixed_ions)
     -> NativeAssessment {
     // Convert Python values to stable native references before releasing the GIL. The remaining
     // work copies native-owned input values and prepares the assessment without accessing Python
@@ -493,8 +483,7 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
                 : source_metadata[index]->make_record(molecule));
         owned_molecules.push_back(std::move(molecule));
     }
-    auto resolved_fixed_charge_groups =
-        adapters::detail::resolve_fixed_charge_groups(inputs, fixed_charge_groups);
+    auto resolved_fixed_ions = adapters::detail::resolve_fixed_ions(inputs, fixed_ions);
     auto request = calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::move(owned_molecules),
                                               std::move(molecule_collection_name)},
@@ -508,9 +497,9 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
                 calculation::execution_selection_kind_from_string(execution), radius},
         .resource_policy = {.cutoff_atom_threshold = cutoff_threshold,
                             .cover_atom_threshold = cover_threshold},
-        .fixed_charge_groups = resolved_fixed_charge_groups.sources.empty()
-                                   ? std::nullopt
-                                   : std::optional{std::move(resolved_fixed_charge_groups)},
+        .fixed_ions = resolved_fixed_ions.sources.empty()
+                          ? std::nullopt
+                          : std::optional{std::move(resolved_fixed_ions)},
     };
     return NativeAssessment{calculation::assess(std::move(request)), std::move(inputs),
                             std::move(requested), max_threads};
@@ -519,9 +508,9 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
 } // namespace
 
 void bind_calculation(nb::module_& module) {
-    module.def("_fixed_charge_ion_names", [](const bool common_only) {
+    module.def("_fixed_ion_names", [](const bool common_only) {
         nb::list names;
-        for (const auto& name : adapters::detail::fixed_charge_ion_names(common_only)) {
+        for (const auto& name : adapters::detail::fixed_ion_names(common_only)) {
             names.append(nb::cast(name));
         }
         return nb::tuple{names};
@@ -546,7 +535,7 @@ void bind_calculation(nb::module_& module) {
                nb::arg("parameter_set_id"), nb::arg("method_options"), nb::arg("permissive_types"),
                nb::arg("execution"), nb::arg("radius"), nb::arg("cutoff_threshold"),
                nb::arg("cover_threshold"), nb::arg("max_threads"),
-               nb::arg("fixed_charge_groups") = std::vector<std::string>{});
+               nb::arg("fixed_ions") = std::vector<std::string>{});
 }
 
 } // namespace chargefw::python

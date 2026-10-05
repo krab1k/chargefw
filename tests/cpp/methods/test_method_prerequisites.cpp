@@ -25,8 +25,8 @@ TEST_CASE("prerequisite issue kinds convert to stable strings", "[methods][prere
     CHECK(methods::to_string(methods::PrerequisiteIssueKind::invalid_options) == "invalid_options");
     CHECK(methods::to_string(methods::PrerequisiteIssueKind::missing_parameters) ==
           "missing_parameters");
-    CHECK(methods::to_string(methods::PrerequisiteIssueKind::unsupported_fixed_charge_groups) ==
-          "unsupported_fixed_charge_groups");
+    CHECK(methods::to_string(methods::PrerequisiteIssueKind::unsupported_fixed_ions) ==
+          "unsupported_fixed_ions");
 }
 
 namespace core = chargefw::core;

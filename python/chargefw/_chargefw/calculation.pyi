@@ -6,7 +6,7 @@ from .adapters import _NativeInputMetadata
 from .core import _NativeMolecule
 from .parameters import _NativeParameterCatalog
 
-def _fixed_charge_ion_names(common_only: bool) -> tuple[str, ...]: ...
+def _fixed_ion_names(common_only: bool) -> tuple[str, ...]: ...
 
 class _NativeExecutionResult:
     def report(self) -> ExecutionResultPayload: ...
@@ -38,5 +38,5 @@ def _make_assessment(
     cutoff_threshold: int | None,
     cover_threshold: int | None,
     max_threads: int,
-    fixed_charge_groups: Sequence[str] = (),
+    fixed_ions: Sequence[str] = (),
 ) -> _NativeAssessment: ...

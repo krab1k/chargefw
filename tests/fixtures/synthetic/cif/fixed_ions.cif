@@ -1,4 +1,4 @@
-data_fixed_charge_groups
+data_fixed_ions
 loop_
 _atom_site.group_PDB
 _atom_site.id

@@ -22,7 +22,7 @@ enum class PrerequisiteIssueKind : std::uint8_t {
     unsupported_molecule,
     missing_parameters,
     parameter_classification_failed,
-    unsupported_fixed_charge_groups,
+    unsupported_fixed_ions,
 };
 
 [[nodiscard]] auto to_string(PrerequisiteIssueKind value) -> std::string_view;

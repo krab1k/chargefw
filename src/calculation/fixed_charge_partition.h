@@ -7,7 +7,6 @@
 
 #include <cstddef>
 #include <optional>
-#include <string>
 #include <vector>
 
 namespace chargefw::calculation::detail {
@@ -19,19 +18,16 @@ struct FixedChargePartitionTarget {
     std::vector<FixedAtomCharge> sources;
     // Affected targets use original conformer order and sorted source atom order.
     std::vector<std::vector<core::Position>> source_positions;
-    double original_charge = 0.0;
     double active_charge = 0.0;
 };
 
 struct FixedChargePartition {
     core::MoleculeCollection active_molecules;
     std::vector<FixedChargePartitionTarget> targets;
-    std::string charge_provenance;
 };
 
 [[nodiscard]] auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
-                                               const FixedChargeGroups& fixed_charge_groups)
-    -> FixedChargePartition;
+                                               const FixedIons& fixed_ions) -> FixedChargePartition;
 
 auto validate_partition_active_molecules(const features::PreparedMoleculeCollection& molecules,
                                          const FixedChargePartition& partition) -> void;

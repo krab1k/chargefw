@@ -165,29 +165,15 @@ constexpr auto metric_scale = 1000.0;
     return ambiguous ? std::nullopt : resolved;
 }
 
-[[nodiscard]] auto
-fixed_charge_groups_json(const calculation::FixedChargeGroupsProvenance& fixed_charge_groups,
-                         const std::span<const ImportedMoleculeRecord> records) -> Json {
-    auto sources = Json::array();
-    for (const auto& source : fixed_charge_groups.sources) {
-        sources.push_back({{"molecule_index", source.molecule_index},
-                           {"atom_index", source.atom_index},
-                           {"charge", source.charge}});
-    }
-    auto charge_totals = Json::array();
-    for (const auto& totals : fixed_charge_groups.charge_totals) {
-        charge_totals.push_back({{"molecule_index", totals.molecule_index},
-                                 {"original_total_charge", totals.original_total_charge},
-                                 {"active_total_charge", totals.active_total_charge}});
-    }
-
-    struct ComponentGroup {
+[[nodiscard]] auto fixed_ions_json(const calculation::FixedIons& fixed_ions,
+                                   const std::span<const ImportedMoleculeRecord> records) -> Json {
+    struct IonSummary {
         std::string id;
         double charge = 0.0;
         Json instances = Json::array();
     };
-    auto groups = std::vector<ComponentGroup>{};
-    for (const auto& source : fixed_charge_groups.sources) {
+    auto groups = std::vector<IonSummary>{};
+    for (const auto& source : fixed_ions.sources) {
         const auto id = source_component_id(records[source.molecule_index], source.atom_index);
         if (!id.has_value()) {
             continue;
@@ -196,23 +182,18 @@ fixed_charge_groups_json(const calculation::FixedChargeGroupsProvenance& fixed_c
             return candidate.id == *id && candidate.charge == source.charge;
         });
         if (group == groups.end()) {
-            groups.push_back(ComponentGroup{.id = *id, .charge = source.charge});
+            groups.push_back(IonSummary{.id = *id, .charge = source.charge});
             group = std::prev(groups.end());
         }
         group->instances.push_back(
-            {{"molecule_index", source.molecule_index}, {"atom_indices", {source.atom_index}}});
+            {{"molecule_index", source.molecule_index}, {"atom_index", source.atom_index}});
     }
 
-    auto result = Json{{"sources", std::move(sources)},
-                       {"charge_provenance", fixed_charge_groups.charge_provenance},
-                       {"charge_totals", std::move(charge_totals)}};
-    if (!groups.empty()) {
-        result["components"] = Json::array();
-        for (auto& group : groups) {
-            result["components"].push_back({{"component_id", std::move(group.id)},
-                                            {"charge_per_instance", group.charge},
-                                            {"instances", std::move(group.instances)}});
-        }
+    auto result = Json::array();
+    for (auto& group : groups) {
+        result.push_back({{"component_id", std::move(group.id)},
+                          {"charge", group.charge},
+                          {"instances", std::move(group.instances)}});
     }
     return result;
 }
@@ -318,9 +299,8 @@ fixed_charge_groups_json(const calculation::FixedChargeGroupsProvenance& fixed_c
                                   {"radius_angstrom", value.execution_policy.radius()}};
         effective["method_options"] =
             method_options_json({{value.method_id, value.method_options}});
-        if (value.fixed_charge_groups.has_value()) {
-            effective["fixed_charge_groups"] =
-                fixed_charge_groups_json(*value.fixed_charge_groups, result.inputs());
+        if (value.fixed_ions.has_value()) {
+            effective["fixed_ions"] = fixed_ions_json(*value.fixed_ions, result.inputs());
         }
     }
     Json encoded{{"requested", std::move(requested)}, {"effective", std::move(effective)}};

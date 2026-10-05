@@ -83,7 +83,7 @@ ATOM 1 O O . HOH B 1 ? 3.0 0.0 0.0 1.0 20.0 0 1 HOH B O 1
 #
 """
 
-FIXED_GROUPS_MMCIF_TEXT = """data_fixed_charge_groups
+FIXED_IONS_MMCIF_TEXT = """data_fixed_ions
 loop_
 _atom_site.group_PDB
 _atom_site.id
@@ -181,9 +181,9 @@ MOLECULE_JSON_TEXT = """{
 
 
 class NativeInputTests(unittest.TestCase):
-    def test_fixed_charge_groups_resolve_gemmi_components_and_provenance(self) -> None:
+    def test_fixed_ions_resolve_gemmi_components_and_provenance(self) -> None:
         molecules = chargefw_io.parse(
-            FIXED_GROUPS_MMCIF_TEXT,
+            FIXED_IONS_MMCIF_TEXT,
             format="mmcif",
             conformers=cast(Any, "all"),
             bonds="templates",
@@ -202,7 +202,7 @@ class NativeInputTests(unittest.TestCase):
             method="sqeqp",
             parameter_set="SQEqp_Schindler2021_CCD_gen",
             execution="full",
-            fixed_charge_groups=["MG"],
+            fixed_ions=["MG"],
         )
 
         self.assertEqual(result.status, "success")
@@ -211,34 +211,25 @@ class NativeInputTests(unittest.TestCase):
             self.assertEqual(assignment.values[3], 2.0)
             self.assertTrue(np.isclose(assignment.values[:3].sum(), 0.0))
             self.assertTrue(np.isclose(assignment.values.sum(), 2.0))
-        if result.plan is None or result.plan.fixed_charge_groups is None:
-            self.fail("fixed-charge group result must retain effective source provenance")
-        totals = result.plan.fixed_charge_groups.charge_totals
+        if result.plan is None or result.plan.fixed_ions is None:
+            self.fail("fixed ion result must retain effective source provenance")
         self.assertEqual(
-            result.plan.fixed_charge_groups.charge_provenance,
-            "chargefw:fixed-charge-ions:v1",
-        )
-        self.assertEqual(
-            result.plan.fixed_charge_groups.sources,
+            result.plan.fixed_ions.sources,
             (chargefw.FixedAtomCharge(0, 3, 2.0),),
-        )
-        self.assertEqual(
-            totals,
-            (chargefw.FixedChargeGroupChargeTotals(0, 0.0, 0.0),),
         )
 
         encoded = json.loads(chargefw_io.dumps(result, format="result-json"))
-        effective = encoded["calculation_provenance"]["effective"]["fixed_charge_groups"]
-        self.assertEqual(effective["charge_totals"][0]["original_total_charge"], 0.0)
-        self.assertEqual(effective["charge_totals"][0]["active_total_charge"], 0.0)
+        effective = encoded["calculation_provenance"]["effective"]["fixed_ions"]
         self.assertEqual(
-            effective["charge_totals"][0]["active_total_charge"]
-            + effective["sources"][0]["charge"],
-            2.0,
+            effective,
+            [
+                {
+                    "component_id": "MG",
+                    "charge": 2.0,
+                    "instances": [{"molecule_index": 0, "atom_index": 3}],
+                }
+            ],
         )
-        self.assertEqual(effective["components"][0]["component_id"], "MG")
-        self.assertEqual(effective["components"][0]["charge_per_instance"], 2.0)
-        self.assertEqual(effective["components"][0]["instances"][0]["atom_indices"], [3])
 
     def test_parse_native_molecular_formats(self) -> None:
         molecules = chargefw_io.parse(MOL_TEXT, format="mol", source_name="charged.mol")

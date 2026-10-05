@@ -38,8 +38,8 @@ auto to_string(const PrerequisiteIssueKind value) -> std::string_view {
         return "missing_parameters";
     case PrerequisiteIssueKind::parameter_classification_failed:
         return "parameter_classification_failed";
-    case PrerequisiteIssueKind::unsupported_fixed_charge_groups:
-        return "unsupported_fixed_charge_groups";
+    case PrerequisiteIssueKind::unsupported_fixed_ions:
+        return "unsupported_fixed_ions";
     }
     throw std::invalid_argument{"unknown prerequisite issue kind"};
 }

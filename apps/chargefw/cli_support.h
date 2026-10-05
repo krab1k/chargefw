@@ -37,7 +37,7 @@ struct SelectionArguments {
     std::size_t max_threads = 0;
     bool permissive_types = false;
     std::vector<std::string> method_options;
-    std::vector<std::string> fixed_charge_group_ids;
+    std::vector<std::string> fixed_ion_ids;
     CLI::Option* method_option = nullptr;
     CLI::Option* parameter_set_option = nullptr;
     CLI::Option* cutoff_atom_threshold_option = nullptr;

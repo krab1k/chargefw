@@ -9,17 +9,16 @@ namespace chargefw::methods::detail {
 
 auto validate_selected_candidate(const ApplicableMethod& selected,
                                  const features::PreparedMoleculeCollection& molecules,
-                                 const bool require_fixed_charge_groups) -> void {
+                                 const bool require_fixed_ions) -> void {
     if (selected.method == nullptr) {
         throw std::invalid_argument{"selected applicable method has no method"};
     }
 
     validate_method_options(selected.method->option_schema(), selected.method_options);
 
-    if (require_fixed_charge_groups &&
-        !selected.method->requirements().supports_fixed_charge_groups) {
+    if (require_fixed_ions && !selected.method->requirements().supports_fixed_point_sources) {
         throw std::invalid_argument{"selected method '" + std::string{selected.method->id()} +
-                                    "' does not support fixed-charge groups"};
+                                    "' does not support fixed ions"};
     }
 
     if (selected.method->requires_parameters() != selected.uses_parameters()) {

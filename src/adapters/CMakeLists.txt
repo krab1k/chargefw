@@ -9,7 +9,7 @@ target_sources(chargefw_core
         native/mol2_output.cpp
         native/sdf_input.cpp
         input_options.cpp
-        fixed_charge_groups.cpp
+        fixed_ions.cpp
         gemmi/bonds.cpp
         gemmi/structure_import.cpp
         gemmi/component_templates.cpp

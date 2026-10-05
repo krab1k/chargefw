@@ -22,7 +22,7 @@ namespace {
 
 struct PartitionInput {
     core::MoleculeCollection molecules;
-    calculation::FixedChargeGroups fixed_charge_groups;
+    calculation::FixedIons fixed_ions;
 };
 
 auto make_partition_input(const std::vector<calculation::FixedAtomCharge>& sources)
@@ -57,13 +57,12 @@ auto make_partition_input(const std::vector<calculation::FixedAtomCharge>& sourc
                 std::vector{core::Atom{9, 0, "between-F"}}, {}, {}, "unaffected-between"},
             std::move(second_affected)},
         "named-collection"};
-    return {std::move(molecules), calculation::FixedChargeGroups{sources, "caller charge label"}};
+    return {std::move(molecules), calculation::FixedIons{sources}};
 }
 
 auto make_partition_from_temporary_inputs() -> calculation::detail::FixedChargePartition {
     auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
-    return calculation::detail::make_fixed_charge_partition(input.molecules,
-                                                            input.fixed_charge_groups);
+    return calculation::detail::make_fixed_charge_partition(input.molecules, input.fixed_ions);
 }
 
 auto make_active_charge_set() -> chargefw::charges::ChargeSet {
@@ -88,25 +87,24 @@ auto make_active_charge_set() -> chargefw::charges::ChargeSet {
 TEST_CASE("fixed-charge partition preserves original ordering and owned mappings",
           "[calculation][fixed-charge-partition]") {
     auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
-    const auto partition = calculation::detail::make_fixed_charge_partition(
-        input.molecules, input.fixed_charge_groups);
+    const auto partition =
+        calculation::detail::make_fixed_charge_partition(input.molecules, input.fixed_ions);
 
     CHECK(input.molecules.name() == "named-collection");
     CHECK(input.molecules[1].atom_count() == 4);
     CHECK(input.molecules[1].bond_count() == 2);
     CHECK(input.molecules[1].atom(2).name() == "Mg2");
     CHECK(input.molecules[1].conformer(1).positions()[2].z == 1.0);
-    REQUIRE(input.fixed_charge_groups.sources.size() == 3);
-    CHECK(input.fixed_charge_groups.sources[0].molecule_index == 3);
-    CHECK(input.fixed_charge_groups.sources[0].atom_index == 3);
-    CHECK(input.fixed_charge_groups.sources[0].charge == -0.25);
-    CHECK(input.fixed_charge_groups.sources[1].molecule_index == 1);
-    CHECK(input.fixed_charge_groups.sources[1].atom_index == 2);
-    CHECK(input.fixed_charge_groups.sources[1].charge == 0.5);
+    REQUIRE(input.fixed_ions.sources.size() == 3);
+    CHECK(input.fixed_ions.sources[0].molecule_index == 3);
+    CHECK(input.fixed_ions.sources[0].atom_index == 3);
+    CHECK(input.fixed_ions.sources[0].charge == -0.25);
+    CHECK(input.fixed_ions.sources[1].molecule_index == 1);
+    CHECK(input.fixed_ions.sources[1].atom_index == 2);
+    CHECK(input.fixed_ions.sources[1].charge == 0.5);
 
     CHECK(partition.active_molecules.name() == "named-collection");
     CHECK(partition.active_molecules.size() == 4);
-    CHECK(partition.charge_provenance == "caller charge label");
     REQUIRE(partition.targets.size() == 4);
 
     const auto& before = partition.targets[0];
@@ -114,7 +112,6 @@ TEST_CASE("fixed-charge partition preserves original ordering and owned mappings
     CHECK(before.active_bond_indices == std::vector<std::size_t>{0});
     CHECK(before.sources.empty());
     CHECK(before.source_positions.empty());
-    CHECK(before.original_charge == 0.0);
     CHECK(before.active_charge == 0.0);
     CHECK(partition.active_molecules[0].name() == "unaffected-before");
     CHECK(partition.active_molecules[0].conformer_count() == 0);
@@ -129,7 +126,6 @@ TEST_CASE("fixed-charge partition preserves original ordering and owned mappings
     CHECK(first_target.sources[0].molecule_index == 1);
     CHECK(first_target.sources[0].atom_index == 2);
     CHECK(first_target.sources[0].charge == 0.5);
-    CHECK(first_target.original_charge == 2.0);
     CHECK(first_target.active_charge == 0.0);
     REQUIRE(first_target.source_positions.size() == 2);
     REQUIRE(first_target.source_positions[0].size() == 1);
@@ -161,7 +157,6 @@ TEST_CASE("fixed-charge partition preserves original ordering and owned mappings
     const auto& between = partition.targets[2];
     CHECK(between.active_atom_indices == std::vector<std::size_t>{0});
     CHECK(between.active_bond_indices.empty());
-    CHECK(between.original_charge == 0.0);
     CHECK(between.active_charge == 0.0);
     CHECK(partition.active_molecules[2].name() == "unaffected-between");
     CHECK(partition.active_molecules[2].conformer_count() == 0);
@@ -174,7 +169,6 @@ TEST_CASE("fixed-charge partition preserves original ordering and owned mappings
     CHECK(last_target.sources[0].charge == 0.75);
     CHECK(last_target.sources[1].atom_index == 3);
     CHECK(last_target.sources[1].charge == -0.25);
-    CHECK(last_target.original_charge == 0.0);
     CHECK(last_target.active_charge == 0.0);
     REQUIRE(last_target.source_positions.size() == 2);
     REQUIRE(last_target.source_positions[0].size() == 2);
@@ -210,9 +204,8 @@ TEST_CASE("fixed-charge partition retains disconnected active components as one 
         std::vector{core::Bond{3, 2}},
         {core::Conformer{{{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {2.0, 0.0, 0.0}, {3.0, 0.0, 0.0}}}},
         "disconnected-active"}}};
-    const auto fixed_charge_groups = calculation::FixedChargeGroups{{{0, 1, 0.75}}, "components"};
-    const auto partition =
-        calculation::detail::make_fixed_charge_partition(molecules, fixed_charge_groups);
+    const auto fixed_ions = calculation::FixedIons{{{0, 1, 0.75}}};
+    const auto partition = calculation::detail::make_fixed_charge_partition(molecules, fixed_ions);
 
     REQUIRE(partition.active_molecules.size() == 1);
     REQUIRE(partition.targets.size() == 1);
@@ -228,15 +221,16 @@ TEST_CASE("fixed-charge partition retains disconnected active components as one 
 TEST_CASE("empty fixed-charge partition is an identity copy",
           "[calculation][fixed-charge-partition]") {
     auto input = make_partition_input({});
-    const auto partition = calculation::detail::make_fixed_charge_partition(
-        input.molecules, input.fixed_charge_groups);
+    const auto partition =
+        calculation::detail::make_fixed_charge_partition(input.molecules, input.fixed_ions);
 
     REQUIRE(partition.active_molecules.size() == input.molecules.size());
     REQUIRE(partition.targets.size() == input.molecules.size());
     for (std::size_t index = 0; index < input.molecules.size(); ++index) {
         CHECK(partition.targets[index].sources.empty());
         CHECK(partition.targets[index].source_positions.empty());
-        CHECK(partition.targets[index].active_charge == partition.targets[index].original_charge);
+        CHECK(partition.targets[index].active_charge ==
+              core::total_formal_charge(input.molecules[index]));
         CHECK(partition.targets[index].active_atom_indices.size() ==
               input.molecules[index].atom_count());
         CHECK(partition.targets[index].active_bond_indices.size() ==
@@ -250,15 +244,14 @@ TEST_CASE("empty fixed-charge partition is an identity copy",
             CHECK(partition.targets[index].active_bond_indices[bond_index] == bond_index);
         }
     }
-    CHECK(partition.charge_provenance == "caller charge label");
 }
 
 TEST_CASE("fixed-charge reassembly scatters active charges and preserves assignment metadata",
           "[calculation][fixed-charge-partition]") {
     const auto result = [] {
         auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
-        const auto partition = calculation::detail::make_fixed_charge_partition(
-            input.molecules, input.fixed_charge_groups);
+        const auto partition =
+            calculation::detail::make_fixed_charge_partition(input.molecules, input.fixed_ions);
         const auto active_charges = make_active_charge_set();
         const auto reassembled =
             calculation::detail::reassemble_fixed_charge_results(active_charges, partition);
@@ -311,8 +304,8 @@ TEST_CASE("fixed-charge reassembly scatters active charges and preserves assignm
 TEST_CASE("fixed-charge reassembly supports identity partitions and absent parameter IDs",
           "[calculation][fixed-charge-partition]") {
     auto input = make_partition_input({});
-    const auto partition = calculation::detail::make_fixed_charge_partition(
-        input.molecules, input.fixed_charge_groups);
+    const auto partition =
+        calculation::detail::make_fixed_charge_partition(input.molecules, input.fixed_ions);
     const auto active = chargefw::charges::ChargeSet{
         "identity-method",
         {{chargefw::charges::ChargeTarget{1, std::nullopt},
@@ -332,8 +325,8 @@ TEST_CASE("fixed-charge reassembly supports identity partitions and absent param
 TEST_CASE("fixed-charge reassembly rejects target and active-size mismatches",
           "[calculation][fixed-charge-partition]") {
     auto input = make_partition_input({{1, 2, 0.5}});
-    const auto partition = calculation::detail::make_fixed_charge_partition(
-        input.molecules, input.fixed_charge_groups);
+    const auto partition =
+        calculation::detail::make_fixed_charge_partition(input.molecules, input.fixed_ions);
     const auto wrong_size = chargefw::charges::ChargeSet{
         "test-method",
         {{chargefw::charges::ChargeTarget{1, std::nullopt},
@@ -360,18 +353,17 @@ TEST_CASE("fixed-charge partition factory shares source validation",
         std::vector{core::Molecule{std::vector{core::Atom{6}, core::Atom{6}},
                                    std::vector{core::Bond{0, 1}},
                                    {core::Conformer{{{0.0, 0.0, 0.0}, {2.0, 0.0, 0.0}}}}}}};
-    const auto fixed_charge_groups = calculation::FixedChargeGroups{{{0, 0, 1.0}}, {}};
+    const auto fixed_ions = calculation::FixedIons{{{0, 0, 1.0}}};
 
     CHECK_THROWS_AS(calculation::detail::make_fixed_charge_partition(
-                        unbonded, calculation::FixedChargeGroups{{{1, 0, 1.0}}, {}}),
+                        unbonded, calculation::FixedIons{{{1, 0, 1.0}}}),
                     std::invalid_argument);
-    CHECK_THROWS_AS(calculation::detail::make_fixed_charge_partition(bonded, fixed_charge_groups),
+    CHECK_THROWS_AS(calculation::detail::make_fixed_charge_partition(bonded, fixed_ions),
                     std::invalid_argument);
     const auto coincident = core::MoleculeCollection{
         std::vector{core::Molecule{std::vector{core::Atom{6}, core::Atom{6}},
                                    {},
                                    {core::Conformer{{{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}}}}}};
-    CHECK_THROWS_AS(
-        calculation::detail::make_fixed_charge_partition(coincident, fixed_charge_groups),
-        std::invalid_argument);
+    CHECK_THROWS_AS(calculation::detail::make_fixed_charge_partition(coincident, fixed_ions),
+                    std::invalid_argument);
 }

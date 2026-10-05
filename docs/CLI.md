@@ -82,7 +82,7 @@ These options are accepted by both `calculate` and `applicability`, except `--th
 | `--parameter-set ID` | Parameter set for `--method` (required) |
 | `--permissive-types` | Allow [permissive parameter classification](PARAMETERS.md#strict-and-permissive-matching) |
 | `--method-option METHOD.OPTION=VALUE` | Override a method option; repeatable |
-| `--fixed-charge-group ID` | Select an imported fixed-charge component; repeatable |
+| `--fixed-ions ID` | Select an imported fixed-ion component; repeatable |
 | `--execution auto|full|cutoff|cover` | Select execution policy; default `auto` |
 | `--radius ANGSTROM` | Radius for cutoff/cover; explicit reduced modes require at least 8 Å |
 | `--cutoff-atom-threshold COUNT|unlimited` | Automatic full-to-cutoff threshold; default 20,000 |
@@ -96,13 +96,13 @@ are method-scoped even when a method is selected explicitly:
 ```bash
 chargefw calculate --method peoe --method-option peoe.iters=8 molecule.sdf output
 chargefw calculate --method sqeqp --parameter-set SQEqp_Schindler2021_CCD_gen \
-    --fixed-charge-group MG --fixed-charge-group CA structure.cif output
-chargefw applicability --fixed-charge-group MG --fixed-charge-group CA structure.cif
+    --fixed-ions MG --fixed-ions CA structure.cif output
+chargefw applicability --fixed-ions MG --fixed-ions CA structure.cif
 ```
 
-Named groups use the shared preset and imported-component identity contract described in
+Named ions use the shared catalog and imported-component identity contract described in
 [Assessment and execution](PROJECT.md#assessment-and-execution). Successful calculations retain resolved
-source values and active charge totals in effective result provenance; see the
+source indices and assigned charges in effective result provenance; see the
 [result JSON reference](FORMATS.md#chargefw-result-json-10).
 
 Explicit method, parameter-set, or execution choices do not fall back to alternatives if they are

@@ -1,21 +1,21 @@
-# Fixed-Charge Groups Plan
+# Fixed Ions Plan
 
 ## Objective
 
-Provide opt-in fixed-charge groups for EEM, SQE, SQE+q0, and SQE+qp. Explicitly selected,
-fixed-charge components create a field to which active atoms respond; their charges are not appended
+Provide opt-in fixed ions for EEM, SQE, SQE+q0, and SQE+qp. Explicitly selected,
+fixed-ion components create a field to which active atoms respond; their charges are not appended
 to an unperturbed calculation. The existing solver, cutoff, and cover machinery is reused.
 
 The priority is SQE, SQE+q0, and SQE+qp. EEM remains supported as a secondary method, not as a reason
-to prioritize broader legacy parameter coverage. Fixed-charge groups do not require fitted parameters for
+to prioritize broader legacy parameter coverage. Fixed ions do not require fitted parameters for
 the selected fixed components; ordinary strict parameter matching remains in force for the active
-graph. A parameter-covered component such as sulfate remains active unless the caller selects it.
+graph. Molecular components such as sulfate remain active.
 
-Fixed-charge groups default off. Python `assess()` and `calculate()` accept named component groups independently of
+Fixed ions default off. Python `assess()` and `calculate()` accept named monatomic ions independently of
 candidate method or parameter coverage:
 
 ```python
-calculate(molecule, fixed_charge_groups=["MG", "CA"])
+calculate(molecule, fixed_ions=["MG", "CA"])
 ```
 
 The Python request snapshots names into an immutable tuple. `None` and an empty sequence disable
@@ -27,11 +27,11 @@ bundled monatomic-ion catalog. Template charges are authoritative; no imported-f
 - Resolve named component instances to original atom indices in the native preparation/facade layer.
   Bindings and applications pass intent; they do not implement scientific policy.
 - Do not expose `MonatomicComponentCharge` or require users to construct records containing element,
-  charge, and template vectors. The approved Python API uses named groups; internal indexed source values
+  charge, and template vectors. The approved Python API uses named ions; internal indexed source values
   remain numerical plumbing. Effective result provenance retains its existing fixed-charge representation.
 - Keep input atom formal charges unchanged. The active target charge is the formal-charge sum of
   unselected atoms in the prepared active molecule; fixed charges contribute exactly once to the
-  modeled total. Preserve the original formal-charge sum as audit provenance. See [METALS.md](METALS.md)
+  modeled total. Keep the active target internal; results retain only indexed fixed values. See [METALS.md](METALS.md)
   and the owning [project contract](docs/PROJECT.md) for rationale and implementation boundaries.
 - Fixed component templates are bundled, immutable, versioned data. A named ion template assigns its
   formal charge, validates component identity, element, and complete atom coverage, and applies only
@@ -40,17 +40,13 @@ bundled monatomic-ion catalog. Template charges are authoritative; no imported-f
 - Do not infer oxidation state from element alone. Do not silently select components because a
   candidate lacks their parameters. Selection is caller intent and is independent of candidate
   coverage.
-- First scope: opt-in whole graph-isolated components. Internal bonds are allowed when a molecular
-  template is supported; no crossing bond deletion, capping, or active/fixed bond cutting. Isolation
-  is only as reliable as the imported graph. Coordination-bond import semantics must be explicit.
-- Input formal charges are not a molecular partial-charge distribution. Ions are required now;
-  small molecular presets can follow when their charge distributions are justified. HEM is desirable
-  but not a first-release requirement. No HEM or other molecular charge distribution is adopted.
-- A later explicitly named formal-charge model or scientifically sourced partial-charge model is
-  possible, but the exact model and option are unsettled. Do not offer a vague "more chemical" mode,
-  arbitrary unknown-charge generator, or preset for every ligand.
+- Recognize selected monatomic components by catalog ID, exactly one atom of the expected element,
+  and absence of incident graph bonds. Atom-name matching is unnecessary. Do not infer ions from
+  graph singletons or guess charge from element alone.
+- Keep molecular components active. Fixed-ion provenance identifies one indexed atom per instance;
+  generic imported component membership continues to represent complete molecular components.
 - Expose the same immutable native resolution through native assessment, Python plans, and CLI requests.
-  Keep provenance explicit: preset ID/version, resolved values, and any approximation warning.
+  Keep resolved source indices and values explicit in results.
 - Keep execution policy distinct from the fixed-charge approximation. Existing full, cutoff, and cover
   machinery supplies fixed sources to every relevant solve, including sources beyond a fragment radius.
 
@@ -65,16 +61,8 @@ to bonds represented in the imported core graph.
 Template and fixed-ion matching share label-first canonical names so alternate author names do not change
 component identity, while source mappings continue to preserve both namespaces.
 
-The desired user-facing request stays simple: named components plus any explicitly necessary charge
-model choice. Public element/charge/template-vector records are rejected. Internal per-atom templates
-and indexed values may still feed numerical source coupling.
-
-## Remaining Work
-
-- [ ] Scope multiatom presets as a separate task, starting with one specific small component and a
-  scientifically justified charge distribution rather than generic machinery or heme. Verify complete
-  atom identity/element matching, versioned provenance, and internal versus crossing bonds before adding
-  the preset.
+The user-facing request selects named ions. Native indexed charges and method-level positional point
+sources remain general numerical inputs, independent of the adapter catalog.
 
 ## Workflow
 

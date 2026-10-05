@@ -33,8 +33,8 @@ namespace {
         return "missing_parameters";
     case methods::PrerequisiteIssueKind::parameter_classification_failed:
         return "parameter_classification_failed";
-    case methods::PrerequisiteIssueKind::unsupported_fixed_charge_groups:
-        return "unsupported_fixed_charge_groups";
+    case methods::PrerequisiteIssueKind::unsupported_fixed_ions:
+        return "unsupported_fixed_ions";
     }
     throw std::logic_error{"unknown prerequisite issue kind"};
 }
@@ -80,48 +80,31 @@ auto validate_import_metadata(const std::span<const ImportedMoleculeRecord> reco
     }
 }
 
-auto validate_fixed_charge_groups(const std::span<const ImportedMoleculeRecord> records,
-                                  const calculation::EffectiveCalculation& effective) -> void {
-    if (!effective.fixed_charge_groups.has_value()) {
+auto validate_fixed_ions(const std::span<const ImportedMoleculeRecord> records,
+                         const calculation::EffectiveCalculation& effective) -> void {
+    if (!effective.fixed_ions.has_value()) {
         return;
     }
 
-    const auto& fixed_group_provenance = *effective.fixed_charge_groups;
-    if (fixed_group_provenance.sources.empty()) {
-        throw std::invalid_argument{"fixed-charge group provenance requires sources"};
+    const auto& fixed_ions = *effective.fixed_ions;
+    if (fixed_ions.sources.empty()) {
+        throw std::invalid_argument{"fixed ion provenance requires sources"};
     }
     auto selectors = std::set<std::pair<std::size_t, std::size_t>>{};
-    for (const auto& source : fixed_group_provenance.sources) {
+    for (const auto& source : fixed_ions.sources) {
         if (source.molecule_index >= records.size()) {
-            throw std::invalid_argument{"fixed-charge group source molecule index is outside "
+            throw std::invalid_argument{"fixed ion source molecule index is outside "
                                         "the input"};
         }
         if (source.atom_index >= records[source.molecule_index].molecule.atom_count()) {
-            throw std::invalid_argument{"fixed-charge group source atom index is outside its "
+            throw std::invalid_argument{"fixed ion source atom index is outside its "
                                         "molecule"};
         }
         if (!std::isfinite(source.charge)) {
-            throw std::invalid_argument{"fixed-charge group source charge must be finite"};
+            throw std::invalid_argument{"fixed ion source charge must be finite"};
         }
         if (!selectors.emplace(source.molecule_index, source.atom_index).second) {
-            throw std::invalid_argument{"fixed-charge group source selectors must be unique"};
-        }
-    }
-
-    if (fixed_group_provenance.charge_totals.size() != records.size()) {
-        throw std::invalid_argument{"fixed-charge group charge-total count does not match input "
-                                    "molecule count"};
-    }
-    for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
-        const auto& totals = fixed_group_provenance.charge_totals[molecule_index];
-        if (totals.molecule_index != molecule_index) {
-            throw std::invalid_argument{
-                "fixed-charge group charge totals must follow input molecule "
-                "order"};
-        }
-        if (!std::isfinite(totals.original_total_charge) ||
-            !std::isfinite(totals.active_total_charge)) {
-            throw std::invalid_argument{"fixed-charge group charge totals must be finite"};
+            throw std::invalid_argument{"fixed ion source selectors must be unique"};
         }
     }
 }
@@ -129,7 +112,7 @@ auto validate_fixed_charge_groups(const std::span<const ImportedMoleculeRecord> 
 auto validate_assignments(const std::span<const ImportedMoleculeRecord> records,
                           const calculation::ExecutionResult& result) -> void {
     if (result.effective.has_value()) {
-        validate_fixed_charge_groups(records, *result.effective);
+        validate_fixed_ions(records, *result.effective);
     }
     if (result.status != calculation::ExecutionStatus::success) {
         if (!result.charges.has_value()) {

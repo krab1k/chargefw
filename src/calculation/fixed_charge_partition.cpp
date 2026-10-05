@@ -14,15 +14,14 @@ namespace {
 
 struct ValidatedTarget {
     std::vector<FixedAtomCharge> sources;
-    double original_charge = 0.0;
     double active_charge = 0.0;
 };
 
 [[nodiscard]] auto validate_and_group_sources(const core::MoleculeCollection& molecules,
-                                              const FixedChargeGroups& fixed_charge_groups)
+                                              const FixedIons& fixed_ions)
     -> std::vector<ValidatedTarget> {
-    auto selected_sources = fixed_charge_groups.sources;
-    for (const auto& source : fixed_charge_groups.sources) {
+    auto selected_sources = fixed_ions.sources;
+    for (const auto& source : fixed_ions.sources) {
         if (source.molecule_index >= molecules.size()) {
             throw std::invalid_argument{
                 "fixed charge source molecule index " + std::to_string(source.molecule_index) +
@@ -87,12 +86,12 @@ struct ValidatedTarget {
         }
         if (static_cast<std::size_t>(std::ranges::count(selected_mask, true)) ==
             molecule.atom_count()) {
-            throw std::invalid_argument{"fixed-charge groups leave no active atoms in molecule " +
+            throw std::invalid_argument{"fixed ions leave no active atoms in molecule " +
                                         std::to_string(molecule_index)};
         }
 
         if (molecule.conformer_count() == 0) {
-            throw std::invalid_argument{"fixed-charge groups require a conformer in molecule " +
+            throw std::invalid_argument{"fixed ions require a conformer in molecule " +
                                         std::to_string(molecule_index)};
         }
         for (std::size_t conformer_index = 0; conformer_index < molecule.conformer_count();
@@ -103,7 +102,7 @@ struct ValidatedTarget {
                 if (!std::isfinite(position.x) || !std::isfinite(position.y) ||
                     !std::isfinite(position.z)) {
                     throw std::invalid_argument{
-                        "fixed-charge groups have non-finite coordinates at molecule " +
+                        "fixed ions have non-finite coordinates at molecule " +
                         std::to_string(molecule_index) + ", conformer " +
                         std::to_string(conformer_index) + ", atom " + std::to_string(atom_index)};
                 }
@@ -128,7 +127,6 @@ struct ValidatedTarget {
             }
         }
 
-        target.original_charge = core::total_formal_charge(molecule);
         target.active_charge = 0.0;
         for (std::size_t atom_index = 0; atom_index < molecule.atom_count(); ++atom_index) {
             if (!selected_mask[atom_index]) {
@@ -141,8 +139,7 @@ struct ValidatedTarget {
     for (std::size_t molecule_index = 0; molecule_index < molecules.size(); ++molecule_index) {
         auto& target = targets[molecule_index];
         if (target.sources.empty()) {
-            target.original_charge = core::total_formal_charge(molecules[molecule_index]);
-            target.active_charge = target.original_charge;
+            target.active_charge = core::total_formal_charge(molecules[molecule_index]);
         }
     }
     return targets;
@@ -151,9 +148,8 @@ struct ValidatedTarget {
 } // namespace
 
 auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
-                                 const FixedChargeGroups& fixed_charge_groups)
-    -> FixedChargePartition {
-    const auto validated_targets = validate_and_group_sources(molecules, fixed_charge_groups);
+                                 const FixedIons& fixed_ions) -> FixedChargePartition {
+    const auto validated_targets = validate_and_group_sources(molecules, fixed_ions);
     auto active_molecules = std::vector<core::Molecule>{};
     auto targets = std::vector<FixedChargePartitionTarget>(molecules.size());
     active_molecules.reserve(molecules.size());
@@ -163,7 +159,6 @@ auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
         const auto& validated = validated_targets[molecule_index];
         auto& target = targets[molecule_index];
         target.sources = validated.sources;
-        target.original_charge = validated.original_charge;
         target.active_charge = validated.active_charge;
 
         if (validated.sources.empty()) {
@@ -233,7 +228,7 @@ auto make_fixed_charge_partition(const core::MoleculeCollection& molecules,
     }
 
     return {core::MoleculeCollection{std::move(active_molecules), std::string{molecules.name()}},
-            std::move(targets), fixed_charge_groups.charge_provenance};
+            std::move(targets)};
 }
 
 auto validate_partition_active_molecules(const features::PreparedMoleculeCollection& molecules,

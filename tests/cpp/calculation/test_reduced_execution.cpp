@@ -91,15 +91,14 @@ class ZeroFragmentMethod final : public methods::Method {
     }
 };
 
-class FailingFixedChargeGroupsFragmentMethod final : public methods::Method {
+class FailingFixedIonsFragmentMethod final : public methods::Method {
   public:
     [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{
-            .id = "failing-fixed-charge-groups-fragment",
-            .name = "Failing fragment",
-            .full_name = "Failing fragment",
-            .publication = std::nullopt,
-            .priority = 0};
+        static constexpr methods::MethodMetadata metadata{.id = "failing-fixed-ions-fragment",
+                                                          .name = "Failing fragment",
+                                                          .full_name = "Failing fragment",
+                                                          .publication = std::nullopt,
+                                                          .priority = 0};
         return metadata;
     }
 
@@ -110,7 +109,7 @@ class FailingFixedChargeGroupsFragmentMethod final : public methods::Method {
         requirements.resources.supports_cover = true;
         requirements.resources.reduced_charge_policy =
             methods::ReducedChargePolicy::uniform_target_global;
-        requirements.supports_fixed_charge_groups = true;
+        requirements.supports_fixed_point_sources = true;
         return requirements;
     }
 
@@ -737,7 +736,7 @@ TEST_CASE("reduced execution preserves mixed source target order",
 }
 
 TEST_CASE("reduced fragment calculations forward the complete fixed-source environment",
-          "[calculation][reduced-execution][fixed-charge-groups]") {
+          "[calculation][reduced-execution][fixed-ions]") {
     const auto molecule = make_extended_components(1);
     const auto source = methods::FixedPointSource{core::Position{.x = 50.0, .y = 2.0}, 1.25};
     const auto sources = std::array{source};
@@ -822,17 +821,17 @@ TEST_CASE("reduced fragment calculations forward the complete fixed-source envir
 }
 
 TEST_CASE("fixed-charge cutoff and cover diagnostics map active centers to original atoms",
-          "[calculation][reduced-execution][fixed-charge-groups]") {
+          "[calculation][reduced-execution][fixed-ions]") {
     const auto original = core::MoleculeCollection{std::vector{
         core::Molecule{std::vector{core::Atom{12, 2}, core::Atom{1, 0}},
                        {},
                        {core::Conformer{{core::Position{.x = 0.0}, core::Position{.x = 20.0}}}},
                        "mapped-source"}}};
     const auto partition = calculation::detail::make_fixed_charge_partition(
-        original, calculation::FixedChargeGroups{
+        original, calculation::FixedIons{
                       .sources = {{.molecule_index = 0, .atom_index = 0, .charge = 0.25}}});
     const features::PreparedMoleculeCollection active{partition.active_molecules};
-    const FailingFixedChargeGroupsFragmentMethod method;
+    const FailingFixedIonsFragmentMethod method;
     const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
 
     for (const auto mode :

@@ -1,4 +1,4 @@
-#include "adapters/fixed_charge_groups.h"
+#include "adapters/fixed_ions.h"
 
 #include <chargefw/adapters/gemmi/input_options.h>
 #include <chargefw/adapters/gemmi/mmcif_input.h>
@@ -27,7 +27,7 @@ namespace mmcif = chargefw::adapters::gemmi::mmcif_input;
 
 namespace {
 auto mmcif_water_and_magnesium() -> ImportedMoleculeRecord {
-    std::istringstream input{R"cif(data_fixed_charge_groups
+    std::istringstream input{R"cif(data_fixed_ions
 loop_
 _atom_site.group_PDB
 _atom_site.id
@@ -92,8 +92,8 @@ auto ion_record(const std::string& component, const int atomic_number, const std
 
 TEST_CASE("private fixed-charge ion selections share the resolver catalog",
           "[adapters][fixed-charge]") {
-    const auto common = detail::fixed_charge_ion_names(true);
-    const auto all = detail::fixed_charge_ion_names(false);
+    const auto common = detail::fixed_ion_names(true);
+    const auto all = detail::fixed_ion_names(false);
     const std::vector<std::string> expected{"NA", "K", "MG", "CA", "CL", "ZN", "FE", "FE2"};
     CHECK(common == expected);
     CHECK(all.size() > common.size());
@@ -104,13 +104,13 @@ TEST_CASE("private fixed-charge ion selections share the resolver catalog",
         CHECK(std::ranges::count(all, name) == 1);
     }
     const std::vector<ImportedMoleculeRecord> records{ion_record("LIG", 6, "C", "1")};
-    CHECK(detail::resolve_fixed_charge_groups(records, all).sources.empty());
+    CHECK(detail::resolve_fixed_ions(records, all).sources.empty());
     auto changed = all;
     changed.front() = "changed";
-    CHECK(detail::fixed_charge_ion_names(false) == all);
+    CHECK(detail::fixed_ion_names(false) == all);
 }
 
-TEST_CASE("private fixed-charge groups resolve exact ion identities in input order",
+TEST_CASE("private fixed ions resolve exact ion identities in input order",
           "[adapters][fixed-charge]") {
     const std::vector records{
         ion_record("FE2", 26, "FE", "1", 4), ion_record("MG", 12, "MG", "2", -2),
@@ -118,25 +118,24 @@ TEST_CASE("private fixed-charge groups resolve exact ion identities in input ord
         ion_record("K", 19, "K", "5", -1),   ion_record("CA", 20, "CA", "6", -1),
         ion_record("CL", 17, "CL", "7", 1),  ion_record("ZN", 30, "ZN", "8", -1)};
     const std::vector<std::string> request{"ZN", "FE", "CA", "K", "NA", "CL", "MG", "FE2"};
-    const auto fixed_charge_groups = detail::resolve_fixed_charge_groups(records, request);
-    REQUIRE(fixed_charge_groups.sources.size() == 8);
-    CHECK(fixed_charge_groups.sources[0].molecule_index == 0);
-    CHECK(fixed_charge_groups.sources[0].charge == 2.0);
-    CHECK(fixed_charge_groups.sources[1].molecule_index == 1);
-    CHECK(fixed_charge_groups.sources[1].charge == 2.0);
-    CHECK(fixed_charge_groups.sources[2].molecule_index == 2);
-    CHECK(fixed_charge_groups.sources[2].charge == 3.0);
-    CHECK(fixed_charge_groups.sources[3].charge == 1.0);
-    CHECK(fixed_charge_groups.sources[4].charge == 1.0);
-    CHECK(fixed_charge_groups.sources[5].charge == 2.0);
-    CHECK(fixed_charge_groups.sources[6].charge == -1.0);
-    CHECK(fixed_charge_groups.sources[7].charge == 2.0);
+    const auto fixed_ions = detail::resolve_fixed_ions(records, request);
+    REQUIRE(fixed_ions.sources.size() == 8);
+    CHECK(fixed_ions.sources[0].molecule_index == 0);
+    CHECK(fixed_ions.sources[0].charge == 2.0);
+    CHECK(fixed_ions.sources[1].molecule_index == 1);
+    CHECK(fixed_ions.sources[1].charge == 2.0);
+    CHECK(fixed_ions.sources[2].molecule_index == 2);
+    CHECK(fixed_ions.sources[2].charge == 3.0);
+    CHECK(fixed_ions.sources[3].charge == 1.0);
+    CHECK(fixed_ions.sources[4].charge == 1.0);
+    CHECK(fixed_ions.sources[5].charge == 2.0);
+    CHECK(fixed_ions.sources[6].charge == -1.0);
+    CHECK(fixed_ions.sources[7].charge == 2.0);
     for (std::size_t i = 0; i < records.size(); ++i) {
-        CHECK(fixed_charge_groups.sources[i].atom_index == 0);
+        CHECK(fixed_ions.sources[i].atom_index == 0);
     }
-    CHECK(fixed_charge_groups.charge_provenance == "chargefw:fixed-charge-ions:v1");
     for (std::size_t i = 0; i < records.size(); ++i) {
-        CHECK(records[i].molecule.atom(0).formal_charge() != fixed_charge_groups.sources[i].charge);
+        CHECK(records[i].molecule.atom(0).formal_charge() != fixed_ions.sources[i].charge);
     }
     CHECK(records[0].molecule.atom(0).formal_charge() == 4);
 }
@@ -192,7 +191,7 @@ TEST_CASE("private fixed-charge catalog resolves verified CCD monatomic ions",
         ExpectedIon{"ZCM", "CM", 96, 3}, ExpectedIon{"ZN", "ZN", 30, 2},
         ExpectedIon{"ZR", "ZR", 40, 4},  ExpectedIon{"ZTM", "AC", 89, 3},
     };
-    const auto all = detail::fixed_charge_ion_names(false);
+    const auto all = detail::fixed_ion_names(false);
     REQUIRE(all.size() == expected.size());
     std::vector<ImportedMoleculeRecord> records;
     for (std::size_t i = 0; i < expected.size(); ++i) {
@@ -205,20 +204,18 @@ TEST_CASE("private fixed-charge catalog resolves verified CCD monatomic ions",
         CAPTURE(ion.component);
         const std::vector<std::string> selected{ion.component};
         const std::vector wrong_name{ion_record(ion.component, ion.element, "WRONG", "1")};
-        CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(wrong_name, selected),
-                        std::invalid_argument);
+        CHECK(detail::resolve_fixed_ions(wrong_name, selected).sources[0].charge == ion.charge);
         const std::vector wrong_element{
             ion_record(ion.component, ion.element == 1 ? 2 : 1, ion.atom, "1")};
-        CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(wrong_element, selected),
-                        std::invalid_argument);
+        CHECK_THROWS_AS(detail::resolve_fixed_ions(wrong_element, selected), std::invalid_argument);
         if (std::string_view{ion.atom} != ion.component) {
             const std::vector component_as_atom{
                 ion_record(ion.component, ion.element, ion.component, "1")};
-            CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(component_as_atom, selected),
-                            std::invalid_argument);
+            CHECK(detail::resolve_fixed_ions(component_as_atom, selected).sources[0].charge ==
+                  ion.charge);
         }
     }
-    const auto resolved = detail::resolve_fixed_charge_groups(records, all);
+    const auto resolved = detail::resolve_fixed_ions(records, all);
     REQUIRE(resolved.sources.size() == expected.size());
     for (std::size_t i = 0; i < expected.size(); ++i) {
         CHECK(resolved.sources[i].molecule_index == i);
@@ -228,12 +225,11 @@ TEST_CASE("private fixed-charge catalog resolves verified CCD monatomic ions",
     }
     for (const std::string excluded : {"ZN2", "SO4", "XE"}) {
         const std::vector<std::string> selected{excluded};
-        CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(records, selected),
-                        std::invalid_argument);
+        CHECK_THROWS_AS(detail::resolve_fixed_ions(records, selected), std::invalid_argument);
     }
 }
 
-TEST_CASE("private fixed-charge groups resolve repeated instances in atom order",
+TEST_CASE("private fixed ions resolve repeated instances in atom order",
           "[adapters][fixed-charge]") {
     auto record = ion_record("MG", 12, "MG", "1");
     record.molecule = chargefw::core::Molecule{
@@ -244,15 +240,38 @@ TEST_CASE("private fixed-charge groups resolve repeated instances in atom order"
     record.import_metadata->components = {{"MG", {1}}, {"MG", {0}}};
 
     const std::vector<std::string> request{"MG", "MG"};
-    const auto fixed_charge_groups =
-        detail::resolve_fixed_charge_groups(std::vector{record}, request);
-    REQUIRE(fixed_charge_groups.sources.size() == 2);
-    CHECK(fixed_charge_groups.sources[0].atom_index == 0);
-    CHECK(fixed_charge_groups.sources[1].atom_index == 1);
+    const auto fixed_ions = detail::resolve_fixed_ions(std::vector{record}, request);
+    REQUIRE(fixed_ions.sources.size() == 2);
+    CHECK(fixed_ions.sources[0].atom_index == 0);
+    CHECK(fixed_ions.sources[1].atom_index == 1);
 }
 
-TEST_CASE("private fixed-charge groups preserve atom order within one record",
+TEST_CASE("fixed calcium recognition uses component identity, element, and cardinality",
           "[adapters][fixed-charge]") {
+    const std::vector<std::string> selected{"CA"};
+    auto calcium = ion_record("CA", 20, "arbitrary-site-name", "1", -1);
+    calcium.import_metadata->atoms[0].structural_labels.reset();
+    const auto resolved = detail::resolve_fixed_ions(std::vector{calcium}, selected);
+    REQUIRE(resolved.sources.size() == 1);
+    CHECK(resolved.sources[0].atom_index == 0);
+    CHECK(resolved.sources[0].charge == 2.0);
+    CHECK(calcium.molecule.atom(0).formal_charge() == -1);
+
+    const auto singleton = ion_record("LIG", 20, "CA", "1");
+    CHECK(detail::resolve_fixed_ions(std::vector{singleton}, selected).sources.empty());
+    const auto carbon = ion_record("CA", 6, "CA", "1");
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{carbon}, selected),
+                    std::invalid_argument);
+
+    calcium.molecule =
+        chargefw::core::Molecule{{chargefw::core::Atom{20}, chargefw::core::Atom{20}}};
+    calcium.import_metadata->atoms.push_back(calcium.import_metadata->atoms.front());
+    calcium.import_metadata->components[0].atom_indices.push_back(1);
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{calcium}, selected),
+                    std::invalid_argument);
+}
+
+TEST_CASE("private fixed ions preserve atom order within one record", "[adapters][fixed-charge]") {
     auto record = ion_record("FE2", 26, "FE", "9");
     record.molecule = chargefw::core::Molecule{{chargefw::core::Atom{26, 0, "FE"},
                                                 chargefw::core::Atom{12, 7, "MG"},
@@ -283,70 +302,68 @@ TEST_CASE("private fixed-charge groups preserve atom order within one record",
 
     const std::vector records{record};
     const std::vector<std::string> request{"FE", "MG", "FE2", "MG"};
-    const auto fixed_charge_groups = detail::resolve_fixed_charge_groups(records, request);
-    REQUIRE(fixed_charge_groups.sources.size() == 3);
-    CHECK(fixed_charge_groups.sources[0].atom_index == 0);
-    CHECK(fixed_charge_groups.sources[0].charge == 2.0);
-    CHECK(fixed_charge_groups.sources[1].atom_index == 1);
-    CHECK(fixed_charge_groups.sources[1].charge == 2.0);
-    CHECK(fixed_charge_groups.sources[2].atom_index == 2);
-    CHECK(fixed_charge_groups.sources[2].charge == 3.0);
+    const auto fixed_ions = detail::resolve_fixed_ions(records, request);
+    REQUIRE(fixed_ions.sources.size() == 3);
+    CHECK(fixed_ions.sources[0].atom_index == 0);
+    CHECK(fixed_ions.sources[0].charge == 2.0);
+    CHECK(fixed_ions.sources[1].atom_index == 1);
+    CHECK(fixed_ions.sources[1].charge == 2.0);
+    CHECK(fixed_ions.sources[2].atom_index == 2);
+    CHECK(fixed_ions.sources[2].charge == 3.0);
     CHECK(records[0].molecule.atom(0).formal_charge() == 0);
     CHECK(records[0].molecule.atom(1).formal_charge() == 7);
     CHECK(records[0].molecule.atom(2).formal_charge() == -4);
 }
 
-TEST_CASE("private fixed-charge groups handle empty, absent, and unknown selections",
+TEST_CASE("private fixed ions handle empty, absent, and unknown selections",
           "[adapters][fixed-charge]") {
     const std::vector<ImportedMoleculeRecord> records;
     const std::vector<std::string> none;
-    CHECK(detail::resolve_fixed_charge_groups(records, none).sources.empty());
+    CHECK(detail::resolve_fixed_ions(records, none).sources.empty());
     const auto no_metadata =
         ImportedMoleculeRecord{.molecule = chargefw::core::Molecule{{chargefw::core::Atom{6}}}};
     const std::vector malformed{no_metadata};
-    CHECK(detail::resolve_fixed_charge_groups(malformed, none).sources.empty());
+    CHECK(detail::resolve_fixed_ions(malformed, none).sources.empty());
     const std::vector<std::string> absent{"NA"};
     const std::vector valid{ion_record("LIG", 6, "C", "1")};
-    const auto absent_result = detail::resolve_fixed_charge_groups(valid, absent);
+    const auto absent_result = detail::resolve_fixed_ions(valid, absent);
     CHECK(absent_result.sources.empty());
-    CHECK(absent_result.charge_provenance.empty());
     for (const std::string bad : {"", "mg", "Mg"}) {
         const std::vector<std::string> unknown{bad};
-        CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(records, unknown),
-                        std::invalid_argument);
+        CHECK_THROWS_AS(detail::resolve_fixed_ions(records, unknown), std::invalid_argument);
     }
 }
 
-TEST_CASE("private fixed-charge groups use explicit components without hierarchy labels",
+TEST_CASE("private fixed ions use explicit components without hierarchy labels",
           "[adapters][fixed-charge]") {
     auto record = ion_record("MG", 12, "MG", "1");
     record.import_metadata->atoms[0].structural_labels.reset();
     const std::vector records{record};
     const std::vector<std::string> request{"MG"};
-    const auto fixed_charge_groups = detail::resolve_fixed_charge_groups(records, request);
-    REQUIRE(fixed_charge_groups.sources.size() == 1);
-    CHECK(fixed_charge_groups.sources[0].charge == 2.0);
+    const auto fixed_ions = detail::resolve_fixed_ions(records, request);
+    REQUIRE(fixed_ions.sources.size() == 1);
+    CHECK(fixed_ions.sources[0].charge == 2.0);
 }
 
-TEST_CASE("private fixed-charge groups use canonical component IDs and validate partitions",
+TEST_CASE("private fixed ions use canonical component IDs and validate partitions",
           "[adapters][fixed-charge]") {
     auto record = ion_record("MG", 12, "MG", "1");
     record.import_metadata->atoms[0].structural_labels->author.residue = "AUTHOR-NAMESPACE";
     record.import_metadata->components = {{"MG", {0}}};
     const std::vector<std::string> request{"MG"};
-    const auto resolved = detail::resolve_fixed_charge_groups(std::vector{record}, request);
+    const auto resolved = detail::resolve_fixed_ions(std::vector{record}, request);
     REQUIRE(resolved.sources.size() == 1);
     CHECK(resolved.sources[0].atom_index == 0);
 
     auto malformed = record;
     malformed.import_metadata->components = {{"MG", {1}}};
-    CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(std::vector{malformed}, request),
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{malformed}, request),
                     std::invalid_argument);
     malformed.import_metadata->components = {{"MG", {0}}, {"MG", {0}}};
-    CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(std::vector{malformed}, request),
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{malformed}, request),
                     std::invalid_argument);
     malformed.import_metadata->components = {{"", {0}}};
-    CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(std::vector{malformed}, request),
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{malformed}, request),
                     std::invalid_argument);
 
     auto incomplete = record;
@@ -356,11 +373,11 @@ TEST_CASE("private fixed-charge groups use canonical component IDs and validate 
     second.position = 2;
     incomplete.import_metadata->atoms.push_back(second);
     incomplete.import_metadata->components = {{"MG", {0}}};
-    CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(std::vector{incomplete}, request),
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{incomplete}, request),
                     std::invalid_argument);
 }
 
-TEST_CASE("private fixed-charge groups match label names before author fallback",
+TEST_CASE("private fixed ions match label names before author fallback",
           "[adapters][fixed-charge]") {
     auto record = ion_record("MG", 12, "AUTHOR-MG", "1");
     record.import_metadata->atoms[0].structural_labels->author.atom = "AUTHOR-MG";
@@ -368,31 +385,35 @@ TEST_CASE("private fixed-charge groups match label names before author fallback"
     record.import_metadata->atoms[0].structural_labels->author.residue = "AUTHOR-COMP";
     record.import_metadata->atoms[0].structural_labels->label.residue = "MG";
     const std::vector<std::string> request{"MG"};
-    const auto resolved = detail::resolve_fixed_charge_groups(std::vector{record}, request);
+    const auto resolved = detail::resolve_fixed_ions(std::vector{record}, request);
     REQUIRE(resolved.sources.size() == 1);
     CHECK(resolved.sources[0].atom_index == 0);
 
-    record.import_metadata->atoms[0].structural_labels->label.atom = "NOT-MG";
-    CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(std::vector{record}, request),
+    record.import_metadata->atoms[0].structural_labels->label.residue = "NOT-MG";
+    CHECK(detail::resolve_fixed_ions(std::vector{record}, request).sources.empty());
+    record.import_metadata->atoms[0].structural_labels->label.residue = "";
+    record.import_metadata->atoms[0].structural_labels->author.residue = "MG";
+    CHECK(detail::resolve_fixed_ions(std::vector{record}, request).sources.size() == 1);
+    record.import_metadata->components.clear();
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{record}, request),
                     std::invalid_argument);
 }
 
-TEST_CASE("private fixed-charge groups reject incomplete and inconsistent mappings",
+TEST_CASE("private fixed ions reject incomplete and inconsistent mappings",
           "[adapters][fixed-charge]") {
     const std::vector<std::string> request{"MG"};
     const auto missing =
         ImportedMoleculeRecord{.molecule = chargefw::core::Molecule{{chargefw::core::Atom{12}}}};
-    CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(std::vector{missing}, request),
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{missing}, request),
                     std::invalid_argument);
 
     auto wrong_size = ion_record("MG", 12, "MG", "1");
     wrong_size.import_metadata->atoms.clear();
-    CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(std::vector{wrong_size}, request),
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{wrong_size}, request),
                     std::invalid_argument);
 }
 
-TEST_CASE("private fixed-charge groups reject extra atoms and incident bonds",
-          "[adapters][fixed-charge]") {
+TEST_CASE("private fixed ions reject extra atoms and incident bonds", "[adapters][fixed-charge]") {
     const std::vector<std::string> mg_request{"MG"};
     auto extra_atom = ion_record("MG", 12, "MG", "1");
     extra_atom.molecule = chargefw::core::Molecule{
@@ -403,7 +424,7 @@ TEST_CASE("private fixed-charge groups reject extra atoms and incident bonds",
     extra_metadata.structural_labels->label.atom = "H";
     extra_atom.import_metadata->atoms.push_back(extra_metadata);
     extra_atom.import_metadata->components[0].atom_indices.push_back(1);
-    CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(std::vector{extra_atom}, mg_request),
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{extra_atom}, mg_request),
                     std::invalid_argument);
 
     auto bonded = ion_record("MG", 12, "MG", "1");
@@ -420,7 +441,7 @@ TEST_CASE("private fixed-charge groups reject extra atoms and incident bonds",
     active_metadata.structural_labels->label.sequence = "2";
     bonded.import_metadata->atoms.push_back(active_metadata);
     bonded.import_metadata->components.push_back({"HOH", {1}});
-    CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(std::vector{bonded}, mg_request),
+    CHECK_THROWS_AS(detail::resolve_fixed_ions(std::vector{bonded}, mg_request),
                     std::invalid_argument);
 
     auto two_selected = ion_record("MG", 12, "MG", "1");
@@ -435,8 +456,7 @@ TEST_CASE("private fixed-charge groups reject extra atoms and incident bonds",
     two_selected.import_metadata->components = {{"MG", {0}}, {"MG", {1}}};
     auto bond_error = std::string{};
     try {
-        static_cast<void>(
-            detail::resolve_fixed_charge_groups(std::vector{two_selected}, mg_request));
+        static_cast<void>(detail::resolve_fixed_ions(std::vector{two_selected}, mg_request));
     } catch (const std::invalid_argument& error) {
         bond_error = error.what();
     }
@@ -459,7 +479,7 @@ TEST_CASE("mmCIF named-ion resolution feeds SQE+qp full calculation",
 
     const std::vector records{record};
     const std::vector<std::string> names{"MG"};
-    const auto resolved = detail::resolve_fixed_charge_groups(records, names);
+    const auto resolved = detail::resolve_fixed_ions(records, names);
     REQUIRE(resolved.sources.size() == 1);
     CHECK(resolved.sources[0].molecule_index == 0);
     CHECK(resolved.sources[0].atom_index == 3);
@@ -483,7 +503,7 @@ TEST_CASE("mmCIF named-ion resolution feeds SQE+qp full calculation",
          .parameter_set_id = "SQEqp_Schindler2021_CCD_gen",
          .execution_selection =
              calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full},
-         .fixed_charge_groups = resolved}));
+         .fixed_ions = resolved}));
     REQUIRE(fixed_source_result.calculated());
     REQUIRE(fixed_source_result.charges->size() == 2);
     for (std::size_t conformer = 0; conformer < 2; ++conformer) {

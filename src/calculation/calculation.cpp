@@ -51,25 +51,17 @@ class ComputationFinishedEmitter {
     std::chrono::steady_clock::time_point started_;
 };
 
-[[nodiscard]] auto
-make_fixed_charge_groups_provenance(const detail::FixedChargePartition& partition)
-    -> FixedChargeGroupsProvenance {
-    auto provenance = FixedChargeGroupsProvenance{
-        .sources = {}, .charge_provenance = partition.charge_provenance, .charge_totals = {}};
+[[nodiscard]] auto make_fixed_ions_provenance(const detail::FixedChargePartition& partition)
+    -> FixedIons {
+    auto provenance = FixedIons{};
     auto source_count = std::size_t{0};
     for (const auto& target : partition.targets) {
         source_count += target.sources.size();
     }
     provenance.sources.reserve(source_count);
-    provenance.charge_totals.reserve(partition.targets.size());
-    for (std::size_t molecule_index = 0; molecule_index < partition.targets.size();
-         ++molecule_index) {
-        const auto& target = partition.targets[molecule_index];
+    for (const auto& target : partition.targets) {
         provenance.sources.insert(provenance.sources.end(), target.sources.begin(),
                                   target.sources.end());
-        provenance.charge_totals.push_back({.molecule_index = molecule_index,
-                                            .original_total_charge = target.original_charge,
-                                            .active_total_charge = target.active_charge});
     }
     return provenance;
 }
@@ -151,10 +143,9 @@ auto calculate(const AssessmentResult& assessment, const ExecutionPlan& plan,
         .method_options = selected.method_options,
         .execution_policy = plan.policy(),
         .execution_issues = {plan.warnings().begin(), plan.warnings().end()},
-        .fixed_charge_groups =
-            fixed_charge_partition == nullptr
-                ? std::nullopt
-                : std::optional{make_fixed_charge_groups_provenance(*fixed_charge_partition)}};
+        .fixed_ions = fixed_charge_partition == nullptr
+                          ? std::nullopt
+                          : std::optional{make_fixed_ions_provenance(*fixed_charge_partition)}};
 
     const auto computation_started = std::chrono::steady_clock::now();
     auto status = ExecutionStatus::success;

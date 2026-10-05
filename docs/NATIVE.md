@@ -111,12 +111,12 @@ coordinates are missing or non-finite.
 Lower-level `methods::CalculationInput` accepts a trailing `std::span<const methods::FixedPointSource>`;
 each source contains a Cartesian `core::Position` and charge. The input borrows the span, so keep its
 elements alive for the input's use. These positional sources are distinct from the original-collection
-indices in `calculation::FixedChargeGroups`; direct method callers provide positions themselves, while
+indices in `calculation::FixedIons`; direct method callers provide positions themselves, while
 the assessment facade validates indexed selectors and constructs sources for methods that support
-fixed-charge groups.
-`MethodRequirements::supports_fixed_charge_groups` reports numerical support. Direct callers of
+fixed point sources.
+`MethodRequirements::supports_fixed_point_sources` reports numerical support. Direct callers of
 `Method::calculate()` must satisfy the method's requirements, including this capability; methods that do
-not support fixed-charge groups require an empty span. The flag describes a caller precondition;
+not support fixed point sources require an empty span. The flag describes a caller precondition;
 it does not intercept virtual calls. The source coupling is defined by the selected method; the facade's
 effective provenance already records the method, parameter set, and method options.
 
@@ -143,23 +143,23 @@ that source positions do not coincide with active atom positions. The
 - strict or permissive parameter classification options;
 - an `ExecutionSelection`;
 - a `ResourcePolicy` containing automatic execution thresholds; and
-- an optional `FixedChargeGroups`, whose sources pair a fixed charge with zero-based molecule and
-  atom indices in the supplied collection, and whose `charge_provenance` labels those charges.
+- an optional `FixedIons`, whose sources pair a fixed charge with zero-based molecule and
+  atom indices in the supplied collection.
 
-For ordinary calculations, leave `fixed_charge_groups` absent or provide an empty `sources` vector.
+For ordinary calculations, leave `fixed_ions` absent or provide an empty `sources` vector.
+Native callers prescribe indexed charges directly, independently of the CLI/Python ion catalog.
 Nonempty sources must use distinct in-range molecule/atom indices, finite charges, atoms with no graph
 bonds, and leave at least one active atom in each affected molecule. Each affected molecule needs
 conformer coordinates that are finite throughout; source coordinates must not exactly coincide with an
 active atom in the same conformer. The active charge total is the sum of formal charges on the unselected
 atoms in the prepared molecule; selected atoms' imported formal charges do not alter that active total.
-The original supplied formal-charge total is retained for audit provenance, and the modeled molecular
-total is the active total plus the prescribed source charges. A valid nonempty selection filters methods
-by their fixed-charge-group capability and assesses execution modes. EEM, SQE, SQE+q0, and SQE+qp can produce
+The modeled molecular total is the active total plus the prescribed source charges.
+A valid nonempty selection filters methods
+by their fixed-ion capability and assesses execution modes. EEM, SQE, SQE+q0, and SQE+qp can produce
 full, cutoff, and cover plans. Automatic selection may choose an un-warned reduced plan when full carries
 a resource warning; explicit full selection may execute with its warning. Parameter classification and
 execution use the active molecules. Successful facade results restore fixed charges in original atom
-order and expose fixed-charge group provenance through `ExecutionResult::effective`; original and active
-charge totals are recorded for every molecule. The
+order and expose fixed atom indices and assigned charges through `ExecutionResult::effective`. The
 [project design](PROJECT.md#assessment-and-execution) describes this boundary.
 Invalid source selections still throw `std::invalid_argument`.
 
@@ -208,9 +208,9 @@ separately supplied molecule collection, identity list, diagnostics list, or imp
 
 Result construction validates import-mapping dimensions, successful assignment coverage, canonical
 molecule/conformer order, uniform scope, atom dimensions, target bounds, and agreement with effective
-method and parameter-set provenance. Optional `EffectiveCalculation::fixed_charge_groups` owns the
-indexed sources, caller label, and per-original-molecule charge totals. Result construction checks the
-metadata's source and totals structure, including when a failed or cancelled result carries effective
+method and parameter-set provenance. Optional `EffectiveCalculation::fixed_ions` owns the
+indexed sources in a `FixedIons` record. Result construction checks the
+source indices and charge values, including when a failed or cancelled result carries effective
 provenance.
 Failed and cancelled results must not contain charge assignments.
 

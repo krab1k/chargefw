@@ -1,4 +1,4 @@
-# Fixed-Charge Groups: Rationale and Evidence
+# Fixed Ions: Rationale and Evidence
 
 This note preserves compact evidence for [PLAN.md](PLAN.md), not an implemented-behavior contract.
 Follow [AGENTS.md](AGENTS.md); build procedures belong in [DEVELOPMENT.md](DEVELOPMENT.md). User-facing
@@ -7,13 +7,13 @@ in [docs/FORMATS.md](docs/FORMATS.md), and interface behavior in the native, Pyt
 
 ## Decision Context
 
-Explicitly selected fixed-charge groups let active atoms respond to a prescribed electrostatic field
+Explicitly selected fixed ions let active atoms respond to a prescribed electrostatic field
 without requiring fitted metal parameters. They do not automatically freeze every component lacking
-candidate parameters: sulfate and other covered chemistry remains active unless selected. Priority is
+candidate parameters: sulfate and other molecular components remain active. Priority is
 SQE/SQE+q0/SQE+qp; EEM remains secondary, not a justification for prioritizing old parameter coverage.
 Existing full, cutoff, and cover machinery supplies the fixed sources to relevant solves.
 
-This is a one-way fixed-charge group treatment: active charges respond; source polarization and
+This is a one-way fixed ion treatment: active charges respond; source polarization and
 active/fixed charge transfer are absent. QM/MM point-charge methods provide an analogy, not validation
 of ChargeFW response. Organic response parameters are not certified for metal fields; quantitative
 metal-site accuracy is unvalidated.
@@ -23,12 +23,11 @@ Charge accounting uses the independent active-charge model:
 ```text
 Q_active = sum(formal charges of unselected atoms in prepared active molecule)
 Q_model = Q_active + sum(prescribed fixed charges)
-Q_original = sum(formal charges in original imported molecule)  # audit only
 ```
 
 Input formal charges remain unchanged. Preserve mappings and conformers and insert fixed values exactly
-in original atom order. An original total differing from the modeled total is audit information, not a
-reason to renormalize active atoms or sources.
+in original atom order. An input formal-charge sum differing from the modeled total is not a
+reason to renormalize active atoms or sources. Only the internal active target is needed for calculation.
 
 Bundled immutable named-component templates provide deterministic charges when structure input omits
 them. Validate component identity, element identity, and complete atom mapping; do not infer oxidation

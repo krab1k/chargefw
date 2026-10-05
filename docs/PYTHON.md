@@ -260,7 +260,7 @@ Direct `calculate()` accepts keyword-only policy arguments:
 | `cutoff_threshold` | Automatic full-to-cutoff threshold; default `20_000`, `None` is unlimited |
 | `cover_threshold` | Automatic cutoff-to-cover threshold; default `80_000`, `None` is unlimited |
 | `threads` | Non-negative oneTBB thread limit; omitted or `0` delegates to oneTBB |
-| `fixed_charge_groups` | Sequence of named imported components; default `None` |
+| `fixed_ions` | Sequence of named imported components; default `None` |
 
 Finite thresholds are non-negative integers with `cutoff_threshold <= cover_threshold`. To make both
 thresholds unlimited, pass `cutoff_threshold=None, cover_threshold=None`; setting only
@@ -286,12 +286,12 @@ assessment = chargefw.assess(
     method="sqeqp",
     parameter_set="SQEqp_Schindler2021_CCD_gen",
     execution="full",
-    fixed_charge_groups=["MG"],
+    fixed_ions=["MG"],
 )
 result = chargefw.calculate(molecules, assessment.default_plan)
 
-common = chargefw.calculate(molecules, fixed_charge_groups=chargefw.COMMON_IONS)
-all_ions = chargefw.calculate(molecules, fixed_charge_groups=chargefw.ALL_IONS)
+common = chargefw.calculate(molecules, fixed_ions=chargefw.COMMON_IONS)
+all_ions = chargefw.calculate(molecules, fixed_ions=chargefw.ALL_IONS)
 ```
 
 Flat `options` require an explicit method. `options` and `options_by_method` cannot be combined. Automatic
@@ -359,7 +359,7 @@ if plan is not None:
 
 Plans are bound to the exact molecule objects and collection name used during assessment. They cannot be
 applied to another record or a reconstructed equivalent molecule, and selection arguments cannot be
-supplied with a plan, including `fixed_charge_groups`. A plan is reusable after its `Assessment`
+supplied with a plan, including `fixed_ions`. A plan is reusable after its `Assessment`
 is released and can be used by independent concurrent calculations over those same objects.
 
 ## Progress and cancellation
@@ -433,8 +433,9 @@ charge assignments. Assessment itself is not observed.
 plan. This `ExecutedPlan` is metadata, not a reusable `Plan`. To repeat an assessed calculation, retain a
 `Plan` from `assessment.plans` or `assessment.default_plan`, as shown in
 [Advanced assessment and plan reuse](#advanced-assessment-and-plan-reuse).
-For fixed-charge calculations, `result.requested.fixed_charge_groups` retains the submitted names and
-`result.plan.fixed_charge_groups` exposes the effective source values and per-molecule charge totals.
+For fixed-charge calculations, `result.requested.fixed_ions` retains the submitted names and
+`result.plan.fixed_ions` is a `FixedIons` record whose immutable `sources` tuple contains
+`FixedAtomCharge` values with original molecule/atom indices and assigned charges.
 
 Each `ChargeAssignment` contains a newly owned, read-only, C-contiguous `float64` vector together with its
 molecule index, optional conformer index, `SourceIdentity`, and atom IDs.

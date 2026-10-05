@@ -73,9 +73,9 @@ struct FixedAtomCharge {
     double charge;
 };
 
-struct FixedChargeGroups {
+struct FixedIons {
+    // Explicit prescribed charges; native callers are not restricted to the adapter ion catalog.
     std::vector<FixedAtomCharge> sources;
-    std::string charge_provenance;
 };
 
 // Owns application assessment inputs so adapters and bindings do not need to manage native method
@@ -92,7 +92,7 @@ struct AssessmentRequest {
     parameters::ClassificationOptions classification_options{};
     ExecutionSelection execution_selection{};
     ResourcePolicy resource_policy{};
-    std::optional<FixedChargeGroups> fixed_charge_groups{};
+    std::optional<FixedIons> fixed_ions{};
 };
 
 // Owns prepared application inputs and reusable concrete execution plans.

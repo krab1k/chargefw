@@ -1,6 +1,6 @@
 #include "cli_support.h"
 
-#include "adapters/fixed_charge_groups.h"
+#include "adapters/fixed_ions.h"
 
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
@@ -194,8 +194,8 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
     arguments.parameter_set_option =
         command.add_option("--parameter-set", arguments.parameter_set_id, "Parameter-set ID");
     arguments.parameter_set_option->needs(arguments.method_option);
-    command.add_option("--fixed-charge-group", arguments.fixed_charge_group_ids,
-                       "Fixed-charge component ID (repeatable)");
+    command.add_option("--fixed-ions", arguments.fixed_ion_ids,
+                       "Fixed-ion component ID (repeatable)");
     command.add_flag("--permissive-types", arguments.permissive_types,
                      "Allow permissive parameter type classification");
     command
@@ -257,11 +257,10 @@ auto make_request(core::MoleculeCollection molecules, const SelectionArguments& 
                     ? std::optional<std::size_t>{calculation::default_cover_atom_threshold}
                     : parse_atom_threshold(arguments.cover_atom_threshold,
                                            "Cover atom threshold")}};
-    if (!arguments.fixed_charge_group_ids.empty()) {
-        auto resolved = adapters::detail::resolve_fixed_charge_groups(
-            records, arguments.fixed_charge_group_ids);
+    if (!arguments.fixed_ion_ids.empty()) {
+        auto resolved = adapters::detail::resolve_fixed_ions(records, arguments.fixed_ion_ids);
         if (!resolved.sources.empty()) {
-            request.fixed_charge_groups = std::move(resolved);
+            request.fixed_ions = std::move(resolved);
         }
     }
     return request;

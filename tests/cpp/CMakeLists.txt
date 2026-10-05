@@ -122,18 +122,18 @@ if(CHARGEFW_BUILD_CLI)
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_structural_outputs.cmake
     )
     add_test(
-            NAME test_chargefw_cli_fixed_charge_groups
+            NAME test_chargefw_cli_fixed_ions
             COMMAND ${CMAKE_COMMAND}
                     -DCHARGEFW_CLI=${chargefw_cli}
                     -DCHARGEFW_TEST_DIR=${CMAKE_CURRENT_BINARY_DIR}
-                    -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/cif/fixed_charge_groups.cif
-                    -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_fixed_charge_groups.cmake
+                    -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/cif/fixed_ions.cif
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_fixed_ions.cmake
     )
     set_tests_properties(
             test_chargefw_cli_arguments
             test_chargefw_cli_outputs
             test_chargefw_cli_structural_outputs
-            test_chargefw_cli_fixed_charge_groups
+            test_chargefw_cli_fixed_ions
             PROPERTIES FIXTURES_REQUIRED chargefw_cli_install
     )
 endif()

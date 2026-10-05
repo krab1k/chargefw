@@ -173,10 +173,11 @@ auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
                   });
 }
 
-[[nodiscard]] auto remap_fixed_charge_group_issue(
-    methods::PrerequisiteIssue issue, const detail::FixedChargePartition& partition,
-    const core::MoleculeCollection& original_molecules,
-    const parameters::ParameterSet* parameter_set) -> methods::PrerequisiteIssue {
+[[nodiscard]] auto remap_fixed_ion_issue(methods::PrerequisiteIssue issue,
+                                         const detail::FixedChargePartition& partition,
+                                         const core::MoleculeCollection& original_molecules,
+                                         const parameters::ParameterSet* parameter_set)
+    -> methods::PrerequisiteIssue {
     if (!issue.molecule_index.has_value()) {
         return issue;
     }
@@ -260,15 +261,15 @@ auto AssessmentResult::assess_prepared(
     applicable_methods.reserve(selected_methods.size());
     for (const auto* method : selected_methods) {
         if (fixed_charge_partition_ != nullptr &&
-            !method->requirements().supports_fixed_charge_groups) {
+            !method->requirements().supports_fixed_point_sources) {
             rejections_.push_back(Rejection{
                 .method_id = std::string{method->id()},
                 .parameter_set_id = std::nullopt,
                 .policy = std::nullopt,
                 .issues = {methods::PrerequisiteIssue{
-                    .kind = methods::PrerequisiteIssueKind::unsupported_fixed_charge_groups,
-                    .message = "method '" + std::string{method->id()} +
-                               "' does not support fixed-charge groups"}},
+                    .kind = methods::PrerequisiteIssueKind::unsupported_fixed_ions,
+                    .message =
+                        "method '" + std::string{method->id()} + "' does not support fixed ions"}},
             });
             continue;
         }
@@ -291,9 +292,8 @@ auto AssessmentResult::assess_prepared(
                                             ? &parameter_sets_[*candidate.parameter_set_index]
                                             : nullptr;
             issues.emplace_back(fixed_charge_partition_ != nullptr
-                                    ? remap_fixed_charge_group_issue(issue,
-                                                                     *fixed_charge_partition_,
-                                                                     *molecules_, parameter_set)
+                                    ? remap_fixed_ion_issue(issue, *fixed_charge_partition_,
+                                                            *molecules_, parameter_set)
                                     : issue);
         }
         rejections_.push_back(Rejection{
@@ -396,13 +396,12 @@ auto AssessmentResult::default_plan() const noexcept -> const ExecutionPlan* {
 auto AssessmentResult::assess_owned(AssessmentRequest request) -> AssessmentResult {
     const auto started = std::chrono::steady_clock::now();
     auto fixed_charge_partition = std::unique_ptr<detail::FixedChargePartition>{};
-    if (request.fixed_charge_groups.has_value()) {
-        if (!request.fixed_charge_groups->sources.empty()) {
-            fixed_charge_partition =
-                std::make_unique<detail::FixedChargePartition>(detail::make_fixed_charge_partition(
-                    request.molecules, *request.fixed_charge_groups));
+    if (request.fixed_ions.has_value()) {
+        if (!request.fixed_ions->sources.empty()) {
+            fixed_charge_partition = std::make_unique<detail::FixedChargePartition>(
+                detail::make_fixed_charge_partition(request.molecules, *request.fixed_ions));
         } else {
-            request.fixed_charge_groups.reset();
+            request.fixed_ions.reset();
         }
     }
     validate_assessment_method_options(request);

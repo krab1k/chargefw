@@ -128,7 +128,7 @@ class RequestedCalculation:
     cutoff_threshold: int | None
     cover_threshold: int | None
     threads: int
-    fixed_charge_groups: tuple[str, ...]
+    fixed_ions: tuple[str, ...]
 
     def __init__(
         self,
@@ -143,7 +143,7 @@ class RequestedCalculation:
         cutoff_threshold: int | None = 20_000,
         cover_threshold: int | None = 80_000,
         threads: int = 0,
-        fixed_charge_groups: Sequence[str] | None = None,
+        fixed_ions: Sequence[str] | None = None,
     ) -> None:
         if method is not None and not isinstance(method, (str, Method)):
             raise TypeError("method must be a method ID, Method, or None")
@@ -214,18 +214,18 @@ class RequestedCalculation:
         normalized_threads = _normalized_nonnegative_integer(threads, "threads")
         if normalized_threads > _MAX_NATIVE_THREADS:
             raise ValueError("threads exceeds oneTBB's supported integer range")
-        normalized_fixed_charge_groups: tuple[str, ...]
-        if fixed_charge_groups is None:
-            normalized_fixed_charge_groups = ()
+        normalized_fixed_ions: tuple[str, ...]
+        if fixed_ions is None:
+            normalized_fixed_ions = ()
         else:
-            if isinstance(fixed_charge_groups, (str, bytes)):
-                raise TypeError("fixed_charge_groups must be a sequence of strings")
+            if isinstance(fixed_ions, (str, bytes)):
+                raise TypeError("fixed_ions must be a sequence of strings")
             try:
-                normalized_fixed_charge_groups = tuple(fixed_charge_groups)
+                normalized_fixed_ions = tuple(fixed_ions)
             except TypeError as error:
-                raise TypeError("fixed_charge_groups must be a sequence of strings") from error
-            if any(not isinstance(group, str) for group in normalized_fixed_charge_groups):
-                raise TypeError("fixed_charge_groups must contain only strings")
+                raise TypeError("fixed_ions must be a sequence of strings") from error
+            if any(not isinstance(ion, str) for ion in normalized_fixed_ions):
+                raise TypeError("fixed_ions must contain only strings")
 
         object.__setattr__(self, "method", method_id)
         object.__setattr__(self, "parameter_set", parameter_set_id)
@@ -240,7 +240,7 @@ class RequestedCalculation:
         object.__setattr__(self, "cutoff_threshold", normalized_cutoff)
         object.__setattr__(self, "cover_threshold", normalized_cover)
         object.__setattr__(self, "threads", normalized_threads)
-        object.__setattr__(self, "fixed_charge_groups", normalized_fixed_charge_groups)
+        object.__setattr__(self, "fixed_ions", normalized_fixed_ions)
 
     @property
     def _permissive_types(self) -> bool:

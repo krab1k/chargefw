@@ -44,8 +44,8 @@ namespace {
 
 class CapturingMethod final : public methods::Method {
   public:
-    explicit CapturingMethod(const bool supports_fixed_charge_groups)
-        : supports_fixed_charge_groups_{supports_fixed_charge_groups} {}
+    explicit CapturingMethod(const bool supports_fixed_point_sources)
+        : supports_fixed_point_sources_{supports_fixed_point_sources} {}
 
     [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
         static constexpr methods::MethodMetadata value{.id = "capture",
@@ -59,7 +59,7 @@ class CapturingMethod final : public methods::Method {
     [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
         auto value = methods::MethodRequirements{};
         value.coordinates = true;
-        value.supports_fixed_charge_groups = supports_fixed_charge_groups_;
+        value.supports_fixed_point_sources = supports_fixed_point_sources_;
         return value;
     }
 
@@ -82,7 +82,7 @@ class CapturingMethod final : public methods::Method {
     mutable std::vector<std::vector<methods::FixedPointSource>> observed_sources;
 
   private:
-    bool supports_fixed_charge_groups_;
+    bool supports_fixed_point_sources_;
 };
 
 auto make_execution_partition() -> calculation::detail::FixedChargePartition {
@@ -96,8 +96,8 @@ auto make_execution_partition() -> calculation::detail::FixedChargePartition {
                                    {},
                                    {core::Conformer{{{5.0, 0.0, 0.0}}, "identity"}},
                                    "unaffected"}}};
-    return calculation::detail::make_fixed_charge_partition(
-        molecules, calculation::FixedChargeGroups{{{0, 1, 0.25}}, "test"});
+    return calculation::detail::make_fixed_charge_partition(molecules,
+                                                            calculation::FixedIons{{{0, 1, 0.25}}});
 }
 
 } // namespace
@@ -125,9 +125,8 @@ TEST_CASE("full execution supplies partition budgets and conformer-local sources
     CHECK(partition.targets[0].sources[0].charge == 0.25);
 }
 
-TEST_CASE(
-    "full execution rejects unsupported fixed-charge groups and mismatched prepared ownership",
-    "[calculation][fixed-charge-execution]") {
+TEST_CASE("full execution rejects unsupported fixed ions and mismatched prepared ownership",
+          "[calculation][fixed-charge-execution]") {
     const auto partition = make_execution_partition();
     const features::PreparedMoleculeCollection prepared{partition.active_molecules};
     const CapturingMethod unsupported{false};
@@ -178,7 +177,7 @@ TEST_CASE("parameterized full EEM uses partition sources and active budgets",
                        {core::Conformer{{{8.0, 0.0, 0.0}}, "unaffected"}},
                        "unaffected"}}};
     const auto partition = calculation::detail::make_fixed_charge_partition(
-        original, calculation::FixedChargeGroups{{{0, 2, 0.4}}, "reference"});
+        original, calculation::FixedIons{{{0, 2, 0.4}}});
     const features::PreparedMoleculeCollection prepared{partition.active_molecules};
     const auto parameter_set = chargefw::parameters::ParameterSet{
         chargefw::parameters::ParameterSetMetadata{
@@ -256,7 +255,7 @@ TEST_CASE("SQE family full-execution fixed Mg response decays with distance",
                        std::move(conformers),
                        "active-pair-and-Mg"}}};
     const auto partition = calculation::detail::make_fixed_charge_partition(
-        original, calculation::FixedChargeGroups{{{0, 2, mg_charge}}, "fixed Mg +2"});
+        original, calculation::FixedIons{{{0, 2, mg_charge}}});
     const features::PreparedMoleculeCollection prepared{partition.active_molecules};
 
     for (const auto method_id : {"sqe", "sqeq0", "sqeqp"}) {

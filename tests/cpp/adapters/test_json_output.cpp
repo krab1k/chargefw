@@ -17,6 +17,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <fstream>
 #include <limits>
 #include <optional>
 #include <sstream>
@@ -179,7 +180,7 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     CHECK(effective.at("execution").at("radius_angstrom") == 8.0);
     CHECK(effective.at("warnings").at(0) == "full execution exceeds the shared threshold");
     CHECK(effective.at("method_options").at("formal").empty());
-    CHECK_FALSE(effective.contains("fixed_charge_groups"));
+    CHECK_FALSE(effective.contains("fixed_ions"));
 
     const auto& calculated = result.at("results").at(0);
     CHECK(calculated.at("status") == "success");
@@ -201,7 +202,7 @@ TEST_CASE("JSON output serializes ordered records and calculation provenance", "
     CHECK(assignment.at("total_charge") == 0.0);
 }
 
-TEST_CASE("JSON output projects fixed-charge group provenance", "[adapters][json]") {
+TEST_CASE("JSON output projects fixed ion provenance", "[adapters][json]") {
     const auto result = adapters::make_charge_calculation_result(
         {{.molecule =
               chargefw::core::Molecule{
@@ -229,35 +230,28 @@ TEST_CASE("JSON output projects fixed-charge group provenance", "[adapters][json
          .effective = calculation::EffectiveCalculation{
              .method_id = "eem",
              .execution_policy = calculation::ExecutionPolicy{},
-             .fixed_charge_groups = calculation::FixedChargeGroupsProvenance{
-                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25}},
-                 .charge_provenance = "measured fixed charge",
-                 .charge_totals = {{.molecule_index = 0,
-                                    .original_total_charge = 0.0,
-                                    .active_total_charge = 0.0},
-                                   {.molecule_index = 1,
-                                    .original_total_charge = 0.0,
-                                    .active_total_charge = 0.0}}}}});
+             .fixed_ions = calculation::FixedIons{
+                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25}}}}});
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(result, "test");
     const auto document = nlohmann::json::parse(output.str());
-    const auto& fixed_charge_groups =
-        document.at("calculation_provenance").at("effective").at("fixed_charge_groups");
-    CHECK(fixed_charge_groups.at("sources") ==
-          nlohmann::json::array({{{"molecule_index", 0}, {"atom_index", 1}, {"charge", 0.25}}}));
-    CHECK(fixed_charge_groups.at("charge_provenance") == "measured fixed charge");
-    CHECK_FALSE(fixed_charge_groups.contains("components"));
-    CHECK(
-        fixed_charge_groups.at("charge_totals") ==
-        nlohmann::json::array(
-            {{{"molecule_index", 0}, {"original_total_charge", 0.0}, {"active_total_charge", 0.0}},
-             {{"molecule_index", 1},
-              {"original_total_charge", 0.0},
-              {"active_total_charge", 0.0}}}));
+    const auto& fixed_ions = document.at("calculation_provenance").at("effective").at("fixed_ions");
+    CHECK(fixed_ions.is_array());
+    CHECK(fixed_ions.empty());
+
+    auto schema_input = std::ifstream{CHARGEFW_TEST_SOURCE_DIR "/schemas/result-1.0.schema.json"};
+    REQUIRE(schema_input.is_open());
+    const auto schema = nlohmann::json::parse(schema_input);
+    const auto& fixed_schema = schema.at("$defs").at("fixedIons");
+    CHECK(fixed_schema.at("type") == "array");
+    CHECK(fixed_schema.at("items").at("$ref") == "#/$defs/fixedIon");
+    CHECK(schema.at("$defs").at("fixedIon").at("required") ==
+          nlohmann::json::array({"component_id", "charge", "instances"}));
+    CHECK_FALSE(schema.at("$defs").contains("fixedIonChargeTotals"));
 }
 
-TEST_CASE("JSON fixed-charge components group labeled sources without inferring unlabeled ones",
+TEST_CASE("JSON fixed-ion components group labeled sources without inferring unlabeled ones",
           "[adapters][json]") {
     auto records = std::vector<adapters::ImportedMoleculeRecord>{
         make_component_record("ca-first", {"CA", "CA"}),
@@ -268,12 +262,10 @@ TEST_CASE("JSON fixed-charge components group labeled sources without inferring 
         make_component_record("conflicting-labels", {"CA", "MG"})};
     const std::vector<double> source_charges{0.4, 0.4, 0.5, 0.4, 0.4, 0.4};
     auto sources = std::vector<calculation::FixedAtomCharge>{};
-    auto totals = std::vector<calculation::FixedChargeGroupChargeTotals>{};
     auto assignments = std::vector<charges::ChargeAssignment>{};
     for (std::size_t molecule_index = 0; molecule_index < records.size(); ++molecule_index) {
         const auto charge = source_charges[molecule_index];
         sources.push_back({molecule_index, 0, charge});
-        totals.push_back({molecule_index, 0.0, -charge});
         for (std::size_t conformer_index = 0;
              conformer_index < records[molecule_index].molecule.conformer_count();
              ++conformer_index) {
@@ -289,32 +281,26 @@ TEST_CASE("JSON fixed-charge components group labeled sources without inferring 
              .method_id = "eem",
              .parameter_set_id = "component-groups",
              .execution_policy = calculation::ExecutionPolicy{},
-             .fixed_charge_groups = calculation::FixedChargeGroupsProvenance{
-                 .sources = std::move(sources),
-                 .charge_provenance = "explicit monatomic sources",
-                 .charge_totals = std::move(totals)}}});
+             .fixed_ions = calculation::FixedIons{.sources = std::move(sources)}}});
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(result, "test");
     const auto document = nlohmann::json::parse(output.str());
-    const auto& fixed_charge_groups =
-        document.at("calculation_provenance").at("effective").at("fixed_charge_groups");
-    REQUIRE(fixed_charge_groups.at("sources").size() == 6);
-    const auto& components = fixed_charge_groups.at("components");
-    REQUIRE(components.size() == 3);
-    CHECK(components[0] == nlohmann::json{{"component_id", "CA"},
-                                          {"charge_per_instance", 0.4},
+    const auto& fixed_ions = document.at("calculation_provenance").at("effective").at("fixed_ions");
+    REQUIRE(fixed_ions.size() == 3);
+    CHECK(fixed_ions[0] == nlohmann::json{{"component_id", "CA"},
+                                          {"charge", 0.4},
                                           {"instances",
-                                           {{{"molecule_index", 0}, {"atom_indices", {0}}},
-                                            {{"molecule_index", 1}, {"atom_indices", {0}}}}}});
-    CHECK(components[1] ==
+                                           {{{"molecule_index", 0}, {"atom_index", 0}},
+                                            {{"molecule_index", 1}, {"atom_index", 0}}}}});
+    CHECK(fixed_ions[1] ==
           nlohmann::json{{"component_id", "CA"},
-                         {"charge_per_instance", 0.5},
-                         {"instances", {{{"molecule_index", 2}, {"atom_indices", {0}}}}}});
-    CHECK(components[2] ==
+                         {"charge", 0.5},
+                         {"instances", {{{"molecule_index", 2}, {"atom_index", 0}}}}});
+    CHECK(fixed_ions[2] ==
           nlohmann::json{{"component_id", "MG"},
-                         {"charge_per_instance", 0.4},
-                         {"instances", {{{"molecule_index", 3}, {"atom_indices", {0}}}}}});
+                         {"charge", 0.4},
+                         {"instances", {{{"molecule_index", 3}, {"atom_index", 0}}}}});
 }
 
 TEST_CASE("JSON component grouping reads labels from Gemmi imports through EEM facade results",
@@ -394,10 +380,9 @@ HETATM 3 Mg MG . MG B 1 ? 0 3 1 1 20 2 1 MG B MG E2 1
         .molecules = core::MoleculeCollection{std::move(molecules)},
         .parameter_sets = {parameters},
         .method_id = "eem",
-        .fixed_charge_groups = calculation::FixedChargeGroups{
+        .fixed_ions = calculation::FixedIons{
             .sources = {{.molecule_index = 0, .atom_index = 2, .charge = 0.4},
-                        {.molecule_index = 1, .atom_index = 2, .charge = 0.4}},
-            .charge_provenance = "imported fixed ions"}}));
+                        {.molecule_index = 1, .atom_index = 2, .charge = 0.4}}}}));
     REQUIRE(execution.calculated());
     const auto result = adapters::make_charge_calculation_result(
         std::move(records), {.method_id = "eem", .parameter_set_id = "json-eem"},
@@ -406,31 +391,15 @@ HETATM 3 Mg MG . MG B 1 ? 0 3 1 1 20 2 1 MG B MG E2 1
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(result, "test");
     const auto json = nlohmann::json::parse(output.str());
-    const auto& fixed_charge_groups =
-        json.at("calculation_provenance").at("effective").at("fixed_charge_groups");
-    const auto& charge_totals = fixed_charge_groups.at("charge_totals");
-    REQUIRE(charge_totals.size() == 2);
-    for (std::size_t molecule_index = 0; molecule_index < charge_totals.size(); ++molecule_index) {
-        CHECK(charge_totals[molecule_index].at("original_total_charge") == 2.0);
-        CHECK(charge_totals[molecule_index].at("active_total_charge") == 0.0);
-        auto prescribed_total = 0.0;
-        for (const auto& source : fixed_charge_groups.at("sources")) {
-            if (source.at("molecule_index") == molecule_index) {
-                prescribed_total += source.at("charge").get<double>();
-            }
-        }
-        CHECK(charge_totals[molecule_index].at("active_total_charge").get<double>() +
-                  prescribed_total ==
-              0.4);
-    }
-    REQUIRE(fixed_charge_groups.at("components").size() == 1);
-    CHECK(fixed_charge_groups.at("components")[0].at("component_id") == "MG");
-    CHECK(fixed_charge_groups.at("components")[0].at("charge_per_instance") == 0.4);
-    REQUIRE(fixed_charge_groups.at("components")[0].at("instances").size() == 2);
-    CHECK(fixed_charge_groups.at("components")[0].at("instances")[0] ==
-          nlohmann::json{{"molecule_index", 0}, {"atom_indices", {2}}});
-    CHECK(fixed_charge_groups.at("components")[0].at("instances")[1] ==
-          nlohmann::json{{"molecule_index", 1}, {"atom_indices", {2}}});
+    const auto& fixed_ions = json.at("calculation_provenance").at("effective").at("fixed_ions");
+    REQUIRE(fixed_ions.size() == 1);
+    CHECK(fixed_ions[0].at("component_id") == "MG");
+    CHECK(fixed_ions[0].at("charge") == 0.4);
+    REQUIRE(fixed_ions[0].at("instances").size() == 2);
+    CHECK(fixed_ions[0].at("instances")[0] ==
+          nlohmann::json{{"molecule_index", 0}, {"atom_index", 2}});
+    CHECK(fixed_ions[0].at("instances")[1] ==
+          nlohmann::json{{"molecule_index", 1}, {"atom_index", 2}});
 }
 
 TEST_CASE("JSON output serializes a cancelled result without assignments", "[adapters][json]") {
@@ -444,12 +413,8 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
             .effective = calculation::EffectiveCalculation{
                 .method_id = "eem",
                 .execution_policy = calculation::ExecutionPolicy{},
-                .fixed_charge_groups = calculation::FixedChargeGroupsProvenance{
-                    .sources = {{.molecule_index = 0, .atom_index = 0, .charge = 0.5}},
-                    .charge_provenance = "",
-                    .charge_totals = {{.molecule_index = 0,
-                                       .original_total_charge = 0.0,
-                                       .active_total_charge = 0.0}}}}});
+                .fixed_ions = calculation::FixedIons{
+                    .sources = {{.molecule_index = 0, .atom_index = 0, .charge = 0.5}}}}});
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(owned, "test");
@@ -461,15 +426,10 @@ TEST_CASE("JSON output serializes a cancelled result without assignments", "[ada
     const auto& record = result.at("results").at(0);
     CHECK(record.at("status") == "cancelled");
     CHECK_FALSE(record.contains("assignments"));
-    CHECK(result.at("calculation_provenance")
-              .at("effective")
-              .at("fixed_charge_groups")
-              .at("charge_provenance")
-              .get<std::string>()
-              .empty());
+    CHECK(result.at("calculation_provenance").at("effective").at("fixed_ions").is_array());
 }
 
-TEST_CASE("JSON output retains fixed-charge group metadata on numerical failure without charges",
+TEST_CASE("JSON output retains fixed ion metadata on numerical failure without charges",
           "[adapters][json]") {
     const auto result = adapters::make_charge_calculation_result(
         {{.molecule = chargefw::core::Molecule{std::vector{chargefw::core::Atom{6},
@@ -481,12 +441,8 @@ TEST_CASE("JSON output retains fixed-charge group metadata on numerical failure 
             .effective = calculation::EffectiveCalculation{
                 .method_id = "eem",
                 .execution_policy = calculation::ExecutionPolicy{},
-                .fixed_charge_groups = calculation::FixedChargeGroupsProvenance{
-                    .sources = {{.molecule_index = 0, .atom_index = 0, .charge = -0.2}},
-                    .charge_provenance = "fixed value",
-                    .charge_totals = {{.molecule_index = 0,
-                                       .original_total_charge = 0.0,
-                                       .active_total_charge = 0.0}}}}});
+                .fixed_ions = calculation::FixedIons{
+                    .sources = {{.molecule_index = 0, .atom_index = 0, .charge = -0.2}}}}});
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(result, "test");
     const auto document = nlohmann::json::parse(output.str());
@@ -494,10 +450,7 @@ TEST_CASE("JSON output retains fixed-charge group metadata on numerical failure 
     CHECK(document.at("status") == "numerical_failure");
     CHECK(document.at("results").at(0).at("status") == "numerical_failure");
     CHECK_FALSE(document.at("results").at(0).contains("assignments"));
-    CHECK(document.at("calculation_provenance")
-              .at("effective")
-              .at("fixed_charge_groups")
-              .contains("charge_totals"));
+    CHECK(document.at("calculation_provenance").at("effective").at("fixed_ions").is_array());
 }
 
 TEST_CASE("JSON output retains cancelled results without effective provenance",
@@ -511,29 +464,24 @@ TEST_CASE("JSON output retains cancelled results without effective provenance",
     const auto document = nlohmann::json::parse(output.str());
 
     CHECK(document.at("status") == "cancelled");
-    CHECK_FALSE(
-        document.at("calculation_provenance").at("effective").contains("fixed_charge_groups"));
+    CHECK_FALSE(document.at("calculation_provenance").at("effective").contains("fixed_ions"));
 }
 
-TEST_CASE("result assembly validates fixed-charge group provenance", "[adapters][json]") {
+TEST_CASE("result assembly validates fixed ion provenance", "[adapters][json]") {
     const auto records = std::vector{
         adapters::ImportedMoleculeRecord{.molecule = chargefw::core::Molecule{std::vector{
                                              chargefw::core::Atom{6}, chargefw::core::Atom{8}}}}};
-    const auto make_result =
-        [&records](calculation::FixedChargeGroupsProvenance fixed_charge_groups) {
-            return adapters::make_charge_calculation_result(
-                records, {},
-                {.status = calculation::ExecutionStatus::cancelled,
-                 .effective = calculation::EffectiveCalculation{
-                     .method_id = "eem",
-                     .execution_policy = calculation::ExecutionPolicy{},
-                     .fixed_charge_groups = std::move(fixed_charge_groups)}});
-        };
-    const auto valid = calculation::FixedChargeGroupsProvenance{
-        .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.5}},
-        .charge_provenance = "caller label",
-        .charge_totals = {
-            {.molecule_index = 0, .original_total_charge = 0.0, .active_total_charge = 0.0}}};
+    const auto make_result = [&records](calculation::FixedIons fixed_ions) {
+        return adapters::make_charge_calculation_result(
+            records, {},
+            {.status = calculation::ExecutionStatus::cancelled,
+             .effective = calculation::EffectiveCalculation{.method_id = "eem",
+                                                            .execution_policy =
+                                                                calculation::ExecutionPolicy{},
+                                                            .fixed_ions = std::move(fixed_ions)}});
+    };
+    const auto valid =
+        calculation::FixedIons{.sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.5}}};
     CHECK_NOTHROW(make_result(valid));
 
     auto invalid = valid;
@@ -550,15 +498,6 @@ TEST_CASE("result assembly validates fixed-charge group provenance", "[adapters]
     CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
     invalid = valid;
     invalid.sources.push_back(invalid.sources.front());
-    CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
-    invalid = valid;
-    invalid.charge_totals.clear();
-    CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
-    invalid = valid;
-    invalid.charge_totals[0].molecule_index = 1;
-    CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
-    invalid = valid;
-    invalid.charge_totals[0].active_total_charge = std::numeric_limits<double>::infinity();
     CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
 }
 

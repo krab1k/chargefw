@@ -187,21 +187,16 @@ TEST_CASE("fixed-charge EEM retains provenance on numerical failure",
         .parameter_sets = {make_singular_eem_parameter_set()},
         .method_id = "eem",
         .parameter_set_id = "singular-eem",
-        .fixed_charge_groups = calculation::FixedChargeGroups{
-            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25}},
-            .charge_provenance = "fixed value"}}));
+        .fixed_ions = calculation::FixedIons{
+            .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25}}}}));
 
     CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
     CHECK_FALSE(result.charges.has_value());
     REQUIRE(result.effective.has_value());
-    REQUIRE(result.effective->fixed_charge_groups.has_value());
-    const auto& provenance = *result.effective->fixed_charge_groups;
+    REQUIRE(result.effective->fixed_ions.has_value());
+    const auto& provenance = *result.effective->fixed_ions;
     REQUIRE(provenance.sources.size() == 1);
     CHECK(provenance.sources[0].charge == 0.25);
-    CHECK(provenance.charge_provenance == "fixed value");
-    REQUIRE(provenance.charge_totals.size() == 1);
-    CHECK(provenance.charge_totals[0].original_total_charge == 2.0);
-    CHECK(provenance.charge_totals[0].active_total_charge == 0.0);
 }
 
 TEST_CASE("assessment preserves owned selection state and validates method options",

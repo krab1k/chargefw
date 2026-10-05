@@ -266,11 +266,11 @@ auto make_invalid_qeq_parameters() -> chargefw::parameters::ParameterSet {
                              {.name = "hardness", .value = 13.364}}}}}};
 }
 
-auto make_fixed_charge_groups_eem_parameters() -> chargefw::parameters::ParameterSet {
+auto make_fixed_ions_eem_parameters() -> chargefw::parameters::ParameterSet {
     return chargefw::parameters::ParameterSet{
         chargefw::parameters::ParameterSetMetadata{.id = "observer-fixed-charge-eem",
                                                    .method_id = "eem",
-                                                   .name = "Observer fixed-charge groups EEM"},
+                                                   .name = "Observer fixed ions EEM"},
         chargefw::parameters::CommonParameters{{{.name = "kappa", .value = 2.0}}},
         chargefw::parameters::AtomParameters{
             {{.key = chargefw::test::plain_atom_key(1),
@@ -486,12 +486,11 @@ TEST_CASE("fixed-charge cancellation retains provenance and permits plan reuse",
                                                   8.0};
         const auto assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{molecule}},
-            .parameter_sets = {make_fixed_charge_groups_eem_parameters()},
+            .parameter_sets = {make_fixed_ions_eem_parameters()},
             .method_id = "eem",
             .execution_selection = selection,
-            .fixed_charge_groups = calculation::FixedChargeGroups{
-                .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}},
-                .charge_provenance = "cancelled fixed source"}});
+            .fixed_ions = calculation::FixedIons{
+                .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.4}}}});
         REQUIRE(assessment.plans().size() == 1);
         CHECK(assessment.plans()[0].policy().mode() == mode);
         const auto result = calculation::calculate(assessment, 1, observer);
@@ -500,14 +499,10 @@ TEST_CASE("fixed-charge cancellation retains provenance and permits plan reuse",
         CHECK_FALSE(result.calculated());
         CHECK_FALSE(result.charges.has_value());
         REQUIRE(result.effective.has_value());
-        REQUIRE(result.effective->fixed_charge_groups.has_value());
-        const auto& provenance = *result.effective->fixed_charge_groups;
-        CHECK(provenance.charge_provenance == "cancelled fixed source");
+        REQUIRE(result.effective->fixed_ions.has_value());
+        const auto& provenance = *result.effective->fixed_ions;
         CHECK(provenance.sources.size() == 1);
         CHECK(provenance.sources[0].charge == 0.4);
-        REQUIRE(provenance.charge_totals.size() == 1);
-        CHECK(provenance.charge_totals[0].original_total_charge == 2.0);
-        CHECK(provenance.charge_totals[0].active_total_charge == 0.0);
 
         const auto events = observer.events();
         assert_computation_boundary(events, mode);
@@ -529,8 +524,8 @@ TEST_CASE("fixed-charge cancellation retains provenance and permits plan reuse",
 
         const auto repeated = calculation::calculate(assessment);
         REQUIRE(repeated.calculated());
-        REQUIRE(repeated.effective->fixed_charge_groups.has_value());
-        CHECK(repeated.effective->fixed_charge_groups->sources[0].charge == 0.4);
+        REQUIRE(repeated.effective->fixed_ions.has_value());
+        CHECK(repeated.effective->fixed_ions->sources[0].charge == 0.4);
     }
 }
 

@@ -26,16 +26,20 @@ chargefw_add_snitch_test(test_mmcif_output
         test_mmcif_output.cpp
 )
 
-chargefw_add_snitch_test(test_fixed_charge_groups
-        test_fixed_charge_groups.cpp
+chargefw_add_snitch_test(test_fixed_ions
+        test_fixed_ions.cpp
 )
 
-target_include_directories(test_fixed_charge_groups PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_compile_definitions(test_fixed_charge_groups PRIVATE
+target_include_directories(test_fixed_ions PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_compile_definitions(test_fixed_ions PRIVATE
         CHARGEFW_TEST_PARAMETER_DIR="${PROJECT_SOURCE_DIR}/data/parameters"
 )
 
 target_compile_definitions(test_mol
         PRIVATE
+        CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
+
+target_compile_definitions(test_json_output PRIVATE
         CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )

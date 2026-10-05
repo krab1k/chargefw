@@ -144,7 +144,7 @@ Assessment prepares a molecule collection once, performs parameter classificatio
 requirements, and expands applicable candidates into concrete plans. A plan contains the selected
 method, parameter set, validated options, execution policy, and any policy warnings.
 
-The CLI and Python facade opt into fixed-charge groups with named imported components. The bundled catalog
+The CLI and Python facade opt into fixed ions with named imported components. The bundled catalog
 contains 80 released monatomic CCD ions, with template-authoritative formal charges:
 
 | Charge | Component IDs |
@@ -158,8 +158,9 @@ contains 80 released monatomic CCD ions, with template-authoritative formal char
 
 The common-ion subset is `NA`, `K`, `MG`, `CA`, `CL`, `ZN`, `FE`, and `FE2`. Python exposes that subset
 and the complete catalog as [immutable name selections](PYTHON.md#calculation-policy).
-Each template validates its CCD atom name and element; component IDs and atom names can differ, as for
-component `FE2` with atom `FE`. A selected template supplies its charge even when the imported atom has
+Each selected component must contain exactly one atom of the catalog element and have no incident
+graph bond. Atom names do not affect recognition: component `CA` with one calcium atom supplies +2.
+A selected template supplies its charge even when the imported atom has
 a different formal charge. Input atoms remain unchanged. These selections are explicit caller intent,
 independent of candidate parameter coverage; molecular ions such as sulfate remain part of the active graph.
 
@@ -177,8 +178,8 @@ active charge budgets are satisfied. Reduced fragments are built only from activ
 receives the complete prescribed source field, including
 sources outside its radius. Fixed atoms never become fragment centers, pivots, or charge variables.
 Conservation corrections apply to active results, then the facade restores source charges exactly once in
-original atom order. Effective provenance retains the resolved source indices and values, and
-original/active charge totals for every molecule; the effective method, parameter set, and options define
+original atom order. Effective provenance retains the resolved source indices and values;
+the effective method, parameter set, and options define
 the coupling.
 This opt-in point-source approximation does not validate the response of coordinated metals.
 Automatic selection considers warnings for each supported mode and may choose a reduced plan when full
@@ -187,8 +188,8 @@ thresholds continue to use active molecule size per target.
 
 The active total is the formal-charge sum of unselected atoms in the prepared active molecule. Imported
 formal charges on selected source atoms do not enter it; fractional source values contribute only at their
-fixed sites. The modeled molecular total is `Q_model = Q_active + sum(fixed source charges)`. The original
-supplied formal-charge total remains in provenance for audit and may differ from the modeled total.
+fixed sites. The modeled molecular total is `Q_model = Q_active + sum(fixed source charges)` and may
+differ from the input formal-charge sum.
 Assessment and execution do not change input atoms or infer chemical preparation. EEM constrains its solve
 to the active total, and SQE+qp globally normalizes its fitted seeds to that target; SQE requires its
 existing neutral active connected components, and SQE+q0 retains the active formal-charge seeds and
