@@ -33,7 +33,6 @@ def test_import_surface() -> None:
         "SourceMapping",
         "ChargeAssignment",
         "FixedAtomCharge",
-        "FixedChargeEmbedding",
         "CalculationResult",
         "Assessment",
         "CalculationObserver",

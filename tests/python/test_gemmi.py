@@ -106,12 +106,14 @@ _atom_site.auth_asym_id
 _atom_site.auth_atom_id
 _atom_site.label_entity_id
 _atom_site.pdbx_PDB_model_num
-HETATM 1 H H1 . LIG A 1 ? 0 0 0 1 20 0 1 LIG A H1 E1 1
-HETATM 2 O O1 . LIG A 1 ? 2 0 0 1 20 0 1 LIG A O1 E1 1
-HETATM 3 Mg MG . MG B 1 ? 0 3 0 1 20 2 1 MG B MG E2 1
-HETATM 4 H H1 . LIG A 1 ? 0 0 0.1 1 20 0 1 LIG A H1 E1 2
-HETATM 5 O O1 . LIG A 1 ? 2 0 0.1 1 20 0 1 LIG A O1 E1 2
-HETATM 6 Mg MG . MG B 1 ? 0 3 0.1 1 20 2 1 MG B MG E2 2
+HETATM 1 O O . HOH W . ? 0 0 0 1 20 0 5 HOH W O 1 1
+HETATM 2 H H1 . HOH W . ? 0.96 0 0 1 20 0 5 HOH W H1 1 1
+HETATM 3 H H2 . HOH W . ? -0.24 0.93 0 1 20 0 5 HOH W H2 1 1
+HETATM 4 Mg MG . MG I . ? 0 0 3 1 20 0 9 AUTH_MG I AUTH_MG 2 1
+HETATM 5 O O . HOH W . ? 0 0 0.1 1 20 0 5 HOH W O 1 2
+HETATM 6 H H1 . HOH W . ? 0.96 0 0.1 1 20 0 5 HOH W H1 1 2
+HETATM 7 H H2 . HOH W . ? -0.24 0.93 0.1 1 20 0 5 HOH W H2 1 2
+HETATM 8 Mg MG . MG I . ? 0.25 0 3 1 20 0 9 AUTH_MG I AUTH_MG 2 2
 #
 """
 
@@ -179,48 +181,64 @@ MOLECULE_JSON_TEXT = """{
 
 
 class NativeInputTests(unittest.TestCase):
-    def test_fixed_charge_embedding_provenance_uses_gemmi_source_labels(self) -> None:
+    def test_fixed_charge_groups_resolve_gemmi_components_and_provenance(self) -> None:
         molecules = chargefw_io.parse(
-            EMBEDDING_MMCIF_TEXT, format="mmcif", conformers=cast(Any, "all")
+            EMBEDDING_MMCIF_TEXT,
+            format="mmcif",
+            conformers=cast(Any, "all"),
+            bonds="templates",
         )
-        self.assertEqual(molecules[0].formal_charges.tolist(), [0, 0, 2])
-        embedding = chargefw.FixedChargeEmbedding(
-            [chargefw.FixedAtomCharge(0, 2, 0.4)], "Gemmi source fixture"
-        )
+        self.assertEqual(molecules[0].formal_charges.tolist(), [0, 0, 0, 0])
+        mapping = molecules[0].source_mapping
+        self.assertIsNotNone(mapping)
+        assert mapping is not None
+        labels = mapping.atoms[3].structural_labels
+        self.assertIsNotNone(labels)
+        assert labels is not None
+        self.assertEqual(labels.label.residue, "MG")
+        self.assertEqual(labels.author.residue, "AUTH_MG")
         result = chargefw.calculate(
             molecules,
-            method="eem",
-            execution="cover",
-            radius=8.0,
-            fixed_charge_embedding=embedding,
+            method="sqeqp",
+            parameter_set="SQEqp_Schindler2021_CCD_gen",
+            execution="full",
+            fixed_charge_groups=["MG"],
         )
 
         self.assertEqual(result.status, "success")
         self.assertEqual(len(result.assignments), 2)
         for assignment in result.assignments:
-            self.assertEqual(assignment.values[2], 0.4)
-            self.assertTrue(np.isclose(assignment.values[:2].sum(), 0.0))
-            self.assertTrue(np.isclose(assignment.values.sum(), 0.4))
+            self.assertEqual(assignment.values[3], 2.0)
+            self.assertTrue(np.isclose(assignment.values[:3].sum(), 0.0))
+            self.assertTrue(np.isclose(assignment.values.sum(), 2.0))
         if result.plan is None or result.plan.fixed_charge_embedding is None:
             self.fail("embedded Gemmi result must retain effective source provenance")
         totals = result.plan.fixed_charge_embedding.charge_totals
         self.assertEqual(
+            result.plan.fixed_charge_embedding.charge_provenance,
+            "chargefw:fixed-charge-ions:v1",
+        )
+        self.assertEqual(
+            result.plan.fixed_charge_embedding.sources,
+            (chargefw.FixedAtomCharge(0, 3, 2.0),),
+        )
+        self.assertEqual(
             totals,
-            (chargefw.EmbeddingChargeTotals(0, 2.0, 0.0),),
+            (chargefw.EmbeddingChargeTotals(0, 0.0, 0.0),),
         )
 
         encoded = json.loads(chargefw_io.dumps(result, format="result-json"))
         effective = encoded["calculation_provenance"]["effective"]["fixed_charge_embedding"]
-        self.assertEqual(effective["charge_totals"][0]["original_total_charge"], 2.0)
+        self.assertEqual(effective["charge_totals"][0]["original_total_charge"], 0.0)
         self.assertEqual(effective["charge_totals"][0]["active_total_charge"], 0.0)
         self.assertEqual(
             effective["charge_totals"][0]["active_total_charge"]
             + effective["sources"][0]["charge"],
-            0.4,
+            2.0,
         )
         self.assertEqual(effective["components"][0]["component_id"], "MG")
-        self.assertEqual(effective["components"][0]["charge_per_instance"], 0.4)
-        self.assertEqual(effective["components"][0]["instances"][0]["atom_indices"], [2])
+        self.assertEqual(effective["components"][0]["charge_per_instance"], 2.0)
+        self.assertEqual(effective["components"][0]["instances"][0]["atom_indices"], [3])
 
     def test_parse_native_molecular_formats(self) -> None:
         molecules = chargefw_io.parse(MOL_TEXT, format="mol", source_name="charged.mol")

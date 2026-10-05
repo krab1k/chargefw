@@ -3,6 +3,8 @@
 #include "native_input_metadata.h"
 #include "native_parameter_catalog.h"
 
+#include "adapters/fixed_charge_groups.h"
+
 #include <chargefw/adapters/charge_result.h>
 #include <chargefw/calculation/assessment.h>
 #include <chargefw/calculation/calculation.h>
@@ -39,9 +41,6 @@ namespace nb = nanobind;
 
 namespace chargefw::python {
 namespace {
-
-using NativeFixedChargeEmbedding =
-    std::tuple<std::vector<std::tuple<std::size_t, std::size_t, double>>, std::string>;
 
 auto method_options(const nb::dict& values)
     -> std::unordered_map<std::string, methods::MethodOptions> {
@@ -417,15 +416,17 @@ class NativeAssessment {
     std::shared_ptr<NativeAssessmentState> state_;
 };
 
-auto make_assessment(
-    const nb::sequence& molecules, const nb::sequence& input_metadata,
-    const nb::sequence& identities, const nb::sequence& caller_atom_ids,
-    std::string molecule_collection_name, const NativeParameterCatalog& catalog,
-    std::optional<std::string> method_id, std::optional<std::string> parameter_set_id,
-    const nb::dict& options, const bool permissive_types, const std::string& execution,
-    const std::optional<double> radius, const std::optional<std::size_t> cutoff_threshold,
-    const std::optional<std::size_t> cover_threshold, const std::size_t max_threads,
-    std::optional<NativeFixedChargeEmbedding> fixed_charge_embedding) -> NativeAssessment {
+auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_metadata,
+                     const nb::sequence& identities, const nb::sequence& caller_atom_ids,
+                     std::string molecule_collection_name, const NativeParameterCatalog& catalog,
+                     std::optional<std::string> method_id,
+                     std::optional<std::string> parameter_set_id, const nb::dict& options,
+                     const bool permissive_types, const std::string& execution,
+                     const std::optional<double> radius,
+                     const std::optional<std::size_t> cutoff_threshold,
+                     const std::optional<std::size_t> cover_threshold,
+                     const std::size_t max_threads, std::vector<std::string> fixed_charge_groups)
+    -> NativeAssessment {
     // Convert Python values to stable native references before releasing the GIL. The remaining
     // work copies native-owned input values and prepares the assessment without accessing Python
     // objects.
@@ -474,20 +475,6 @@ auto make_assessment(
                                                  .execution_kind = execution,
                                                  .execution_radius = radius,
                                                  .method_options = std::move(requested_options)};
-    auto native_fixed_charge_embedding = std::optional<calculation::FixedChargeEmbedding>{};
-    if (fixed_charge_embedding.has_value()) {
-        auto& [sources, provenance] = *fixed_charge_embedding;
-        if (!sources.empty()) {
-            auto embedding = calculation::FixedChargeEmbedding{
-                .sources = {}, .charge_provenance = std::move(provenance)};
-            embedding.sources.reserve(sources.size());
-            for (const auto& [molecule_index, atom_index, charge] : sources) {
-                embedding.sources.push_back(calculation::FixedAtomCharge{
-                    .molecule_index = molecule_index, .atom_index = atom_index, .charge = charge});
-            }
-            native_fixed_charge_embedding = std::move(embedding);
-        }
-    }
     nb::gil_scoped_release release;
     auto inputs = std::vector<adapters::ImportedMoleculeRecord>{};
     inputs.reserve(source_molecules.size());
@@ -506,6 +493,8 @@ auto make_assessment(
                 : source_metadata[index]->make_record(molecule));
         owned_molecules.push_back(std::move(molecule));
     }
+    auto resolved_embedding =
+        adapters::detail::resolve_fixed_charge_groups(inputs, fixed_charge_groups);
     auto request = calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::move(owned_molecules),
                                               std::move(molecule_collection_name)},
@@ -519,7 +508,9 @@ auto make_assessment(
                 calculation::execution_selection_kind_from_string(execution), radius},
         .resource_policy = {.cutoff_atom_threshold = cutoff_threshold,
                             .cover_atom_threshold = cover_threshold},
-        .fixed_charge_embedding = std::move(native_fixed_charge_embedding),
+        .fixed_charge_embedding = resolved_embedding.sources.empty()
+                                      ? std::nullopt
+                                      : std::optional{std::move(resolved_embedding)},
     };
     return NativeAssessment{calculation::assess(std::move(request)), std::move(inputs),
                             std::move(requested), max_threads};
@@ -548,7 +539,7 @@ void bind_calculation(nb::module_& module) {
                nb::arg("parameter_set_id"), nb::arg("method_options"), nb::arg("permissive_types"),
                nb::arg("execution"), nb::arg("radius"), nb::arg("cutoff_threshold"),
                nb::arg("cover_threshold"), nb::arg("max_threads"),
-               nb::arg("fixed_charge_embedding") = nb::none());
+               nb::arg("fixed_charge_groups") = std::vector<std::string>{});
 }
 
 } // namespace chargefw::python

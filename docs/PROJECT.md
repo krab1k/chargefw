@@ -144,16 +144,25 @@ Assessment prepares a molecule collection once, performs parameter classificatio
 requirements, and expands applicable candidates into concrete plans. A plan contains the selected
 method, parameter set, validated options, execution policy, and any policy warnings.
 
-For a fixed-charge embedding request, assessment owns both the original collection and an active-molecule
-partition, then classifies capable methods against that active collection. Rejection indices map back to
-the original molecules. EEM, SQE, SQE+q0, and SQE+qp can be planned and executed in full, cutoff, or cover
-mode when their scientific prerequisites and active charge budgets are satisfied. Reduced fragments are
-built only from active atoms; every fragment receives the complete prescribed source field, including
+The Python facade opts into fixed-charge embedding with named imported components. Its initial presets assign
+`NA` and `K` +1; `MG`, `CA`, `ZN`, and `FE2` +2; `FE` +3; and `CL` -1. Names are exact; repeated names are
+idempotent, and a known preset absent from the collection selects no source. Unknown names and matching
+components that fail identity or graph-isolation validation reject the request. Structural component identity
+and canonical name selection follow [the format contract](FORMATS.md#pdb-and-mmcif-input). The named Python
+request resolves to the indexed sources accepted by native `AssessmentRequest`; methods receive the
+corresponding source positions and charges. See the [native API](NATIVE.md#assessment).
+
+Assessment owns both the original collection and an active-molecule partition, then classifies capable methods
+against that active collection. Rejection indices map back to the original molecules. EEM, SQE, SQE+q0, and
+SQE+qp can be planned and executed in full, cutoff, or cover mode when their scientific prerequisites and
+active charge budgets are satisfied. Reduced fragments are built only from active atoms; every fragment
+receives the complete prescribed source field, including
 sources outside its radius. Fixed atoms never become fragment centers, pivots, or charge variables.
 Conservation corrections apply to active results, then the facade restores source charges exactly once in
-original atom order. Effective provenance retains the source selectors and values, caller label, and
+original atom order. Effective provenance retains the resolved source indices and values, and
 original/active charge totals for every molecule; the effective method, parameter set, and options define
 the coupling.
+This opt-in point-source approximation does not validate the response of coordinated metals.
 Automatic selection considers warnings for each supported mode and may choose a reduced plan when full
 execution carries a resource warning. Explicit selection can execute with its warning. Existing resource
 thresholds continue to use active molecule size per target.

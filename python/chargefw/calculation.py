@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from threading import Lock
 from typing import cast
 
-from ._calculation_options import FixedAtomCharge, FixedChargeEmbedding, RequestedCalculation
+from ._calculation_options import FixedAtomCharge, RequestedCalculation
 from ._calculation_values import (
     CalculationCancelledError,
     CalculationResult,
@@ -50,7 +50,6 @@ __all__ = [
     "ExecutedPlan",
     "EmbeddingChargeTotals",
     "FixedAtomCharge",
-    "FixedChargeEmbedding",
     "FixedChargeEmbeddingProvenance",
     "ExecutionPolicy",
     "InvalidInputError",
@@ -131,7 +130,6 @@ for _value_type in (
     Rejection,
     FixedChargeEmbeddingProvenance,
     FixedAtomCharge,
-    FixedChargeEmbedding,
 ):
     _value_type.__module__ = __name__
 
@@ -247,7 +245,7 @@ def assess(
     cutoff_threshold: int | None = 20_000,
     cover_threshold: int | None = 80_000,
     threads: int = 0,
-    fixed_charge_embedding: FixedChargeEmbedding | None = None,
+    fixed_charge_groups: Sequence[str] | None = None,
 ) -> Assessment:
     """Inspect applicability and return reusable executable calculation plans."""
 
@@ -262,7 +260,7 @@ def assess(
         cutoff_threshold=cutoff_threshold,
         cover_threshold=cover_threshold,
         threads=threads,
-        fixed_charge_embedding=fixed_charge_embedding,
+        fixed_charge_groups=fixed_charge_groups,
     )
     _validate_parameter_set_id(requested)
     collection = _as_collection(molecules)
@@ -292,17 +290,7 @@ def assess(
         requested.cutoff_threshold,
         requested.cover_threshold,
         requested.threads,
-        (
-            None
-            if requested.fixed_charge_embedding is None
-            else (
-                tuple(
-                    (source.molecule_index, source.atom_index, source.charge)
-                    for source in requested.fixed_charge_embedding.sources
-                ),
-                requested.fixed_charge_embedding.charge_provenance,
-            )
-        ),
+        requested.fixed_charge_groups,
     )
     return Assessment(native, collection, requested)
 
@@ -330,7 +318,7 @@ def calculate(
     cover_threshold: int | None = 80_000,
     threads: int | None = None,
     observer: CalculationObserver | None = None,
-    fixed_charge_embedding: FixedChargeEmbedding | None = None,
+    fixed_charge_groups: Sequence[str] | None = None,
 ) -> CalculationResult:
     """Calculate molecules directly, or execute an explicitly assessed plan.
 
@@ -353,7 +341,7 @@ def calculate(
             cutoff_threshold=cutoff_threshold,
             cover_threshold=cover_threshold,
             threads=0 if threads is None else threads,
-            fixed_charge_embedding=fixed_charge_embedding,
+            fixed_charge_groups=fixed_charge_groups,
         )
         if assessment.default_plan is None:
             result = CalculationResult(
@@ -381,7 +369,7 @@ def calculate(
             radius is not None,
             cutoff_threshold != 20_000,
             cover_threshold != 80_000,
-            fixed_charge_embedding is not None,
+            fixed_charge_groups is not None,
         )
     ):
         raise TypeError("selection arguments cannot be combined with an assessed plan")
