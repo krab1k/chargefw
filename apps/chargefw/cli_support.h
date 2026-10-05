@@ -37,6 +37,7 @@ struct SelectionArguments {
     std::size_t max_threads = 0;
     bool permissive_types = false;
     std::vector<std::string> method_options;
+    std::vector<std::string> fixed_charge_group_ids;
     CLI::Option* method_option = nullptr;
     CLI::Option* parameter_set_option = nullptr;
     CLI::Option* cutoff_atom_threshold_option = nullptr;
@@ -60,7 +61,8 @@ void add_input_options(CLI::App& command, InputArguments& arguments);
 void add_selection_options(CLI::App& command, SelectionArguments& arguments);
 [[nodiscard]] auto import_input(const InputArguments& arguments) -> ImportedCollection;
 [[nodiscard]] auto make_request(core::MoleculeCollection molecules,
-                                const SelectionArguments& arguments)
+                                const SelectionArguments& arguments,
+                                std::span<const adapters::ImportedMoleculeRecord> records)
     -> calculation::AssessmentRequest;
 [[nodiscard]] auto make_requested_provenance(const calculation::AssessmentRequest& request,
                                              std::size_t max_threads)

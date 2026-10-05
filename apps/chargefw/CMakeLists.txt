@@ -25,6 +25,8 @@ target_link_libraries(chargefw_cli
         CLI11::CLI11
 )
 
+target_include_directories(chargefw_cli PRIVATE "${PROJECT_SOURCE_DIR}/src")
+
 install(TARGETS chargefw_cli
         RUNTIME DESTINATION bin
 )

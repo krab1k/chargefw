@@ -48,9 +48,8 @@ resolution. `COMMON_IONS` and a charge-model selector are not part of the API.
 - A later explicitly named formal-charge model or scientifically sourced partial-charge model is
   possible, but the exact model and option are unsettled. Do not offer a vague "more chemical" mode,
   arbitrary unknown-charge generator, or preset for every ligand.
-- Expose the same immutable native resolution through assess/calculate and reusable Python plans. The CLI
-  integration remains future work. Keep provenance explicit: preset ID/version, resolved values, and any
-  approximation warning.
+- Expose the same immutable native resolution through native assessment, Python plans, and CLI requests.
+  Keep provenance explicit: preset ID/version, resolved values, and any approximation warning.
 - Keep execution policy distinct from the fixed-charge approximation. Existing full, cutoff, and cover
   machinery supplies fixed sources to every relevant solve, including sources beyond a fragment radius.
 
@@ -70,7 +69,6 @@ and indexed values may still feed numerical source coupling.
 
 ## Remaining Work
 
-- [ ] Integrate named fixed-charge groups into the CLI without duplicating native resolution policy.
 - [ ] Qualify SQE-family priority against independent indexed/manual references. Cover source identity,
   same-target mapping, conformers, original atom order, invalid/incomplete mappings, fixed values,
   active charge totals, and EEM behavior as secondary coverage.

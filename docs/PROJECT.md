@@ -144,12 +144,12 @@ Assessment prepares a molecule collection once, performs parameter classificatio
 requirements, and expands applicable candidates into concrete plans. A plan contains the selected
 method, parameter set, validated options, execution policy, and any policy warnings.
 
-The Python facade opts into fixed-charge groups with named imported components. Its initial presets assign
+The CLI and Python facade opt into fixed-charge groups with named imported components. Their presets assign
 `NA` and `K` +1; `MG`, `CA`, `ZN`, and `FE2` +2; `FE` +3; and `CL` -1. Names are exact; repeated names are
 idempotent, and a known preset absent from the collection selects no source. Unknown names and matching
 components that fail identity or graph-isolation validation reject the request. Structural component identity
-and canonical name selection follow [the format contract](FORMATS.md#pdb-and-mmcif-input). The named Python
-request resolves to the indexed sources accepted by native `AssessmentRequest`; methods receive the
+and canonical name selection follow [the format contract](FORMATS.md#pdb-and-mmcif-input). Each interface
+resolves its named request to the indexed sources accepted by native `AssessmentRequest`; methods receive the
 corresponding source positions and charges. See the [native API](NATIVE.md#assessment).
 
 Assessment owns both the original collection and an active-molecule partition, then classifies capable methods

@@ -1,5 +1,7 @@
 #include "cli_support.h"
 
+#include "adapters/fixed_charge_groups.h"
+
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
 
@@ -192,6 +194,8 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments) {
     arguments.parameter_set_option =
         command.add_option("--parameter-set", arguments.parameter_set_id, "Parameter-set ID");
     arguments.parameter_set_option->needs(arguments.method_option);
+    command.add_option("--fixed-charge-group", arguments.fixed_charge_group_ids,
+                       "Fixed-charge component ID (repeatable)");
     command.add_flag("--permissive-types", arguments.permissive_types,
                      "Allow permissive parameter type classification");
     command
@@ -220,37 +224,47 @@ auto import_input(const InputArguments& arguments) -> ImportedCollection {
     return imported;
 }
 
-auto make_request(core::MoleculeCollection molecules, const SelectionArguments& arguments)
+auto make_request(core::MoleculeCollection molecules, const SelectionArguments& arguments,
+                  const std::span<const adapters::ImportedMoleculeRecord> records)
     -> calculation::AssessmentRequest {
     auto method_options = std::unordered_map<std::string, methods::MethodOptions>{};
     for (const auto& text : arguments.method_options) {
         const auto [method_id, option] = parse_method_option(text);
         method_options[method_id].set(option.first, option.second);
     }
-    return {.molecules = std::move(molecules),
-            .parameter_sets = parameters::load_default_parameter_sets(),
-            .method_id = arguments.method_option->count() == 0 ? std::nullopt
-                                                               : std::optional{arguments.method_id},
-            .parameter_set_id = arguments.parameter_set_option->count() == 0
-                                    ? std::nullopt
-                                    : std::optional{arguments.parameter_set_id},
-            .method_options = std::move(method_options),
-            .classification_options = {.permissive_types = arguments.permissive_types},
-            .execution_selection =
-                calculation::ExecutionSelection{
-                    calculation::execution_selection_kind_from_string(arguments.execution),
-                    arguments.radius},
-            .resource_policy = {
-                .cutoff_atom_threshold =
-                    arguments.cutoff_atom_threshold_option->count() == 0
-                        ? std::optional<std::size_t>{calculation::default_cutoff_atom_threshold}
-                        : parse_atom_threshold(arguments.cutoff_atom_threshold,
-                                               "Cutoff atom threshold"),
-                .cover_atom_threshold =
-                    arguments.cover_atom_threshold_option->count() == 0
-                        ? std::optional<std::size_t>{calculation::default_cover_atom_threshold}
-                        : parse_atom_threshold(arguments.cover_atom_threshold,
-                                               "Cover atom threshold")}};
+    auto request = calculation::AssessmentRequest{
+        .molecules = std::move(molecules),
+        .parameter_sets = parameters::load_default_parameter_sets(),
+        .method_id = arguments.method_option->count() == 0 ? std::nullopt
+                                                           : std::optional{arguments.method_id},
+        .parameter_set_id = arguments.parameter_set_option->count() == 0
+                                ? std::nullopt
+                                : std::optional{arguments.parameter_set_id},
+        .method_options = std::move(method_options),
+        .classification_options = {.permissive_types = arguments.permissive_types},
+        .execution_selection =
+            calculation::ExecutionSelection{
+                calculation::execution_selection_kind_from_string(arguments.execution),
+                arguments.radius},
+        .resource_policy = {
+            .cutoff_atom_threshold =
+                arguments.cutoff_atom_threshold_option->count() == 0
+                    ? std::optional<std::size_t>{calculation::default_cutoff_atom_threshold}
+                    : parse_atom_threshold(arguments.cutoff_atom_threshold,
+                                           "Cutoff atom threshold"),
+            .cover_atom_threshold =
+                arguments.cover_atom_threshold_option->count() == 0
+                    ? std::optional<std::size_t>{calculation::default_cover_atom_threshold}
+                    : parse_atom_threshold(arguments.cover_atom_threshold,
+                                           "Cover atom threshold")}};
+    if (!arguments.fixed_charge_group_ids.empty()) {
+        auto resolved = adapters::detail::resolve_fixed_charge_groups(
+            records, arguments.fixed_charge_group_ids);
+        if (!resolved.sources.empty()) {
+            request.fixed_charge_groups = std::move(resolved);
+        }
+    }
+    return request;
 }
 
 } // namespace chargefw::cli
