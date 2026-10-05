@@ -298,8 +298,9 @@ TEST_CASE("SQE family full-execution fixed Mg response decays with distance",
         REQUIRE(full.size() == distances.size());
         auto previous_response = 1.0;
         auto near_response = 0.0;
-        for (std::size_t conformer = 0; conformer < distances.size(); ++conformer) {
-            CAPTURE(distances[conformer]);
+        auto conformer = std::size_t{0};
+        for (const auto distance : distances) {
+            CAPTURE(distance);
             const auto& reference = ion_free.assignment(conformer).charges;
             const auto& active = full.assignment(conformer).charges;
             REQUIRE(active.size() == 2);
@@ -320,6 +321,7 @@ TEST_CASE("SQE family full-execution fixed Mg response decays with distance",
                 CHECK(response < previous_response);
             }
             previous_response = response;
+            ++conformer;
         }
         CHECK(previous_response < near_response * 0.01);
         CHECK(previous_response < 2e-5);

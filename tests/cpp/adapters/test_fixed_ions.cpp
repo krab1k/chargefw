@@ -194,9 +194,10 @@ TEST_CASE("private fixed-charge catalog resolves verified CCD monatomic ions",
     const auto all = detail::fixed_ion_names(false);
     REQUIRE(all.size() == expected.size());
     std::vector<ImportedMoleculeRecord> records;
-    for (std::size_t i = 0; i < expected.size(); ++i) {
-        const auto& ion = expected[i];
-        CHECK(all[i] == ion.component);
+    auto expected_ion = expected.begin();
+    for (const auto& name : all) {
+        const auto& ion = *expected_ion++;
+        CHECK(name == ion.component);
         records.push_back(ion_record(ion.component, ion.element, ion.atom, "1"));
     }
     for (const auto& ion : {ExpectedIon{"MG", "MG", 12, 2}, ExpectedIon{"FE2", "FE", 26, 2},
@@ -217,11 +218,13 @@ TEST_CASE("private fixed-charge catalog resolves verified CCD monatomic ions",
     }
     const auto resolved = detail::resolve_fixed_ions(records, all);
     REQUIRE(resolved.sources.size() == expected.size());
+    expected_ion = expected.begin();
     for (std::size_t i = 0; i < expected.size(); ++i) {
         CHECK(resolved.sources[i].molecule_index == i);
         CHECK(resolved.sources[i].atom_index == 0);
-        CHECK(resolved.sources[i].charge == expected[i].charge);
+        CHECK(resolved.sources[i].charge == expected_ion->charge);
         CHECK(records[i].molecule.atom(0).formal_charge() == 0);
+        ++expected_ion;
     }
     for (const std::string excluded : {"ZN2", "SO4", "XE"}) {
         const std::vector<std::string> selected{excluded};

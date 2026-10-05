@@ -582,5 +582,5 @@ HETATM 4 O O1 . LIG A 1 ? 1.1 0.0 0.0 1.0 20.0 0 1 LIG B O1 2
     } catch (const std::exception& error) {
         message = error.what();
     }
-    CHECK(message.find("same selected component instances") != std::string::npos);
+    CHECK(message.contains("same selected component instances"));
 }
