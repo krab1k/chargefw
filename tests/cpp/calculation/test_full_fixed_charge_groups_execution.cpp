@@ -1,9 +1,12 @@
+#include "calculation/cover_execution.h"
+#include "calculation/cutoff_execution.h"
 #include "calculation/fixed_charge_partition.h"
 #include "calculation/full_execution.h"
 
 #include "support/test_parameters.h"
 
 #include <chargefw/core/atom.h>
+#include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
@@ -15,18 +18,22 @@
 #include <chargefw/methods/method_requirements.h>
 #include <chargefw/parameters/classification/parameter_classification.h>
 #include <chargefw/parameters/models/atom_parameters.h>
+#include <chargefw/parameters/models/bond_parameters.h>
 #include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
 #include <snitch/snitch.hpp>
 
+#include <array>
 #include <cmath>
 #include <optional>
 #include <ranges>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace calculation = chargefw::calculation;
@@ -234,4 +241,114 @@ TEST_CASE("parameterized full EEM uses partition sources and active budgets",
     CHECK(partition.targets[0].source_positions[0][0].y == 3.0);
     CHECK(partition.targets[0].source_positions[1][0].x == 4.0);
     CHECK(partition.targets[1].sources.empty());
+}
+
+TEST_CASE("SQE family fixed Mg response decays and survives whole-active reduced execution",
+          "[calculation][fixed-charge-execution][sqe][sqeq0][sqeqp]") {
+    constexpr auto distances = std::array{3.0, 12.0, 120.0};
+    constexpr auto radius = 8.0;
+    constexpr auto mg_charge = 2.0;
+    auto conformers = std::vector<core::Conformer>{};
+    for (const auto distance : distances) {
+        conformers.emplace_back(
+            std::vector<core::Position>{{0.0, 0.0, 0.0}, {1.5, 0.0, 0.0}, {-distance, 0.0, 0.0}});
+    }
+    const auto original = core::MoleculeCollection{std::vector{
+        core::Molecule{std::vector{core::Atom{1, 1}, core::Atom{8, -1}, core::Atom{12, 2}},
+                       {core::Bond{0, 1}},
+                       std::move(conformers),
+                       "active-pair-and-Mg"}}};
+    const auto partition = calculation::detail::make_fixed_charge_partition(
+        original, calculation::FixedChargeGroups{{{0, 2, mg_charge}}, "fixed Mg +2"});
+    const features::PreparedMoleculeCollection prepared{partition.active_molecules};
+
+    for (const auto method_id : {"sqe", "sqeq0", "sqeqp"}) {
+        CAPTURE(method_id);
+        const auto parameter_set = chargefw::parameters::ParameterSet{
+            chargefw::parameters::ParameterSetMetadata{.id =
+                                                           std::string{"Mg-response-"} + method_id,
+                                                       .method_id = method_id,
+                                                       .name = "Mg response SQE parameters"},
+            {},
+            chargefw::parameters::AtomParameters{
+                {{.key = chargefw::test::plain_atom_key(1),
+                  .parameters = {{.name = "electronegativity", .value = 4.5280},
+                                 {.name = "hardness", .value = 13.8904},
+                                 {.name = "width", .value = 1.0},
+                                 {.name = "q0", .value = 0.25}}},
+                 {.key = chargefw::test::plain_atom_key(8),
+                  .parameters = {{.name = "electronegativity", .value = 8.741},
+                                 {.name = "hardness", .value = 13.364},
+                                 {.name = "width", .value = 1.0},
+                                 {.name = "q0", .value = -0.5}}}}},
+            chargefw::parameters::BondParameters{
+                {{.key = chargefw::test::single_bond_key(1, 8),
+                  .parameters = {{.name = "kappa", .value = 1.0}}}}}};
+        const auto* method = methods::method_registry().find(method_id);
+        REQUIRE(method != nullptr);
+        const auto selected = methods::ApplicableMethod{
+            .method = method,
+            .parameter_set = &parameter_set,
+            .method_options = methods::make_default_options(method->option_schema()),
+            .classifications = {chargefw::parameters::ParameterClassification{
+                chargefw::parameters::AtomParameterClassification{{0, 1}},
+                chargefw::parameters::BondParameterClassification{{0}}}}};
+        const auto& observer = calculation::default_calculation_observer();
+        // The ion-free reference reuses exactly the same prepared active geometry and charge.
+        const auto ion_free = calculation::calculate_full_charges(selected, prepared, 1, observer);
+        const auto full =
+            calculation::calculate_full_charges(selected, prepared, 1, observer, &partition);
+        const auto cutoff = calculation::calculate_cutoff_charges(
+            selected, prepared,
+            calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff, radius}, 1, observer,
+            &partition);
+        const auto cover = calculation::calculate_cover_charges(
+            selected, prepared,
+            calculation::ExecutionPolicy{calculation::ExecutionMode::cover, radius}, 1, observer,
+            &partition);
+        REQUIRE(ion_free.size() == distances.size());
+        REQUIRE(full.size() == distances.size());
+        REQUIRE(cutoff.size() == distances.size());
+        REQUIRE(cover.size() == distances.size());
+        auto previous_response = 1.0;
+        auto near_response = 0.0;
+        for (std::size_t conformer = 0; conformer < distances.size(); ++conformer) {
+            CAPTURE(distances[conformer]);
+            const auto& reference = ion_free.assignment(conformer).charges;
+            const auto& active = full.assignment(conformer).charges;
+            REQUIRE(active.size() == 2);
+            REQUIRE(reference.size() == active.size());
+            CHECK(std::abs(reference.total() - partition.targets[0].active_charge) < 1e-12);
+            auto squared_response = 0.0;
+            for (std::size_t atom = 0; atom < active.size(); ++atom) {
+                const auto difference = active[atom] - reference[atom];
+                squared_response += difference * difference;
+            }
+            const auto response = std::sqrt(squared_response);
+            CHECK(response > 1e-8);
+            if (conformer == 0) {
+                near_response = response;
+                CHECK(near_response > 1e-4);
+            } else {
+                CHECK(distances[conformer] > radius);
+                CHECK(response < previous_response);
+            }
+            previous_response = response;
+
+            // All active atoms fit inside the radius; the two more distant Mg sites do not.
+            for (const auto* result : {&full, &cutoff, &cover}) {
+                const auto& values = result->assignment(conformer).charges;
+                REQUIRE(values.size() == active.size());
+                CHECK(std::abs(values.total() - partition.targets[0].active_charge) < 1e-12);
+                for (std::size_t atom = 0; atom < active.size(); ++atom) {
+                    CHECK(std::abs(values[atom] - active[atom]) < 1e-11);
+                }
+                const auto restored =
+                    calculation::detail::reassemble_fixed_charge_results(*result, partition);
+                CHECK(restored.assignment(conformer).charges[2] == mg_charge);
+            }
+        }
+        CHECK(previous_response < near_response * 0.01);
+        CHECK(previous_response < 2e-5);
+    }
 }

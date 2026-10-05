@@ -69,13 +69,10 @@ and indexed values may still feed numerical source coupling.
 
 ## Remaining Work
 
-- [ ] Qualify SQE-family priority against independent indexed/manual references. Cover source identity,
-  same-target mapping, conformers, original atom order, invalid/incomplete mappings, fixed values,
-  active charge totals, and EEM behavior as secondary coverage.
-- [ ] Scope multiatom templates separately. Verify complete atom identity/element matching, versioned
-  provenance, internal versus crossing bonds, and justified charge distributions before adding presets.
-- [ ] Review scientific limits and publish implemented behavior in the owning docs only after the
-  feature and its tests are complete.
+- [ ] Scope multiatom presets as a separate task, starting with one specific small component and a
+  scientifically justified charge distribution rather than generic machinery or heme. Verify complete
+  atom identity/element matching, versioned provenance, and internal versus crossing bonds before adding
+  the preset.
 
 ## Workflow
 
