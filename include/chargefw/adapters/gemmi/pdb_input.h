@@ -24,6 +24,7 @@ class PdbReader {
     auto operator=(const PdbReader&) -> PdbReader& = delete;
     PdbReader(PdbReader&&) = default;
     auto operator=(PdbReader&&) -> PdbReader& = default;
+    ~PdbReader() = default;
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
     [[nodiscard]] auto options() const noexcept -> ::chargefw::adapters::gemmi::InputOptions;

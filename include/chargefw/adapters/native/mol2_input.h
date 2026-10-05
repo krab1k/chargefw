@@ -20,6 +20,7 @@ class Mol2Reader {
     auto operator=(const Mol2Reader&) -> Mol2Reader& = delete;
     Mol2Reader(Mol2Reader&&) = default;
     auto operator=(Mol2Reader&&) -> Mol2Reader& = default;
+    ~Mol2Reader() = default;
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 

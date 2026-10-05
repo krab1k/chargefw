@@ -25,6 +25,7 @@ class MmcifReader {
     auto operator=(const MmcifReader&) -> MmcifReader& = delete;
     MmcifReader(MmcifReader&&) = default;
     auto operator=(MmcifReader&&) -> MmcifReader& = default;
+    ~MmcifReader() = default;
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
     [[nodiscard]] auto options() const noexcept -> ::chargefw::adapters::gemmi::InputOptions;

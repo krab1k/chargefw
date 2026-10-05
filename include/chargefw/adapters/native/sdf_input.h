@@ -19,6 +19,7 @@ class SdfReader {
     auto operator=(const SdfReader&) -> SdfReader& = delete;
     SdfReader(SdfReader&&) = default;
     auto operator=(SdfReader&&) -> SdfReader& = default;
+    ~SdfReader() = default;
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 

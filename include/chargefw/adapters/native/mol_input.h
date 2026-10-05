@@ -24,6 +24,7 @@ class MolReader {
     auto operator=(const MolReader&) -> MolReader& = delete;
     MolReader(MolReader&&) = default;
     auto operator=(MolReader&&) -> MolReader& = default;
+    ~MolReader() = default;
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 

@@ -25,6 +25,7 @@ class JsonReader {
     auto operator=(const JsonReader&) -> JsonReader& = delete;
     JsonReader(JsonReader&&) = default;
     auto operator=(JsonReader&&) -> JsonReader& = default;
+    ~JsonReader() = default;
 
     [[nodiscard]] auto next() -> std::optional<ImportedMoleculeRecord>;
 
