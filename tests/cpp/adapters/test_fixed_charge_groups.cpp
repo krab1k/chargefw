@@ -11,6 +11,7 @@
 #include <chargefw/parameters/io/parameter_set_io.h>
 #include <snitch/snitch.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <filesystem>
@@ -18,6 +19,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace detail = chargefw::adapters::detail;
@@ -105,13 +107,33 @@ auto run_sqeqp(const chargefw::core::MoleculeCollection& molecules,
 }
 } // namespace
 
+TEST_CASE("private fixed-charge ion selections share the resolver catalog",
+          "[adapters][fixed-charge]") {
+    const auto common = detail::fixed_charge_ion_names(true);
+    const auto all = detail::fixed_charge_ion_names(false);
+    const std::vector<std::string> expected{"NA", "K", "MG", "CA", "CL", "ZN", "FE", "FE2"};
+    CHECK(common == expected);
+    CHECK(all.size() > common.size());
+    for (const auto& name : common) {
+        CHECK(std::ranges::count(all, name) == 1);
+    }
+    for (const auto& name : all) {
+        CHECK(std::ranges::count(all, name) == 1);
+    }
+    const std::vector<ImportedMoleculeRecord> records{ion_record("LIG", 6, "C", "1")};
+    CHECK(detail::resolve_fixed_charge_groups(records, all).sources.empty());
+    auto changed = all;
+    changed.front() = "changed";
+    CHECK(detail::fixed_charge_ion_names(false) == all);
+}
+
 TEST_CASE("private fixed-charge groups resolve exact ion identities in input order",
           "[adapters][fixed-charge]") {
     const std::vector records{
-        ion_record("FE2", 26, "FE2", "1", 4), ion_record("MG", 12, "MG", "2", -2),
-        ion_record("FE", 26, "FE", "3", 1),   ion_record("NA", 11, "NA", "4", -1),
-        ion_record("K", 19, "K", "5", -1),    ion_record("CA", 20, "CA", "6", -1),
-        ion_record("CL", 17, "CL", "7", 1),   ion_record("ZN", 30, "ZN", "8", -1)};
+        ion_record("FE2", 26, "FE", "1", 4), ion_record("MG", 12, "MG", "2", -2),
+        ion_record("FE", 26, "FE", "3", 1),  ion_record("NA", 11, "NA", "4", -1),
+        ion_record("K", 19, "K", "5", -1),   ion_record("CA", 20, "CA", "6", -1),
+        ion_record("CL", 17, "CL", "7", 1),  ion_record("ZN", 30, "ZN", "8", -1)};
     const std::vector<std::string> request{"ZN", "FE", "CA", "K", "NA", "CL", "MG", "FE2"};
     const auto fixed_charge_groups = detail::resolve_fixed_charge_groups(records, request);
     REQUIRE(fixed_charge_groups.sources.size() == 8);
@@ -136,6 +158,94 @@ TEST_CASE("private fixed-charge groups resolve exact ion identities in input ord
     CHECK(records[0].molecule.atom(0).formal_charge() == 4);
 }
 
+TEST_CASE("private fixed-charge catalog resolves verified CCD monatomic ions",
+          "[adapters][fixed-charge]") {
+    struct ExpectedIon {
+        const char* component;
+        const char* atom;
+        int element;
+        double charge;
+    };
+    // Independent expected values from the verified 2026-10-05 CCD snapshot.
+    const std::array expected{
+        ExpectedIon{"0BE", "BE", 4, 2},  ExpectedIon{"3CO", "CO", 27, 3},
+        ExpectedIon{"3NI", "NI", 28, 3}, ExpectedIon{"4MO", "MO", 42, 4},
+        ExpectedIon{"4PU", "PU", 94, 4}, ExpectedIon{"4TI", "TI", 22, 4},
+        ExpectedIon{"6MO", "MO", 42, 6}, ExpectedIon{"AG", "AG", 47, 1},
+        ExpectedIon{"AL", "AL", 13, 3},  ExpectedIon{"AM", "AM", 95, 3},
+        ExpectedIon{"AU", "AU", 79, 1},  ExpectedIon{"AU3", "AU", 79, 3},
+        ExpectedIon{"BA", "BA", 56, 2},  ExpectedIon{"BR", "BR", 35, -1},
+        ExpectedIon{"BS3", "BI", 83, 3}, ExpectedIon{"CA", "CA", 20, 2},
+        ExpectedIon{"CD", "CD", 48, 2},  ExpectedIon{"CE", "CE", 58, 3},
+        ExpectedIon{"CF", "CF", 98, 3},  ExpectedIon{"CL", "CL", 17, -1},
+        ExpectedIon{"CO", "CO", 27, 2},  ExpectedIon{"CR", "CR", 24, 3},
+        ExpectedIon{"CS", "CS", 55, 1},  ExpectedIon{"CU", "CU", 29, 2},
+        ExpectedIon{"CU1", "CU", 29, 1}, ExpectedIon{"CU3", "CU", 29, 3},
+        ExpectedIon{"D8U", "D", 1, 1},   ExpectedIon{"DY", "DY", 66, 3},
+        ExpectedIon{"ER3", "ER", 68, 3}, ExpectedIon{"EU", "EU", 63, 2},
+        ExpectedIon{"EU3", "EU", 63, 3}, ExpectedIon{"F", "F", 9, -1},
+        ExpectedIon{"FE", "FE", 26, 3},  ExpectedIon{"FE2", "FE", 26, 2},
+        ExpectedIon{"GA", "GA", 31, 3},  ExpectedIon{"GD3", "GD", 64, 3},
+        ExpectedIon{"HG", "HG", 80, 2},  ExpectedIon{"HO3", "HO", 67, 3},
+        ExpectedIon{"IN", "IN", 49, 3},  ExpectedIon{"IOD", "I", 53, -1},
+        ExpectedIon{"IR", "IR", 77, 4},  ExpectedIon{"IR3", "IR", 77, 3},
+        ExpectedIon{"K", "K", 19, 1},    ExpectedIon{"LA", "LA", 57, 3},
+        ExpectedIon{"LI", "LI", 3, 1},   ExpectedIon{"LU", "LU", 71, 3},
+        ExpectedIon{"MG", "MG", 12, 2},  ExpectedIon{"MN", "MN", 25, 2},
+        ExpectedIon{"MN3", "MN", 25, 3}, ExpectedIon{"NA", "NA", 11, 1},
+        ExpectedIon{"ND", "ND", 60, 3},  ExpectedIon{"NI", "NI", 28, 2},
+        ExpectedIon{"OS", "OS", 76, 3},  ExpectedIon{"OS4", "OS", 76, 4},
+        ExpectedIon{"PB", "PB", 82, 2},  ExpectedIon{"PD", "PD", 46, 2},
+        ExpectedIon{"PR", "PR", 59, 3},  ExpectedIon{"PT", "PT", 78, 2},
+        ExpectedIon{"PT4", "PT", 78, 4}, ExpectedIon{"RB", "RB", 37, 1},
+        ExpectedIon{"RH", "RH1", 45, 1}, ExpectedIon{"RH3", "RH", 45, 3},
+        ExpectedIon{"RHF", "RH", 45, 2}, ExpectedIon{"RU", "RU", 44, 3},
+        ExpectedIon{"SB", "SB", 51, 3},  ExpectedIon{"SM", "SM", 62, 3},
+        ExpectedIon{"SR", "SR", 38, 2},  ExpectedIon{"TB", "TB", 65, 3},
+        ExpectedIon{"TH", "TH", 90, 4},  ExpectedIon{"TL", "TL", 81, 1},
+        ExpectedIon{"V", "V", 23, 3},    ExpectedIon{"W", "W", 74, 6},
+        ExpectedIon{"Y1", "Y", 39, 2},   ExpectedIon{"YB", "YB", 70, 3},
+        ExpectedIon{"YB2", "YB", 70, 2}, ExpectedIon{"YT3", "Y", 39, 3},
+        ExpectedIon{"ZCM", "CM", 96, 3}, ExpectedIon{"ZN", "ZN", 30, 2},
+        ExpectedIon{"ZR", "ZR", 40, 4},  ExpectedIon{"ZTM", "AC", 89, 3},
+    };
+    const auto all = detail::fixed_charge_ion_names(false);
+    REQUIRE(all.size() == expected.size());
+    std::vector<ImportedMoleculeRecord> records;
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        const auto& ion = expected[i];
+        CHECK(all[i] == ion.component);
+        records.push_back(ion_record(ion.component, ion.element, ion.atom, "1"));
+        const std::vector<std::string> selected{ion.component};
+        const std::vector wrong_name{ion_record(ion.component, ion.element, "WRONG", "1")};
+        CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(wrong_name, selected),
+                        std::invalid_argument);
+        const std::vector wrong_element{
+            ion_record(ion.component, ion.element == 1 ? 2 : 1, ion.atom, "1")};
+        CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(wrong_element, selected),
+                        std::invalid_argument);
+        if (std::string_view{ion.atom} != ion.component) {
+            const std::vector component_as_atom{
+                ion_record(ion.component, ion.element, ion.component, "1")};
+            CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(component_as_atom, selected),
+                            std::invalid_argument);
+        }
+    }
+    const auto resolved = detail::resolve_fixed_charge_groups(records, all);
+    REQUIRE(resolved.sources.size() == expected.size());
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        CHECK(resolved.sources[i].molecule_index == i);
+        CHECK(resolved.sources[i].atom_index == 0);
+        CHECK(resolved.sources[i].charge == expected[i].charge);
+        CHECK(records[i].molecule.atom(0).formal_charge() == 0);
+    }
+    for (const std::string excluded : {"ZN2", "SO4", "XE"}) {
+        const std::vector<std::string> selected{excluded};
+        CHECK_THROWS_AS(detail::resolve_fixed_charge_groups(records, selected),
+                        std::invalid_argument);
+    }
+}
+
 TEST_CASE("private fixed-charge groups resolve repeated instances in atom order",
           "[adapters][fixed-charge]") {
     auto record = ion_record("MG", 12, "MG", "1");
@@ -156,8 +266,8 @@ TEST_CASE("private fixed-charge groups resolve repeated instances in atom order"
 
 TEST_CASE("private fixed-charge groups preserve atom order within one record",
           "[adapters][fixed-charge]") {
-    auto record = ion_record("FE2", 26, "FE2", "9");
-    record.molecule = chargefw::core::Molecule{{chargefw::core::Atom{26, 0, "FE2"},
+    auto record = ion_record("FE2", 26, "FE", "9");
+    record.molecule = chargefw::core::Molecule{{chargefw::core::Atom{26, 0, "FE"},
                                                 chargefw::core::Atom{12, 7, "MG"},
                                                 chargefw::core::Atom{26, -4, "FE"}}};
     auto first = record.import_metadata->atoms.front();
@@ -167,8 +277,8 @@ TEST_CASE("private fixed-charge groups preserve atom order within one record",
     second.position = 2;
     third.position = 40;
     first.structural_labels->label.sequence = "9";
-    first.structural_labels->label.atom = "FE2";
-    first.structural_labels->author.atom = "FE2";
+    first.structural_labels->label.atom = "FE";
+    first.structural_labels->author.atom = "FE";
     second.structural_labels->label.sequence = "1";
     second.structural_labels->author.sequence = "1";
     second.structural_labels->label.residue = "MG";

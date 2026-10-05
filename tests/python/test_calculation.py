@@ -113,6 +113,79 @@ def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, b
 
 
 class CalculationTests(unittest.TestCase):
+    def test_ion_selections_are_immutable_native_catalog_tuples(self) -> None:
+        common: tuple[str, ...] = chargefw.COMMON_IONS
+        all_ions: tuple[str, ...] = chargefw.ALL_IONS
+        self.assertEqual(common, ("NA", "K", "MG", "CA", "CL", "ZN", "FE", "FE2"))
+        self.assertIsInstance(all_ions, tuple)
+        self.assertLess(set(common), set(all_ions))
+        self.assertEqual(len(all_ions), len(set(all_ions)))
+        self.assertEqual(len(all_ions), 80)
+        self.assertEqual(all_ions, tuple(sorted(all_ions)))
+        self.assertEqual(common, _native_calculation._fixed_charge_ion_names(True))
+        self.assertEqual(all_ions, _native_calculation._fixed_charge_ion_names(False))
+        for name in ("COMMON_IONS", "ALL_IONS"):
+            self.assertIn(name, chargefw.__all__)
+        for selection in (common, all_ions):
+            with self.assertRaises(TypeError):
+                cast(Any, selection)[0] = "MG"
+            with self.assertRaises(AttributeError):
+                cast(Any, selection).append("MG")
+            absent = chargefw.calculate(
+                chargefw.io.parse(FIXED_GROUPS_MMCIF.split("HETATM 4")[0] + "#\n", format="mmcif"),
+                method="formal",
+                fixed_charge_groups=selection,
+            )
+            self.assertEqual(absent.requested.fixed_charge_groups, selection)
+            if absent.plan is None:
+                self.fail("absent ion selection must retain the formal plan")
+            self.assertIsNone(absent.plan.fixed_charge_groups)
+
+    def test_all_ions_selects_noncommon_template_in_assessment_and_calculation(self) -> None:
+        # CU1's atom name is CU and its template charge differs from the imported zero.
+        text = FIXED_GROUPS_MMCIF.replace(
+            "HETATM 4 Mg MG . MG I . ? 0 0 3 1 20 0 9 MG I MG 1",
+            "HETATM 4 Cu CU . CU1 I . ? 0 0 3 1 20 0 9 CU1 I CU 1",
+        )
+        molecules = chargefw.io.parse(text, format="mmcif", bonds="templates")
+        common = chargefw.calculate(
+            molecules, method="formal", fixed_charge_groups=chargefw.COMMON_IONS
+        )
+        if common.plan is None:
+            self.fail("unselected noncommon ion must leave formal calculation available")
+        self.assertIsNone(common.plan.fixed_charge_groups)
+        np.testing.assert_array_equal(common.assignments[0].values, [0.0] * 4)
+        assessment = chargefw.assess(
+            molecules,
+            method="sqeqp",
+            parameter_set="SQEqp_Schindler2021_CCD_gen",
+            execution="full",
+            fixed_charge_groups=chargefw.ALL_IONS,
+        )
+        if assessment.default_plan is None:
+            self.fail("ALL_IONS must produce an SQEqp plan with the CU1 template")
+        result = chargefw.calculate(molecules, assessment.default_plan)
+        direct = chargefw.calculate(
+            molecules,
+            method="sqeqp",
+            parameter_set="SQEqp_Schindler2021_CCD_gen",
+            execution="full",
+            fixed_charge_groups=chargefw.ALL_IONS,
+        )
+        self.assertEqual(result.requested.fixed_charge_groups, chargefw.ALL_IONS)
+        self.assertEqual(result.assignments[0].values[3], 1.0)
+        self.assertAlmostEqual(float(result.assignments[0].values[:3].sum()), 0.0, places=12)
+        np.testing.assert_allclose(result.assignments[0].values, direct.assignments[0].values)
+        np.testing.assert_array_equal(molecules[0].formal_charges, [0] * 4)
+        if result.plan is None or result.plan.fixed_charge_groups is None:
+            self.fail("ALL_IONS must retain effective source provenance")
+        self.assertEqual(
+            result.plan.fixed_charge_groups.sources, (chargefw.FixedAtomCharge(0, 3, 1.0),)
+        )
+        self.assertEqual(
+            result.plan.fixed_charge_groups.charge_provenance, "chargefw:fixed-charge-ions:v1"
+        )
+
     def test_observer_receives_owned_execution_progress(self) -> None:
         class RecordingObserver(chargefw.CalculationObserver):
             def __init__(self) -> None:
@@ -203,7 +276,7 @@ class CalculationTests(unittest.TestCase):
             method="sqeqp",
             parameter_set="SQEqp_Schindler2021_CCD_gen",
             execution="full",
-            fixed_charge_groups=["MG"],
+            fixed_charge_groups=chargefw.COMMON_IONS,
         )
         self.assertEqual(result.requested.fixed_charge_groups, ("MG",))
         self.assertEqual(result.assignments[0].values[3], 2.0)

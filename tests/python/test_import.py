@@ -21,6 +21,8 @@ def test_import_surface() -> None:
         assert chargefw.__version__ == expected_version
     assert chargefw.__all__ == [
         "__version__",
+        "COMMON_IONS",
+        "ALL_IONS",
         "Molecule",
         "MoleculeCollection",
         "PortableId",

@@ -19,7 +19,8 @@ calculate(molecule, fixed_charge_groups=["MG", "CA"])
 ```
 
 The Python request snapshots names into an immutable tuple. `None` and an empty sequence disable
-resolution. `COMMON_IONS` and a charge-model selector are not part of the API.
+resolution. `COMMON_IONS` and `ALL_IONS` are immutable tuples selecting the common subset and complete
+bundled monatomic-ion catalog. Template charges are authoritative; no imported-first charge model is used.
 
 ## Decisions
 
@@ -58,8 +59,9 @@ resolution. `COMMON_IONS` and a charge-model selector are not part of the API.
 Structural imports own explicit selected-residue component membership in import metadata. The private
 named-ion resolver consumes that partition rather than rebuilding instances from hierarchy labels; original
 labels remain audit metadata. The partition and complete import metadata remain owned with native records
-and Python source mappings. Its initial private catalog is `NA`, `K`, `MG`, `CA`, `CL`, `ZN`, `FE`, and
-`FE2`. Coordination connectivity remains limited to bonds represented in the imported core graph.
+and Python source mappings. Its private catalog and common-ion subset are defined in the owning
+[project contract](docs/PROJECT.md#assessment-and-execution). Coordination connectivity remains limited
+to bonds represented in the imported core graph.
 Template and fixed-ion matching share label-first canonical names so alternate author names do not change
 component identity, while source mappings continue to preserve both namespaces.
 

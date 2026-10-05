@@ -519,6 +519,13 @@ auto make_assessment(const nb::sequence& molecules, const nb::sequence& input_me
 } // namespace
 
 void bind_calculation(nb::module_& module) {
+    module.def("_fixed_charge_ion_names", [](const bool common_only) {
+        nb::list names;
+        for (const auto& name : adapters::detail::fixed_charge_ion_names(common_only)) {
+            names.append(nb::cast(name));
+        }
+        return nb::tuple{names};
+    });
     nb::class_<NativeExecutionResult>(module, "_NativeExecutionResult")
         .def("report", [](const NativeExecutionResult& value) {
             return execution_result(value.result().execution());

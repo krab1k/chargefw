@@ -6,6 +6,8 @@ from .adapters import _NativeInputMetadata
 from .core import _NativeMolecule
 from .parameters import _NativeParameterCatalog
 
+def _fixed_charge_ion_names(common_only: bool) -> tuple[str, ...]: ...
+
 class _NativeExecutionResult:
     def report(self) -> ExecutionResultPayload: ...
 

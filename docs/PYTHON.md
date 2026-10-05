@@ -275,6 +275,11 @@ model. The request snapshots names to an immutable tuple; `None` and an empty se
 The [project design](PROJECT.md#assessment-and-execution) describes how imported components are resolved,
 which methods support the model, and its active-charge contract.
 
+`chargefw.COMMON_IONS` and `chargefw.ALL_IONS` are immutable tuples of component names accepted by the
+same argument. `COMMON_IONS` selects the common-ion subset; `ALL_IONS` selects every monatomic ion in the
+[bundled catalog](PROJECT.md#assessment-and-execution). Both expand explicit caller intent, using bundled
+template charges; only matching components present in the input become fixed sources.
+
 ```python
 assessment = chargefw.assess(
     molecules,
@@ -284,6 +289,9 @@ assessment = chargefw.assess(
     fixed_charge_groups=["MG"],
 )
 result = chargefw.calculate(molecules, assessment.default_plan)
+
+common = chargefw.calculate(molecules, fixed_charge_groups=chargefw.COMMON_IONS)
+all_ions = chargefw.calculate(molecules, fixed_charge_groups=chargefw.ALL_IONS)
 ```
 
 Flat `options` require an explicit method. `options` and `options_by_method` cannot be combined. Automatic

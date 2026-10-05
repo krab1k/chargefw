@@ -144,10 +144,28 @@ Assessment prepares a molecule collection once, performs parameter classificatio
 requirements, and expands applicable candidates into concrete plans. A plan contains the selected
 method, parameter set, validated options, execution policy, and any policy warnings.
 
-The CLI and Python facade opt into fixed-charge groups with named imported components. Their presets assign
-`NA` and `K` +1; `MG`, `CA`, `ZN`, and `FE2` +2; `FE` +3; and `CL` -1. Names are exact; repeated names are
-idempotent, and a known preset absent from the collection selects no source. Unknown names and matching
-components that fail identity or graph-isolation validation reject the request. Structural component identity
+The CLI and Python facade opt into fixed-charge groups with named imported components. The bundled catalog
+contains 80 released monatomic CCD ions, with template-authoritative formal charges:
+
+| Charge | Component IDs |
+| --- | --- |
+| -1 | `BR`, `CL`, `F`, `IOD` |
+| +1 | `AG`, `AU`, `CS`, `CU1`, `D8U`, `K`, `LI`, `NA`, `RB`, `RH`, `TL` |
+| +2 | `0BE`, `BA`, `CA`, `CD`, `CO`, `CU`, `EU`, `FE2`, `HG`, `MG`, `MN`, `NI`, `PB`, `PD`, `PT`, `RHF`, `SR`, `Y1`, `YB2`, `ZN` |
+| +3 | `3CO`, `3NI`, `AL`, `AM`, `AU3`, `BS3`, `CE`, `CF`, `CR`, `CU3`, `DY`, `ER3`, `EU3`, `FE`, `GA`, `GD3`, `HO3`, `IN`, `IR3`, `LA`, `LU`, `MN3`, `ND`, `OS`, `PR`, `RH3`, `RU`, `SB`, `SM`, `TB`, `V`, `YB`, `YT3`, `ZCM`, `ZTM` |
+| +4 | `4MO`, `4PU`, `4TI`, `IR`, `OS4`, `PT4`, `TH`, `ZR` |
+| +6 | `6MO`, `W` |
+
+The common-ion subset is `NA`, `K`, `MG`, `CA`, `CL`, `ZN`, `FE`, and `FE2`. Python exposes that subset
+and the complete catalog as [immutable name selections](PYTHON.md#calculation-policy).
+Each template validates its CCD atom name and element; component IDs and atom names can differ, as for
+component `FE2` with atom `FE`. A selected template supplies its charge even when the imported atom has
+a different formal charge. Input atoms remain unchanged. These selections are explicit caller intent,
+independent of candidate parameter coverage; molecular ions such as sulfate remain part of the active graph.
+
+Names are exact; repeated names are idempotent, and a known preset absent from the collection selects no
+source. Unknown names and matching components that fail identity or graph-isolation validation reject the
+request. Structural component identity
 and canonical name selection follow [the format contract](FORMATS.md#pdb-and-mmcif-input). Each interface
 resolves its named request to the indexed sources accepted by native `AssessmentRequest`; methods receive the
 corresponding source positions and charges. See the [native API](NATIVE.md#assessment).
