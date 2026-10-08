@@ -182,6 +182,12 @@ unspecified/null, and malformed component bond orders are skipped because the co
 them. Templates cover common amino acids, nucleotides, water, and basic sequential peptide and nucleotide
 links; they are not a complete Chemical Component Dictionary. No distance-based bond perception is performed.
 
+For standard amino-acid residue names, `templates` and `hybrid` supplement the base templates with
+N-terminal `N-H1` and `N-H3` bonds; `PRO` instead adds `N-H2` and `N-H3`. Only supplied atoms are
+connected. Existing `H/H2`-only patterns (`H` for `PRO`) retain their base-template behavior.
+The extension preserves supplied atoms, names, order, and formal charges. Callers supply a consistently
+prepared structure; these bonds are assigned by residue and atom names, independently of chain position.
+
 ## Charge output
 
 ChargeFW result JSON retains native floating-point precision, as do native and Python result objects.

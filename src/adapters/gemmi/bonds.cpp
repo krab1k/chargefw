@@ -203,6 +203,16 @@ void add_component_bonds(BondAccumulator& result, const detail::ComponentView co
         }
 
         add_component_bonds(result, component, component_template->bonds);
+        if (component_template->kind == component_templates::ComponentKind::amino_acid) {
+            if (const auto nitrogen = component.find_atom("N")) {
+                // Supplement the base template with the remaining terminal hydrogen names.
+                for (const auto name : {component.name == "PRO" ? "H2" : "H1", "H3"}) {
+                    if (const auto hydrogen = component.find_atom(name)) {
+                        result.add(*nitrogen, *hydrogen, core::BondOrder::SINGLE);
+                    }
+                }
+            }
+        }
     }
 
     add_sequential_bonds(result, residues, component_templates::ComponentKind::amino_acid, "C",

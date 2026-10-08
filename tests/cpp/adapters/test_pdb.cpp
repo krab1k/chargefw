@@ -17,6 +17,31 @@ static_assert(!std::is_copy_constructible_v<pdb::PdbReader> &&
               !std::is_copy_assignable_v<pdb::PdbReader>);
 static_assert(std::is_move_constructible_v<pdb::PdbReader>);
 
+TEST_CASE("PDB templates supplement N-terminal hydrogen connectivity", "[adapters][pdb]") {
+    using Strategy = gemmi_adapter::BondStrategy;
+    for (const auto strategy : {Strategy::templates, Strategy::hybrid}) {
+        std::istringstream input{
+            R"pdb(ATOM      1  N   ALA A   7       0.000   0.000   0.000  1.00 20.00           N1+
+ATOM      2  CA  ALA A   7       1.000   0.000   0.000  1.00 20.00           C
+ATOM      3  H1  ALA A   7       0.000   1.000   0.000  1.00 20.00           H
+ATOM      4  H2  ALA A   7       0.000   0.000   1.000  1.00 20.00           H
+ATOM      5  H3  ALA A   7       0.000  -1.000   0.000  1.00 20.00           H
+CONECT    1    3
+END
+)pdb"};
+        auto reader = pdb::PdbReader{input, {}, {.bond_strategy = strategy}};
+        const auto record = reader.next();
+        REQUIRE(record.has_value());
+        CHECK(record->molecule.atom_count() == 5);
+        CHECK(record->molecule.bond_count() == 4);
+        CHECK(record->molecule.atom(0).formal_charge() == 1);
+        for (const auto& bond : record->molecule.bonds()) {
+            CHECK(bond.first_atom_index() == 0);
+            CHECK(bond.order() == chargefw::core::BondOrder::SINGLE);
+        }
+    }
+}
+
 TEST_CASE("structural input options share stable string conversion", "[adapters][options]") {
     CHECK(gemmi_adapter::record_selection_from_string("polymers-and-ligands") ==
           gemmi_adapter::RecordSelection::polymers_and_ligands);
