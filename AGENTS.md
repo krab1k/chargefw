@@ -90,14 +90,40 @@ appropriate when it helps resolve the design. Once the design is accepted, strai
 that design proceed directly to implementation. For routine changes within agreed architecture, implement
 the smallest coherent change without a separate design phase.
 
-Format changed C++ before review. Delivered behavior requires focused regression tests and updates to its
-owning user documentation. Remove a TODO only when its complete deliverable is qualified. Stop for user
-approval before out-of-scope public API changes, automatic chemistry policy, heavyweight dependencies,
-destructive commands, or broad rewrites. Preserve the scientific and architectural rules above.
+Format changed C++ before review. Validate changed behavior with the smallest meaningful set of checks:
+reuse or adapt existing tests before adding cases, and add coverage only for a distinct failure risk or
+contract not already protected. Update the owning user documentation when its contract changes. Remove a
+TODO only when its complete deliverable is qualified. Stop for user approval before out-of-scope public
+API changes, automatic chemistry policy, heavyweight dependencies, destructive commands, or broad rewrites.
+Preserve the scientific and architectural rules above.
+
+### Test design
+
+- Test observable behavior, not a second copy of the implementation. Do not mirror production catalogs,
+  metadata tables, export lists, or private file layouts in expected-value inventories. Prefer a few
+  contrasting examples and behavioral invariants; adding a catalog entry should not require updating a
+  parallel test catalog.
+- Keep independent analytical or published numerical checks in the native scientific layer. Interface
+  tests should protect their own risks, such as conversion, ownership, mapping, installation, and failure
+  handling, rather than repeat the numerical suite through every entry point. Test count and coverage
+  percentage are not reasons to add cases.
+- Treat machine-readable schemas and documented output semantics as contracts. Check schema conformance,
+  not how the schema is written. For the CLI, check exit statuses, file effects, and structured output;
+  do not parse human-facing reports, help, progress rendering, or diagnostic prose. Avoid exact `repr`
+  snapshots. For exceptions, prefer type and structured details; check essential diagnostic context only
+  when it is part of the behavior under test, not complete wording.
+- Use assertions, matchers, and fixture facilities already provided by the test framework when they
+  simplify the code; verify availability in the version in use. Do not reimplement exception-checking or
+  failure-reporting machinery that the framework already supplies.
+- Share genuinely identical, substantial setup in existing test support, keeping scenario inputs and
+  assertions visible. Prefer a local case loop for repeated scenarios that differ only in input values.
+  Keep deliberately different scientific fixtures separate. Avoid pass-through wrappers, configurable
+  test frameworks, and fixture classes that add more indirection than duplication they remove. A test
+  cleanup should reduce maintenance burden, not grow the suite to compensate for removed snapshots.
 
 ### Validation cadence
 
-- After design is stable, build the affected `gcc-debug` target and run its focused regression test.
+- After design is stable, build the affected `gcc-debug` targets and run their focused tests.
   Review the architectural diff before expensive qualification. Run the full `gcc-debug` test suite once
   for a coherent feature that is ready to commit, not for every edit or review correction. Documentation-
   only changes need relevant content/link checks, not builds; check executable examples when affected.
