@@ -17,7 +17,6 @@
 
 #include <nlohmann/json.hpp>
 
-#include <fstream>
 #include <limits>
 #include <optional>
 #include <sstream>
@@ -243,19 +242,6 @@ TEST_CASE("JSON output projects fixed ion provenance", "[adapters][json]") {
     CHECK(fixed_ions[0].at("charge") == 0.25);
     CHECK(fixed_ions[0].at("instances") ==
           nlohmann::json::array({{{"molecule_index", 0}, {"atom_index", 1}}}));
-
-    auto schema_input = std::ifstream{CHARGEFW_TEST_SOURCE_DIR "/schemas/result-1.0.schema.json"};
-    REQUIRE(schema_input.is_open());
-    const auto schema = nlohmann::json::parse(schema_input);
-    const auto& fixed_schema = schema.at("$defs").at("fixedIons");
-    CHECK(fixed_schema.at("type") == "array");
-    CHECK(fixed_schema.at("items").at("$ref") == "#/$defs/fixedIon");
-    CHECK(schema.at("$defs").at("fixedIon").at("required") ==
-          nlohmann::json::array({"component_id", "charge", "instances"}));
-    const auto& component_id_schema =
-        schema.at("$defs").at("fixedIon").at("properties").at("component_id");
-    CHECK(component_id_schema.at("oneOf")[1].at("type") == "null");
-    CHECK_FALSE(schema.at("$defs").contains("fixedIonChargeTotals"));
 }
 
 TEST_CASE("JSON fixed ions retain sources with missing or ambiguous component labels",

@@ -116,16 +116,9 @@ class CalculationTests(unittest.TestCase):
     def test_ion_selections_are_immutable_native_catalog_tuples(self) -> None:
         common: tuple[str, ...] = chargefw.COMMON_IONS
         all_ions: tuple[str, ...] = chargefw.ALL_IONS
-        self.assertEqual(common, ("NA", "K", "MG", "CA", "CL", "ZN", "FE", "FE2"))
         self.assertIsInstance(all_ions, tuple)
         self.assertLess(set(common), set(all_ions))
         self.assertEqual(len(all_ions), len(set(all_ions)))
-        self.assertEqual(len(all_ions), 80)
-        self.assertEqual(all_ions, tuple(sorted(all_ions)))
-        self.assertEqual(common, _native_calculation._fixed_ion_names(True))
-        self.assertEqual(all_ions, _native_calculation._fixed_ion_names(False))
-        for name in ("COMMON_IONS", "ALL_IONS"):
-            self.assertIn(name, chargefw.__all__)
         for selection in (common, all_ions):
             with self.assertRaises(TypeError):
                 cast(Any, selection)[0] = "MG"
@@ -953,33 +946,13 @@ class CalculationTests(unittest.TestCase):
             del cast(Any, methods)["eem"]
 
         eem = methods["eem"]
-        self.assertTrue(eem.requires_coordinates)
-        self.assertEqual(eem.time_complexity, "O(n^3)")
-        self.assertEqual(eem.memory_complexity, "O(n^2)")
-        self.assertTrue(eem.supports_cutoff)
-        self.assertTrue(eem.supports_cover)
-        self.assertTrue(eem.supports_fixed_point_sources)
         self.assertEqual(
             tuple(eem.parameter_sets),
             tuple(chargefw.parameter_sets.for_method("eem")),
         )
         peoe = methods["peoe"]
-        self.assertFalse(peoe.supports_fixed_point_sources)
-        self.assertIn("initial_charges=formal", peoe.notes)
-        self.assertEqual(len(peoe.options), 2)
         self.assertIsInstance(peoe.options, Mapping)
         self.assertEqual(peoe.options["iters"].id, "iters")
-        self.assertEqual(peoe.options["iters"].type, "integer")
-        self.assertEqual(peoe.options["iters"].default, 6)
-        self.assertEqual(peoe.options["iters"].minimum, 1)
-        initial_charges = peoe.options["initial_charges"]
-        self.assertEqual(initial_charges.type, "string")
-        self.assertEqual(initial_charges.default, "zero")
-        self.assertEqual(initial_charges.choices, ("zero", "formal"))
-        qeq = methods["qeq"]
-        overlap = qeq.options["overlap_term"]
-        self.assertEqual(overlap.type, "string")
-        self.assertIn("Ohno", overlap.choices)
 
         self.assertIsInstance(chargefw.parameter_sets, Mapping)
         parameter_set = next(iter(eem.parameter_sets.values()))

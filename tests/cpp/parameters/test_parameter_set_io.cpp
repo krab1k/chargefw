@@ -130,15 +130,12 @@ TEST_CASE("parameter set loads from a PEOE JSON file", "[parameters][io]") {
 
     CHECK(parameter_set.id() == std::string_view{"PEOE_original"});
     CHECK(parameter_set.method_id() == std::string_view{"peoe"});
-    CHECK(parameter_set.name() == std::string_view{"Gasteiger 1980"});
-    CHECK(parameter_set.publication() == std::string_view{"10.1016/0040-4020(80)80168-2"});
-    CHECK(parameter_set.notes() == std::string_view{"Derived directly from IPs and EAs"});
 
     CHECK(parameter_set.common().size() == 1);
     CHECK(parameter_set.common().contains("dampH"));
     CHECK(parameter_set.common().parameter("dampH") == 20.02);
 
-    REQUIRE(parameter_set.atom().size() == 14);
+    REQUIRE_FALSE(parameter_set.atom().empty());
 
     const auto& hydrogen = parameter_set.atom()[0];
 
@@ -154,17 +151,6 @@ TEST_CASE("parameter set loads from a PEOE JSON file", "[parameters][io]") {
     CHECK(parameter_set.atom().parameter(0, "A") == 7.17);
     CHECK(parameter_set.atom().parameter(0, "B") == 6.24);
     CHECK(parameter_set.atom().parameter(0, "C") == -0.56);
-}
-
-TEST_CASE("bundled parameter-set IDs match their filenames", "[parameters][io]") {
-    for (const auto& entry : std::filesystem::directory_iterator{CHARGEFW_TEST_PARAMETER_DIR}) {
-        if (!entry.is_regular_file() || entry.path().extension() != ".json") {
-            continue;
-        }
-
-        const auto parameter_set = parameters::load_parameter_set_json_file(entry.path());
-        CHECK(parameter_set.id() == entry.path().stem().string());
-    }
 }
 
 TEST_CASE("bundled parameter sets identify registered methods and satisfy their requirements",

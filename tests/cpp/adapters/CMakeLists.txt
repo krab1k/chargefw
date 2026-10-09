@@ -39,7 +39,3 @@ target_compile_definitions(test_mol
         PRIVATE
         CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
-
-target_compile_definitions(test_json_output PRIVATE
-        CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
-)

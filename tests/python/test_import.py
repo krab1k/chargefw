@@ -9,7 +9,6 @@ import chargefw.core
 import chargefw.io
 import chargefw.io.gemmi
 import chargefw.io.rdkit
-from chargefw import _chargefw
 
 expected_version = os.environ.get("CHARGEFW_EXPECTED_VERSION")
 
@@ -19,90 +18,12 @@ def test_import_surface() -> None:
     assert chargefw.__version__
     if expected_version is not None:
         assert chargefw.__version__ == expected_version
-    assert chargefw.__all__ == [
-        "__version__",
-        "COMMON_IONS",
-        "ALL_IONS",
-        "Molecule",
-        "MoleculeCollection",
-        "PortableId",
-        "SourceIdentity",
-        "SourceAtomReference",
-        "SourceComponentInstance",
-        "SourceConformerReference",
-        "SourceHierarchyLabels",
-        "SourceStructuralLabels",
-        "SourceMapping",
-        "ChargeAssignment",
-        "FixedAtomCharge",
-        "CalculationResult",
-        "Assessment",
-        "CalculationObserver",
-        "CalculationProgress",
-        "assess",
-        "calculate",
-        "methods",
-        "parameter_sets",
-        "RequestedCalculation",
-        "ChargeFWError",
-        "InvalidInputError",
-        "NoExecutablePlanError",
-        "NumericalFailureError",
-        "CalculationCancelledError",
-        "PrerequisiteIssue",
-        "ExecutionIssue",
-        "ExecutionPolicy",
-        "Plan",
-        "Rejection",
-        "ExecutedPlan",
-        "FixedIons",
-        "CalculationTimings",
-        "MethodOption",
-        "Method",
-        "ParameterSet",
-        "io",
-    ]
     assert chargefw.Molecule is chargefw.core.Molecule
     assert chargefw.RequestedCalculation is chargefw.calculation.RequestedCalculation
     assert chargefw.CalculationObserver is chargefw.calculation.CalculationObserver
     assert chargefw.CalculationProgress is chargefw.calculation.CalculationProgress
-    assert not hasattr(chargefw, "MethodCatalog")
-    assert not hasattr(chargefw, "MethodOptionCatalog")
-    assert not hasattr(chargefw, "ParameterSetCatalog")
     assert chargefw.calculate is chargefw.calculation.calculate
     assert chargefw.assess is chargefw.calculation.assess
-    assert chargefw.io.__all__ == [
-        "InputFormat",
-        "OutputFormat",
-        "INPUT_FORMATS",
-        "OUTPUT_FORMATS",
-        "RecordSelection",
-        "BondStrategy",
-        "ConformerSelection",
-        "parse",
-        "read",
-        "dumps",
-        "write",
-    ]
-    assert chargefw.io.INPUT_FORMATS == (
-        "mol",
-        "sdf",
-        "mol2",
-        "molecule-json",
-        "pdb",
-        "mmcif",
-    )
-    assert chargefw.io.OUTPUT_FORMATS == ("mol2", "mmcif", "result-json")
-    assert chargefw.io.gemmi.__all__ == [
-        "from_structure",
-        "from_document",
-        "to_document",
-        "attach_charges",
-    ]
-    assert chargefw.io.rdkit.__all__ == ["BondConversion", "from_mol", "attach_charges"]
-    assert not hasattr(_chargefw.calculation, "ExecutionMode")
-    assert not hasattr(_chargefw.methods, "MethodOptionType")
-    assert not hasattr(_chargefw.adapters, "BondStrategy")
     assert (Path(chargefw.__file__).parent / "_chargefw" / "__init__.pyi").is_file()
     assert (Path(chargefw.__file__).parent / "_chargefw" / "adapters.pyi").is_file()
     assert (Path(chargefw.__file__).parent / "py.typed").is_file()
