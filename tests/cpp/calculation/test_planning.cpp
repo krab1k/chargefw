@@ -65,15 +65,6 @@ auto make_molecule_with_positions(std::vector<core::Atom> atoms,
     return core::Molecule{std::move(atoms), std::move(bonds), std::move(conformer_values)};
 }
 
-auto assessment_error(calculation::AssessmentRequest request) -> std::string {
-    try {
-        static_cast<void>(calculation::assess(std::move(request)));
-    } catch (const std::invalid_argument& error) {
-        return error.what();
-    }
-    return {};
-}
-
 auto make_eem_parameters() -> chargefw::parameters::ParameterSet {
     return chargefw::parameters::ParameterSet{
         chargefw::parameters::ParameterSetMetadata{
@@ -877,14 +868,8 @@ TEST_CASE("fixed ion sources are validated", "[calculation][planning]") {
         auto request = calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::move(molecules)},
             .fixed_ions = calculation::FixedIons{.sources = std::move(sources)}};
-        auto rejected = false;
-        try {
-            static_cast<void>(calculation::assess(std::move(request)));
-        } catch (const std::invalid_argument& error) {
-            rejected = true;
-            CHECK(std::string_view{error.what()}.contains(diagnostic));
-        }
-        CHECK(rejected);
+        CHECK_THROWS_MATCHES(calculation::assess(std::move(request)), std::invalid_argument,
+                             snitch::matchers::with_what_contains{diagnostic});
     };
 
     const auto ion_pair = make_isolated_ion_pair();
@@ -921,8 +906,9 @@ TEST_CASE("fixed ion geometry is validated only for affected molecules",
     auto missing_conformer = make_request(
         core::MoleculeCollection{std::vector{make_molecule_with_positions(pair_atoms, {})}},
         {{0, 0, 1.0}});
-    CHECK(std::string_view{assessment_error(std::move(missing_conformer))}.contains(
-        "fixed ions require a conformer in molecule 0"));
+    CHECK_THROWS_MATCHES(
+        calculation::assess(std::move(missing_conformer)), std::invalid_argument,
+        snitch::matchers::with_what_contains{"fixed ions require a conformer in molecule 0"});
 
     for (std::size_t atom_index = 0; atom_index < 2; ++atom_index) {
         for (std::size_t axis = 0; axis < 3; ++axis) {
@@ -942,9 +928,10 @@ TEST_CASE("fixed ion geometry is validated only for affected molecules",
                 core::MoleculeCollection{std::vector{make_molecule_with_positions(
                     pair_atoms, {separated_pair.front(), std::move(later_positions)})}},
                 {{0, 0, 1.0}});
-            CHECK(std::string_view{assessment_error(std::move(nonfinite))}.contains(
-                "non-finite coordinates at molecule 0, conformer 1, atom " +
-                std::to_string(atom_index)));
+            const auto diagnostic = "non-finite coordinates at molecule 0, conformer 1, atom " +
+                                    std::to_string(atom_index);
+            CHECK_THROWS_MATCHES(calculation::assess(std::move(nonfinite)), std::invalid_argument,
+                                 snitch::matchers::with_what_contains{diagnostic});
         }
     }
 
@@ -952,8 +939,9 @@ TEST_CASE("fixed ion geometry is validated only for affected molecules",
         core::MoleculeCollection{std::vector{make_molecule_with_positions(
             pair_atoms, {separated_pair.front(), {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}})}},
         {{0, 0, 0.0}});
-    CHECK(std::string_view{assessment_error(std::move(coincident_later))}.contains(
-        "molecule 0, conformer 1, atom 0 coincides with active atom 1"));
+    CHECK_THROWS_MATCHES(calculation::assess(std::move(coincident_later)), std::invalid_argument,
+                         snitch::matchers::with_what_contains{
+                             "molecule 0, conformer 1, atom 0 coincides with active atom 1"});
 
     auto swapped_conformers = make_request(
         core::MoleculeCollection{std::vector{make_molecule_with_positions(

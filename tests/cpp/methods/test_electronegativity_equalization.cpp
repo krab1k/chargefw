@@ -228,14 +228,9 @@ TEST_CASE("EEM rejects invalid fixed point fields and budgets", "[methods][eem]"
     const auto check_invalid = [&](const core::Molecule& active_molecule,
                                    const std::span<const methods::FixedPointSource> sources,
                                    const double target_charge, const std::string_view diagnostic) {
-        try {
-            static_cast<void>(calculate_eem(active_molecule, sources, target_charge));
-            CHECK(false);
-        } catch (const std::invalid_argument& error) {
-            const auto message = std::string{error.what()};
-            CAPTURE(diagnostic, message);
-            CHECK(std::string_view{message}.contains(diagnostic));
-        }
+        CHECK_THROWS_MATCHES(calculate_eem(active_molecule, sources, target_charge),
+                             std::invalid_argument,
+                             snitch::matchers::with_what_contains{diagnostic});
     };
     const auto nan = std::numeric_limits<double>::quiet_NaN();
     const auto infinity = std::numeric_limits<double>::infinity();
@@ -281,13 +276,9 @@ TEST_CASE("EEM fixed-source validation requires geometry for its active molecule
 
     const auto wrong_geometry = methods::CalculationInput{
         prepared, options, -0.35, &foreign_geometry, &parameter_view, source_span};
-    try {
-        static_cast<void>(eem->calculate(wrong_geometry));
-        CHECK(false);
-    } catch (const std::invalid_argument& error) {
-        CHECK(std::string_view{error.what()}.contains(
-            "fixed-source geometry does not belong to the active molecule"));
-    }
+    CHECK_THROWS_MATCHES(eem->calculate(wrong_geometry), std::invalid_argument,
+                         snitch::matchers::with_what_contains{
+                             "fixed-source geometry does not belong to the active molecule"});
 }
 
 TEST_CASE("QEq defaults to DasGupta-Huzinaga", "[methods][qeq]") {

@@ -597,11 +597,6 @@ HETATM 4 O O1 . LIG A 1 ? 1.1 0.0 0.0 1.0 20.0 0 1 LIG B O1 2
 )cif";
     std::istringstream input{incompatible_input};
     auto reader = mmcif::MmcifReader{input};
-    auto message = std::string{};
-    try {
-        static_cast<void>(reader.next());
-    } catch (const std::exception& error) {
-        message = error.what();
-    }
-    CHECK(message.contains("same selected component instances"));
+    CHECK_THROWS_MATCHES(reader.next(), std::exception,
+                         snitch::matchers::with_what_contains{"same selected component instances"});
 }

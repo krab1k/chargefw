@@ -351,13 +351,9 @@ TEST_CASE("private fixed ions reject extra atoms and incident bonds", "[adapters
     second.structural_labels->label.sequence = "2";
     two_selected.import_metadata->atoms.push_back(second);
     two_selected.import_metadata->components = {{"MG", {0}}, {"MG", {1}}};
-    auto bond_error = std::string{};
-    try {
-        static_cast<void>(detail::resolve_fixed_ions(std::vector{two_selected}, mg_request));
-    } catch (const std::invalid_argument& error) {
-        bond_error = error.what();
-    }
-    CHECK(bond_error.contains("incident graph bond"));
+    CHECK_THROWS_MATCHES(detail::resolve_fixed_ions(std::vector{two_selected}, mg_request),
+                         std::invalid_argument,
+                         snitch::matchers::with_what_contains{"incident graph bond"});
 }
 
 TEST_CASE("mmCIF named-ion resolution feeds SQE+qp full calculation",

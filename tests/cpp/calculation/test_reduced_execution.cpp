@@ -799,14 +799,10 @@ TEST_CASE("fixed-charge cutoff and cover diagnostics map active centers to origi
                     &partition));
             }
         };
-        try {
-            calculate();
-            CHECK(false);
-        } catch (const std::runtime_error& error) {
-            const auto expected = mode == calculation::ExecutionMode::cutoff
-                                      ? "cutoff fragment around source atom 2 failed"
-                                      : "cover fragment around source atom 2 failed";
-            CHECK(std::string_view{error.what()}.contains(expected));
-        }
+        const auto expected = mode == calculation::ExecutionMode::cutoff
+                                  ? "cutoff fragment around source atom 2 failed"
+                                  : "cover fragment around source atom 2 failed";
+        CHECK_THROWS_MATCHES(calculate(), std::runtime_error,
+                             snitch::matchers::with_what_contains{expected});
     }
 }
