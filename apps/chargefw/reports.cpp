@@ -119,6 +119,8 @@ void print_methods(const std::string& method_id) {
                  methods::complexity_notation(requirements.resources.memory));
     std::println("supports cutoff: {}", requirements.resources.supports_cutoff ? "yes" : "no");
     std::println("supports cover: {}", requirements.resources.supports_cover ? "yes" : "no");
+    std::println("supports fixed point sources: {}",
+                 requirements.supports_fixed_point_sources ? "yes" : "no");
     std::println("options:{}", method->option_schema().empty() ? " none" : "");
     for (const auto& option : method->option_schema()) {
         std::print("  {} (default=", option.id);

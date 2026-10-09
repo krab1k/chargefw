@@ -187,7 +187,8 @@ chargefw parameters QEq_original
 ```
 
 `chargefw methods METHOD` reports the selected method's identity, publication, human-readable notes,
-priority, coordinate requirement, time and memory complexity, cutoff and cover support, and option schema.
+priority, coordinate requirement, time and memory complexity, cutoff and cover support, fixed-point-source
+support for `--fixed-ions`, and option schema.
 Complexity uses Big-O notation with `n` for atoms and `m` for bonds, as defined in the
 [project design](PROJECT.md#methods-and-parameters).
 

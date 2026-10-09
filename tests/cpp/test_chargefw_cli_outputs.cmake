@@ -500,12 +500,14 @@ if(NOT eem_method_output MATCHES "full name: Electronegativity Equalization Meth
    NOT eem_method_output MATCHES "requires coordinates: yes" OR
    eem_time_complexity EQUAL -1 OR eem_memory_complexity EQUAL -1 OR
    NOT eem_method_output MATCHES "supports cutoff: yes" OR
-   NOT eem_method_output MATCHES "supports cover: yes")
+    NOT eem_method_output MATCHES "supports cover: yes" OR
+    NOT eem_method_output MATCHES "supports fixed point sources: yes")
     message(FATAL_ERROR "EEM method details are incomplete: ${eem_method_output}")
 endif()
 
 execute_process(COMMAND "${CHARGEFW_CLI}" methods denr OUTPUT_VARIABLE denr_method_output)
 if(NOT denr_method_output MATCHES "notes: This implementation fixes initial charges to zero" OR
+   NOT denr_method_output MATCHES "supports fixed point sources: no" OR
    NOT denr_method_output MATCHES "minimum>=0" OR
    NOT denr_method_output MATCHES "minimum>0")
     message(FATAL_ERROR "method option details are incomplete: ${denr_method_output}")
