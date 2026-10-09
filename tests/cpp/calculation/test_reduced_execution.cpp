@@ -135,30 +135,6 @@ auto make_eem_parameters() -> parameters::ParameterSet {
               .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 10.0}}}}}};
 }
 
-auto make_sfkeem_parameters() -> parameters::ParameterSet {
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-sfkeem", .method_id = "sfkeem", .name = "Test SFKEEM"},
-        parameters::CommonParameters{{{.name = "sigma", .value = 1.0}}},
-        parameters::AtomParameters{
-            {{.key = chargefw::test::plain_atom_key(1),
-              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 10.0}}},
-             {.key = chargefw::test::plain_atom_key(8),
-              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 10.0}}}}}};
-}
-
-auto make_qeq_parameters() -> parameters::ParameterSet {
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{.id = "test-qeq", .method_id = "qeq", .name = "Test QEq"},
-        {},
-        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
-                                     .parameters = {{.name = "electronegativity", .value = 4.5280},
-                                                    {.name = "hardness", .value = 13.8904}}},
-                                    {.key = chargefw::test::plain_atom_key(8),
-                                     .parameters = {{.name = "electronegativity", .value = 8.741},
-                                                    {.name = "hardness", .value = 13.364}}}}}};
-}
-
 auto make_invalid_qeq_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
         parameters::ParameterSetMetadata{
@@ -181,31 +157,6 @@ auto make_eqeqc_parameters() -> parameters::ParameterSet {
                                      .parameters = {{.name = "Dz", .value = 0.1}}},
                                     {.key = chargefw::test::plain_atom_key(8),
                                      .parameters = {{.name = "Dz", .value = 0.2}}}}}};
-}
-
-auto make_abeem_parameters() -> parameters::ParameterSet {
-    const auto bond_key = parameters::BondParameterKey{
-        .first_atom = chargefw::test::plain_atom_key(8),
-        .second_atom = chargefw::test::plain_atom_key(1),
-        .bond = {.classification = parameters::BondParameterClassificationKind::PLAIN,
-                 .type = "*"}};
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-abeem", .method_id = "abeem", .name = "Test ABEEM"},
-        parameters::CommonParameters{{{.name = "k", .value = 1.0}}},
-        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
-                                     .parameters = {{.name = "a", .value = 1.0},
-                                                    {.name = "b", .value = 10.0},
-                                                    {.name = "c", .value = 0.5}}},
-                                    {.key = chargefw::test::plain_atom_key(8),
-                                     .parameters = {{.name = "a", .value = 2.0},
-                                                    {.name = "b", .value = 10.0},
-                                                    {.name = "c", .value = 0.5}}}}},
-        parameters::BondParameters{{{.key = bond_key,
-                                     .parameters = {{.name = "A", .value = 1.0},
-                                                    {.name = "B", .value = 10.0},
-                                                    {.name = "C", .value = 0.5},
-                                                    {.name = "D", .value = 0.5}}}}}};
 }
 
 auto make_sqe_parameters(const std::string_view method_id, const bool parameterized_initial_charge,
@@ -516,11 +467,11 @@ TEST_CASE("reduced execution validates inputs and mode selection",
           calculation::ExecutionMode::cutoff);
     CHECK(explicit_cutoff_above_cover_threshold.effective->execution_issues.size() == 1);
 
-    assert_reduced_matches_full("qeq", {make_qeq_parameters()});
-    assert_reduced_matches_full("sfkeem", {make_sfkeem_parameters()});
+    assert_reduced_matches_full("qeq", {chargefw::test::make_qeq_ho_parameters()});
+    assert_reduced_matches_full("sfkeem", {chargefw::test::make_sfkeem_ho_parameters()});
     assert_reduced_matches_full("eqeq");
     assert_reduced_matches_full("eqeqc", {make_eqeqc_parameters()});
-    assert_reduced_matches_full("abeem", {make_abeem_parameters()});
+    assert_reduced_matches_full("abeem", {chargefw::test::make_abeem_ho_parameters()});
     assert_reduced_matches_full("sqe", {make_sqe_parameters("sqe", false)});
     assert_reduced_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)});
     assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)});
@@ -579,7 +530,7 @@ TEST_CASE("reduced approximation remains bounded across a truncated radius sweep
     const auto cases =
         std::vector<AccuracyCase>{{.method_id = "abeem",
                                    .molecule = charged,
-                                   .parameter_sets = {make_abeem_parameters()},
+                                   .parameter_sets = {chargefw::test::make_abeem_ho_parameters()},
                                    .max_rmsd = 0.01,
                                    .max_mae = 0.01,
                                    .max_maxabs = 0.02},
@@ -603,13 +554,13 @@ TEST_CASE("reduced approximation remains bounded across a truncated radius sweep
                                    .max_maxabs = 0.15},
                                   {.method_id = "qeq",
                                    .molecule = charged,
-                                   .parameter_sets = {make_qeq_parameters()},
+                                   .parameter_sets = {chargefw::test::make_qeq_ho_parameters()},
                                    .max_rmsd = 0.1,
                                    .max_mae = 0.05,
                                    .max_maxabs = 0.3},
                                   {.method_id = "sfkeem",
                                    .molecule = charged,
-                                   .parameter_sets = {make_sfkeem_parameters()},
+                                   .parameter_sets = {chargefw::test::make_sfkeem_ho_parameters()},
                                    .max_rmsd = 0.04,
                                    .max_mae = 0.02,
                                    .max_maxabs = 0.1},

@@ -10,7 +10,6 @@
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/classification/parameter_classification.h>
 #include <chargefw/parameters/models/atom_parameters.h>
-#include <chargefw/parameters/models/bond_parameters.h>
 #include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_key.h>
 #include <chargefw/parameters/models/parameter_set.h>
@@ -35,10 +34,6 @@ namespace methods = chargefw::methods;
 
 namespace {
 
-auto no_parameter_sets() -> std::vector<parameters::ParameterSet> {
-    return {};
-}
-
 auto make_eem_parameters(const double kappa = 1.0) -> std::vector<parameters::ParameterSet> {
     const auto parameter_set = parameters::ParameterSet{
         parameters::ParameterSetMetadata{
@@ -50,10 +45,6 @@ auto make_eem_parameters(const double kappa = 1.0) -> std::vector<parameters::Pa
              {.key = chargefw::test::plain_atom_key(8),
               .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 9.0}}}}}};
     return {parameter_set};
-}
-
-auto make_default_eem_parameters() -> std::vector<parameters::ParameterSet> {
-    return make_eem_parameters();
 }
 
 auto make_active_hydrogen_oxygen(const core::Position hydrogen = {},
@@ -87,20 +78,6 @@ auto calculate_eem(const core::Molecule& molecule,
     return method->calculate(input);
 }
 
-auto make_qeq_parameters() -> std::vector<parameters::ParameterSet> {
-    const auto parameter_set = parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-qeq", .method_id = "qeq", .name = "Test QEq parameters"},
-        {},
-        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
-                                     .parameters = {{.name = "electronegativity", .value = 4.5280},
-                                                    {.name = "hardness", .value = 13.8904}}},
-                                    {.key = chargefw::test::plain_atom_key(8),
-                                     .parameters = {{.name = "electronegativity", .value = 8.741},
-                                                    {.name = "hardness", .value = 13.364}}}}}};
-    return {parameter_set};
-}
-
 auto make_eqeqc_parameters() -> std::vector<parameters::ParameterSet> {
     const auto parameter_set = parameters::ParameterSet{
         parameters::ParameterSetMetadata{
@@ -110,40 +87,6 @@ auto make_eqeqc_parameters() -> std::vector<parameters::ParameterSet> {
                                      .parameters = {{.name = "Dz", .value = 0.1}}},
                                     {.key = chargefw::test::plain_atom_key(8),
                                      .parameters = {{.name = "Dz", .value = 0.2}}}}}};
-    return {parameter_set};
-}
-
-auto make_sfkeem_parameters() -> std::vector<parameters::ParameterSet> {
-    const auto parameter_set = parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-sfkeem", .method_id = "sfkeem", .name = "Test SFKEEM parameters"},
-        parameters::CommonParameters{{{.name = "sigma", .value = 1.0}}},
-        parameters::AtomParameters{
-            {{.key = chargefw::test::plain_atom_key(1),
-              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 10.0}}},
-             {.key = chargefw::test::plain_atom_key(8),
-              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 10.0}}}}}};
-    return {parameter_set};
-}
-
-auto make_abeem_parameters() -> std::vector<parameters::ParameterSet> {
-    const auto parameter_set = parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-abeem", .method_id = "abeem", .name = "Test ABEEM parameters"},
-        parameters::CommonParameters{{{.name = "k", .value = 1.0}}},
-        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
-                                     .parameters = {{.name = "a", .value = 1.0},
-                                                    {.name = "b", .value = 10.0},
-                                                    {.name = "c", .value = 0.5}}},
-                                    {.key = chargefw::test::plain_atom_key(8),
-                                     .parameters = {{.name = "a", .value = 2.0},
-                                                    {.name = "b", .value = 10.0},
-                                                    {.name = "c", .value = 0.5}}}}},
-        parameters::BondParameters{{{.key = chargefw::test::plain_bond_key(8, 1),
-                                     .parameters = {{.name = "A", .value = 1.0},
-                                                    {.name = "B", .value = 10.0},
-                                                    {.name = "C", .value = 0.5},
-                                                    {.name = "D", .value = 0.5}}}}}};
     return {parameter_set};
 }
 
@@ -168,27 +111,27 @@ auto make_smpqeq_parameters() -> std::vector<parameters::ParameterSet> {
 struct GeometryMethodCase {
     std::string_view id;
     double minimum_change;
-    std::vector<parameters::ParameterSet> (*make_parameters)();
+    std::vector<parameters::ParameterSet> parameter_sets;
 };
 
 } // namespace
 
 TEST_CASE("electronegativity-equalization methods respond to changed conformer geometry",
           "[methods][eem][qeq][eqeq][eqeqc][sfkeem][abeem][smpqeq]") {
-    constexpr auto methods = std::array{
-        GeometryMethodCase{"eem", 1.0e-8, make_default_eem_parameters},
-        GeometryMethodCase{"qeq", 1.0e-8, make_qeq_parameters},
-        GeometryMethodCase{"eqeq", 1.0e-8, no_parameter_sets},
-        GeometryMethodCase{"eqeqc", 1.0e-8, make_eqeqc_parameters},
-        GeometryMethodCase{"sfkeem", 1.0e-8, make_sfkeem_parameters},
-        GeometryMethodCase{"abeem", 1.0e-4, make_abeem_parameters},
-        GeometryMethodCase{"smpqeq", 1.0e-8, make_smpqeq_parameters},
+    const auto methods = std::array{
+        GeometryMethodCase{"eem", 1.0e-8, make_eem_parameters()},
+        GeometryMethodCase{"qeq", 1.0e-8, {chargefw::test::make_qeq_ho_parameters()}},
+        GeometryMethodCase{"eqeq", 1.0e-8, {}},
+        GeometryMethodCase{"eqeqc", 1.0e-8, make_eqeqc_parameters()},
+        GeometryMethodCase{"sfkeem", 1.0e-8, {chargefw::test::make_sfkeem_ho_parameters()}},
+        GeometryMethodCase{"abeem", 1.0e-4, {chargefw::test::make_abeem_ho_parameters()}},
+        GeometryMethodCase{"smpqeq", 1.0e-8, make_smpqeq_parameters()},
     };
 
     for (const auto& method : methods) {
         CAPTURE(method.id);
         const auto charge_set = chargefw::test::calculate_method(
-            chargefw::test::make_two_conformer_water(), method.id, method.make_parameters());
+            chargefw::test::make_two_conformer_water(), method.id, method.parameter_sets);
 
         CHECK(std::abs(charge_set.assignment(0).charges[0] - charge_set.assignment(1).charges[0]) >
               method.minimum_change);
@@ -348,8 +291,9 @@ TEST_CASE("EEM fixed-source validation requires geometry for its active molecule
 }
 
 TEST_CASE("QEq defaults to DasGupta-Huzinaga", "[methods][qeq]") {
-    const auto charge_set = chargefw::test::calculate_method(
-        chargefw::test::make_two_conformer_water(), "qeq", make_qeq_parameters());
+    const auto charge_set =
+        chargefw::test::calculate_method(chargefw::test::make_two_conformer_water(), "qeq",
+                                         {chargefw::test::make_qeq_ho_parameters()});
     const auto& first_charges = charge_set.assignment(0).charges;
     const auto& second_charges = charge_set.assignment(1).charges;
 
@@ -362,8 +306,9 @@ TEST_CASE("QEq defaults to DasGupta-Huzinaga", "[methods][qeq]") {
 
     auto options = chargefw::methods::MethodOptions{};
     options.set("overlap_term", std::string{"DasGupta-Huzinaga"});
-    const auto explicit_charge_set = chargefw::test::calculate_method(
-        chargefw::test::make_two_conformer_water(), "qeq", make_qeq_parameters(), &options);
+    const auto explicit_charge_set =
+        chargefw::test::calculate_method(chargefw::test::make_two_conformer_water(), "qeq",
+                                         {chargefw::test::make_qeq_ho_parameters()}, &options);
 
     chargefw::test::assert_same_charges(explicit_charge_set.assignment(0).charges, first_charges,
                                         1.0e-12);
@@ -387,7 +332,8 @@ TEST_CASE("QEq empirical Coulomb terms calculate neutral water", "[methods][qeq]
         options.set("overlap_term", std::string{term});
 
         const auto charge_set = chargefw::test::calculate_single_method(
-            chargefw::test::make_water(), "qeq", make_qeq_parameters(), &options);
+            chargefw::test::make_water(), "qeq", {chargefw::test::make_qeq_ho_parameters()},
+            &options);
         chargefw::test::assert_neutral_water_charges(charge_set.assignment(0).charges, 1.0e-10);
     }
 }

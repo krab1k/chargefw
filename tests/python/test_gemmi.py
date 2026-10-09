@@ -544,50 +544,22 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
             len(altloc_document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])), 4
         )
 
-        modified = gemmi.cif.read_string(MMCIF_TEXT)
-        modified_molecules = chargefw.io.gemmi.from_document(modified)
-        modified_result = calculate(modified_molecules, method="formal")
-        modified[0].find("_atom_site.", ["id"])[0][0] = "99"
-        before_mismatch = modified.as_string()
-        with self.assertRaisesRegex(ValueError, "site mapping"):
-            chargefw.io.gemmi.attach_charges(modified, modified_result)
-        self.assertEqual(modified.as_string(), before_mismatch)
-
-        modified = gemmi.cif.read_string(MMCIF_TEXT)
-        modified_molecules = chargefw.io.gemmi.from_document(modified)
-        modified_result = calculate(modified_molecules, method="formal")
-        modified[0].find("_atom_site.", ["Cartn_x"])[0][0] = "9.0"
-        before_mismatch = modified.as_string()
-        with self.assertRaisesRegex(ValueError, "site mapping"):
-            chargefw.io.gemmi.attach_charges(modified, modified_result)
-        self.assertEqual(modified.as_string(), before_mismatch)
-
-        modified = gemmi.cif.read_string(MMCIF_TEXT)
-        modified_molecules = chargefw.io.gemmi.from_document(modified)
-        modified_result = calculate(modified_molecules, method="formal")
-        modified[0].find("_atom_site.", ["pdbx_formal_charge"])[0][0] = "1"
-        before_mismatch = modified.as_string()
-        with self.assertRaisesRegex(ValueError, "site mapping"):
-            chargefw.io.gemmi.attach_charges(modified, modified_result)
-        self.assertEqual(modified.as_string(), before_mismatch)
-
-        modified = gemmi.cif.read_string(MMCIF_TEXT)
-        modified_molecules = chargefw.io.gemmi.from_document(modified)
-        modified_result = calculate(modified_molecules, method="formal")
-        modified[0].find("_atom_site.", ["type_symbol"])[0][0] = "O"
-        before_mismatch = modified.as_string()
-        with self.assertRaisesRegex(ValueError, "site mapping"):
-            chargefw.io.gemmi.attach_charges(modified, modified_result)
-        self.assertEqual(modified.as_string(), before_mismatch)
-
-        modified = gemmi.cif.read_string(MMCIF_TEXT)
-        modified_molecules = chargefw.io.gemmi.from_document(modified)
-        modified_result = calculate(modified_molecules, method="formal")
-        modified[0].find("_atom_site.", ["auth_atom_id"])[0][0] = "CB"
-        before_mismatch = modified.as_string()
-        with self.assertRaisesRegex(ValueError, "site mapping"):
-            chargefw.io.gemmi.attach_charges(modified, modified_result)
-        self.assertEqual(modified.as_string(), before_mismatch)
+        for column, value in (
+            ("id", "99"),
+            ("Cartn_x", "9.0"),
+            ("pdbx_formal_charge", "1"),
+            ("type_symbol", "O"),
+            ("auth_atom_id", "CB"),
+        ):
+            with self.subTest(column=column):
+                modified = gemmi.cif.read_string(MMCIF_TEXT)
+                modified_molecules = chargefw.io.gemmi.from_document(modified)
+                modified_result = calculate(modified_molecules, method="formal")
+                modified[0].find("_atom_site.", [column])[0][0] = value
+                before_mismatch = modified.as_string()
+                with self.assertRaisesRegex(ValueError, "site mapping"):
+                    chargefw.io.gemmi.attach_charges(modified, modified_result)
+                self.assertEqual(modified.as_string(), before_mismatch)
         with self.assertRaises(TypeError):
             chargefw.io.gemmi.attach_charges(document, result, overwrite=cast(Any, 1))
 

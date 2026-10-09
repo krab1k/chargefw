@@ -1,3 +1,5 @@
+include("${CMAKE_CURRENT_LIST_DIR}/support/test_cli.cmake")
+
 function(run_structural_input extension contents input_stem expected_selection expected_bonds)
     set(input_path "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_${input_stem}.${extension}")
     set(output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_${input_stem}_outputs")
@@ -5,16 +7,8 @@ function(run_structural_input extension contents input_stem expected_selection e
     file(WRITE "${input_path}" "${contents}")
     file(REMOVE_RECURSE "${output_directory}")
 
-    execute_process(
-            COMMAND "${CHARGEFW_CLI}" calculate --output-mol2 --output-mmcif ${ARGN}
-                    "${input_path}" "${output_directory}"
-            RESULT_VARIABLE result
-            ERROR_VARIABLE error
-    )
-
-    if(NOT result EQUAL 0)
-        message(FATAL_ERROR "chargefw failed for .${extension} with exit code ${result}: ${error}")
-    endif()
+    run_cli("${input_stem}" 0 calculate --output-mol2 --output-mmcif ${ARGN}
+            "${input_path}" "${output_directory}")
 
     if(NOT EXISTS "${output_prefix}.json")
         message(FATAL_ERROR "JSON output was not created for .${extension}")
@@ -47,15 +41,8 @@ function(expect_non_structural_options_rejected)
     file(WRITE "${input_path}" "{\"schema_version\": \"1.0\", \"molecules\": [{\"atoms\": [{\"atomic_number\": 8, \"formal_charge\": 0}]}]}\n")
     file(REMOVE_RECURSE "${output_directory}")
 
-    execute_process(
-            COMMAND "${CHARGEFW_CLI}" calculate --structural-bonds templates "${input_path}" "${output_directory}"
-            RESULT_VARIABLE result
-            ERROR_VARIABLE error
-    )
-
-    if(NOT result EQUAL 2)
-        message(FATAL_ERROR "Expected structural options to be rejected for JSON input: ${error}")
-    endif()
+    run_cli(non_structural_options 2 calculate --structural-bonds templates
+            "${input_path}" "${output_directory}")
 
     file(REMOVE "${input_path}")
     file(REMOVE_RECURSE "${output_directory}")

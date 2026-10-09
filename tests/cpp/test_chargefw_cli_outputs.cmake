@@ -1,3 +1,5 @@
+include("${CMAKE_CURRENT_LIST_DIR}/support/test_cli.cmake")
+
 set(output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_outputs")
 set(output_prefix "${output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${output_directory}")
@@ -6,30 +8,18 @@ set(json_failure_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_json
 set(json_failure_output_prefix "${json_failure_output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${json_failure_output_directory}")
 file(MAKE_DIRECTORY "${json_failure_output_prefix}.json")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method eem "${CHARGEFW_INPUT}"
-                "${json_failure_output_directory}"
-        RESULT_VARIABLE json_failure_result
-        ERROR_VARIABLE json_failure_error
-)
-if(NOT json_failure_result EQUAL 2)
-    message(FATAL_ERROR "JSON output failure was not reported correctly: ${json_failure_error}")
-endif()
+run_cli(json_output_failure 2 calculate --method eem "${CHARGEFW_INPUT}"
+        "${json_failure_output_directory}")
 file(REMOVE_RECURSE "${json_failure_output_directory}")
 
 set(export_failure_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_export_failure")
 set(export_failure_output_prefix "${export_failure_output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${export_failure_output_directory}")
 file(MAKE_DIRECTORY "${export_failure_output_prefix}.mol2")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method eem --output-mol2 "${CHARGEFW_INPUT}"
-                "${export_failure_output_directory}"
-        RESULT_VARIABLE export_failure_result
-        ERROR_VARIABLE export_failure_error
-)
-if(NOT export_failure_result EQUAL 6 OR
-   NOT EXISTS "${export_failure_output_prefix}.json")
-    message(FATAL_ERROR "molecular export failure was not reported correctly: ${export_failure_error}")
+run_cli(molecular_export_failure 6 calculate --method eem --output-mol2 "${CHARGEFW_INPUT}"
+        "${export_failure_output_directory}")
+if(NOT EXISTS "${export_failure_output_prefix}.json")
+    message(FATAL_ERROR "molecular export failure discarded JSON output")
 endif()
 file(READ "${export_failure_output_prefix}.json" export_failure_json)
 string(JSON export_failure_status GET "${export_failure_json}" status)
@@ -51,15 +41,8 @@ foreach(mode IN ITEMS full cutoff cover)
         list(APPEND execution_arguments --progress)
     endif()
 
-    execute_process(
-            COMMAND "${CHARGEFW_CLI}" calculate ${execution_arguments} "${CHARGEFW_INPUT}"
-                    "${mode_output_directory}"
-            RESULT_VARIABLE mode_result
-            ERROR_VARIABLE mode_error
-    )
-    if(NOT mode_result EQUAL 0)
-        message(FATAL_ERROR "${mode} CLI calculation failed: ${mode_error}")
-    endif()
+    run_cli("${mode}" 0 calculate ${execution_arguments} "${CHARGEFW_INPUT}"
+            "${mode_output_directory}")
     file(READ "${mode_output_prefix}.json" mode_json)
     string(JSON mode_status GET "${mode_json}" results 0 status)
     string(JSON effective_mode GET "${mode_json}" calculation_provenance effective execution mode)
@@ -72,14 +55,7 @@ endforeach()
 function(expect_invalid_policy label)
     set(policy_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_invalid_${label}")
     file(REMOVE_RECURSE "${policy_output_directory}")
-    execute_process(
-            COMMAND "${CHARGEFW_CLI}" calculate ${ARGN} "${CHARGEFW_INPUT}" "${policy_output_directory}"
-            RESULT_VARIABLE policy_result
-            ERROR_VARIABLE policy_error
-    )
-    if(NOT policy_result EQUAL 2)
-        message(FATAL_ERROR "${label} policy exit status was ${policy_result}: ${policy_error}")
-    endif()
+    run_cli("${label}" 2 calculate ${ARGN} "${CHARGEFW_INPUT}" "${policy_output_directory}")
     if(EXISTS "${policy_output_directory}/water.chargefw.json")
         message(FATAL_ERROR "${label} policy unexpectedly wrote a result document")
     endif()
@@ -92,29 +68,17 @@ expect_invalid_policy(parameter_without_method --parameter-set QEq_original)
 
 set(malformed_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_malformed")
 file(REMOVE_RECURSE "${malformed_output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate "${CHARGEFW_MALFORMED_INPUT}" "${malformed_output_directory}"
-        RESULT_VARIABLE malformed_result
-        ERROR_VARIABLE malformed_error
-)
-if(NOT malformed_result EQUAL 2 OR
-   EXISTS "${malformed_output_directory}/malformed_then_water.chargefw.json")
-    message(FATAL_ERROR "malformed input did not fail before writing output: ${malformed_error}")
+run_cli(malformed_input 2 calculate "${CHARGEFW_MALFORMED_INPUT}" "${malformed_output_directory}")
+if(EXISTS "${malformed_output_directory}/malformed_then_water.chargefw.json")
+    message(FATAL_ERROR "malformed input did not fail before writing output")
 endif()
 file(REMOVE_RECURSE "${malformed_output_directory}")
 
 set(mixed_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_mixed")
 set(mixed_output_prefix "${mixed_output_directory}/mixed_v2000_v3000.chargefw")
 file(REMOVE_RECURSE "${mixed_output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method eem --execution full "${CHARGEFW_MIXED_INPUT}"
-                "${mixed_output_directory}"
-        RESULT_VARIABLE mixed_result
-        ERROR_VARIABLE mixed_error
-)
-if(NOT mixed_result EQUAL 0)
-    message(FATAL_ERROR "mixed V2000/V3000 CLI calculation failed: ${mixed_error}")
-endif()
+run_cli(mixed_records 0 calculate --method eem --execution full "${CHARGEFW_MIXED_INPUT}"
+        "${mixed_output_directory}")
 file(READ "${mixed_output_prefix}.json" mixed_json)
 string(JSON mixed_record_count LENGTH "${mixed_json}" results)
 string(JSON mixed_first_id GET "${mixed_json}" results 0 input record_id)
@@ -142,16 +106,8 @@ file(WRITE "${multiconformer_input}" [=[
 }
 ]=])
 file(REMOVE_RECURSE "${multiconformer_output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method formal --output-mol2 --output-mmcif
-                "${multiconformer_input}"
-                "${multiconformer_output_directory}"
-        RESULT_VARIABLE multiconformer_result
-        ERROR_VARIABLE multiconformer_error
-)
-if(NOT multiconformer_result EQUAL 0)
-    message(FATAL_ERROR "multi-conformer JSON CLI calculation failed: ${multiconformer_error}")
-endif()
+run_cli(multiconformer 0 calculate --method formal --output-mol2 --output-mmcif
+        "${multiconformer_input}" "${multiconformer_output_directory}")
 foreach(extension IN ITEMS json mol2 cif)
     if(NOT EXISTS "${multiconformer_output_prefix}.${extension}")
         message(FATAL_ERROR "multi-conformer JSON CLI output was not created: ${extension}")
@@ -169,16 +125,8 @@ file(WRITE "${coordinate_free_input}" [=[
 ]=])
 file(REMOVE_RECURSE "${coordinate_free_output_directory}")
 file(MAKE_DIRECTORY "${coordinate_free_output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method formal --output-mol2
-                "${coordinate_free_input}"
-                "${coordinate_free_output_directory}"
-        RESULT_VARIABLE coordinate_free_result
-        ERROR_VARIABLE coordinate_free_error
-)
-if(NOT coordinate_free_result EQUAL 6)
-    message(FATAL_ERROR "coordinate-free MOL2 failure was not reported as an export error: ${coordinate_free_error}")
-endif()
+run_cli(coordinate_free_export 6 calculate --method formal --output-mol2
+        "${coordinate_free_input}" "${coordinate_free_output_directory}")
 if(NOT EXISTS "${coordinate_free_output_prefix}.json")
     message(FATAL_ERROR "failed MOL2 generation did not write JSON")
 endif()
@@ -192,16 +140,8 @@ file(WRITE "${range_input}" [=[
 {"schema_version":"1.0","molecules":[{"atoms":[{"atomic_number":1,"formal_charge":6}],"conformers":[{"coordinates":[[0,0,0]]}]}]}
 ]=])
 file(REMOVE_RECURSE "${range_output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method formal --output-mol2 --output-mmcif
-                "${range_input}"
-                "${range_output_directory}"
-        RESULT_VARIABLE range_result
-        ERROR_VARIABLE range_error
-)
-if(NOT range_result EQUAL 6)
-    message(FATAL_ERROR "mmCIF range failure was not reported as an export error: ${range_error}")
-endif()
+run_cli(out_of_range_export 6 calculate --method formal --output-mol2 --output-mmcif
+        "${range_input}" "${range_output_directory}")
 if(NOT EXISTS "${range_output_prefix}.json" OR
    NOT EXISTS "${range_output_prefix}.mol2")
     message(FATAL_ERROR "second export failure discarded an earlier output")
@@ -212,15 +152,7 @@ file(REMOVE_RECURSE "${range_output_directory}")
 set(no_plan_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_no_plan")
 set(no_plan_output_prefix "${no_plan_output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${no_plan_output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method smpqeq "${CHARGEFW_INPUT}"
-                "${no_plan_output_directory}"
-        RESULT_VARIABLE no_plan_result
-        ERROR_VARIABLE no_plan_error
-)
-if(NOT no_plan_result EQUAL 3)
-    message(FATAL_ERROR "no-plan CLI exit status was ${no_plan_result}: ${no_plan_error}")
-endif()
+run_cli(no_plan 3 calculate --method smpqeq "${CHARGEFW_INPUT}" "${no_plan_output_directory}")
 if(NOT EXISTS "${no_plan_output_prefix}.json")
     message(FATAL_ERROR "no-plan CLI JSON output was not written to the output directory")
 endif()
@@ -245,15 +177,8 @@ file(REMOVE_RECURSE "${no_plan_output_directory}")
 set(warning_input_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_input_warning")
 set(warning_input_output_prefix "${warning_input_output_directory}/aromatic.chargefw")
 file(REMOVE_RECURSE "${warning_input_output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method eem "${CHARGEFW_MOL2_INPUT}"
-                "${warning_input_output_directory}"
-        RESULT_VARIABLE warning_input_result
-        ERROR_VARIABLE warning_input_error
-)
-if(NOT warning_input_result EQUAL 0)
-    message(FATAL_ERROR "calculation with an import warning failed: ${warning_input_error}")
-endif()
+run_cli(import_warning 0 calculate --method eem "${CHARGEFW_MOL2_INPUT}"
+        "${warning_input_output_directory}")
 file(READ "${warning_input_output_prefix}.json" warning_input_json)
 string(JSON warning_input_code GET "${warning_input_json}" results 0 diagnostics 0 code)
 if(NOT warning_input_code STREQUAL "partial_charges_ignored")
@@ -264,15 +189,8 @@ file(REMOVE_RECURSE "${warning_input_output_directory}")
 set(invalid_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_invalid")
 set(invalid_output_prefix "${invalid_output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${invalid_output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --threads 18446744073709551615 "${CHARGEFW_INPUT}"
-                "${invalid_output_directory}"
-        RESULT_VARIABLE invalid_result
-        ERROR_VARIABLE invalid_error
-)
-if(NOT invalid_result EQUAL 2)
-    message(FATAL_ERROR "invalid-request CLI exit status was ${invalid_result}: ${invalid_error}")
-endif()
+run_cli(invalid_request 2 calculate --threads 18446744073709551615 "${CHARGEFW_INPUT}"
+        "${invalid_output_directory}")
 if(NOT EXISTS "${invalid_output_prefix}.json")
     message(FATAL_ERROR "invalid-request CLI JSON output was not written to the output directory")
 endif()
@@ -285,15 +203,7 @@ if(NOT invalid_status STREQUAL "invalid_input_or_request" OR
 endif()
 file(REMOVE_RECURSE "${invalid_output_directory}")
 
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate "${CHARGEFW_INPUT}" "${output_directory}"
-        RESULT_VARIABLE result
-        ERROR_VARIABLE error
-)
-
-if(NOT result EQUAL 0)
-    message(FATAL_ERROR "chargefw failed with exit code ${result}: ${error}")
-endif()
+run_cli(default_output 0 calculate "${CHARGEFW_INPUT}" "${output_directory}")
 
 if(NOT IS_DIRECTORY "${output_directory}")
     message(FATAL_ERROR "Output directory was not created: ${output_directory}")
@@ -349,15 +259,8 @@ endif()
 set(explicit_output_directory "${CMAKE_CURRENT_BINARY_DIR}/chargefw_cli_explicit_outputs")
 set(explicit_output_prefix "${explicit_output_directory}/water.chargefw")
 file(REMOVE_RECURSE "${explicit_output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --output-mol2 --output-mmcif "${CHARGEFW_INPUT}"
-                "${explicit_output_directory}"
-        RESULT_VARIABLE explicit_result
-        ERROR_VARIABLE explicit_error
-)
-if(NOT explicit_result EQUAL 0)
-    message(FATAL_ERROR "explicit molecular output failed: ${explicit_error}")
-endif()
+run_cli(explicit_outputs 0 calculate --output-mol2 --output-mmcif "${CHARGEFW_INPUT}"
+        "${explicit_output_directory}")
 foreach(extension IN ITEMS json mol2 cif)
     if(NOT EXISTS "${explicit_output_prefix}.${extension}")
         message(FATAL_ERROR "Requested output file was not created: ${extension}")

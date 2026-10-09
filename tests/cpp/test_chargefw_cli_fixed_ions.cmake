@@ -1,29 +1,17 @@
+include("${CMAKE_CURRENT_LIST_DIR}/support/test_cli.cmake")
+
 set(input_path "${CHARGEFW_INPUT}")
 set(output_directory "${CHARGEFW_TEST_DIR}/chargefw_cli_fixed_ions")
 set(output_json "${output_directory}/fixed_ions.chargefw.json")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" applicability --method sqeqp
-                --parameter-set SQEqp_Schindler2021_CCD_gen
-                --fixed-ions MG --fixed-ions CA "${input_path}"
-        RESULT_VARIABLE applicability_result
-        ERROR_VARIABLE applicability_error
-)
-if(NOT applicability_result EQUAL 0)
-    message(FATAL_ERROR "fixed-charge applicability failed: ${applicability_error}")
-endif()
+run_cli(fixed_ion_applicability 0 applicability --method sqeqp
+        --parameter-set SQEqp_Schindler2021_CCD_gen
+        --fixed-ions MG --fixed-ions CA "${input_path}")
 
 file(REMOVE_RECURSE "${output_directory}")
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --method sqeqp
-                --parameter-set SQEqp_Schindler2021_CCD_gen --execution full
-                --fixed-ions MG --fixed-ions MG --fixed-ions CA
-                "${input_path}" "${output_directory}"
-        RESULT_VARIABLE calculate_result
-        ERROR_VARIABLE calculate_error
-)
-if(NOT calculate_result EQUAL 0)
-    message(FATAL_ERROR "fixed-charge calculation failed: ${calculate_error}")
-endif()
+run_cli(fixed_ion_calculation 0 calculate --method sqeqp
+        --parameter-set SQEqp_Schindler2021_CCD_gen --execution full
+        --fixed-ions MG --fixed-ions MG --fixed-ions CA
+        "${input_path}" "${output_directory}")
 file(READ "${output_json}" result_json)
 string(JSON status GET "${result_json}" results 0 status)
 string(JSON charges GET "${result_json}" results 0 assignments 0 charges)
@@ -62,21 +50,7 @@ foreach(removed_field charge_provenance charge_totals original_total_charge acti
     endif()
 endforeach()
 
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" applicability --fixed-ions UNKNOWN "${input_path}"
-        RESULT_VARIABLE unknown_result
-        ERROR_VARIABLE unknown_error
-)
-if(NOT unknown_result EQUAL 2)
-    message(FATAL_ERROR "unknown component ID was not rejected: ${unknown_error}")
-endif()
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" applicability "${input_path}" --fixed-ions
-        RESULT_VARIABLE missing_value_result
-        ERROR_VARIABLE missing_value_error
-)
-if(NOT missing_value_result EQUAL 2)
-    message(FATAL_ERROR "missing component ID was not reported by argument parsing: ${missing_value_error}")
-endif()
+run_cli(unknown_fixed_ion 2 applicability --fixed-ions UNKNOWN "${input_path}")
+run_cli(missing_fixed_ion 2 applicability "${input_path}" --fixed-ions)
 
 file(REMOVE_RECURSE "${output_directory}")
