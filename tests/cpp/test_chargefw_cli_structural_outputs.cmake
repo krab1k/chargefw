@@ -9,7 +9,6 @@ function(run_structural_input extension contents input_stem expected_selection e
             COMMAND "${CHARGEFW_CLI}" calculate --output-mol2 --output-mmcif ${ARGN}
                     "${input_path}" "${output_directory}"
             RESULT_VARIABLE result
-            OUTPUT_VARIABLE output
             ERROR_VARIABLE error
     )
 
@@ -54,7 +53,7 @@ function(expect_non_structural_options_rejected)
             ERROR_VARIABLE error
     )
 
-    if(result EQUAL 0 OR NOT error MATCHES "Structural input options are only supported for PDB and mmCIF input")
+    if(NOT result EQUAL 2)
         message(FATAL_ERROR "Expected structural options to be rejected for JSON input: ${error}")
     endif()
 

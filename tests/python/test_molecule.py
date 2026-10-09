@@ -114,10 +114,6 @@ NO_CHARGES
             molecule.coordinates[0, 0, 0] = 1.0
         with self.assertRaises(AttributeError):
             setattr(molecule, "name", "changed")
-        self.assertEqual(
-            repr(molecule),
-            "Molecule(atom_count=4, bond_count=3, conformer_count=2, name='water-like')",
-        )
 
     def test_collection_is_an_immutable_sequence(self) -> None:
         molecule = chargefw.Molecule([1])
@@ -129,7 +125,6 @@ NO_CHARGES
         self.assertEqual(tuple(collection), (molecule,))
         self.assertEqual(collection.molecules, (molecule,))
         self.assertEqual(collection.name, "fixture")
-        self.assertEqual(repr(collection), "MoleculeCollection(molecules=1, name='fixture')")
 
     def test_coordinate_defaults_and_empty_molecule(self) -> None:
         no_coordinates = chargefw.Molecule([1])

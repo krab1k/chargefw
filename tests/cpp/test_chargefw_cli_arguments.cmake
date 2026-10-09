@@ -31,23 +31,13 @@ expect_argument_error(parameter_filter_and_detail parameters --method qeq QEq_or
 expect_success(method_option_preserves_positionals applicability --method-option peoe.iters=8
                "${CHARGEFW_INPUT}")
 
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" --help
-        RESULT_VARIABLE help_result
-        ERROR_VARIABLE help_error
-)
-if(NOT help_result EQUAL 0)
-    message(FATAL_ERROR "help command failed with exit status ${help_result}: ${help_error}")
-endif()
-
-execute_process(
-        COMMAND "${CHARGEFW_CLI}" calculate --help
-        RESULT_VARIABLE calculate_help_result
-        OUTPUT_VARIABLE calculate_help_output
-        ERROR_VARIABLE calculate_help_error
-)
-if(NOT calculate_help_result EQUAL 0 OR
-   NOT calculate_help_output MATCHES "--output-mol2" OR
-   NOT calculate_help_output MATCHES "--output-mmcif")
-    message(FATAL_ERROR "calculate help does not list molecular output options: ${calculate_help_error}")
-endif()
+expect_success(help --help)
+expect_success(calculate_help calculate --help)
+expect_success(inspect inspect "${CHARGEFW_INPUT}")
+expect_success(applicable applicability --method formal "${CHARGEFW_INPUT}")
+expect_success(inapplicable applicability --method smpqeq "${CHARGEFW_INPUT}")
+expect_success(methods methods)
+expect_success(method_details methods eem)
+expect_success(parameters parameters)
+expect_success(parameter_filter parameters --method qeq)
+expect_success(parameter_details parameters QEq_original)

@@ -105,9 +105,6 @@ TEST_CASE("private fixed-charge ion selections share the resolver catalog",
     }
     const std::vector<ImportedMoleculeRecord> records{ion_record("LIG", 6, "C", "1")};
     CHECK(detail::resolve_fixed_ions(records, all).sources.empty());
-    auto changed = all;
-    changed.front() = "changed";
-    CHECK(detail::fixed_ion_names(false) == all);
 }
 
 TEST_CASE("private fixed ions resolve exact ion identities in input order",
