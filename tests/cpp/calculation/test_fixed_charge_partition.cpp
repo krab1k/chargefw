@@ -86,91 +86,84 @@ auto make_active_charge_set() -> chargefw::charges::ChargeSet {
 
 TEST_CASE("fixed-charge partition preserves original ordering and owned mappings",
           "[calculation][fixed-charge-partition]") {
-    auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
+    const auto input = make_partition_input({{3, 3, -0.25}, {1, 2, 0.5}, {3, 0, 0.75}});
     const auto partition =
         calculation::detail::make_fixed_charge_partition(input.molecules, input.fixed_ions);
 
+    struct ExpectedTarget {
+        std::vector<std::size_t> active_atoms;
+        std::vector<std::size_t> active_bonds;
+        // Sources sorted by original atom index: (atom index, charge).
+        std::vector<std::pair<std::size_t, double>> sources;
+    };
+    const auto expected = std::vector<ExpectedTarget>{
+        {.active_atoms = {0, 1}, .active_bonds = {0}},
+        {.active_atoms = {0, 1, 3}, .active_bonds = {0, 1}, .sources = {{2, 0.5}}},
+        {.active_atoms = {0}},
+        {.active_atoms = {1, 2}, .active_bonds = {0}, .sources = {{0, 0.75}, {3, -0.25}}}};
+
     CHECK(partition.active_molecules.name() == "named-collection");
-    CHECK(partition.active_molecules.size() == 4);
-    REQUIRE(partition.targets.size() == 4);
+    REQUIRE(partition.active_molecules.size() == expected.size());
+    REQUIRE(partition.targets.size() == expected.size());
+    const auto same_position = [](const core::Position& a, const core::Position& b) {
+        return a.x == b.x && a.y == b.y && a.z == b.z;
+    };
 
-    const auto& before = partition.targets[0];
-    CHECK(before.active_atom_indices == std::vector<std::size_t>{0, 1});
-    CHECK(before.active_bond_indices == std::vector<std::size_t>{0});
-    CHECK(before.sources.empty());
-    CHECK(before.source_positions.empty());
-    CHECK(before.active_charge == 0.0);
-    CHECK(partition.active_molecules[0].name() == "unaffected-before");
-    CHECK(partition.active_molecules[0].conformer_count() == 0);
-    CHECK(partition.active_molecules[0].bond(0).first_atom_index() == 1);
-    CHECK(partition.active_molecules[0].bond(0).second_atom_index() == 0);
-    CHECK(partition.active_molecules[0].bond(0).order() == core::BondOrder::DOUBLE);
+    for (std::size_t index = 0; index < expected.size(); ++index) {
+        CAPTURE(index);
+        const auto& target = partition.targets[index];
+        const auto& original = input.molecules[index];
+        const auto& active = partition.active_molecules[index];
+        CHECK(target.active_atom_indices == expected[index].active_atoms);
+        CHECK(target.active_bond_indices == expected[index].active_bonds);
+        CHECK(target.active_charge == 0.0);
+        CHECK(core::total_formal_charge(active) == target.active_charge);
 
-    const auto& first_target = partition.targets[1];
-    CHECK(first_target.active_atom_indices == std::vector<std::size_t>{0, 1, 3});
-    CHECK(first_target.active_bond_indices == std::vector<std::size_t>{0, 1});
-    REQUIRE(first_target.sources.size() == 1);
-    CHECK(first_target.sources[0].molecule_index == 1);
-    CHECK(first_target.sources[0].atom_index == 2);
-    CHECK(first_target.sources[0].charge == 0.5);
-    CHECK(first_target.active_charge == 0.0);
-    REQUIRE(first_target.source_positions.size() == 2);
-    REQUIRE(first_target.source_positions[0].size() == 1);
-    REQUIRE(first_target.source_positions[1].size() == 1);
-    CHECK(first_target.source_positions[0][0].x == 3.0);
-    CHECK(first_target.source_positions[0][0].z == 0.0);
-    CHECK(first_target.source_positions[1][0].x == 3.0);
-    CHECK(first_target.source_positions[1][0].z == 1.0);
-    const auto& first_active = partition.active_molecules[1];
-    CHECK(first_active.name() == "affected-one");
-    CHECK(first_active.atom(0).name() == "C0");
-    CHECK(first_active.atom(0).formal_charge() == 1);
-    CHECK(first_active.atom(1).name() == "N1");
-    CHECK(first_active.atom(2).name() == "O3");
-    CHECK(core::total_formal_charge(first_active) == 0.0);
-    REQUIRE(first_active.bond_count() == 2);
-    CHECK(first_active.bond(0).first_atom_index() == 2);
-    CHECK(first_active.bond(0).second_atom_index() == 0);
-    CHECK(first_active.bond(0).order() == core::BondOrder::TRIPLE);
-    CHECK(first_active.bond(1).first_atom_index() == 0);
-    CHECK(first_active.bond(1).second_atom_index() == 1);
-    CHECK(first_active.bond(1).order() == core::BondOrder::SINGLE);
-    REQUIRE(first_active.conformer_count() == 2);
-    CHECK(first_active.conformer(0).name() == "alpha");
-    CHECK(first_active.conformer(1).name() == "beta");
-    CHECK(first_active.conformer(0).positions()[2].x == 2.0);
-    CHECK(first_active.conformer(1).positions()[2].z == 1.0);
+        // Fixed sources keep their original identity and conformer-local positions.
+        REQUIRE(target.sources.size() == expected[index].sources.size());
+        for (std::size_t source = 0; source < target.sources.size(); ++source) {
+            CHECK(target.sources[source].molecule_index == index);
+            CHECK(target.sources[source].atom_index == expected[index].sources[source].first);
+            CHECK(target.sources[source].charge == expected[index].sources[source].second);
+        }
+        REQUIRE(target.source_positions.size() ==
+                (target.sources.empty() ? 0 : original.conformer_count()));
+        for (std::size_t conformer = 0; conformer < target.source_positions.size(); ++conformer) {
+            REQUIRE(target.source_positions[conformer].size() == target.sources.size());
+            for (std::size_t source = 0; source < target.sources.size(); ++source) {
+                CHECK(same_position(
+                    target.source_positions[conformer][source],
+                    original.conformer(conformer).positions()[target.sources[source].atom_index]));
+            }
+        }
 
-    const auto& between = partition.targets[2];
-    CHECK(between.active_atom_indices == std::vector<std::size_t>{0});
-    CHECK(between.active_bond_indices.empty());
-    CHECK(between.active_charge == 0.0);
-    CHECK(partition.active_molecules[2].name() == "unaffected-between");
-    CHECK(partition.active_molecules[2].conformer_count() == 0);
-
-    const auto& last_target = partition.targets[3];
-    CHECK(last_target.active_atom_indices == std::vector<std::size_t>{1, 2});
-    CHECK(last_target.active_bond_indices == std::vector<std::size_t>{0});
-    REQUIRE(last_target.sources.size() == 2);
-    CHECK(last_target.sources[0].atom_index == 0);
-    CHECK(last_target.sources[0].charge == 0.75);
-    CHECK(last_target.sources[1].atom_index == 3);
-    CHECK(last_target.sources[1].charge == -0.25);
-    CHECK(last_target.active_charge == 0.0);
-    REQUIRE(last_target.source_positions.size() == 2);
-    REQUIRE(last_target.source_positions[0].size() == 2);
-    REQUIRE(last_target.source_positions[1].size() == 2);
-    CHECK(last_target.source_positions[0][0].x == 5.0);
-    CHECK(last_target.source_positions[0][1].x == 8.0);
-    CHECK(last_target.source_positions[1][0].x == 5.0);
-    CHECK(last_target.source_positions[1][1].x == 8.0);
-    CHECK(last_target.source_positions[0][0].z == 0.0);
-    CHECK(last_target.source_positions[0][1].z == 0.0);
-    CHECK(last_target.source_positions[1][0].z == 1.0);
-    CHECK(last_target.source_positions[1][1].z == 1.0);
-    CHECK(partition.active_molecules[3].bond(0).first_atom_index() == 1);
-    CHECK(partition.active_molecules[3].bond(0).second_atom_index() == 0);
-    CHECK(partition.active_molecules[3].bond(0).order() == core::BondOrder::DOUBLE);
+        // Active molecules are the original atoms, bonds, and conformers in active order.
+        CHECK(active.name() == original.name());
+        REQUIRE(active.atom_count() == target.active_atom_indices.size());
+        for (std::size_t atom = 0; atom < active.atom_count(); ++atom) {
+            const auto& source_atom = original.atom(target.active_atom_indices[atom]);
+            CHECK(active.atom(atom).name() == source_atom.name());
+            CHECK(active.atom(atom).formal_charge() == source_atom.formal_charge());
+        }
+        REQUIRE(active.bond_count() == target.active_bond_indices.size());
+        for (std::size_t bond = 0; bond < active.bond_count(); ++bond) {
+            const auto& source_bond = original.bond(target.active_bond_indices[bond]);
+            CHECK(target.active_atom_indices[active.bond(bond).first_atom_index()] ==
+                  source_bond.first_atom_index());
+            CHECK(target.active_atom_indices[active.bond(bond).second_atom_index()] ==
+                  source_bond.second_atom_index());
+            CHECK(active.bond(bond).order() == source_bond.order());
+        }
+        REQUIRE(active.conformer_count() == original.conformer_count());
+        for (std::size_t conformer = 0; conformer < active.conformer_count(); ++conformer) {
+            CHECK(active.conformer(conformer).name() == original.conformer(conformer).name());
+            for (std::size_t atom = 0; atom < active.atom_count(); ++atom) {
+                CHECK(same_position(
+                    active.conformer(conformer).positions()[atom],
+                    original.conformer(conformer).positions()[target.active_atom_indices[atom]]));
+            }
+        }
+    }
 }
 
 TEST_CASE("fixed-charge partition owns data after input destruction and moves",
