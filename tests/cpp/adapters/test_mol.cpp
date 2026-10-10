@@ -313,6 +313,18 @@ TEST_CASE("native MOL2 input preserves names, charges, and bond orders", "[adapt
         CHECK(mol2_record.diagnostics.size() == 1);
         CHECK_FALSE(reader.next().has_value());
     }
+
+    {
+        auto input = std::istringstream{"@<TRIPOS>MOLECULE\namide\n3 2 0 0 0\nSMALL\nNO_CHARGES\n\n"
+                                        "@<TRIPOS>ATOM\n1 C1 0 0 0 C.2\n2 O1 1.2 0 0 O.2\n"
+                                        "3 N1 -1.3 0 0 N.am\n"
+                                        "@<TRIPOS>BOND\n1 1 2 2\n2 1 3 am\n"};
+        auto reader = mol2::Mol2Reader{input, "amide.mol2"};
+        const auto result = reader.next();
+        REQUIRE(result.has_value());
+        CHECK(result->molecule.bond(0).order() == chargefw::core::BondOrder::DOUBLE);
+        CHECK(result->molecule.bond(1).order() == chargefw::core::BondOrder::SINGLE);
+    }
 }
 
 TEST_CASE("native SDF input preserves V2000, V3000, and multi-record streams",

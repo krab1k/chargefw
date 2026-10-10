@@ -87,7 +87,9 @@ auto fixed_field(const std::string_view line, const std::size_t offset, const st
 
 auto bond_order(const std::string_view value, const ::chargefw::adapters::native::BondFormat format)
     -> core::BondOrder {
-    if (format == ::chargefw::adapters::native::BondFormat::mol2 && value == "ar") {
+    // SYBYL aromatic and amide bond types carry connectivity without an integral order.
+    if (format == ::chargefw::adapters::native::BondFormat::mol2 &&
+        (value == "ar" || value == "am")) {
         return core::BondOrder::SINGLE;
     }
     const auto numeric_value = parse_int(

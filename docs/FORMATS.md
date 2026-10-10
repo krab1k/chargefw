@@ -70,8 +70,8 @@ atom IDs, bond references, coordinates, and required sections are validated.
 
 The element is taken from the prefix before `.` in a standard atom type, while the atom-name column is
 retained. Dummy, lone-pair, wildcard, halogen-group, hetero-group, and heavy-atom-group types are rejected.
-Numeric bond types 1, 2, and 3 are imported directly; numeric type 4 and aromatic type `ar` become single
-bonds.
+Numeric bond types 1, 2, and 3 are imported directly; numeric type 4, aromatic type `ar`, and amide type
+`am` become single bonds.
 
 MOL2 atom charges are partial charges, not formal charges. They are parsed for validity but are not used;
 all imported formal charges are zero. A record containing any nonzero input partial charge receives a
