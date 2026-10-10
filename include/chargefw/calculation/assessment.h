@@ -36,7 +36,10 @@ struct ExecutionResult;
 // assessment and must not be executed with another assessment's prepared molecules.
 class ExecutionPlan {
   public:
-    [[nodiscard]] auto candidate() const noexcept -> const methods::ApplicableMethod&;
+    [[nodiscard]] auto method() const noexcept -> const methods::Method&;
+    // Null for methods without parameters.
+    [[nodiscard]] auto parameter_set() const noexcept -> const parameters::ParameterSet*;
+    [[nodiscard]] auto method_options() const noexcept -> const methods::MethodOptions&;
     [[nodiscard]] auto policy() const noexcept -> const ExecutionPolicy&;
     [[nodiscard]] auto warnings() const noexcept -> std::span<const methods::ExecutionIssue>;
 

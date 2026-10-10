@@ -241,8 +241,16 @@ ExecutionPlan::ExecutionPlan(std::shared_ptr<const PlanIdentity> identity,
     : identity_{std::move(identity)}, candidate_{&candidate}, policy_{policy},
       warnings_{std::move(warnings)} {}
 
-auto ExecutionPlan::candidate() const noexcept -> const methods::ApplicableMethod& {
-    return *candidate_;
+auto ExecutionPlan::method() const noexcept -> const methods::Method& {
+    return *candidate_->method;
+}
+
+auto ExecutionPlan::parameter_set() const noexcept -> const parameters::ParameterSet* {
+    return candidate_->parameter_set;
+}
+
+auto ExecutionPlan::method_options() const noexcept -> const methods::MethodOptions& {
+    return candidate_->method_options;
 }
 
 auto ExecutionPlan::policy() const noexcept -> const ExecutionPolicy& {

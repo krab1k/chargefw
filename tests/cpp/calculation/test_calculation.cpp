@@ -231,7 +231,7 @@ TEST_CASE("assessment preserves owned selection state and validates method optio
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}};
     auto consuming_assessment = calculation::assess(std::move(consuming_request));
     REQUIRE(consuming_assessment.default_plan() != nullptr);
-    CHECK(consuming_assessment.default_plan()->candidate().method->id() == "formal");
+    CHECK(consuming_assessment.default_plan()->method().id() == "formal");
     const auto consuming_result = calculation::calculate(consuming_assessment);
     REQUIRE(consuming_result.calculated());
     REQUIRE(consuming_result.charges->size() == 2);
@@ -322,7 +322,7 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
     REQUIRE(assessment.default_plan() != nullptr);
     REQUIRE(assessment.plans().size() == 1);
-    CHECK(assessment.default_plan()->candidate().method->id() == "formal");
+    CHECK(assessment.default_plan()->method().id() == "formal");
     CHECK(assessment.default_plan()->policy().mode() == calculation::ExecutionMode::full);
 
     const auto assessed_result = calculation::calculate(assessment, 1);
@@ -456,7 +456,7 @@ TEST_CASE("assessments expose reusable target-bound execution plans",
 
     REQUIRE_FALSE(assessment.plans().empty());
     REQUIRE(assessment.default_plan() == &assessment.plans().front());
-    CHECK(assessment.plans().front().candidate().method->id() == "eqeq");
+    CHECK(assessment.plans().front().method().id() == "eqeq");
     CHECK(assessment.plans().front().policy().mode() == calculation::ExecutionMode::full);
     CHECK(assessment.plans().size() >= 2);
 
@@ -569,8 +569,8 @@ TEST_CASE("calculation preserves empty-input cardinality and assessment ownershi
     auto rvalue_assessment = calculation::assess(std::move(rvalue_request));
     REQUIRE(lvalue_assessment.default_plan() != nullptr);
     REQUIRE(rvalue_assessment.default_plan() != nullptr);
-    CHECK(lvalue_assessment.default_plan()->candidate().method->id() ==
-          rvalue_assessment.default_plan()->candidate().method->id());
+    CHECK(lvalue_assessment.default_plan()->method().id() ==
+          rvalue_assessment.default_plan()->method().id());
     CHECK(lvalue_assessment.default_plan()->policy().mode() ==
           rvalue_assessment.default_plan()->policy().mode());
     const auto lvalue_result = calculation::calculate(lvalue_assessment);

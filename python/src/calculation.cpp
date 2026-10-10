@@ -308,13 +308,12 @@ class NativeAssessmentState {
 };
 
 auto execution_plan(const calculation::ExecutionPlan& plan) -> nb::dict {
-    const auto& candidate = plan.candidate();
     auto result = nb::dict{};
-    result["method_id"] = std::string{candidate.method->id()};
-    result["parameter_set_id"] = candidate.parameter_set == nullptr
+    result["method_id"] = std::string{plan.method().id()};
+    result["parameter_set_id"] = plan.parameter_set() == nullptr
                                      ? nb::none()
-                                     : nb::cast(std::string{candidate.parameter_set->id()});
-    result["method_options"] = method_options(candidate.method_options);
+                                     : nb::cast(std::string{plan.parameter_set()->id()});
+    result["method_options"] = method_options(plan.method_options());
     result["execution_policy"] = execution_policy(plan.policy());
     auto warnings = nb::list{};
     for (const auto& warning : plan.warnings()) {

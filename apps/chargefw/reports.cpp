@@ -58,9 +58,8 @@ void print_inspection(const ImportedCollection& imported) {
 void print_applicability(const calculation::AssessmentResult& assessment) {
     std::println("runnable plans: {}", assessment.plans().size());
     for (const auto& plan : assessment.plans()) {
-        const auto& candidate = plan.candidate();
-        std::println("plan method={} parameter_set={} execution={}", candidate.method->id(),
-                     candidate.parameter_set == nullptr ? "-" : candidate.parameter_set->id(),
+        std::println("plan method={} parameter_set={} execution={}", plan.method().id(),
+                     plan.parameter_set() == nullptr ? "-" : plan.parameter_set()->id(),
                      calculation::to_string(plan.policy().mode()));
     }
     std::println("rejected alternatives: {}", assessment.rejections().size());
@@ -82,9 +81,8 @@ void print_applicability(const calculation::AssessmentResult& assessment) {
         std::println("selected execution: none");
         return;
     }
-    const auto& selected = plan->candidate();
-    std::println("selected method={} parameter_set={} execution={}", selected.method->id(),
-                 selected.parameter_set == nullptr ? "-" : selected.parameter_set->id(),
+    std::println("selected method={} parameter_set={} execution={}", plan->method().id(),
+                 plan->parameter_set() == nullptr ? "-" : plan->parameter_set()->id(),
                  calculation::to_string(plan->policy().mode()));
 }
 

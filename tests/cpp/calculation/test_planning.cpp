@@ -277,7 +277,7 @@ TEST_CASE("valid fixed charge selectors reach EEM planning with active molecules
     const auto assessment = calculation::assess(std::move(request));
 
     REQUIRE(assessment.plans().size() == 3);
-    CHECK(assessment.default_plan()->candidate().method->id() == "eem");
+    CHECK(assessment.default_plan()->method().id() == "eem");
     CHECK(assessment.default_plan()->policy().mode() == calculation::ExecutionMode::full);
     REQUIRE(assessment.molecules().size() == 3);
     CHECK(assessment.molecules()[1].atom(1).atomic_number() == 12);
@@ -317,7 +317,7 @@ TEST_CASE("native fixed ions execute, reassemble, and retain provenance",
     REQUIRE(moved_assessment.plans().size() == 3);
     const auto* plan = moved_assessment.default_plan();
     REQUIRE(plan != nullptr);
-    CHECK(plan->candidate().method->id() == "eem");
+    CHECK(plan->method().id() == "eem");
     CHECK(plan->policy().mode() == calculation::ExecutionMode::full);
 
     REQUIRE(moved_assessment.molecules().size() == 2);
@@ -375,7 +375,7 @@ TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal 
     REQUIRE(assessment.plans().size() == 3);
     const auto* plan = assessment.default_plan();
     REQUIRE(plan != nullptr);
-    CHECK(plan->candidate().method->id() == "sqeqp");
+    CHECK(plan->method().id() == "sqeqp");
     CHECK(plan->policy().mode() == calculation::ExecutionMode::full);
     const auto interaction = [](const double distance, const double width_a, const double width_b) {
         const auto width_sum = 2.0 * width_a * width_a + 2.0 * width_b * width_b;
@@ -1020,8 +1020,7 @@ TEST_CASE("empty fixed ions are equivalent to absence", "[calculation][planning]
     REQUIRE_FALSE(ordinary.plans().empty());
     REQUIRE(empty.plans().size() == ordinary.plans().size());
     for (std::size_t index = 0; index < ordinary.plans().size(); ++index) {
-        CHECK(empty.plans()[index].candidate().method->id() ==
-              ordinary.plans()[index].candidate().method->id());
+        CHECK(empty.plans()[index].method().id() == ordinary.plans()[index].method().id());
         CHECK(empty.plans()[index].policy().mode() == ordinary.plans()[index].policy().mode());
         CHECK(empty.plans()[index].policy().radius() == ordinary.plans()[index].policy().radius());
     }

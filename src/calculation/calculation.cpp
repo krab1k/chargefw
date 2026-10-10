@@ -133,7 +133,7 @@ auto calculate(const AssessmentResult& assessment, const ExecutionPlan& plan,
         throw std::invalid_argument{"execution plan belongs to a different assessment"};
     }
 
-    const auto& selected = plan.candidate();
+    const auto& selected = *plan.candidate_;
     const auto fixed_charge_partition = assessment.fixed_charge_partition_.get();
     const auto effective = EffectiveCalculation{
         .method_id = std::string{selected.method->id()},

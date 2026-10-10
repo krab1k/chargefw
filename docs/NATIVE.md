@@ -165,8 +165,8 @@ Invalid source selections still throw `std::invalid_argument`.
 
 `calculation::assess()` returns an `AssessmentResult` with read-only access to its original owned source
 `molecules()`, priority-ordered `plans()`, structured `rejections()`, `default_plan()`, and applicability
-timing. A plan exposes its applicable candidate, concrete `ExecutionPolicy`, and warnings. Plans are tied
-to the assessment that created them.
+timing. A plan exposes its method, parameter set, validated method options, concrete `ExecutionPolicy`,
+and warnings. Plans are tied to the assessment that created them.
 
 Use `methods::method_registry()` to inspect built-in method metadata, human-readable implementation
 notes, and option schemas. Use `methods::complexity_notation()` to format declared time and memory
