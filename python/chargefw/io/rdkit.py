@@ -49,8 +49,9 @@ def from_mol(
     if bond_conversion not in ("none", "single"):
         raise ValueError("bond_conversion must be 'none' or 'single'")
 
-    # Inspect a copy because RDKit computes implicit hydrogen counts lazily.
-    hydrogen_counts = chemistry.Mol(molecule)
+    # Inspect a copy because RDKit computes implicit hydrogen counts lazily. A quick copy omits
+    # conformers and properties, which the hydrogen counts do not need.
+    hydrogen_counts = chemistry.Mol(molecule, quickCopy=True)
     hydrogen_counts.UpdatePropertyCache(strict=False)
     if any(atom.GetTotalNumHs() for atom in hydrogen_counts.GetAtoms()):
         raise ValueError(

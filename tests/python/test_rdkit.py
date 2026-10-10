@@ -109,7 +109,7 @@ class FakeBond:
 
 
 class FakeMol:
-    def __init__(self, source: "FakeMol | None" = None) -> None:
+    def __init__(self, source: "FakeMol | None" = None, quickCopy: bool = False) -> None:
         self.atoms: tuple[FakeAtom, ...] = (
             (FakeAtom(0, 8, "O"), FakeAtom(1, 1, "H")) if source is None else source.atoms
         )
