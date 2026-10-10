@@ -33,7 +33,7 @@
         "values": [14.37, 15.04]
       },
       {
-        "key": {"element": "F", "classifier": "plain", "type": "1"},
+        "key": {"element": "F", "classifier": "plain", "type": "*"},
         "values": [15.25, 21.36]
       }
     ]
