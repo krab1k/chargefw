@@ -670,6 +670,10 @@ def test_automatic_thresholds_and_explicit_full_warnings() -> None:
     )
     assert automatic.default_plan is not None, "assessment must produce a default plan"
     assert automatic.default_plan.policy.mode == "cutoff"
+    assert any(
+        rejection.policy is not None and rejection.policy.mode == "full"
+        for rejection in automatic.rejections
+    )
 
     explicit_full = chargefw.assess(
         water(),
