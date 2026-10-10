@@ -56,9 +56,10 @@ auto DENRMethod::calculate(const CalculationInput& input) const -> charges::Atom
     const auto iterations = options.get<int>("iterations");
 
     const Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n, n);
-    const Eigen::MatrixXd A = I + dt * L * eta;
+    Eigen::MatrixXd A = I + dt * L * eta;
 
-    const auto lu = A.partialPivLu();
+    // Factorize in place to avoid holding a second dense copy of A.
+    const Eigen::PartialPivLU<Eigen::Ref<Eigen::MatrixXd>> lu{A};
     const Eigen::VectorXd tmp = dt * L * chi;
 
     for (auto i = 0; i < iterations; ++i) {

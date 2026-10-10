@@ -1,9 +1,10 @@
 #include "methods/builtin/smpqeq.h"
+#include "methods/builtin/dense_solve.h"
 
 #include <chargefw/core/molecule.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
-#include <Eigen/LU>
+#include <Eigen/Core>
 
 #include <cmath>
 #include <cstddef>
@@ -90,7 +91,7 @@ auto SMPQEqMethod::calculate(const CalculationInput& input) const -> charges::At
         A(n, n) = 0.0;
         b(n) = input.target_charge();
 
-        b = A.partialPivLu().solve(b);
+        b = solve_in_place(A, b);
 
         if ((b.head(n) - previous_charges).cwiseAbs().maxCoeff() <= convergence_tolerance) {
             return charges::AtomicCharges{std::vector<double>{b.data(), b.data() + n}};

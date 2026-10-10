@@ -1,11 +1,12 @@
 #include "methods/builtin/tsef.h"
+#include "methods/builtin/dense_solve.h"
 
 #include "features/topology_helpers.h"
 
 #include <chargefw/core/molecule.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
-#include <Eigen/LU>
+#include <Eigen/Core>
 
 #include <array>
 #include <cstddef>
@@ -83,7 +84,7 @@ auto TSEFMethod::calculate(const CalculationInput& input) const -> charges::Atom
     A(n, n) = 0.0;
     b(n) = core::total_formal_charge(molecule);
 
-    const Eigen::VectorXd q = A.partialPivLu().solve(b).head(n);
+    const Eigen::VectorXd q = solve_in_place(A, b).head(n);
 
     return charges::AtomicCharges{std::vector<double>{q.data(), q.data() + q.size()}};
 }

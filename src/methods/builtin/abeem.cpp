@@ -1,4 +1,5 @@
 #include "methods/builtin/abeem.h"
+#include "methods/builtin/dense_solve.h"
 
 #include "methods/builtin/element_prerequisites.h"
 
@@ -7,7 +8,7 @@
 #include <chargefw/core/position.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
-#include <Eigen/LU>
+#include <Eigen/Core>
 
 #include <cstddef>
 #include <vector>
@@ -193,7 +194,7 @@ auto ABEEMMethod::calculate(const CalculationInput& input) const -> charges::Ato
     matrix(n + m, n + m) = 0.0;
     rhs(n + m) = input.target_charge();
 
-    Eigen::VectorXd q = matrix.partialPivLu().solve(rhs);
+    Eigen::VectorXd q = solve_in_place(matrix, rhs);
 
     auto values = std::vector<double>(atom_count);
 

@@ -1,10 +1,11 @@
 #include "methods/builtin/mgc.h"
+#include "methods/builtin/dense_solve.h"
 
 #include "methods/builtin/element_prerequisites.h"
 
 #include <chargefw/core/periodic_table.h>
 
-#include <Eigen/LU>
+#include <Eigen/Core>
 
 #include <cmath>
 #include <cstddef>
@@ -55,7 +56,7 @@ auto MGCMethod::calculate(const CalculationInput& input) const -> charges::Atomi
         S(j, i) -= w;
     }
 
-    Eigen::VectorXd chi = S.partialPivLu().solve(X0);
+    Eigen::VectorXd chi = solve_in_place(S, X0);
     chi -= X0;
     chi /= std::exp(log_sum / static_cast<double>(n));
 

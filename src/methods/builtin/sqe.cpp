@@ -1,4 +1,5 @@
 #include "methods/builtin/sqe.h"
+#include "methods/builtin/dense_solve.h"
 
 #include "features/topology_helpers.h"
 #include "methods/fixed_source_validation.h"
@@ -7,7 +8,7 @@
 #include <chargefw/core/position.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
-#include <Eigen/LU>
+#include <Eigen/Core>
 
 #include <cmath>
 #include <cstddef>
@@ -142,8 +143,7 @@ auto sqe_core::calculate(const CalculationInput& input,
                      static_cast<Eigen::Index>(bond_index)) += kappa[bond_index];
     }
 
-    const Eigen::VectorXd split_charge =
-        split_matrix.partialPivLu().solve(transfer_matrix * charge_rhs);
+    const Eigen::VectorXd split_charge = solve_in_place(split_matrix, transfer_matrix * charge_rhs);
     Eigen::VectorXd charges = transfer_matrix.transpose() * split_charge;
 
     if (!initial_charge_values.empty()) {

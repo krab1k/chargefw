@@ -1,9 +1,10 @@
 #include "methods/builtin/qeq.h"
+#include "methods/builtin/dense_solve.h"
 
 #include <chargefw/core/molecule.h>
 #include <chargefw/parameters/models/parameter_view.h>
 
-#include <Eigen/LU>
+#include <Eigen/Core>
 
 #include <cmath>
 #include <cstddef>
@@ -115,7 +116,7 @@ auto QEqMethod::calculate(const CalculationInput& input) const -> charges::Atomi
     A(n, n) = 0.0;
     b(n) = input.target_charge();
 
-    const Eigen::VectorXd q = A.partialPivLu().solve(b).head(n);
+    const Eigen::VectorXd q = solve_in_place(A, b).head(n);
 
     return charges::AtomicCharges{std::vector<double>{q.data(), q.data() + q.size()}};
 }
