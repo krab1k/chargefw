@@ -21,6 +21,10 @@ struct ReducedChargeContext {
     std::vector<std::vector<std::size_t>> conservation_groups;
 };
 
+// Projects whole-molecule parameter entry indices to an induced fragment without reclassification.
+[[nodiscard]] auto project_classification(const parameters::ParameterClassification& source,
+                                          const features::SpatialFragment& fragment)
+    -> parameters::ParameterClassification;
 auto validate_reduced_request(const methods::ApplicableMethod& selected,
                               const ExecutionPolicy& policy, ExecutionMode mode) -> void;
 [[nodiscard]] auto prepare_reduced_charge_context(

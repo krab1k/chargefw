@@ -16,6 +16,30 @@
 
 namespace chargefw::calculation::detail {
 
+auto project_classification(const parameters::ParameterClassification& source,
+                            const features::SpatialFragment& fragment)
+    -> parameters::ParameterClassification {
+    std::vector<std::size_t> atom_parameter_entry_indices;
+    if (!source.atom().empty()) {
+        atom_parameter_entry_indices.reserve(fragment.local_to_source_atom_indices().size());
+        for (const auto source_atom_index : fragment.local_to_source_atom_indices()) {
+            atom_parameter_entry_indices.push_back(source.atom().at(source_atom_index));
+        }
+    }
+
+    std::vector<std::size_t> bond_parameter_entry_indices;
+    if (!source.bond().empty()) {
+        bond_parameter_entry_indices.reserve(fragment.local_to_source_bond_indices().size());
+        for (const auto source_bond_index : fragment.local_to_source_bond_indices()) {
+            bond_parameter_entry_indices.push_back(source.bond().at(source_bond_index));
+        }
+    }
+
+    return parameters::ParameterClassification{
+        parameters::AtomParameterClassification{std::move(atom_parameter_entry_indices)},
+        parameters::BondParameterClassification{std::move(bond_parameter_entry_indices)}};
+}
+
 auto validate_reduced_request(const methods::ApplicableMethod& selected,
                               const ExecutionPolicy& policy, const ExecutionMode mode) -> void {
     if (policy.mode() != mode) {
@@ -136,8 +160,7 @@ auto calculate_fragment_charges(const methods::ApplicableMethod& selected,
 
     auto projected_classification = parameters::ParameterClassification{};
     if (source_classification != nullptr) {
-        projected_classification =
-            features::project_classification(*source_classification, fragment);
+        projected_classification = project_classification(*source_classification, fragment);
         parameters::validate_parameter_classification(fragment.molecule(), *selected.parameter_set,
                                                       projected_classification);
     }

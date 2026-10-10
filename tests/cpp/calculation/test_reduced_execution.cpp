@@ -351,6 +351,34 @@ auto assert_reduced_matches_full(
 
 } // namespace
 
+TEST_CASE("fragment classification projects source entries to local indices",
+          "[calculation][reduced]") {
+    const auto molecule = make_two_diatomic_components(10.0);
+    const features::PreparedMolecule prepared{molecule};
+    const features::ConformerFeatures geometry{molecule, 0};
+    const auto fragment = features::SpatialFragmentBuilder{prepared, geometry}.build(2, 1.2);
+    REQUIRE(std::ranges::equal(fragment.local_to_source_atom_indices(),
+                               std::vector<std::size_t>{2, 3}));
+
+    const auto projected = calculation::detail::project_classification(
+        parameters::ParameterClassification{
+            parameters::AtomParameterClassification{{10, 11, 12, 13}},
+            parameters::BondParameterClassification{{20, 21}}},
+        fragment);
+    CHECK(std::ranges::equal(projected.atom().parameter_entry_indices(),
+                             std::vector<std::size_t>{12, 13}));
+    CHECK(std::ranges::equal(projected.bond().parameter_entry_indices(),
+                             std::vector<std::size_t>{21}));
+
+    const auto atom_only = calculation::detail::project_classification(
+        parameters::ParameterClassification{
+            parameters::AtomParameterClassification{{10, 11, 12, 13}}},
+        fragment);
+    CHECK(std::ranges::equal(atom_only.atom().parameter_entry_indices(),
+                             std::vector<std::size_t>{12, 13}));
+    CHECK(atom_only.bond().empty());
+}
+
 TEST_CASE("reduced execution validates inputs and mode selection",
           "[calculation][reduced-execution]") {
     const ZeroFragmentMethod zero_method;

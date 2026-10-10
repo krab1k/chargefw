@@ -2,7 +2,6 @@
 
 #include <chargefw/core/molecule.h>
 #include <chargefw/features/prepared_molecule.h>
-#include <chargefw/parameters/classification/parameter_classification.h>
 
 #include <cstddef>
 #include <memory>
@@ -60,10 +59,5 @@ class SpatialFragmentBuilder {
     const ConformerFeatures* geometry_;
     std::unique_ptr<const SpatialIndex> spatial_index_;
 };
-
-// Projects whole-molecule parameter entry indices to an induced fragment without reclassification.
-[[nodiscard]] auto project_classification(const parameters::ParameterClassification& source,
-                                          const SpatialFragment& fragment)
-    -> parameters::ParameterClassification;
 
 } // namespace chargefw::features
