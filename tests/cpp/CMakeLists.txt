@@ -107,7 +107,6 @@ if(CHARGEFW_BUILD_CLI)
             NAME test_chargefw_cli_fixed_ions
             COMMAND ${CMAKE_COMMAND}
                     -DCHARGEFW_CLI=${chargefw_cli}
-                    -DCHARGEFW_TEST_DIR=${CMAKE_CURRENT_BINARY_DIR}
                     -DCHARGEFW_INPUT=${PROJECT_SOURCE_DIR}/tests/fixtures/synthetic/cif/fixed_ions.cif
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_cli_fixed_ions.cmake
     )

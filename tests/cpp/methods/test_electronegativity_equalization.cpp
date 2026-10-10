@@ -140,10 +140,6 @@ TEST_CASE("EEM includes fixed point potentials in the constrained active solve",
     CHECK(std::abs(fixed.total() - target_charge) < 1.0e-12);
     CHECK(molecule.atom(0).formal_charge() + molecule.atom(1).formal_charge() == 1);
     CHECK(target_charge != molecule.atom(0).formal_charge() + molecule.atom(1).formal_charge());
-    CHECK(sources[0].position.x == -1.0);
-    CHECK(sources[0].charge == 0.4);
-    CHECK(sources[1].position.y == 1.0);
-    CHECK(sources[1].charge == -0.2);
 
     const auto zero_source = std::array{methods::FixedPointSource{{10.0, 2.0, 0.0}, 0.0}};
     const auto zero_source_charges = calculate_eem(

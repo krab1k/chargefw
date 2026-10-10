@@ -39,22 +39,10 @@ namespace {
 
 auto make_parameter_set(const double hydrogen_width = 1.0, const double oxygen_width = 1.0)
     -> parameters::ParameterSet {
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-sqeqp", .method_id = "sqeqp", .name = "Test SQE+qp parameters"},
-        {},
-        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
-                                     .parameters = {{.name = "electronegativity", .value = 4.5280},
-                                                    {.name = "hardness", .value = 13.8904},
-                                                    {.name = "width", .value = hydrogen_width},
-                                                    {.name = "q0", .value = 0.25}}},
-                                    {.key = chargefw::test::plain_atom_key(8),
-                                     .parameters = {{.name = "electronegativity", .value = 8.741},
-                                                    {.name = "hardness", .value = 13.364},
-                                                    {.name = "width", .value = oxygen_width},
-                                                    {.name = "q0", .value = -0.5}}}}},
-        parameters::BondParameters{{{.key = chargefw::test::single_bond_key(1, 8),
-                                     .parameters = {{.name = "kappa", .value = 1.0}}}}}};
+    return chargefw::test::make_sqe_ho_parameters("sqeqp", {.hydrogen_width = hydrogen_width,
+                                                            .oxygen_width = oxygen_width,
+                                                            .hydrogen_q0 = 0.25,
+                                                            .oxygen_q0 = -0.5});
 }
 
 auto calculate_sqeqp(const core::Molecule& molecule, const parameters::ParameterSet& parameter_set,
