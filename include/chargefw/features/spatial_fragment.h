@@ -50,6 +50,9 @@ class SpatialFragmentBuilder {
     SpatialFragmentBuilder(SpatialFragmentBuilder&&) = delete;
     auto operator=(SpatialFragmentBuilder&&) -> SpatialFragmentBuilder& = delete;
 
+    // Sorted source indices of atoms within the inclusive radius of the center atom.
+    [[nodiscard]] auto atom_indices_within(std::size_t center_atom_index, double radius) const
+        -> std::vector<std::size_t>;
     [[nodiscard]] auto build(std::size_t center_atom_index, double radius) const -> SpatialFragment;
 
   private:

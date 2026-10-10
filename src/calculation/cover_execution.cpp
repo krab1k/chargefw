@@ -56,11 +56,9 @@ inline constexpr double cover_retained_radius = 3.0;
 
         const auto work_item_index = work_items.size();
         work_items.push_back(WorkItem{.pivot_source_atom_index = pivot_source_atom_index});
-        for (std::size_t source_atom_index = 0; source_atom_index < source_molecule.atom_count();
-             ++source_atom_index) {
-            if (owners[source_atom_index] == unassigned &&
-                source_geometry.distance(pivot_source_atom_index, source_atom_index) <=
-                    cover_retained_radius) {
+        for (const auto source_atom_index :
+             fragment_builder.atom_indices_within(pivot_source_atom_index, cover_retained_radius)) {
+            if (owners[source_atom_index] == unassigned) {
                 owners[source_atom_index] = work_item_index;
                 ++work_items.back().owned_count;
             }

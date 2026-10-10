@@ -175,18 +175,33 @@ SpatialFragmentBuilder::SpatialFragmentBuilder(const PreparedMolecule& source,
 
 SpatialFragmentBuilder::~SpatialFragmentBuilder() = default;
 
-auto SpatialFragmentBuilder::build(const std::size_t center_atom_index, const double radius) const
-    -> SpatialFragment {
+auto SpatialFragmentBuilder::atom_indices_within(const std::size_t center_atom_index,
+                                                 const double radius) const
+    -> std::vector<std::size_t> {
     validate_radius(radius);
 
+    auto atom_indices =
+        spatial_index_->neighbor_indices_within(geometry_->position(center_atom_index), radius);
+    std::ranges::sort(atom_indices);
+    return atom_indices;
+}
+
+auto SpatialFragmentBuilder::build(const std::size_t center_atom_index, const double radius) const
+    -> SpatialFragment {
     const auto& molecule = source_->molecule();
+    const auto& topology = source_->topology();
     const auto& geometry = *geometry_;
 
-    auto selected_source_atom_indices =
-        spatial_index_->neighbor_indices_within(geometry.position(center_atom_index), radius);
-    std::ranges::sort(selected_source_atom_indices);
+    auto selected_source_atom_indices = atom_indices_within(center_atom_index, radius);
+    // Local atoms follow sorted source order, so a source index maps to its local position by
+    // binary search. This keeps fragment construction proportional to the fragment size.
+    const auto local_index_of = [&](const std::size_t source_index) -> std::size_t {
+        const auto found = std::ranges::lower_bound(selected_source_atom_indices, source_index);
+        return found != selected_source_atom_indices.end() && *found == source_index
+                   ? static_cast<std::size_t>(found - selected_source_atom_indices.begin())
+                   : no_local_index;
+    };
 
-    std::vector<std::size_t> source_to_local_atom_indices(molecule.atom_count(), no_local_index);
     std::vector<core::Atom> atoms;
     std::vector<core::Position> positions;
     atoms.reserve(selected_source_atom_indices.size());
@@ -200,29 +215,34 @@ auto SpatialFragmentBuilder::build(const std::size_t center_atom_index, const do
         atoms.emplace_back(source_atom.atomic_number(), source_atom.formal_charge(),
                            std::string{source_atom.name()});
         positions.push_back(geometry.position(source_index));
-        source_to_local_atom_indices[source_index] = local_index;
 
         if (source_index == center_atom_index) {
             center_local_atom_index = local_index;
         }
     }
 
-    std::vector<core::Bond> bonds;
+    // Each bond with both atoms selected appears in the incident lists of both atoms; keep it once.
+    // Sorting restores source bond order.
     std::vector<std::size_t> local_to_source_bond_indices;
-    bonds.reserve(selected_source_atom_indices.size());
-    local_to_source_bond_indices.reserve(selected_source_atom_indices.size());
-
-    for (std::size_t source_bond_index = 0; source_bond_index < molecule.bond_count();
-         ++source_bond_index) {
-        const auto& source_bond = molecule.bond(source_bond_index);
-        const auto first_local = source_to_local_atom_indices[source_bond.first_atom_index()];
-        const auto second_local = source_to_local_atom_indices[source_bond.second_atom_index()];
-        if (first_local == no_local_index || second_local == no_local_index) {
-            continue;
+    for (const auto source_index : selected_source_atom_indices) {
+        for (const auto source_bond_index : topology.incident_bond_indices(source_index)) {
+            const auto& source_bond = molecule.bond(source_bond_index);
+            const auto other_index = source_bond.first_atom_index() == source_index
+                                         ? source_bond.second_atom_index()
+                                         : source_bond.first_atom_index();
+            if (source_index < other_index && local_index_of(other_index) != no_local_index) {
+                local_to_source_bond_indices.push_back(source_bond_index);
+            }
         }
+    }
+    std::ranges::sort(local_to_source_bond_indices);
 
-        bonds.emplace_back(first_local, second_local, source_bond.order());
-        local_to_source_bond_indices.push_back(source_bond_index);
+    std::vector<core::Bond> bonds;
+    bonds.reserve(local_to_source_bond_indices.size());
+    for (const auto source_bond_index : local_to_source_bond_indices) {
+        const auto& source_bond = molecule.bond(source_bond_index);
+        bonds.emplace_back(local_index_of(source_bond.first_atom_index()),
+                           local_index_of(source_bond.second_atom_index()), source_bond.order());
     }
 
     std::vector<core::Conformer> conformers;
