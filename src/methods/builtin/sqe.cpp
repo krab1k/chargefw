@@ -20,11 +20,13 @@
 namespace chargefw::methods::builtin {
 namespace {
 
+// erf(x) rounds to exactly 1.0 for x >= 6, so pairs with distance >= 6 * sqrt(width_sum) reduce to
+// 1/r without evaluating erf. Comparing squares avoids the sqrt and also covers zero widths.
 [[nodiscard]] auto interaction(const double distance, const double width_i, const double width_j)
     -> double {
     const auto width_sum = 2.0 * width_i * width_i + 2.0 * width_j * width_j;
 
-    if (width_sum == 0.0) {
+    if (distance * distance >= 36.0 * width_sum) {
         return 1.0 / distance;
     }
 
