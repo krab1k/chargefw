@@ -219,7 +219,8 @@ TEST_CASE("parameter set rejects malformed JSON", "[parameters][io]") {
         std::istringstream input{unknown_classification_json()};
         static_cast<void>(parameters::load_parameter_set_json(input));
     };
-    CHECK_THROWS_AS(load_unknown_classification(), std::invalid_argument);
+    CHECK_THROWS_MATCHES(load_unknown_classification(), std::invalid_argument,
+                         snitch::matchers::with_what_contains{"atom.data[0].key.classifier"});
 }
 
 TEST_CASE("parameter set rejects priorities outside uint16 range", "[parameters][io]") {

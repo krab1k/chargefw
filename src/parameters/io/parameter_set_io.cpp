@@ -161,6 +161,10 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     metadata.method_id = require_string(required_member(metadata_json, "method", metadata_context),
                                         child_context(metadata_context, "method"));
 
+    if (metadata.method_id.empty()) {
+        throw_error(child_context(metadata_context, "method"), "must not be empty");
+    }
+
     metadata.name = optional_string_member(metadata_json, "name", metadata_context);
     metadata.publication = optional_string_member(metadata_json, "publication", metadata_context);
     metadata.notes = optional_string_member(metadata_json, "notes", metadata_context);
@@ -183,7 +187,11 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     names.reserve(names_json.size());
 
     for (std::size_t index = 0; index < names_json.size(); ++index) {
-        names.push_back(require_string(names_json[index], array_context(names_context, index)));
+        auto name = require_string(names_json[index], array_context(names_context, index));
+        if (std::ranges::find(names, name) != names.end()) {
+            throw_error(array_context(names_context, index), "duplicate name '" + name + "'");
+        }
+        names.push_back(std::move(name));
     }
 
     return names;
@@ -249,13 +257,15 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     }
 }
 
-[[nodiscard]] auto make_atom_parameter_key(const std::string& symbol,
-                                           const std::string& classification,
-                                           const std::string& type,
-                                           const std::string& symbol_context) -> AtomParameterKey {
-    return AtomParameterKey{.atomic_number = atomic_number_from_symbol(symbol, symbol_context),
-                            .classification = atom_classification_kind_from_string(classification),
-                            .type = type};
+// Converts a classifier name, reporting an unknown name at its JSON location.
+template <typename Convert>
+[[nodiscard]] auto classifier_kind(const Convert& convert, const std::string& classifier,
+                                   const std::string& context) {
+    try {
+        return convert(classifier);
+    } catch (const std::invalid_argument& error) {
+        throw_error(context, error.what());
+    }
 }
 
 [[nodiscard]] auto parse_atom_key(const Json& key_json, const std::string& context)
@@ -265,9 +275,12 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     const auto element = require_named_string(key_json, "element", context);
     const auto classifier = require_named_string(key_json, "classifier", context);
     const auto type = require_named_string(key_json, "type", context);
-    const auto element_context = child_context(context, "element");
 
-    return make_atom_parameter_key(element, classifier, type, element_context);
+    return AtomParameterKey{
+        .atomic_number = atomic_number_from_symbol(element, child_context(context, "element")),
+        .classification = classifier_kind(atom_classification_kind_from_string, classifier,
+                                          child_context(context, "classifier")),
+        .type = type};
 }
 
 [[nodiscard]] auto parse_bond_type_key(const Json& key_json, const std::string& context)
@@ -277,7 +290,9 @@ auto ensure_array(const Json& value, const std::string& context) -> void {
     const auto classifier = require_named_string(key_json, "classifier", context);
     const auto type = require_named_string(key_json, "type", context);
 
-    return BondTypeKey{.classification = bond_classification_kind_from_string(classifier),
+    return BondTypeKey{.classification =
+                           classifier_kind(bond_classification_kind_from_string, classifier,
+                                           child_context(context, "classifier")),
                        .type = type};
 }
 
@@ -500,7 +515,11 @@ auto load_default_parameter_sets() -> std::vector<ParameterSet> {
     }
 
     if (parameter_sets.empty()) {
-        throw std::invalid_argument{"no bundled parameter sets were loaded"};
+        auto searched = std::string{};
+        for (const auto& directory : default_parameter_directories()) {
+            searched += (searched.empty() ? "'" : ", '") + directory.string() + "'";
+        }
+        throw std::invalid_argument{"no bundled parameter sets were found in " + searched};
     }
 
     return parameter_sets;
