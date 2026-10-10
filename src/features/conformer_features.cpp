@@ -5,31 +5,16 @@
 #include <cmath>
 #include <map>
 #include <stdexcept>
+#include <tuple>
 
 namespace chargefw::features {
 namespace {
 
+// Lexicographic order on finite coordinates; -0.0 and 0.0 compare equivalent.
 struct PositionKeyLess {
     [[nodiscard]] auto operator()(const core::Position& first,
                                   const core::Position& second) const noexcept -> bool {
-        const auto normalize = [](const double value) noexcept -> double {
-            return value == 0.0 ? 0.0 : value;
-        };
-
-        const auto first_x = normalize(first.x);
-        const auto first_y = normalize(first.y);
-        const auto first_z = normalize(first.z);
-        const auto second_x = normalize(second.x);
-        const auto second_y = normalize(second.y);
-        const auto second_z = normalize(second.z);
-
-        if (first_x != second_x) {
-            return first_x < second_x;
-        }
-        if (first_y != second_y) {
-            return first_y < second_y;
-        }
-        return first_z < second_z;
+        return std::tie(first.x, first.y, first.z) < std::tie(second.x, second.y, second.z);
     }
 };
 
