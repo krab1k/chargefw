@@ -31,11 +31,3 @@ chargefw_add_snitch_test(test_fixed_ions
 )
 
 target_include_directories(test_fixed_ions PRIVATE ${PROJECT_SOURCE_DIR}/src)
-target_compile_definitions(test_fixed_ions PRIVATE
-        CHARGEFW_TEST_PARAMETER_DIR="${PROJECT_SOURCE_DIR}/data/parameters"
-)
-
-target_compile_definitions(test_mol
-        PRIVATE
-        CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
-)

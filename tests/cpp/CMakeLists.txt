@@ -41,6 +41,12 @@ function(chargefw_add_snitch_test name)
 
     target_link_options(${name} PRIVATE "LINKER:--disable-new-dtags")
 
+    target_compile_definitions(${name}
+            PRIVATE
+            CHARGEFW_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+            CHARGEFW_TEST_PARAMETER_DIR="${PROJECT_SOURCE_DIR}/data/parameters"
+    )
+
     if(CHARGEFW_ENABLE_WARNINGS)
         chargefw_enable_warnings(${name})
         # Snitch 1.3.2 uses __COUNTER__ in its public macros. Clang 22 diagnoses each expansion at
