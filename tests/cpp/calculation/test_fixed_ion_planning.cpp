@@ -159,25 +159,8 @@ auto make_hydrogen_only_eem_parameters() -> chargefw::parameters::ParameterSet {
 
 } // namespace
 
-TEST_CASE("explicit no-plan assessment reports rejected scientific prerequisites",
-          "[calculation][planning]") {
-    auto assessment = calculation::assess(calculation::AssessmentRequest{
-        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-        .method_id = "smpqeq"});
-
-    CHECK(assessment.plans().empty());
-    REQUIRE(assessment.rejections().size() == 1);
-    CHECK_FALSE(assessment.rejections()[0].policy.has_value());
-    CHECK(assessment.rejections()[0].method_id == "smpqeq");
-    CHECK_FALSE(assessment.rejections()[0].issues.empty());
-
-    const auto result = calculation::calculate(assessment);
-    CHECK(result.status == calculation::ExecutionStatus::no_executable_plan);
-    CHECK_FALSE(result.calculated());
-}
-
 TEST_CASE("valid fixed charge selectors reach EEM planning with active molecules",
-          "[calculation][planning]") {
+          "[calculation][fixed-ions]") {
     auto request = calculation::AssessmentRequest{
         .molecules =
             core::MoleculeCollection{std::vector{make_interleaved_hydrogen_magnesium_oxygen(),
@@ -216,7 +199,7 @@ TEST_CASE("valid fixed charge selectors reach EEM planning with active molecules
 }
 
 TEST_CASE("native fixed ions execute, reassemble, and retain provenance",
-          "[calculation][planning]") {
+          "[calculation][fixed-ions]") {
     auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{
             make_two_conformer_interleaved_pair(),
@@ -281,7 +264,7 @@ TEST_CASE("native fixed ions execute, reassemble, and retain provenance",
 }
 
 TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal charge",
-          "[calculation][planning]") {
+          "[calculation][fixed-ions]") {
     auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_sqeqp_fixed_ions_molecule()}},
         .parameter_sets = {make_sqeqp_fixed_ions_parameters()},
@@ -333,7 +316,7 @@ TEST_CASE("native SQE+qp normalizes reference charges to prepared active formal 
 
 TEST_CASE(
     "fixed sources keep the prepared active formal charge independent of source formal charge",
-    "[calculation][planning][fixed-ions]") {
+    "[calculation][fixed-ions]") {
     struct FixedIonCase {
         std::string_view method_id;
         core::Molecule (*make_molecule)(int magnesium_charge);
@@ -381,7 +364,7 @@ TEST_CASE(
     }
 }
 
-TEST_CASE("SQE rejects a charged prepared active molecule", "[calculation][planning][sqe]") {
+TEST_CASE("SQE rejects a charged prepared active molecule", "[calculation][fixed-ions][sqe]") {
     const auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_sqe_active_molecule(-1, 2)}},
         .method_id = "sqe",
@@ -396,7 +379,7 @@ TEST_CASE("SQE rejects a charged prepared active molecule", "[calculation][plann
 }
 
 TEST_CASE("SQE family preserves active totals with fractional fixed-source values",
-          "[calculation][planning][sqe]") {
+          "[calculation][fixed-ions][sqe]") {
     for (const auto method_id : {"sqe", "sqeq0"}) {
         auto assessment = calculation::assess(calculation::AssessmentRequest{
             .molecules =
@@ -418,7 +401,7 @@ TEST_CASE("SQE family preserves active totals with fractional fixed-source value
 }
 
 TEST_CASE("unsupported methods reject fixed ions before parameter classification",
-          "[calculation][planning]") {
+          "[calculation][fixed-ions]") {
     for (const auto method_id : {"formal", "peoe"}) {
         auto request = calculation::AssessmentRequest{
             .molecules =
@@ -439,7 +422,7 @@ TEST_CASE("unsupported methods reject fixed ions before parameter classification
 }
 
 TEST_CASE("fixed-charge planning selects execution from active size and resource thresholds",
-          "[calculation][planning]") {
+          "[calculation][fixed-ions]") {
     const auto assess_automatic = [](const calculation::ResourcePolicy resource_policy) {
         return calculation::assess(calculation::AssessmentRequest{
             .molecules =
@@ -469,7 +452,7 @@ TEST_CASE("fixed-charge planning selects execution from active size and resource
 }
 
 TEST_CASE("fixed sources reach cutoff and cover over active fragments",
-          "[calculation][planning][fixed-ions][reduced]") {
+          "[calculation][fixed-ions][reduced]") {
     const auto exercise = [&](const std::string_view method_id,
                               const chargefw::parameters::ParameterSet& parameter_set,
                               const int active_hydrogen_charge) {
@@ -573,7 +556,7 @@ TEST_CASE("fixed sources reach cutoff and cover over active fragments",
 }
 
 TEST_CASE("reduced SQE+qp keeps disconnected normalized reference component totals",
-          "[calculation][planning][fixed-ions][reduced][sqeqp]") {
+          "[calculation][fixed-ions][reduced][sqeqp]") {
     const auto molecule = make_disconnected_qp_source_molecule();
     const auto source_atom_index = molecule.atom_count() - 1;
     const auto parameter_set = make_sqeqp_fixed_ions_parameters();
@@ -637,7 +620,7 @@ TEST_CASE("reduced SQE+qp keeps disconnected normalized reference component tota
 }
 
 TEST_CASE("fixed-charge parameter rejections use original atom indices and descriptions",
-          "[calculation][planning]") {
+          "[calculation][fixed-ions]") {
     const auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules =
             core::MoleculeCollection{std::vector{make_interleaved_hydrogen_magnesium_oxygen()}},
@@ -658,7 +641,7 @@ TEST_CASE("fixed-charge parameter rejections use original atom indices and descr
 }
 
 TEST_CASE("fixed-charge geometry diagnostics label active-subsystem atom numbering",
-          "[calculation][planning]") {
+          "[calculation][fixed-ions]") {
     const auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{
             make_interleaved_hydrogen_magnesium_oxygen(core::Position{0.0, 0.0, 0.0})}},
@@ -676,7 +659,7 @@ TEST_CASE("fixed-charge geometry diagnostics label active-subsystem atom numberi
     CHECK(issue.message.contains("active-subsystem atom numbering"));
 }
 
-TEST_CASE("fixed ion sources are validated", "[calculation][planning]") {
+TEST_CASE("fixed ion sources are validated", "[calculation][fixed-ions]") {
     const auto check_invalid = [](std::vector<core::Molecule> molecules,
                                   std::vector<calculation::FixedAtomCharge> sources,
                                   const std::string_view diagnostic) {
@@ -707,7 +690,7 @@ TEST_CASE("fixed ion sources are validated", "[calculation][planning]") {
 }
 
 TEST_CASE("fixed ion geometry is validated only for affected molecules",
-          "[calculation][planning]") {
+          "[calculation][fixed-ions]") {
     const auto make_request = [](core::MoleculeCollection molecules,
                                  std::vector<calculation::FixedAtomCharge> sources) {
         return calculation::AssessmentRequest{
@@ -791,7 +774,7 @@ TEST_CASE("fixed ion geometry is validated only for affected molecules",
     CHECK_FALSE(unrelated_assessment.rejections().empty());
 }
 
-TEST_CASE("empty fixed ions are equivalent to absence", "[calculation][planning]") {
+TEST_CASE("empty fixed ions are equivalent to absence", "[calculation][fixed-ions]") {
     auto make_request = [](const bool with_empty_fixed_ions) {
         auto request = calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},

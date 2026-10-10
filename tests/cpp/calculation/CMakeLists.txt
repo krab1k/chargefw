@@ -2,8 +2,8 @@ chargefw_add_snitch_test(test_calculation
         test_calculation.cpp
 )
 
-chargefw_add_snitch_test(test_planning
-        test_planning.cpp
+chargefw_add_snitch_test(test_fixed_ion_planning
+        test_fixed_ion_planning.cpp
 )
 
 chargefw_add_snitch_test(test_fixed_charge_partition

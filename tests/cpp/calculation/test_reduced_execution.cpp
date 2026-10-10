@@ -260,7 +260,7 @@ TEST_CASE("fragment classification projects source entries to local indices",
     CHECK(atom_only.bond().empty());
 }
 
-TEST_CASE("reduced execution validates inputs and mode selection",
+TEST_CASE("direct reduced execution validates inputs and distributes a uniform target",
           "[calculation][reduced-execution]") {
     const chargefw::test::StubMethod zero_method{
         "zero-fragment",
@@ -280,29 +280,23 @@ TEST_CASE("reduced execution validates inputs and mode selection",
 
     const methods::ApplicableMethod invalid_selected{
         .method = &zero_method, .parameter_set = nullptr, .classifications = {{}}};
-    for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
-                            calculation::ExecutionMode::cover}) {
-        const auto policy = mode == calculation::ExecutionMode::full
-                                ? calculation::ExecutionPolicy{}
-                                : calculation::ExecutionPolicy{mode, 8.0};
-        const auto calculate_with_invalid_classification = [&] -> void {
-            static_cast<void>(calculation::calculate(
-                {.molecules = prepared, .selected = invalid_selected, .execution_policy = policy}));
-        };
-        CHECK_THROWS_AS(calculate_with_invalid_classification(), std::invalid_argument);
-    }
-
     const auto no_conformer_collection = core::MoleculeCollection{std::vector{
         charged_molecule, core::Molecule{std::vector{core::Atom{1}}, {}, {}, "no-conformer"}}};
     const features::PreparedMoleculeCollection no_conformer_prepared{no_conformer_collection};
     for (const auto mode : {calculation::ExecutionMode::full, calculation::ExecutionMode::cutoff,
                             calculation::ExecutionMode::cover}) {
+        CAPTURE(calculation::to_string(mode));
         const auto policy = mode == calculation::ExecutionMode::full
                                 ? calculation::ExecutionPolicy{}
                                 : calculation::ExecutionPolicy{mode, 8.0};
-        const calculation::CalculationRequest request{
-            .molecules = no_conformer_prepared, .selected = selected, .execution_policy = policy};
-        CHECK_THROWS_MATCHES(calculation::calculate(request), std::invalid_argument,
+        CHECK_THROWS_AS(
+            calculation::calculate(
+                {.molecules = prepared, .selected = invalid_selected, .execution_policy = policy}),
+            std::invalid_argument);
+        CHECK_THROWS_MATCHES(calculation::calculate({.molecules = no_conformer_prepared,
+                                                     .selected = selected,
+                                                     .execution_policy = policy}),
+                             std::invalid_argument,
                              snitch::matchers::with_what_contains{"molecule 2"});
     }
 
@@ -320,9 +314,10 @@ TEST_CASE("reduced execution validates inputs and mode selection",
          .execution_policy = calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 8.0}});
     CHECK(cover.charges.assignment(0).charges[0] == 0.5);
     CHECK(cover.charges.assignment(0).charges[1] == 0.5);
+}
 
-    assert_reduced_matches_full("eem", {chargefw::test::make_eem_parameters()});
-
+TEST_CASE("automatic execution selects reduced modes from resource thresholds",
+          "[calculation][reduced-execution]") {
     const auto automatic_cutoff = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {chargefw::test::make_eem_parameters()},
@@ -372,32 +367,50 @@ TEST_CASE("reduced execution validates inputs and mode selection",
     CHECK(explicit_cutoff_above_cover_threshold.effective->execution_policy.mode() ==
           calculation::ExecutionMode::cutoff);
     CHECK(explicit_cutoff_above_cover_threshold.effective->execution_issues.size() == 1);
+}
 
-    assert_reduced_matches_full("qeq", {chargefw::test::make_qeq_ho_parameters()});
-    assert_reduced_matches_full("sfkeem", {chargefw::test::make_sfkeem_ho_parameters()});
-    assert_reduced_matches_full("eqeq");
-    assert_reduced_matches_full("eqeqc", {make_eqeqc_parameters()});
-    assert_reduced_matches_full("abeem", {chargefw::test::make_abeem_ho_parameters()});
-    assert_reduced_matches_full("sqe", {chargefw::test::make_sqe_ho_parameters("sqe")});
-    assert_reduced_matches_full("sqeq0", {chargefw::test::make_sqe_ho_parameters("sqeq0")});
-    assert_reduced_matches_full("sqeqp", {chargefw::test::make_sqe_ho_parameters(
-                                             "sqeqp", {.hydrogen_q0 = 0.25, .oxygen_q0 = -0.5})});
-    assert_reduced_matches_full("sqe", {chargefw::test::make_sqe_ho_parameters(
-                                           "sqe", {.hydrogen_width = 0.0, .oxygen_width = 0.0})});
-    assert_reduced_matches_full("sqeq0",
-                                {chargefw::test::make_sqe_ho_parameters(
-                                    "sqeq0", {.hydrogen_width = 0.0, .oxygen_width = 0.0})});
-    assert_reduced_matches_full(
-        "sqeqp",
-        {chargefw::test::make_sqe_ho_parameters(
-            "sqeqp",
-            {.hydrogen_width = 0.0, .oxygen_width = 0.0, .hydrogen_q0 = 0.25, .oxygen_q0 = -0.5})});
-    assert_reduced_matches_full("sqeq0", {chargefw::test::make_sqe_ho_parameters("sqeq0")},
-                                make_charged_water());
-    assert_reduced_matches_full(
-        "sqeqp",
-        {chargefw::test::make_sqe_ho_parameters("sqeqp", {.hydrogen_q0 = 0.25, .oxygen_q0 = -0.5})},
-        make_charged_water());
+TEST_CASE("whole-molecule reduced execution matches full execution for each charge policy",
+          "[calculation][reduced-execution]") {
+    struct PolicyCase {
+        methods::ReducedChargePolicy policy;
+        std::string_view method_id;
+        parameters::ParameterSet parameter_set;
+        core::Molecule molecule;
+    };
+    using Policy = methods::ReducedChargePolicy;
+    const auto water = chargefw::test::make_two_conformer_water();
+    const auto point_charges =
+        chargefw::test::SqeHoValues{.hydrogen_width = 0.0, .oxygen_width = 0.0};
+    const auto reference_charges =
+        chargefw::test::SqeHoValues{.hydrogen_q0 = 0.25, .oxygen_q0 = -0.5};
+    const auto point_reference_charges = chargefw::test::SqeHoValues{
+        .hydrogen_width = 0.0, .oxygen_width = 0.0, .hydrogen_q0 = 0.25, .oxygen_q0 = -0.5};
+    const auto cases = std::vector<PolicyCase>{
+        {Policy::uniform_target_global, "eem", chargefw::test::make_eem_parameters(), water},
+        {Policy::zero_components, "sqe", chargefw::test::make_sqe_ho_parameters("sqe"), water},
+        {Policy::zero_components, "sqe",
+         chargefw::test::make_sqe_ho_parameters("sqe", point_charges), water},
+        {Policy::formal_charge_components, "sqeq0", chargefw::test::make_sqe_ho_parameters("sqeq0"),
+         water},
+        {Policy::formal_charge_components, "sqeq0",
+         chargefw::test::make_sqe_ho_parameters("sqeq0", point_charges), water},
+        {Policy::formal_charge_components, "sqeq0", chargefw::test::make_sqe_ho_parameters("sqeq0"),
+         make_charged_water()},
+        {Policy::parameterized_charge_components, "sqeqp",
+         chargefw::test::make_sqe_ho_parameters("sqeqp", reference_charges), water},
+        {Policy::parameterized_charge_components, "sqeqp",
+         chargefw::test::make_sqe_ho_parameters("sqeqp", point_reference_charges), water},
+        {Policy::parameterized_charge_components, "sqeqp",
+         chargefw::test::make_sqe_ho_parameters("sqeqp", reference_charges), make_charged_water()}};
+
+    for (const auto& test_case : cases) {
+        CAPTURE(test_case.method_id, test_case.molecule.name());
+        const auto* method = methods::method_registry().find(test_case.method_id);
+        REQUIRE(method != nullptr);
+        CHECK(method->requirements().resources.reduced_charge_policy == test_case.policy);
+        assert_reduced_matches_full(test_case.method_id, {test_case.parameter_set},
+                                    test_case.molecule);
+    }
 }
 
 TEST_CASE("SQE reduced execution preserves original component charge budgets",

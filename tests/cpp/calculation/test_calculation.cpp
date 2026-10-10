@@ -121,24 +121,38 @@ static_assert(
     std::is_same_v<decltype(std::declval<const calculation::AssessmentResult&>().molecules()),
                    const core::MoleculeCollection&>);
 
-TEST_CASE("assessment exposes its owned source molecules", "[calculation][calculation]") {
-    auto request = calculation::AssessmentRequest{
-        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-        .method_id = "formal"};
-    const auto copied = calculation::assess(request);
-    CHECK(&copied.molecules() != &request.molecules);
-    CHECK(copied.molecules().size() == 1);
-    CHECK(copied.molecules()[0].name() == request.molecules[0].name());
-
-    auto consumed = calculation::assess(std::move(request));
+TEST_CASE("assessment owns its inputs across lvalue, rvalue, and relocation",
+          "[calculation][calculation]") {
+    const auto make_request = [] {
+        return calculation::AssessmentRequest{
+            .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
+            .parameter_sets = {make_permissive_peoe_parameter_set()},
+            .method_id = "peoe",
+            .parameter_set_id = "permissive-peoe-parameters",
+            .classification_options = {.permissive_types = true}};
+    };
+    // The lvalue overload copies its inputs, so the assessment outlives the request.
+    const auto copied = [&] {
+        const auto request = make_request();
+        return calculation::assess(request);
+    }();
+    auto consumed = calculation::assess(make_request());
     const auto& owned_molecules = consumed.molecules();
-    CHECK(owned_molecules.size() == 1);
-    CHECK(owned_molecules[0].atom_count() == 3);
-    auto relocated = std::move(consumed);
+    const auto relocated = std::move(consumed);
     CHECK(&relocated.molecules() == &owned_molecules);
-    const auto result = calculation::calculate(relocated);
-    REQUIRE(result.calculated());
-    CHECK(result.charges->assignment(0).charges.size() == relocated.molecules()[0].atom_count());
+
+    const auto copied_result = calculation::calculate(copied);
+    const auto relocated_result = calculation::calculate(relocated);
+    for (const auto* result : {&copied_result, &relocated_result}) {
+        REQUIRE(result->calculated());
+        REQUIRE(result->effective.has_value());
+        CHECK(result->effective->method_id == "peoe");
+        CHECK(result->effective->parameter_set_id ==
+              std::optional<std::string>{"permissive-peoe-parameters"});
+        CHECK(result->charges->assignment(0).charges.size() == 2);
+    }
+    CHECK(std::ranges::equal(copied_result.charges->assignment(0).charges.values(),
+                             relocated_result.charges->assignment(0).charges.values()));
 }
 
 TEST_CASE("calculation facade reports singular solver failures with target context",
@@ -183,45 +197,8 @@ TEST_CASE("fixed-charge EEM retains provenance on numerical failure",
     CHECK(provenance.sources[0].charge == 0.25);
 }
 
-TEST_CASE("assessment preserves owned selection state and validates method options",
+TEST_CASE("method options are validated and recorded in effective provenance",
           "[calculation][calculation]") {
-
-    // The returned report owns its IDs and does not retain parameter-set pointers from the consumed
-    // assessment. Moving the assessment before execution must preserve the indexed selected plan.
-    const auto owned_parameterized_result = []() -> calculation::ExecutionResult {
-        auto assessment = calculation::assess(calculation::AssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
-            .parameter_sets = {make_permissive_peoe_parameter_set()},
-            .method_id = "peoe",
-            .parameter_set_id = "permissive-peoe-parameters",
-            .classification_options = {.permissive_types = true}});
-        auto relocated_assessment = std::move(assessment);
-        return calculation::calculate(relocated_assessment);
-    }();
-    REQUIRE(owned_parameterized_result.calculated());
-    REQUIRE(owned_parameterized_result.effective.has_value());
-    CHECK(owned_parameterized_result.effective->method_id == "peoe");
-    CHECK(owned_parameterized_result.effective->parameter_set_id ==
-          std::optional<std::string>{"permissive-peoe-parameters"});
-
-    // Rvalue assessment transfers the request's heavy inputs while preserving its lightweight
-    // selection data until assessment has completed.
-    auto consuming_request = calculation::AssessmentRequest{
-        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water(),
-                                                          chargefw::test::make_water()}},
-        .parameter_sets = {},
-        .method_id = "formal",
-        .execution_selection =
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}};
-    auto consuming_assessment = calculation::assess(std::move(consuming_request));
-    REQUIRE(consuming_assessment.default_plan() != nullptr);
-    CHECK(consuming_assessment.default_plan()->method().id() == "formal");
-    const auto consuming_result = calculation::calculate(consuming_assessment);
-    REQUIRE(consuming_result.calculated());
-    REQUIRE(consuming_result.charges->size() == 2);
-    CHECK(consuming_result.charges->assignment(0).target.molecule_index == 0);
-    CHECK(consuming_result.charges->assignment(1).target.molecule_index == 1);
-
     auto peoe_options = methods::MethodOptions{};
     peoe_options.set("iters", 1);
     const auto configured_peoe_result = calculate_application(calculation::AssessmentRequest{
@@ -247,7 +224,10 @@ TEST_CASE("assessment preserves owned selection state and validates method optio
             .classification_options = {.permissive_types = true}}));
     };
     CHECK_THROWS_AS(calculate_with_invalid_peoe_options(), std::invalid_argument);
+}
 
+TEST_CASE("assessment reports parameter and automatic method rejections",
+          "[calculation][calculation]") {
     const auto rejected_parameter_assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{make_double_bonded_carbons()}},
         .parameter_sets = {make_permissive_peoe_parameter_set()},
@@ -269,43 +249,49 @@ TEST_CASE("assessment preserves owned selection state and validates method optio
     CHECK(!rejected_smpqeq->issues.empty());
 }
 
-TEST_CASE("calculation facade applies execution policy and rejects invalid plans",
+TEST_CASE("explicit no-plan assessment reports rejected scientific prerequisites",
           "[calculation][calculation]") {
-
-    const auto application_result = calculate_application(calculation::AssessmentRequest{
-        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-        .parameter_sets = {},
-        .method_id = "formal",
-        .parameter_set_id = std::nullopt,
-        .execution_selection =
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
-
-    REQUIRE(application_result.charges.has_value());
-    CHECK(application_result.charges->method_id() == std::string_view{"formal"});
-    CHECK(application_result.charges->size() == 1);
-    REQUIRE(application_result.effective.has_value());
-    CHECK(application_result.effective->method_id == "formal");
-    CHECK_FALSE(application_result.effective->parameter_set_id.has_value());
-    CHECK(application_result.effective->execution_policy.mode() ==
-          calculation::ExecutionMode::full);
-    CHECK(application_result.effective->execution_issues.empty());
-
     auto assessment = calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-        .parameter_sets = {},
+        .method_id = "smpqeq"});
+
+    CHECK(assessment.plans().empty());
+    REQUIRE(assessment.rejections().size() == 1);
+    CHECK_FALSE(assessment.rejections()[0].policy.has_value());
+    CHECK(assessment.rejections()[0].method_id == "smpqeq");
+    CHECK_FALSE(assessment.rejections()[0].issues.empty());
+
+    const auto result = calculation::calculate(assessment);
+    CHECK(result.status == calculation::ExecutionStatus::no_executable_plan);
+    CHECK_FALSE(result.calculated());
+}
+
+TEST_CASE("explicit full execution reports its plan and effective provenance",
+          "[calculation][calculation]") {
+    const auto assessment = calculation::assess(calculation::AssessmentRequest{
+        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .method_id = "formal",
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}});
-    REQUIRE(assessment.default_plan() != nullptr);
     REQUIRE(assessment.plans().size() == 1);
+    REQUIRE(assessment.default_plan() != nullptr);
     CHECK(assessment.default_plan()->method().id() == "formal");
     CHECK(assessment.default_plan()->policy().mode() == calculation::ExecutionMode::full);
 
-    const auto assessed_result = calculation::calculate(assessment, 1);
-    REQUIRE(assessed_result.calculated());
-    CHECK(assessed_result.charges->method_id() == std::string_view{"formal"});
-    CHECK(assessed_result.metrics.applicability_seconds >= 0.0);
+    const auto result = calculation::calculate(assessment, 1);
+    REQUIRE(result.calculated());
+    CHECK(result.charges->method_id() == std::string_view{"formal"});
+    CHECK(result.charges->size() == 1);
+    REQUIRE(result.effective.has_value());
+    CHECK(result.effective->method_id == "formal");
+    CHECK_FALSE(result.effective->parameter_set_id.has_value());
+    CHECK(result.effective->execution_policy.mode() == calculation::ExecutionMode::full);
+    CHECK(result.effective->execution_issues.empty());
+    CHECK(result.metrics.applicability_seconds >= 0.0);
+}
 
+TEST_CASE("resource thresholds guide automatic execution and warn on explicit full execution",
+          "[calculation][calculation]") {
     const auto automatic_fallback_result = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
         .parameter_sets = {},
@@ -362,7 +348,9 @@ TEST_CASE("calculation facade applies execution policy and rejects invalid plans
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff, 8.0}});
     CHECK(unsupported_cutoff_result.status == calculation::ExecutionStatus::no_executable_plan);
     CHECK_FALSE(unsupported_cutoff_result.calculated());
+}
 
+TEST_CASE("assessment rejects invalid requests", "[calculation][calculation]") {
     const auto water = core::MoleculeCollection{std::vector{chargefw::test::make_water()}};
     const auto invalid_requests = std::vector<calculation::AssessmentRequest>{
         {.molecules = water, .method_id = "missing"},
@@ -442,8 +430,7 @@ TEST_CASE("assessments expose reusable target-bound execution plans",
     CHECK_THROWS_AS(calculate_mismatched_plan(), std::invalid_argument);
 }
 
-TEST_CASE("calculation preserves empty-input cardinality and assessment ownership",
-          "[calculation][calculation]") {
+TEST_CASE("calculation preserves empty-input cardinality", "[calculation][calculation]") {
 
     // Empty collections and empty targets retain their distinct cardinalities: no collection
     // entries produce no assignments, while an empty molecule still produces one source assignment.
@@ -459,7 +446,10 @@ TEST_CASE("calculation preserves empty-input cardinality and assessment ownershi
     REQUIRE(empty_target_result.calculated());
     REQUIRE(empty_target_result.charges->size() == 1);
     CHECK(empty_target_result.charges->assignment(0).charges.empty());
+}
 
+TEST_CASE("both assessment overloads reject duplicate parameter-set IDs",
+          "[calculation][calculation]") {
     // AssessmentRequest rejects duplicate parameter-set IDs before filtering or applicability. This
     // remains true when the duplicates target the same or different methods and for both overloads.
     for (const auto explicit_selection : {false, true}) {
@@ -480,35 +470,4 @@ TEST_CASE("calculation preserves empty-input cardinality and assessment ownershi
             CHECK_THROWS_AS(assess_duplicate_rvalue_request(), std::invalid_argument);
         }
     }
-
-    // Both assessment overloads retain the same selection state. The lvalue path copies its inputs,
-    // so execution remains valid after the original request has been destroyed.
-    auto lvalue_assessment = []() -> calculation::AssessmentResult {
-        auto request = calculation::AssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .method_id = "formal",
-            .execution_selection =
-                calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}};
-        return calculation::assess(request);
-    }();
-    auto rvalue_request = calculation::AssessmentRequest{
-        .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-        .method_id = "formal",
-        .execution_selection =
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full}};
-    auto rvalue_assessment = calculation::assess(std::move(rvalue_request));
-    REQUIRE(lvalue_assessment.default_plan() != nullptr);
-    REQUIRE(rvalue_assessment.default_plan() != nullptr);
-    CHECK(lvalue_assessment.default_plan()->method().id() ==
-          rvalue_assessment.default_plan()->method().id());
-    CHECK(lvalue_assessment.default_plan()->policy().mode() ==
-          rvalue_assessment.default_plan()->policy().mode());
-    const auto lvalue_result = calculation::calculate(lvalue_assessment);
-    const auto rvalue_result = calculation::calculate(rvalue_assessment);
-    REQUIRE(lvalue_result.calculated());
-    REQUIRE(rvalue_result.calculated());
-    REQUIRE(lvalue_result.charges->size() == 1);
-    REQUIRE(rvalue_result.charges->size() == 1);
-    CHECK(std::ranges::equal(lvalue_result.charges->assignment(0).charges.values(),
-                             rvalue_result.charges->assignment(0).charges.values()));
 }
