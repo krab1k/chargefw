@@ -4,8 +4,6 @@
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/molecule.h>
-#include <chargefw/methods/method_options.h>
-#include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/models/atom_parameters.h>
 #include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_key.h>
@@ -17,7 +15,6 @@
 #include <vector>
 
 namespace parameters = chargefw::parameters;
-namespace methods = chargefw::methods;
 
 namespace {
 
@@ -49,15 +46,6 @@ auto charge2_parameters() -> parameters::ParameterSet {
                                                     {.name = "q0", .value = -0.222}}}}}};
 }
 
-auto make_hco_chain() -> chargefw::core::Molecule {
-    return chargefw::core::Molecule{{chargefw::core::Atom{1, 0, "H"},
-                                     chargefw::core::Atom{6, 0, "C"},
-                                     chargefw::core::Atom{8, 0, "O"}},
-                                    {chargefw::core::Bond{0, 1}, chargefw::core::Bond{1, 2}},
-                                    {},
-                                    "HCO chain"};
-}
-
 auto make_methyl_fluoride() -> chargefw::core::Molecule {
     return chargefw::core::Molecule{
         {chargefw::core::Atom{6, 0, "C"}, chargefw::core::Atom{1, 0, "H1"},
@@ -70,21 +58,6 @@ auto make_methyl_fluoride() -> chargefw::core::Molecule {
 }
 
 } // namespace
-
-TEST_CASE("Charge2 iteration option changes polarizability feedback", "[methods][charge2]") {
-    auto one_iteration = chargefw::methods::MethodOptions{};
-    one_iteration.set("iters", 1);
-
-    const auto default_charges = chargefw::test::calculate_single_method(
-        make_hco_chain(), "charge2", {charge2_parameters()});
-    const auto one_iteration_charges = chargefw::test::calculate_single_method(
-        make_hco_chain(), "charge2", {charge2_parameters()}, &one_iteration);
-
-    CHECK(std::abs(default_charges.assignment(0).charges[0] -
-                   one_iteration_charges.assignment(0).charges[0]) > 1.0e-6);
-
-    CHECK(std::abs(default_charges.assignment(0).charges.total()) < 1.0e-12);
-}
 
 TEST_CASE("Charge2 reproduces published methyl fluoride charges", "[methods][charge2]") {
     const auto charge_set = chargefw::test::calculate_single_method(

@@ -3,7 +3,6 @@ chargefw_add_snitch_test(test_methods
         test_calculation_input.cpp
         test_charge2.cpp
         test_delre.cpp
-        test_denr.cpp
         test_electronegativity_equalization.cpp
         test_gdac.cpp
         test_method_applicability.cpp

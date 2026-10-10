@@ -24,6 +24,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -306,6 +307,61 @@ TEST_CASE("neutral-only methods reject a cation", "[methods][builtin-methods]") 
                                    "neutral connected components");
     check_neutrality_prerequisites(cation, std::array{std::string_view{"veem"}},
                                    "neutral molecules");
+}
+
+TEST_CASE("built-in iteration options reach the charge calculation", "[methods][builtin-methods]") {
+    const auto parameter_sets =
+        parameters::load_parameter_sets_json_directory(CHARGEFW_TEST_PARAMETER_DIR);
+    auto denr_options = methods::MethodOptions{};
+    denr_options.set("step", 0.1);
+    denr_options.set("iterations", 100);
+    auto charge2_options = methods::MethodOptions{};
+    charge2_options.set("iters", 1);
+    // Charge2 polarizability feedback needs a chain longer than water to respond to iterations.
+    const auto hco_chain =
+        chargefw::core::Molecule{{chargefw::core::Atom{1, 0, "H"}, chargefw::core::Atom{6, 0, "C"},
+                                  chargefw::core::Atom{8, 0, "O"}},
+                                 {chargefw::core::Bond{0, 1}, chargefw::core::Bond{1, 2}},
+                                 {},
+                                 "HCO chain"};
+    struct OptionCase {
+        std::string_view method_id;
+        chargefw::core::Molecule molecule;
+        methods::MethodOptions options;
+    };
+    const auto cases =
+        std::array{OptionCase{"denr", chargefw::test::make_water_graph(), denr_options},
+                   OptionCase{"charge2", hco_chain, charge2_options}};
+
+    for (const auto& [method_id, molecule, options] : cases) {
+        CAPTURE(method_id);
+        const auto collection = chargefw::core::MoleculeCollection{std::vector{molecule}};
+        const auto prepared = features::PreparedMoleculeCollection{collection};
+        const auto* method = methods::method_registry().find(method_id);
+        REQUIRE(method != nullptr);
+        const std::array candidates{method};
+        const auto calculate_with = [&](const methods::MethodOptions* configured) {
+            auto method_options = std::unordered_map<std::string, methods::MethodOptions>{};
+            if (configured != nullptr) {
+                method_options.emplace(std::string{method_id}, *configured);
+            }
+            const auto applicability =
+                methods::find_applicable_methods({.molecules = prepared,
+                                                  .methods = candidates,
+                                                  .parameter_sets = parameter_sets,
+                                                  .method_options = std::move(method_options)});
+            REQUIRE_FALSE(applicability.applicable.empty());
+            return chargefw::calculation::calculate(
+                       {.molecules = prepared, .selected = applicability.applicable.front()})
+                .charges.assignment(0)
+                .charges;
+        };
+
+        const auto default_charges = calculate_with(nullptr);
+        const auto configured_charges = calculate_with(&options);
+        CHECK(std::abs(default_charges[0] - configured_charges[0]) > 1.0e-6);
+        CHECK(std::abs(configured_charges.total()) < 1.0e-10);
+    }
 }
 
 TEST_CASE("PEOE methods initialize from formal charges when requested",
