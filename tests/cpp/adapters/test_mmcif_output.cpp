@@ -1,3 +1,5 @@
+#include "support/test_charge_results.h"
+
 #include <chargefw/adapters/charge_result.h>
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 #include <chargefw/adapters/gemmi/mmcif_output.h>
@@ -22,6 +24,8 @@ namespace core = chargefw::core;
 namespace mmcif_input = chargefw::adapters::gemmi::mmcif_input;
 namespace mmcif_output = chargefw::adapters::gemmi::mmcif_output;
 
+using chargefw::test::calculation_result;
+
 auto generated_record(std::string id = "molecule") -> adapters::ImportedMoleculeRecord {
     return {
         .molecule =
@@ -31,20 +35,6 @@ auto generated_record(std::string id = "molecule") -> adapters::ImportedMolecule
                 {core::Conformer{{core::Position{0.0, 0.0, 0.0}, core::Position{1.2, 0.0, 0.0}}},
                  core::Conformer{{core::Position{0.1, 0.0, 0.0}, core::Position{1.3, 0.0, 0.0}}}}},
         .identity = {.source = "input", .record_id = std::move(id)}};
-}
-
-auto calculation_result(std::vector<adapters::ImportedMoleculeRecord> records,
-                        charges::ChargeSet charge_set) -> adapters::ChargeCalculationResult {
-    const auto method_id = std::string{charge_set.method_id()};
-    const auto parameter_set_id = charge_set.parameter_set_id().transform(
-        [](const std::string_view value) { return std::string{value}; });
-    return adapters::make_charge_calculation_result(
-        std::move(records), {},
-        {.charges = std::move(charge_set),
-         .effective = chargefw::calculation::EffectiveCalculation{
-             .method_id = method_id,
-             .parameter_set_id = parameter_set_id,
-             .execution_policy = chargefw::calculation::ExecutionPolicy{}}});
 }
 
 auto structural_result() -> adapters::ChargeCalculationResult {

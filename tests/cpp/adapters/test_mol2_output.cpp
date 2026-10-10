@@ -1,3 +1,5 @@
+#include "support/test_charge_results.h"
+
 #include <chargefw/adapters/charge_result.h>
 #include <chargefw/adapters/native/mol2_input.h>
 #include <chargefw/adapters/native/mol2_output.h>
@@ -24,6 +26,8 @@ namespace core = chargefw::core;
 namespace mol2_input = chargefw::adapters::native::mol2_input;
 namespace mol2_output = chargefw::adapters::native::mol2_output;
 
+using chargefw::test::calculation_result;
+
 auto generated_record() -> adapters::ImportedMoleculeRecord {
     return {.molecule =
                 core::Molecule{{core::Atom{6, 0, "C1"}, core::Atom{8, -1, "O1"}},
@@ -34,20 +38,6 @@ auto generated_record() -> adapters::ImportedMoleculeRecord {
                                                  core::Position{1.33456789012345, 0.0, 0.0}}}},
                                "carbonyl"},
             .identity = {.source = "input", .record_id = "record"}};
-}
-
-auto calculation_result(std::vector<adapters::ImportedMoleculeRecord> records,
-                        charges::ChargeSet charge_set) -> adapters::ChargeCalculationResult {
-    const auto method_id = std::string{charge_set.method_id()};
-    const auto parameter_set_id = charge_set.parameter_set_id().transform(
-        [](const std::string_view value) { return std::string{value}; });
-    return adapters::make_charge_calculation_result(
-        std::move(records), {},
-        {.charges = std::move(charge_set),
-         .effective = chargefw::calculation::EffectiveCalculation{
-             .method_id = method_id,
-             .parameter_set_id = parameter_set_id,
-             .execution_policy = chargefw::calculation::ExecutionPolicy{}}});
 }
 
 [[nodiscard]] auto occurrences(const std::string_view text, const std::string_view value)

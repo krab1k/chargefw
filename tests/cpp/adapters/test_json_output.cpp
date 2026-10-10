@@ -34,6 +34,32 @@ namespace json_output = chargefw::adapters::native::json_output;
 
 namespace {
 
+// mmCIF data block opening with the atom-site loop header shared by these fixtures; each fixture
+// appends its own atom rows.
+[[nodiscard]] auto atom_site_header(const std::string_view block_name) -> std::string {
+    return "data_" + std::string{block_name} + "\nloop_\n" + R"cif(_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.label_entity_id
+_atom_site.pdbx_PDB_model_num)cif";
+}
+
 auto make_component_record(const std::string_view id,
                            const std::vector<std::optional<std::string>>& label_components,
                            const std::vector<std::optional<std::string>>& author_components = {})
@@ -73,18 +99,6 @@ auto make_component_record(const std::string_view id,
                                        std::string{id}},
             .identity = {.source = "component-fixture.cif", .record_index = 0},
             .import_metadata = std::move(metadata)};
-}
-
-auto make_component_eem_parameters() -> chargefw::parameters::ParameterSet {
-    return chargefw::parameters::ParameterSet{
-        chargefw::parameters::ParameterSetMetadata{
-            .id = "json-eem", .method_id = "eem", .name = "JSON EEM"},
-        chargefw::parameters::CommonParameters{{{.name = "kappa", .value = 2.5}}},
-        chargefw::parameters::AtomParameters{
-            {{.key = chargefw::test::plain_atom_key(1),
-              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 5.0}}},
-             {.key = chargefw::test::plain_atom_key(8),
-              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 9.0}}}}}};
 }
 
 } // namespace
@@ -303,56 +317,13 @@ TEST_CASE("JSON fixed ions retain sources with missing or ambiguous component la
 
 TEST_CASE("JSON component grouping reads labels from Gemmi imports through EEM facade results",
           "[adapters][json]") {
-    const auto document = R"cif(data_first
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.label_entity_id
-_atom_site.pdbx_PDB_model_num
+    const auto document = atom_site_header("first") + R"cif(
 HETATM 1 H H1 . LIG A 1 ? 0 0 0 1 20 0 1 LIG A H1 E1 1
 HETATM 2 O O1 . LIG A 1 ? 2 0 0 1 20 0 1 LIG A O1 E1 1
 HETATM 3 Mg MG . MG B 1 ? 0 3 0 1 20 2 1 MG B MG E2 1
 #
-data_second
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.label_entity_id
-_atom_site.pdbx_PDB_model_num
+)cif" + atom_site_header("second") +
+                          R"cif(
 HETATM 1 H H1 . LIG A 1 ? 0 0 1 1 20 0 1 LIG A H1 E1 1
 HETATM 2 O O1 . LIG A 1 ? 2 0 1 1 20 0 1 LIG A O1 E1 1
 HETATM 3 Mg MG . MG B 1 ? 0 3 1 1 20 2 1 MG B MG E2 1
@@ -373,7 +344,7 @@ HETATM 3 Mg MG . MG B 1 ? 0 3 1 1 20 2 1 MG B MG E2 1
     for (const auto& record : records) {
         molecules.push_back(record.molecule);
     }
-    const auto parameters = make_component_eem_parameters();
+    const auto parameters = chargefw::test::make_eem_ho_parameters(2.5);
     auto execution = calculation::calculate(calculation::assess(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::move(molecules)},
         .parameter_sets = {parameters},
@@ -383,7 +354,7 @@ HETATM 3 Mg MG . MG B 1 ? 0 3 1 1 20 2 1 MG B MG E2 1
                         {.molecule_index = 1, .atom_index = 2, .charge = 0.4}}}}));
     REQUIRE(execution.calculated());
     const auto result = adapters::make_charge_calculation_result(
-        std::move(records), {.method_id = "eem", .parameter_set_id = "json-eem"},
+        std::move(records), {.method_id = "eem", .parameter_set_id = "test-eem-ho"},
         std::move(execution));
 
     auto output = std::ostringstream{};

@@ -13,6 +13,19 @@
 namespace gemmi_adapter = chargefw::adapters::gemmi;
 namespace pdb = gemmi_adapter::pdb_input;
 
+namespace {
+
+[[nodiscard]] auto read_first(const std::string& text,
+                              const gemmi_adapter::InputOptions& options = {}) {
+    std::istringstream input{text};
+    auto reader = pdb::PdbReader{input, {}, options};
+    auto record = reader.next();
+    REQUIRE(record.has_value());
+    return std::move(*record);
+}
+
+} // namespace
+
 static_assert(!std::is_copy_constructible_v<pdb::PdbReader> &&
               !std::is_copy_assignable_v<pdb::PdbReader>);
 static_assert(std::is_move_constructible_v<pdb::PdbReader>);
@@ -134,31 +147,18 @@ END
         CHECK(all_record->import_metadata->atoms[2].structural_labels->author.chain == "A");
         CHECK(all_record->import_metadata->atoms[4].structural_labels->author.chain == "B");
 
-        std::istringstream ligands_input{
+        const auto ligand_and_water_input =
             R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  
 HETATM    2  C1  LIG A   2       1.000   0.000   0.000  1.00 20.00           C  
 HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O  
 HETATM    4  O   WAT A   4       3.000   0.000   0.000  1.00 20.00           O
 END
-)pdb"};
-        auto ligands_reader = pdb::PdbReader{
-            ligands_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers_and_ligands}};
-        const auto ligands_record = ligands_reader.next();
-        REQUIRE(ligands_record.has_value());
-        CHECK(ligands_record->molecule.atom_count() == 2);
-
-        std::istringstream polymers_input{
-            R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  
-HETATM    2  C1  LIG A   2       1.000   0.000   0.000  1.00 20.00           C  
-HETATM    3  O   HOH A   3       2.000   0.000   0.000  1.00 20.00           O  
-HETATM    4  O   WAT A   4       3.000   0.000   0.000  1.00 20.00           O
-END
-)pdb"};
-        auto polymers_reader = pdb::PdbReader{
-            polymers_input, {}, {.selection = gemmi_adapter::RecordSelection::polymers}};
-        const auto polymers_record = polymers_reader.next();
-        REQUIRE(polymers_record.has_value());
-        CHECK(polymers_record->molecule.atom_count() == 2);
+)pdb";
+        for (const auto selection : {gemmi_adapter::RecordSelection::polymers_and_ligands,
+                                     gemmi_adapter::RecordSelection::polymers}) {
+            CHECK(read_first(ligand_and_water_input, {.selection = selection})
+                      .molecule.atom_count() == 2);
+        }
 
         std::istringstream modified_polymer_input{
             R"pdb(ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C
@@ -196,11 +196,7 @@ CONECT   11   12
 END
 )pdb";
         const auto read_strategy = [&](const gemmi_adapter::BondStrategy strategy) {
-            std::istringstream strategy_stream{strategy_input};
-            auto strategy_reader = pdb::PdbReader{strategy_stream, {}, {.bond_strategy = strategy}};
-            auto record = strategy_reader.next();
-            REQUIRE(record.has_value());
-            return std::move(*record);
+            return read_first(strategy_input, {.bond_strategy = strategy});
         };
 
         CHECK(read_strategy(gemmi_adapter::BondStrategy::none).molecule.bond_count() == 0);
@@ -233,18 +229,12 @@ ATOM      2  CA  ALA A   1       1.450   0.000   0.000  1.00 20.00           C
 CONECT    1    2
 END
 )pdb";
-        const auto read_bond_count = [&](const gemmi_adapter::BondStrategy strategy) {
-            std::istringstream duplicate_stream{duplicate_input};
-            auto duplicate_reader =
-                pdb::PdbReader{duplicate_stream, {}, {.bond_strategy = strategy}};
-            const auto record = duplicate_reader.next();
-            REQUIRE(record.has_value());
-            return record->molecule.bond_count();
-        };
-
-        CHECK(read_bond_count(gemmi_adapter::BondStrategy::templates) == 1);
-        CHECK(read_bond_count(gemmi_adapter::BondStrategy::explicit_bonds) == 1);
-        CHECK(read_bond_count(gemmi_adapter::BondStrategy::hybrid) == 1);
+        for (const auto strategy :
+             {gemmi_adapter::BondStrategy::templates, gemmi_adapter::BondStrategy::explicit_bonds,
+              gemmi_adapter::BondStrategy::hybrid}) {
+            CHECK(read_first(duplicate_input, {.bond_strategy = strategy}).molecule.bond_count() ==
+                  1);
+        }
     }
 }
 
@@ -279,17 +269,15 @@ END
 
 TEST_CASE("PDB explicit connections retain address wildcard behavior", "[adapters][pdb]") {
     const auto read_bond_count = [](const std::string_view link) {
-        auto input = std::istringstream{std::string{link} + R"pdb(
+        const auto record =
+            read_first(std::string{link} + R"pdb(
 ATOM      1  C  AALA A   1       0.000   0.000   0.000  1.00 20.00           C
 HETATM    2  C1 ALIG A   5       1.000   0.000   0.000  1.00 20.00           C
 END
-)pdb"};
-        auto reader = pdb::PdbReader{
-            input, {}, {.bond_strategy = gemmi_adapter::BondStrategy::explicit_bonds}};
-        const auto record = reader.next();
-        REQUIRE(record.has_value());
-        CHECK(record->molecule.atom_count() == 2);
-        return record->molecule.bond_count();
+)pdb",
+                       {.bond_strategy = gemmi_adapter::BondStrategy::explicit_bonds});
+        CHECK(record.molecule.atom_count() == 2);
+        return record.molecule.bond_count();
     };
 
     CHECK(read_bond_count("LINK         C   ALA A   1                 C1  LIG A   5") == 1);
@@ -401,13 +389,9 @@ END
 }
 
 TEST_CASE("PDB template links respect chains and insertion codes", "[adapters][pdb]") {
-    const auto read_bond_count = [](const std::string_view text) {
-        std::istringstream input{std::string{text}};
-        auto reader =
-            pdb::PdbReader{input, {}, {.bond_strategy = gemmi_adapter::BondStrategy::templates}};
-        const auto record = reader.next();
-        REQUIRE(record.has_value());
-        return record->molecule.bond_count();
+    const auto read_bond_count = [](const std::string& text) {
+        return read_first(text, {.bond_strategy = gemmi_adapter::BondStrategy::templates})
+            .molecule.bond_count();
     };
 
     CHECK(read_bond_count(

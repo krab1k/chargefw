@@ -1,5 +1,6 @@
 #include <chargefw/adapters/gemmi/mmcif_input.h>
 #include <chargefw/core/bond.h>
+#include <chargefw/core/molecule.h>
 #include <snitch/snitch.hpp>
 
 #include <sstream>
@@ -11,6 +12,44 @@
 
 namespace mmcif = chargefw::adapters::gemmi::mmcif_input;
 namespace gemmi_adapter = chargefw::adapters::gemmi;
+
+namespace {
+
+// mmCIF data block opening with the atom-site loop header shared by these fixtures; each fixture
+// appends its own atom rows.
+[[nodiscard]] auto atom_site_header(const std::string_view block_name) -> std::string {
+    return "data_" + std::string{block_name} + "\nloop_\n" + R"cif(_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num)cif";
+}
+
+[[nodiscard]] auto read_first(const std::string& text, const gemmi_adapter::InputOptions& options)
+    -> chargefw::core::Molecule {
+    std::istringstream input{text};
+    auto reader = mmcif::MmcifReader{input, {}, options};
+    auto record = reader.next();
+    REQUIRE(record.has_value());
+    return std::move(record->molecule);
+}
+
+} // namespace
 
 static_assert(!std::is_copy_constructible_v<mmcif::MmcifReader> &&
               !std::is_copy_assignable_v<mmcif::MmcifReader>);
@@ -97,30 +136,7 @@ _atom_site.pdbx_PDB_model_num
 TEST_CASE("mmCIF templates use canonical labels and reject ambiguous selected names",
           "[adapters][mmcif]") {
     const auto make_input = [](const std::string_view atom_rows) {
-        return std::string{R"cif(data_canonical
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
-)cif"} + std::string{atom_rows} +
-               "\n#\n";
+        return atom_site_header("canonical") + "\n" + std::string{atom_rows} + "\n#\n";
     };
 
     std::istringstream input{make_input("ATOM 1 N N . ALA A 1 ? 0 0 0 1 20 0 9 AUTHOR A N1 1\n"
@@ -202,28 +218,7 @@ ALA N CA SING
 
 TEST_CASE("mmCIF input preserves records, models, selection, and bond strategy",
           "[adapters][mmcif]") {
-    std::istringstream input{R"cif(data_first
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
+    std::istringstream input{atom_site_header("first") + R"cif(
 ATOM 1 C CA . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
 HETATM 2 C C1 . LIG A 2 ? 1.0 0.0 0.0 1.0 20.0 0 2 LIG A C1 1
 HETATM 3 O O . HOH A 3 ? 2.0 0.0 0.0 1.0 20.0 0 3 HOH A O 1
@@ -231,28 +226,8 @@ ATOM 4 C CA . ALA A 1 ? 0.1 0.0 0.0 1.0 20.0 0 1 ALA A CA 2
 HETATM 5 C C1 . LIG A 2 ? 1.1 0.0 0.0 1.0 20.0 0 2 LIG A C1 2
 HETATM 6 O O . HOH A 3 ? 2.1 0.0 0.0 1.0 20.0 0 3 HOH A O 2
 #
-data_second
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
+)cif" + atom_site_header("second") +
+                             R"cif(
 ATOM 1 O O . HOH B 1 ? 3.0 0.0 0.0 1.0 20.0 0 1 HOH B O 1
 #
 )cif"};
@@ -275,52 +250,10 @@ ATOM 1 O O . HOH B 1 ? 3.0 0.0 0.0 1.0 20.0 0 1 HOH B O 1
     CHECK(second->molecule.atom_count() == 1);
     CHECK_FALSE(reader.next().has_value());
 
-    std::istringstream deferred_error_input{R"cif(data_valid
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
+    std::istringstream deferred_error_input{atom_site_header("valid") + R"cif(
 ATOM 1 C CA . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
 #
-data_invalid
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
+)cif" + atom_site_header("invalid") + R"cif(
 ATOM 1 Xx CA . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
 #
 )cif"};
@@ -328,28 +261,7 @@ ATOM 1 Xx CA . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
     REQUIRE(deferred_error_reader.next().has_value());
     CHECK_THROWS_AS(deferred_error_reader.next(), std::runtime_error);
 
-    std::istringstream filtered_input{R"cif(data_filtered
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
+    std::istringstream filtered_input{atom_site_header("filtered") + R"cif(
 ATOM 1 C CA . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
 HETATM 2 C C1 . LIG A 2 ? 1.0 0.0 0.0 1.0 20.0 0 2 LIG A C1 1
 HETATM 3 O O . HOH A 3 ? 2.0 0.0 0.0 1.0 20.0 0 3 HOH A O 1
@@ -361,28 +273,7 @@ HETATM 3 O O . HOH A 3 ? 2.0 0.0 0.0 1.0 20.0 0 3 HOH A O 1
     REQUIRE(filtered_record.has_value());
     CHECK(filtered_record->molecule.atom_count() == 2);
 
-    const auto strategy_input = R"cif(data_connectivity
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
+    const auto strategy_input = atom_site_header("connectivity") + R"cif(
 HETATM 1 C C1 . LIG A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 LIG A C1 1
 HETATM 2 O O1 . LIG A 1 ? 1.0 0.0 0.0 1.0 20.0 0 1 LIG A O1 1
 HETATM 3 C C2 . LIG B 1 ? 2.0 0.0 0.0 1.0 20.0 0 1 LIG B C2 1
@@ -411,11 +302,7 @@ link1 covale A LIG 1 O1 B LIG 1 C2
 #
 )cif";
     const auto read_strategy = [&](const gemmi_adapter::BondStrategy strategy) {
-        std::istringstream strategy_stream{strategy_input};
-        auto strategy_reader = mmcif::MmcifReader{strategy_stream, {}, {.bond_strategy = strategy}};
-        const auto record = strategy_reader.next();
-        REQUIRE(record.has_value());
-        return record->molecule;
+        return read_first(strategy_input, {.bond_strategy = strategy});
     };
 
     CHECK(read_strategy(gemmi_adapter::BondStrategy::none).bond_count() == 0);
@@ -426,28 +313,7 @@ link1 covale A LIG 1 O1 B LIG 1 C2
     CHECK(read_strategy(gemmi_adapter::BondStrategy::hybrid).bond_count() == 3);
 
     const auto duplicate_input = [](const std::string_view component_bond) {
-        return std::string{R"cif(data_duplicate
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
+        return atom_site_header("duplicate") + R"cif(
 ATOM 1 N N . ALA A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 ALA A N 1
 ATOM 2 C CA . ALA A 1 ? 1.0 0.0 0.0 1.0 20.0 0 1 ALA A CA 1
 #
@@ -456,17 +322,13 @@ _chem_comp_bond.comp_id
 _chem_comp_bond.atom_id_1
 _chem_comp_bond.atom_id_2
 _chem_comp_bond.value_order
-)cif"} + std::string{component_bond} +
+)cif" + std::string{component_bond} +
                "\n#\n";
     };
     const auto read_duplicate_bond = [&](const gemmi_adapter::BondStrategy strategy,
                                          const std::string_view component_bond) {
-        std::istringstream duplicate_stream{duplicate_input(component_bond)};
-        auto duplicate_reader =
-            mmcif::MmcifReader{duplicate_stream, {}, {.bond_strategy = strategy}};
-        const auto record = duplicate_reader.next();
-        REQUIRE(record.has_value());
-        const auto molecule = record->molecule;
+        const auto molecule =
+            read_first(duplicate_input(component_bond), {.bond_strategy = strategy});
         REQUIRE(molecule.bond_count() == 1);
         return molecule.bond(0);
     };
@@ -484,13 +346,9 @@ _chem_comp_bond.value_order
     }
 
     const auto explicit_bond_count = [&](const std::string_view value_order) {
-        std::istringstream component_stream{
-            duplicate_input("ALA N CA " + std::string{value_order})};
-        auto component_reader = mmcif::MmcifReader{
-            component_stream, {}, {.bond_strategy = gemmi_adapter::BondStrategy::explicit_bonds}};
-        const auto record = component_reader.next();
-        REQUIRE(record.has_value());
-        return record->molecule.bond_count();
+        return read_first(duplicate_input("ALA N CA " + std::string{value_order}),
+                          {.bond_strategy = gemmi_adapter::BondStrategy::explicit_bonds})
+            .bond_count();
     };
     CHECK(
         read_duplicate_bond(gemmi_adapter::BondStrategy::explicit_bonds, "ALA N CA aRoM").order() ==
@@ -501,28 +359,7 @@ _chem_comp_bond.value_order
 }
 
 TEST_CASE("mmCIF input restores source order across residues and models", "[adapters][mmcif]") {
-    std::istringstream input{R"cif(data_order
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
+    std::istringstream input{atom_site_header("order") + R"cif(
 HETATM Csite C C1 . LIG A 1 ? 0 0 0 1 20 0 1 LIG A C1 1
 HETATM Osite O O1 . LIG A 2 ? 1 0 0 1 20 0 2 LIG A O1 1
 HETATM Nsite N N1 . LIG A 1 ? 2 0 0 1 20 0 1 LIG A N1 1
@@ -567,28 +404,7 @@ LIG C1 N1 SING
 }
 
 TEST_CASE("mmCIF input rejects incompatible conformer atom sequences", "[adapters][mmcif]") {
-    const auto incompatible_input = R"cif(data_incompatible
-loop_
-_atom_site.group_PDB
-_atom_site.id
-_atom_site.type_symbol
-_atom_site.label_atom_id
-_atom_site.label_alt_id
-_atom_site.label_comp_id
-_atom_site.label_asym_id
-_atom_site.label_seq_id
-_atom_site.pdbx_PDB_ins_code
-_atom_site.Cartn_x
-_atom_site.Cartn_y
-_atom_site.Cartn_z
-_atom_site.occupancy
-_atom_site.B_iso_or_equiv
-_atom_site.pdbx_formal_charge
-_atom_site.auth_seq_id
-_atom_site.auth_comp_id
-_atom_site.auth_asym_id
-_atom_site.auth_atom_id
-_atom_site.pdbx_PDB_model_num
+    const auto incompatible_input = atom_site_header("incompatible") + R"cif(
 HETATM 1 C C1 . LIG A 1 ? 0.0 0.0 0.0 1.0 20.0 0 1 LIG A C1 1
 HETATM 2 O O1 . LIG A 1 ? 1.0 0.0 0.0 1.0 20.0 0 1 LIG A O1 1
 HETATM 3 C C1 . LIG A 1 ? 0.1 0.0 0.0 1.0 20.0 0 1 LIG A C1 2
