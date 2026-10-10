@@ -189,6 +189,7 @@ TEST_CASE("native MOL, SDF, and MOL2 input accepts CRLF", "[adapters][native]") 
             "M  END\n";
         auto input = std::istringstream{
             with_crlf(std::string{v2000} + "$$$$\n" + untitled + "$$$$\n\n  \n")};
+        input.exceptions(std::ios::failbit | std::ios::badbit);
         auto reader = sdf::SdfReader{input, "trailing_blank_lines.sdf"};
         REQUIRE(reader.next().has_value());
         const auto second = reader.next();

@@ -11,13 +11,16 @@ namespace {
 // Blank lines may begin a record with an empty title, so whitespace is skipped only to detect
 // trailing whitespace at the end of the file and is otherwise restored.
 auto at_end_of_records(std::istream& input) -> bool {
+    if (input.eof()) {
+        return true;
+    }
     const auto start = input.tellg();
     if (start == std::istream::pos_type(-1)) {
         return input.peek() == std::char_traits<char>::eof();
     }
 
     input >> std::ws;
-    if (input.peek() == std::char_traits<char>::eof()) {
+    if (input.eof()) {
         return true;
     }
     input.seekg(start);
