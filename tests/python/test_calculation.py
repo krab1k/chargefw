@@ -810,7 +810,7 @@ class CalculationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             chargefw.assess(water(), method="not-a-method")
 
-        with self.assertRaisesRegex(ValueError, "parameter_set requires an explicit method"):
+        with self.assertRaisesRegex(ValueError, "requires an explicit method"):
             chargefw.assess(water(), parameter_set="QEq_original")
 
         with self.assertRaises(ValueError):

@@ -153,18 +153,6 @@ class RequestedCalculation:
         parameter_set_id = (
             parameter_set.id if isinstance(parameter_set, ParameterSet) else parameter_set
         )
-        if parameter_set_id is not None and method_id is None:
-            raise ValueError("parameter_set requires an explicit method")
-        if (
-            isinstance(parameter_set, ParameterSet)
-            and method_id is not None
-            and parameter_set.method != method_id
-        ):
-            raise ValueError(
-                f"parameter set {parameter_set.id!r} belongs to method "
-                f"{parameter_set.method!r}, not {method_id!r}"
-            )
-
         if options is not None and options_by_method is not None:
             raise ValueError("options and options_by_method cannot be used together")
         if options is not None:
@@ -182,15 +170,9 @@ class RequestedCalculation:
             raise TypeError("execution must be a string")
         if execution not in _EXECUTIONS:
             raise ValueError("execution must be 'auto', 'full', 'cutoff', or 'cover'")
-        if execution == "full" and radius is not None:
-            raise ValueError("full execution does not accept a radius")
-        if execution in ("cutoff", "cover") and radius is None:
-            raise ValueError(f"{execution} execution requires a radius")
         if radius is not None:
             if not isinstance(radius, numbers.Real) or isinstance(radius, (bool, np.bool_)):
                 raise TypeError("radius must be a real number or None")
-            if not np.isfinite(float(radius)) or float(radius) < 8.0:
-                raise ValueError("radius must be finite and at least 8.0")
             radius = float(radius)
 
         normalized_cutoff = (
@@ -203,14 +185,6 @@ class RequestedCalculation:
             if cover_threshold is None
             else _normalized_nonnegative_integer(cover_threshold, "cover_threshold")
         )
-        if normalized_cover is not None and normalized_cutoff is None:
-            raise ValueError("cover_threshold requires a finite cutoff_threshold")
-        if (
-            normalized_cover is not None
-            and normalized_cutoff is not None
-            and normalized_cover < normalized_cutoff
-        ):
-            raise ValueError("cover_threshold must not be smaller than cutoff_threshold")
         normalized_threads = _normalized_nonnegative_integer(threads, "threads")
         if normalized_threads > _MAX_NATIVE_THREADS:
             raise ValueError("threads exceeds oneTBB's supported integer range")

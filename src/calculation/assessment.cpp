@@ -158,8 +158,7 @@ auto retain_requested_parameter_set(AssessmentRequest& request) -> void {
             return parameter_set.id() == *request.parameter_set_id;
         });
     if (found == request.parameter_sets.end()) {
-        throw std::invalid_argument{"parameter set '" + *request.parameter_set_id +
-                                    "' was not provided"};
+        throw std::invalid_argument{"unknown parameter set '" + *request.parameter_set_id + "'"};
     }
     if (!found->method_id().empty() && found->method_id() != *request.method_id) {
         throw std::invalid_argument{"parameter set '" + *request.parameter_set_id +
