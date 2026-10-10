@@ -186,6 +186,22 @@ TEST_CASE("native MOL, SDF, and MOL2 input accepts CRLF", "[adapters][native]") 
     }
 
     {
+        constexpr auto untitled =
+            "\nchargefw\n\n"
+            "  1  0  0  0  0  0  0  0  0  0999 V2000\n"
+            "    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n"
+            "M  END\n";
+        auto input = std::istringstream{
+            with_crlf(std::string{v2000} + "$$$$\n" + untitled + "$$$$\n\n  \n")};
+        auto reader = sdf::SdfReader{input, "trailing_blank_lines.sdf"};
+        REQUIRE(reader.next().has_value());
+        const auto second = reader.next();
+        REQUIRE(second.has_value());
+        CHECK(second->molecule.atom_count() == 1);
+        CHECK_FALSE(reader.next().has_value());
+    }
+
+    {
         constexpr auto source = "@<TRIPOS>MOLECULE\nminimal\n2 1 0 0 0\nSMALL\nNO_CHARGES\n\n"
                                 "@<TRIPOS>ATOM\n1 C1 0 0 0 C.3\n2 H1 1 0 0 H\n"
                                 "@<TRIPOS>BOND\n1 1 2 1\n";

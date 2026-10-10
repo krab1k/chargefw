@@ -8,6 +8,22 @@
 namespace chargefw::adapters::native::sdf_input {
 namespace {
 
+// Blank lines may begin a record with an empty title, so whitespace is skipped only to detect
+// trailing whitespace at the end of the file and is otherwise restored.
+auto at_end_of_records(std::istream& input) -> bool {
+    const auto start = input.tellg();
+    if (start == std::istream::pos_type(-1)) {
+        return input.peek() == std::char_traits<char>::eof();
+    }
+
+    input >> std::ws;
+    if (input.peek() == std::char_traits<char>::eof()) {
+        return true;
+    }
+    input.seekg(start);
+    return false;
+}
+
 auto consume_to_sdf_delimiter(std::istream& input) -> void {
     std::string line;
 
@@ -27,7 +43,7 @@ SdfReader::SdfReader(std::istream& input, std::string source)
     : input_{std::addressof(input)}, source_{std::move(source)} {}
 
 auto SdfReader::next() -> std::optional<ImportedMoleculeRecord> {
-    if (input_->peek() == std::char_traits<char>::eof()) {
+    if (at_end_of_records(*input_)) {
         return std::nullopt;
     }
 
