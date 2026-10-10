@@ -1,3 +1,4 @@
+#include "support/test_methods.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
@@ -39,72 +40,6 @@ TEST_CASE("execution applicability enums convert to stable strings", "[methods][
 }
 
 namespace {
-
-class AtomParameterMethod final : public methods::Method {
-  public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "atom-parameter-test",
-                                                          .name = "Atom parameter test",
-                                                          .full_name = "Atom parameter test",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.atom_parameters = {"value"};
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
-
-    [[nodiscard]] auto calculate(const methods::CalculationInput& /* unused */) const
-        -> chargefw::charges::AtomicCharges override {
-        return chargefw::charges::AtomicCharges{std::vector<double>{}};
-    }
-};
-
-class ResourceMethod final : public methods::Method {
-  public:
-    explicit ResourceMethod(methods::ResourceRequirements resources = {},
-                            const bool requires_coordinates = false)
-        : resources_{resources}, requires_coordinates_{requires_coordinates} {}
-
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "resource-test",
-                                                          .name = "Resource test",
-                                                          .full_name = "Resource test",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.coordinates = requires_coordinates_;
-        requirements.resources = resources_;
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
-
-    [[nodiscard]] auto calculate(const methods::CalculationInput& /* unused */) const
-        -> chargefw::charges::AtomicCharges override {
-        return chargefw::charges::AtomicCharges{std::vector<double>{}};
-    }
-
-  private:
-    methods::ResourceRequirements resources_;
-    bool requires_coordinates_ = false;
-};
 
 auto assessment_for(const methods::ApplicableMethod& candidate,
                     const calculation::ExecutionMode mode) -> const methods::ExecutionAssessment& {
@@ -234,7 +169,8 @@ TEST_CASE("applicability pairs methods with compatible parameter sets",
     const auto* dummy = methods::method_registry().find("dummy");
     REQUIRE(dummy != nullptr);
 
-    const AtomParameterMethod atom_parameter_method;
+    const chargefw::test::StubMethod atom_parameter_method{"atom-parameter-test",
+                                                           {.atom_parameters = {"value"}}};
 
     const std::vector<const methods::Method*> candidate_methods{dummy, &atom_parameter_method};
 
@@ -301,7 +237,8 @@ TEST_CASE("applicability pairs methods with compatible parameter sets",
 
 TEST_CASE("applicability honors permissive parameter classification",
           "[methods][method-applicability]") {
-    const AtomParameterMethod atom_parameter_method;
+    const chargefw::test::StubMethod atom_parameter_method{"atom-parameter-test",
+                                                           {.atom_parameters = {"value"}}};
 
     const core::MoleculeCollection double_bonded_collection{
         std::vector{make_double_bonded_carbons()}};
@@ -356,7 +293,7 @@ TEST_CASE("applicability reports full-execution resource threshold warnings",
     const auto* mgc = methods::method_registry().find("mgc");
     REQUIRE(mgc != nullptr);
 
-    const ResourceMethod inexpensive_method{};
+    const chargefw::test::StubMethod inexpensive_method{"resource-test"};
     const std::vector<const methods::Method*> inexpensive_methods{&inexpensive_method};
     const auto inexpensive_result =
         methods::find_applicable_methods({.molecules = prepared_collection,
@@ -367,9 +304,10 @@ TEST_CASE("applicability reports full-execution resource threshold warnings",
     CHECK(assessment_for(inexpensive_result.applicable[0], calculation::ExecutionMode::full)
               .availability == methods::ExecutionAvailability::available);
 
-    const ResourceMethod expensive_method{
-        methods::ResourceRequirements{.time = methods::ComplexityTerm::atoms_cubed,
-                                      .memory = methods::ComplexityTerm::atoms_squared}};
+    const chargefw::test::StubMethod expensive_method{
+        "resource-test",
+        {.resources = {.time = methods::ComplexityTerm::atoms_cubed,
+                       .memory = methods::ComplexityTerm::atoms_squared}}};
     const std::vector<const methods::Method*> expensive_methods{&expensive_method};
     const auto below_threshold_result =
         methods::find_applicable_methods({.molecules = prepared_collection,
@@ -445,8 +383,8 @@ TEST_CASE("reduced execution applicability requires geometry and declared suppor
     const auto collection = make_collection();
     const features::PreparedMoleculeCollection prepared_collection{collection};
 
-    const ResourceMethod topology_reduced_method{
-        methods::ResourceRequirements{.supports_cutoff = true, .supports_cover = true}};
+    const chargefw::test::StubMethod topology_reduced_method{
+        "resource-test", {.resources = {.supports_cutoff = true, .supports_cover = true}}};
     const std::vector<const methods::Method*> topology_reduced_methods{&topology_reduced_method};
     const auto topology_reduced_result =
         methods::find_applicable_methods({.molecules = prepared_collection,
@@ -458,11 +396,13 @@ TEST_CASE("reduced execution applicability requires geometry and declared suppor
     CHECK(assessment_for(topology_reduced_result.applicable[0], calculation::ExecutionMode::cover)
               .availability == methods::ExecutionAvailability::unsupported);
 
-    const ResourceMethod spatial_reduced_method{
-        {.supports_cutoff = true,
-         .supports_cover = true,
-         .reduced_charge_policy = methods::ReducedChargePolicy::uniform_target_global},
-        true};
+    const chargefw::test::StubMethod spatial_reduced_method{
+        "resource-test",
+        {.coordinates = true,
+         .resources = {.supports_cutoff = true,
+                       .supports_cover = true,
+                       .reduced_charge_policy =
+                           methods::ReducedChargePolicy::uniform_target_global}}};
     const std::vector<const methods::Method*> spatial_reduced_methods{&spatial_reduced_method};
     const core::MoleculeCollection spatial_collection{std::vector{chargefw::test::make_water()}};
     const features::PreparedMoleculeCollection spatial_prepared_collection{spatial_collection};

@@ -34,19 +34,6 @@ namespace methods = chargefw::methods;
 
 namespace {
 
-auto make_eem_parameters(const double kappa = 1.0) -> std::vector<parameters::ParameterSet> {
-    const auto parameter_set = parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-eem", .method_id = "eem", .name = "Test EEM parameters"},
-        parameters::CommonParameters{{{.name = "kappa", .value = kappa}}},
-        parameters::AtomParameters{
-            {{.key = chargefw::test::plain_atom_key(1),
-              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 5.0}}},
-             {.key = chargefw::test::plain_atom_key(8),
-              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 9.0}}}}}};
-    return {parameter_set};
-}
-
 auto make_active_hydrogen_oxygen(const core::Position hydrogen = {},
                                  const core::Position oxygen = core::Position{.x = 2.0})
     -> core::Molecule {
@@ -58,10 +45,10 @@ auto calculate_eem(const core::Molecule& molecule,
                    const std::span<const methods::FixedPointSource> fixed_sources,
                    const double target_charge, const double kappa = 1.7)
     -> chargefw::charges::AtomicCharges {
-    const auto parameter_sets = make_eem_parameters(kappa);
+    const auto parameter_set = chargefw::test::make_eem_ho_parameters(kappa);
     const auto classification = parameters::ParameterClassification{
         parameters::AtomParameterClassification{std::vector<std::size_t>{0, 1}}};
-    const auto parameter_view = parameters::ParameterView{parameter_sets[0], classification};
+    const auto parameter_view = parameters::ParameterView{parameter_set, classification};
     const auto prepared = features::PreparedMolecule{molecule};
     auto geometry = std::optional<features::ConformerFeatures>{};
     if (molecule.conformer_count() != 0) {
@@ -78,73 +65,15 @@ auto calculate_eem(const core::Molecule& molecule,
     return method->calculate(input);
 }
 
-auto make_eqeqc_parameters() -> std::vector<parameters::ParameterSet> {
-    const auto parameter_set = parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-eqeqc", .method_id = "eqeqc", .name = "Test EQeq+C parameters"},
-        parameters::CommonParameters{{{.name = "alpha", .value = 1.0}}},
-        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
-                                     .parameters = {{.name = "Dz", .value = 0.1}}},
-                                    {.key = chargefw::test::plain_atom_key(8),
-                                     .parameters = {{.name = "Dz", .value = 0.2}}}}}};
-    return {parameter_set};
-}
-
-auto make_smpqeq_parameters() -> std::vector<parameters::ParameterSet> {
-    const auto parameter_set = parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "test-smpqeq", .method_id = "smpqeq", .name = "Test SMP/QEq parameters"},
-        {},
-        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
-                                     .parameters = {{.name = "first", .value = 1.0},
-                                                    {.name = "second", .value = 10.0},
-                                                    {.name = "third", .value = 1.0},
-                                                    {.name = "fourth", .value = 0.1}}},
-                                    {.key = chargefw::test::plain_atom_key(8),
-                                     .parameters = {{.name = "first", .value = 2.0},
-                                                    {.name = "second", .value = 10.0},
-                                                    {.name = "third", .value = 1.0},
-                                                    {.name = "fourth", .value = 0.1}}}}}};
-    return {parameter_set};
-}
-
-struct GeometryMethodCase {
-    std::string_view id;
-    double minimum_change;
-    std::vector<parameters::ParameterSet> parameter_sets;
-};
-
 } // namespace
-
-TEST_CASE("electronegativity-equalization methods respond to changed conformer geometry",
-          "[methods][eem][qeq][eqeq][eqeqc][sfkeem][abeem][smpqeq]") {
-    const auto methods = std::array{
-        GeometryMethodCase{"eem", 1.0e-8, make_eem_parameters()},
-        GeometryMethodCase{"qeq", 1.0e-8, {chargefw::test::make_qeq_ho_parameters()}},
-        GeometryMethodCase{"eqeq", 1.0e-8, {}},
-        GeometryMethodCase{"eqeqc", 1.0e-8, make_eqeqc_parameters()},
-        GeometryMethodCase{"sfkeem", 1.0e-8, {chargefw::test::make_sfkeem_ho_parameters()}},
-        GeometryMethodCase{"abeem", 1.0e-4, {chargefw::test::make_abeem_ho_parameters()}},
-        GeometryMethodCase{"smpqeq", 1.0e-8, make_smpqeq_parameters()},
-    };
-
-    for (const auto& method : methods) {
-        CAPTURE(method.id);
-        const auto charge_set = chargefw::test::calculate_method(
-            chargefw::test::make_two_conformer_water(), method.id, method.parameter_sets);
-
-        CHECK(std::abs(charge_set.assignment(0).charges[0] - charge_set.assignment(1).charges[0]) >
-              method.minimum_change);
-    }
-}
 
 TEST_CASE("EEM enforces a charged molecular target", "[methods][eem]") {
     const chargefw::core::Molecule cation{
         {chargefw::core::Atom{1, 1}},
         {},
         {chargefw::core::Conformer{{chargefw::core::Position{}}}}};
-    const auto charge_set =
-        chargefw::test::calculate_single_method(cation, "eem", make_eem_parameters());
+    const auto charge_set = chargefw::test::calculate_single_method(
+        cation, "eem", {chargefw::test::make_eem_ho_parameters(1.0)});
 
     CHECK(std::abs(charge_set.assignment(0).charges[0] - 1.0) < 1.0e-12);
     CHECK(std::abs(charge_set.assignment(0).charges.total() - 1.0) < 1.0e-12);
@@ -161,8 +90,8 @@ TEST_CASE("EEM two-atom charges obey equalization at different distances and tar
                  {chargefw::core::Position{}, chargefw::core::Position{.x = 1.0}}},
              chargefw::core::Conformer{
                  {chargefw::core::Position{}, chargefw::core::Position{.x = 2.0}}}}};
-        const auto charge_set =
-            chargefw::test::calculate_method(molecule, "eem", make_eem_parameters());
+        const auto charge_set = chargefw::test::calculate_method(
+            molecule, "eem", {chargefw::test::make_eem_ho_parameters(1.0)});
         chargefw::test::assert_conformer_dependent(charge_set, 2);
 
         // EEM uses A = chi, B = hardness (no factor of two), and J = kappa/r.
@@ -258,10 +187,10 @@ TEST_CASE("EEM fixed-source validation requires geometry for its active molecule
           "[methods][eem]") {
     const auto molecule = make_active_hydrogen_oxygen();
     const auto other_molecule = make_active_hydrogen_oxygen({}, {3.0, 0.0, 0.0});
-    const auto parameter_sets = make_eem_parameters(1.7);
+    const auto parameter_set = chargefw::test::make_eem_ho_parameters(1.7);
     const auto classification = parameters::ParameterClassification{
         parameters::AtomParameterClassification{std::vector<std::size_t>{0, 1}}};
-    const auto parameter_view = parameters::ParameterView{parameter_sets[0], classification};
+    const auto parameter_view = parameters::ParameterView{parameter_set, classification};
     const auto prepared = features::PreparedMolecule{molecule};
     const auto foreign_geometry = features::ConformerFeatures{other_molecule};
     const auto options = methods::MethodOptions{};

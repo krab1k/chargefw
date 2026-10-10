@@ -112,14 +112,6 @@ auto make_disconnected_parameters() -> parameters::ParameterSet {
 
 } // namespace
 
-TEST_CASE("SQE+qp responds to changed conformer geometry", "[methods][sqeqp]") {
-    const auto charge_set = chargefw::test::calculate_method(
-        chargefw::test::make_two_conformer_water(), "sqeqp", {make_parameter_set()});
-    const auto& charges = charge_set.assignment(0).charges;
-
-    CHECK(std::abs(charges[0] - charge_set.assignment(1).charges[0]) > 1.0e-4);
-}
-
 TEST_CASE("SQE+qp subtracts the Gaussian-to-point source field before bond projection",
           "[methods][sqeqp]") {
     const auto molecule = core::Molecule{std::vector{core::Atom{1}, core::Atom{8}},

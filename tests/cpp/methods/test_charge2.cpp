@@ -4,7 +4,6 @@
 #include <chargefw/core/atom.h>
 #include <chargefw/core/bond.h>
 #include <chargefw/core/molecule.h>
-#include <chargefw/features/prepared_molecule.h>
 #include <chargefw/methods/method_options.h>
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/models/atom_parameters.h>
@@ -98,20 +97,4 @@ TEST_CASE("Charge2 reproduces published methyl fluoride charges", "[methods][cha
     CHECK(std::abs(charges[2] - 0.062) < 0.0005);
     CHECK(std::abs(charges[3] - 0.062) < 0.0005);
     CHECK(std::abs(charges[4] - (-0.222)) < 0.0005);
-}
-
-TEST_CASE("Charge2 rejects charged connected components", "[methods][charge2]") {
-    const auto* charge2 = methods::method_registry().find("charge2");
-    REQUIRE(charge2 != nullptr);
-
-    const chargefw::core::Molecule cation{{chargefw::core::Atom{1, 1}}};
-    const chargefw::features::PreparedMolecule prepared_cation{cation};
-    const auto options = methods::make_default_options(charge2->option_schema());
-    const auto prerequisite_result = charge2->check_method_prerequisites(
-        {.prepared_molecule = prepared_cation, .method_options = options});
-
-    CHECK(!prerequisite_result);
-    REQUIRE(prerequisite_result.issues().size() == 1);
-    CHECK(prerequisite_result.issues()[0].kind ==
-          methods::PrerequisiteIssueKind::unsupported_molecule);
 }

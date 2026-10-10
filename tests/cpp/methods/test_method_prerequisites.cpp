@@ -1,3 +1,4 @@
+#include "support/test_methods.h"
 #include "support/test_molecules.h"
 
 #include <chargefw/core/atom.h>
@@ -16,6 +17,7 @@
 #include <optional>
 #include <snitch/snitch.hpp>
 #include <span>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -34,65 +36,6 @@ namespace features = chargefw::features;
 
 namespace {
 
-class CoordinatesMethod final : public methods::Method {
-  public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "coordinates-test",
-                                                          .name = "Coordinates test",
-                                                          .full_name = "Coordinates test",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.coordinates = true;
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
-
-    [[nodiscard]] auto calculate(const methods::CalculationInput& /* unused */) const
-        -> chargefw::charges::AtomicCharges override {
-        return chargefw::charges::AtomicCharges{std::vector<double>{}};
-    }
-};
-
-class DenseMethod final : public methods::Method {
-  public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "dense-test",
-                                                          .name = "Dense test",
-                                                          .full_name = "Dense test",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.resources.time = methods::ComplexityTerm::atoms_cubed;
-        requirements.resources.memory = methods::ComplexityTerm::atoms_squared;
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
-
-    [[nodiscard]] auto calculate(const methods::CalculationInput& /* unused */) const
-        -> chargefw::charges::AtomicCharges override {
-        return chargefw::charges::AtomicCharges{std::vector<double>{}};
-    }
-};
-
 auto make_collection() -> core::MoleculeCollection {
     std::vector molecules{chargefw::test::make_water(),
                           chargefw::test::make_formally_charged_pair()};
@@ -102,43 +45,56 @@ auto make_collection() -> core::MoleculeCollection {
 
 } // namespace
 
-TEST_CASE("method prerequisites detect missing features and unsupported molecules",
-          "[methods][method-prerequisites]") {
+TEST_CASE("parameterless built-ins accept water", "[methods][method-prerequisites]") {
     const auto water = chargefw::test::make_water();
-    const auto charged_pair = chargefw::test::make_formally_charged_pair();
-
     const features::PreparedMolecule prepared_water{water};
-    const features::PreparedMolecule prepared_charged_pair{charged_pair};
-
     const auto empty_options = methods::MethodOptions{};
 
-    const auto& registry = methods::method_registry();
-    const auto* abeem = registry.find("abeem");
-    const auto* dummy = registry.find("dummy");
-    const auto* formal = registry.find("formal");
+    for (const auto method_id : {"dummy", "formal"}) {
+        CAPTURE(method_id);
+        const auto* method = methods::method_registry().find(method_id);
+        REQUIRE(method != nullptr);
+        CHECK(method->check_method_prerequisites(
+            {.prepared_molecule = prepared_water, .method_options = empty_options}));
+    }
+}
 
-    REQUIRE(abeem != nullptr);
-    REQUIRE(dummy != nullptr);
-    REQUIRE(formal != nullptr);
-
-    CHECK(dummy->check_method_prerequisites(
-        {.prepared_molecule = prepared_water, .method_options = empty_options}));
-
-    CHECK(formal->check_method_prerequisites(
-        {.prepared_molecule = prepared_water, .method_options = empty_options}));
-
-    const CoordinatesMethod coordinates_method;
+TEST_CASE("coordinate requirements detect molecules without conformers",
+          "[methods][method-prerequisites]") {
+    const chargefw::test::StubMethod coordinates_method{"coordinates-test", {.coordinates = true}};
+    const auto empty_options = methods::MethodOptions{};
+    const auto water = chargefw::test::make_water();
+    const auto charged_pair = chargefw::test::make_formally_charged_pair();
+    const features::PreparedMolecule prepared_water{water};
+    const features::PreparedMolecule prepared_charged_pair{charged_pair};
 
     CHECK(coordinates_method.check_method_prerequisites(
         {.prepared_molecule = prepared_water, .method_options = empty_options}));
 
     const auto missing_coordinates = coordinates_method.check_method_prerequisites(
         {.prepared_molecule = prepared_charged_pair, .method_options = empty_options});
-
     CHECK(!missing_coordinates);
     REQUIRE(missing_coordinates.issues().size() == 1);
     CHECK(missing_coordinates.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
 
+    const auto collection = make_collection();
+    const features::PreparedMoleculeCollection prepared_collection{collection};
+    const auto* dummy = methods::method_registry().find("dummy");
+    REQUIRE(dummy != nullptr);
+    CHECK(methods::check_method_prerequisites(*dummy, prepared_collection, empty_options));
+
+    const auto collection_result =
+        methods::check_method_prerequisites(coordinates_method, prepared_collection, empty_options);
+    CHECK(!collection_result);
+    REQUIRE(collection_result.issues().size() == 1);
+    CHECK(collection_result.issues()[0].kind == methods::PrerequisiteIssueKind::missing_feature);
+    CHECK(collection_result.issues()[0].molecule_index == 1);
+    CHECK(collection_result.issues()[0].message.contains("molecule 2"));
+}
+
+TEST_CASE("coordinate requirements reject coincident atoms in every conformer",
+          "[methods][method-prerequisites]") {
+    const chargefw::test::StubMethod coordinates_method{"coordinates-test", {.coordinates = true}};
     const core::Molecule coincident_atoms{
         std::vector{core::Atom{1}, core::Atom{1}},
         {},
@@ -146,76 +102,71 @@ TEST_CASE("method prerequisites detect missing features and unsupported molecule
                                      core::Position{.x = 1.5, .y = -2.25, .z = 3.75}},
                                     "first"},
                     core::Conformer{{core::Position{}, core::Position{.x = -0.0}}, "second"}}};
-    const features::PreparedMolecule prepared_coincident_atoms{coincident_atoms};
-    const auto coincident_atoms_result = coordinates_method.check_method_prerequisites(
-        {.prepared_molecule = prepared_coincident_atoms, .method_options = empty_options});
-    CHECK(!coincident_atoms_result);
-    REQUIRE(coincident_atoms_result.issues().size() == 2);
-    CHECK(coincident_atoms_result.issues()[0].kind ==
-          methods::PrerequisiteIssueKind::invalid_geometry);
-    CHECK(coincident_atoms_result.issues()[0].atom_index == 1);
-    CHECK(coincident_atoms_result.issues()[0].conformer_index == 0);
-    CHECK(coincident_atoms_result.issues()[0].message.contains("conformer 1"));
-    CHECK(coincident_atoms_result.issues()[0].message.contains("atom 1 (H, formal charge 0)"));
-    CHECK(coincident_atoms_result.issues()[1].kind ==
-          methods::PrerequisiteIssueKind::invalid_geometry);
-    CHECK(coincident_atoms_result.issues()[1].atom_index == 1);
-    CHECK(coincident_atoms_result.issues()[1].conformer_index == 1);
-    CHECK(coincident_atoms_result.issues()[1].message.contains("conformer 2"));
+    const features::PreparedMolecule prepared{coincident_atoms};
 
+    const auto result = coordinates_method.check_method_prerequisites(
+        {.prepared_molecule = prepared, .method_options = methods::MethodOptions{}});
+    CHECK(!result);
+    REQUIRE(result.issues().size() == 2);
+    for (std::size_t conformer_index = 0; conformer_index < 2; ++conformer_index) {
+        const auto& issue = result.issues()[conformer_index];
+        CHECK(issue.kind == methods::PrerequisiteIssueKind::invalid_geometry);
+        CHECK(issue.atom_index == 1);
+        CHECK(issue.conformer_index == conformer_index);
+        CHECK(issue.message.contains("conformer " + std::to_string(conformer_index + 1)));
+    }
+    CHECK(result.issues()[0].message.contains("atom 1 (H, formal charge 0)"));
+}
+
+TEST_CASE("coordinate requirements reject non-finite coordinates",
+          "[methods][method-prerequisites]") {
+    const chargefw::test::StubMethod coordinates_method{"coordinates-test", {.coordinates = true}};
     const core::Molecule nonfinite_atom{
         std::vector{core::Atom{1}},
         {},
         std::vector{core::Conformer{{core::Position{.x = std::numeric_limits<double>::quiet_NaN()}},
                                     "nonfinite"}}};
-    const features::PreparedMolecule prepared_nonfinite_atom{nonfinite_atom};
-    const auto nonfinite_atom_result = coordinates_method.check_method_prerequisites(
-        {.prepared_molecule = prepared_nonfinite_atom, .method_options = empty_options});
-    CHECK(!nonfinite_atom_result);
-    REQUIRE(nonfinite_atom_result.issues().size() == 1);
-    CHECK(nonfinite_atom_result.issues()[0].kind ==
-          methods::PrerequisiteIssueKind::invalid_geometry);
-    CHECK(nonfinite_atom_result.issues()[0].atom_index == 0);
-    CHECK(nonfinite_atom_result.issues()[0].conformer_index == 0);
-    CHECK(nonfinite_atom_result.issues()[0].message ==
-          "method 'coordinates-test', conformer 1: atom 1 (H, formal charge 0) has non-finite "
-          "coordinates");
+    const features::PreparedMolecule prepared{nonfinite_atom};
 
-    const DenseMethod dense_method;
+    const auto result = coordinates_method.check_method_prerequisites(
+        {.prepared_molecule = prepared, .method_options = methods::MethodOptions{}});
+    CHECK(!result);
+    REQUIRE(result.issues().size() == 1);
+    const auto& issue = result.issues()[0];
+    CHECK(issue.kind == methods::PrerequisiteIssueKind::invalid_geometry);
+    CHECK(issue.atom_index == 0);
+    CHECK(issue.conformer_index == 0);
+    CHECK(issue.message.contains("method 'coordinates-test'"));
+    CHECK(issue.message.contains("atom 1 (H, formal charge 0)"));
+}
 
-    const auto dense_result = dense_method.check_method_prerequisites(
-        {.prepared_molecule = prepared_water, .method_options = empty_options});
+TEST_CASE("resource requirements do not restrict prerequisites",
+          "[methods][method-prerequisites]") {
+    const chargefw::test::StubMethod dense_method{
+        "dense-test",
+        {.resources = {.time = methods::ComplexityTerm::atoms_cubed,
+                       .memory = methods::ComplexityTerm::atoms_squared}}};
+    const auto water = chargefw::test::make_water();
+    const features::PreparedMolecule prepared_water{water};
 
-    CHECK(dense_result);
-    CHECK(dense_result.issues().empty());
+    const auto result = dense_method.check_method_prerequisites(
+        {.prepared_molecule = prepared_water, .method_options = methods::MethodOptions{}});
+    CHECK(result);
+    CHECK(result.issues().empty());
+}
 
-    const auto collection = make_collection();
-    const features::PreparedMoleculeCollection prepared_collection{collection};
-
-    const auto dummy_collection_result =
-        methods::check_method_prerequisites(*dummy, prepared_collection, empty_options);
-
-    CHECK(dummy_collection_result);
-
-    const auto coordinates_collection_result =
-        methods::check_method_prerequisites(coordinates_method, prepared_collection, empty_options);
-
-    CHECK(!coordinates_collection_result);
-    REQUIRE(coordinates_collection_result.issues().size() == 1);
-    CHECK(coordinates_collection_result.issues()[0].kind ==
-          methods::PrerequisiteIssueKind::missing_feature);
-    CHECK(coordinates_collection_result.issues()[0].molecule_index == 1);
-    CHECK(coordinates_collection_result.issues()[0].message.contains("molecule 2"));
-
+TEST_CASE("element prerequisites identify unsupported atoms", "[methods][method-prerequisites]") {
+    const auto* abeem = methods::method_registry().find("abeem");
+    REQUIRE(abeem != nullptr);
     const core::Molecule berkelium_molecule{
         std::vector{core::Atom{97}}, {}, std::vector{core::Conformer{{core::Position{}}}}};
     const features::PreparedMolecule prepared_berkelium{berkelium_molecule};
 
-    const auto abeem_result = abeem->check_method_prerequisites(
-        {.prepared_molecule = prepared_berkelium, .method_options = empty_options});
-    CHECK(!abeem_result);
-    REQUIRE(abeem_result.issues().size() == 1);
-    CHECK(abeem_result.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
-    CHECK(abeem_result.issues()[0].atom_index == 0);
-    CHECK(abeem_result.issues()[0].message.contains("atom 1 (Bk, formal charge 0)"));
+    const auto result = abeem->check_method_prerequisites(
+        {.prepared_molecule = prepared_berkelium, .method_options = methods::MethodOptions{}});
+    CHECK(!result);
+    REQUIRE(result.issues().size() == 1);
+    CHECK(result.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
+    CHECK(result.issues()[0].atom_index == 0);
+    CHECK(result.issues()[0].message.contains("atom 1 (Bk, formal charge 0)"));
 }

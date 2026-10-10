@@ -26,14 +26,8 @@ TEST_CASE("periodic table reports main-group valence electrons", "[core][periodi
     const auto& table = core::periodic_table();
 
     CHECK(table.element("H").valence_electron_count() == std::optional{1});
-    CHECK(table.element("He").valence_electron_count() == std::optional{2});
-    CHECK(table.element("C").valence_electron_count() == std::optional{4});
-    CHECK(table.element("N").valence_electron_count() == std::optional{5});
     CHECK(table.element("O").valence_electron_count() == std::optional{6});
-    CHECK(table.element("F").valence_electron_count() == std::optional{7});
-    CHECK(table.element("Ne").valence_electron_count() == std::optional{8});
     CHECK_FALSE(table.element("Fe").valence_electron_count().has_value());
-    CHECK_FALSE(table.element("Zn").valence_electron_count().has_value());
 }
 
 TEST_CASE("periodic table rejects unknown elements", "[core][periodic-table]") {

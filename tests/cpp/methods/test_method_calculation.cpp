@@ -1,3 +1,4 @@
+#include "support/test_methods.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
@@ -35,26 +36,9 @@ namespace parameters = chargefw::parameters;
 
 namespace {
 
-class WrongSizeMethod final : public methods::Method {
+class WrongSizeMethod final : public chargefw::test::StubMethod {
   public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "wrong-size-test",
-                                                          .name = "Wrong size test",
-                                                          .full_name = "Wrong size test",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        return {};
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
+    WrongSizeMethod() : StubMethod{"wrong-size-test"} {}
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& /* unused */) const
         -> charges::AtomicCharges override {
@@ -62,28 +46,9 @@ class WrongSizeMethod final : public methods::Method {
     }
 };
 
-class AtomParameterMethod final : public methods::Method {
+class AtomParameterMethod final : public chargefw::test::StubMethod {
   public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "atom-parameter-test",
-                                                          .name = "Atom parameter test",
-                                                          .full_name = "Atom parameter test",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.atom_parameters = {"value"};
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
+    AtomParameterMethod() : StubMethod{"atom-parameter-test", {.atom_parameters = {"value"}}} {}
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {
@@ -101,28 +66,9 @@ class AtomParameterMethod final : public methods::Method {
     }
 };
 
-class GeometryMethod final : public methods::Method {
+class GeometryMethod final : public chargefw::test::StubMethod {
   public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "geometry-test",
-                                                          .name = "Geometry test",
-                                                          .full_name = "Geometry test",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.coordinates = true;
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
+    GeometryMethod() : StubMethod{"geometry-test", {.coordinates = true}} {}
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {

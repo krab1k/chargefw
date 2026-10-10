@@ -19,6 +19,7 @@
 
 #include <array>
 #include <cmath>
+#include <optional>
 #include <snitch/snitch.hpp>
 #include <span>
 #include <string>
@@ -108,14 +109,18 @@ auto make_component_test_molecule(std::vector<chargefw::core::Atom> atoms,
                                     std::move(name)};
 }
 
-auto check_component_neutrality_prerequisites(const chargefw::core::Molecule& molecule,
-                                              const bool expected_applicable) -> void {
-    const features::PreparedMolecule prepared{molecule};
-    constexpr std::array method_ids{std::string_view{"delre"}, std::string_view{"denr"},
-                                    std::string_view{"gdac"},  std::string_view{"kcm"},
-                                    std::string_view{"mgc"},   std::string_view{"mpeoe"},
-                                    std::string_view{"peoe"},  std::string_view{"sqe"}};
+constexpr std::array component_neutral_method_ids{
+    std::string_view{"charge2"}, std::string_view{"delre"}, std::string_view{"denr"},
+    std::string_view{"gdac"},    std::string_view{"kcm"},   std::string_view{"mgc"},
+    std::string_view{"mpeoe"},   std::string_view{"peoe"},  std::string_view{"sqe"}};
 
+// Checks prerequisites of each method on the molecule. A rejection must be a single
+// unsupported-molecule issue whose message contains the given context.
+auto check_neutrality_prerequisites(const chargefw::core::Molecule& molecule,
+                                    const std::span<const std::string_view> method_ids,
+                                    const std::optional<std::string_view> rejection_context)
+    -> void {
+    const features::PreparedMolecule prepared{molecule};
     for (const auto method_id : method_ids) {
         CAPTURE(method_id);
         const auto* method = methods::method_registry().find(method_id);
@@ -124,12 +129,12 @@ auto check_component_neutrality_prerequisites(const chargefw::core::Molecule& mo
         const auto options = methods::make_default_options(method->option_schema());
         const auto result = method->check_method_prerequisites(
             {.prepared_molecule = prepared, .method_options = options});
-        CHECK(static_cast<bool>(result) == expected_applicable);
+        CHECK(static_cast<bool>(result) == !rejection_context.has_value());
 
-        if (!expected_applicable) {
+        if (rejection_context.has_value()) {
             REQUIRE(result.issues().size() == 1);
             CHECK(result.issues()[0].kind == methods::PrerequisiteIssueKind::unsupported_molecule);
-            CHECK(result.issues()[0].message.contains("neutral connected components"));
+            CHECK(result.issues()[0].message.contains(*rejection_context));
         }
     }
 }
@@ -173,6 +178,11 @@ TEST_CASE("every built-in completes its declared full workflow", "[methods][buil
         CHECK(result.charges.parameter_set_id().has_value() == method->requires_parameters());
         CHECK(result.charges.size() ==
               (method->requirements().coordinates ? molecule.conformer_count() : 1));
+        if (method->requirements().coordinates) {
+            REQUIRE(result.charges.size() == 2);
+            CHECK(std::abs(result.charges.assignment(0).charges[0] -
+                           result.charges.assignment(1).charges[0]) > 1.0e-4);
+        }
 
         for (const auto& assignment : result.charges.assignments()) {
             CHECK(assignment.target.molecule_index == 0);
@@ -260,7 +270,8 @@ TEST_CASE("zero-initialized methods reject a cancelling disconnected ion pair",
         "ammonium-hydroxide-pair");
 
     CHECK(chargefw::core::total_formal_charge(molecule) == 0.0);
-    check_component_neutrality_prerequisites(molecule, false);
+    check_neutrality_prerequisites(molecule, component_neutral_method_ids,
+                                   "neutral connected components");
 }
 
 TEST_CASE("zero-initialized methods accept neutral disconnected components",
@@ -272,7 +283,7 @@ TEST_CASE("zero-initialized methods accept neutral disconnected components",
          chargefw::core::Bond{2, 3, chargefw::core::BondOrder::SINGLE}},
         "neutral-components");
 
-    check_component_neutrality_prerequisites(molecule, true);
+    check_neutrality_prerequisites(molecule, component_neutral_method_ids, std::nullopt);
 }
 
 TEST_CASE("zero-initialized methods accept a connected net-neutral zwitterion",
@@ -284,7 +295,17 @@ TEST_CASE("zero-initialized methods accept a connected net-neutral zwitterion",
          chargefw::core::Bond{1, 2, chargefw::core::BondOrder::SINGLE}},
         "zwitterion");
 
-    check_component_neutrality_prerequisites(molecule, true);
+    check_neutrality_prerequisites(molecule, component_neutral_method_ids, std::nullopt);
+}
+
+TEST_CASE("neutral-only methods reject a cation", "[methods][builtin-methods]") {
+    const auto cation =
+        make_component_test_molecule({chargefw::core::Atom{1, 1, "H"}}, {}, "cation");
+
+    check_neutrality_prerequisites(cation, component_neutral_method_ids,
+                                   "neutral connected components");
+    check_neutrality_prerequisites(cation, std::array{std::string_view{"veem"}},
+                                   "neutral molecules");
 }
 
 TEST_CASE("PEOE methods initialize from formal charges when requested",
