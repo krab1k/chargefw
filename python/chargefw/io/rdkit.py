@@ -49,6 +49,14 @@ def from_mol(
     if bond_conversion not in ("none", "single"):
         raise ValueError("bond_conversion must be 'none' or 'single'")
 
+    # Inspect a copy because RDKit computes implicit hydrogen counts lazily.
+    hydrogen_counts = chemistry.Mol(molecule)
+    hydrogen_counts.UpdatePropertyCache(strict=False)
+    if any(atom.GetTotalNumHs() for atom in hydrogen_counts.GetAtoms()):
+        raise ValueError(
+            "RDKit molecule has hydrogens that are not explicit atoms; add them with Chem.AddHs()"
+        )
+
     atoms = tuple(molecule.GetAtoms())
     bonds: list[tuple[int, int, int]] = []
     direct_bond_orders = {

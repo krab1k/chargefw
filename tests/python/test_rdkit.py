@@ -19,10 +19,12 @@ except ModuleNotFoundError:
 MOL_TEXT = """water
   ChargeFW
 
-  2  1  0  0  0  0  0  0  0  0  1 V2000
+  3  2  0  0  0  0  0  0  0  0  1 V2000
     0.0000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
     0.9600    0.0000    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.2400    0.9300    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
   1  2  1  0  0  0  0
+  1  3  1  0  0  0  0
 M  END
 """
 
@@ -50,6 +52,7 @@ class FakeAtom:
         self.atomic_number = atomic_number
         self.symbol = symbol
         self.formal_charge = formal_charge
+        self.hydrogen_count = 0
         self.properties: dict[str, float] = {}
 
     def GetIdx(self) -> int:
@@ -63,6 +66,9 @@ class FakeAtom:
 
     def GetSymbol(self) -> str:
         return self.symbol
+
+    def GetTotalNumHs(self) -> int:
+        return self.hydrogen_count
 
     def HasProp(self, name: str) -> bool:
         return name in self.properties
@@ -111,11 +117,16 @@ class FakeBond:
 
 
 class FakeMol:
-    def __init__(self) -> None:
-        self.atoms = (FakeAtom(0, 8, "O"), FakeAtom(1, 1, "H"))
+    def __init__(self, source: "FakeMol | None" = None) -> None:
+        self.atoms: tuple[FakeAtom, ...] = (
+            (FakeAtom(0, 8, "O"), FakeAtom(1, 1, "H")) if source is None else source.atoms
+        )
         self.bonds = (FakeBond(),)
         self.conformers: tuple[FakeConformer, ...] = (FakeConformer(),)
         self.properties: dict[str, str] = {}
+
+    def UpdatePropertyCache(self, strict: bool = True) -> None:
+        pass
 
     def GetAtoms(self) -> tuple[FakeAtom, ...]:
         return self.atoms
@@ -316,9 +327,21 @@ class RdkitAdapterTests(unittest.TestCase):
             self.assertEqual(loaded.GetAtomWithIdx(0).GetDoubleProp("ChargeFWPartialCharge"), 0.0)
 
     @unittest.skipIf(Chem is None, "RDKit is not installed")
+    def test_real_rdkit_conversion_requires_explicit_hydrogens(self) -> None:
+        assert Chem is not None
+        for smiles in ("CCO", "[NH4+]"):
+            with self.subTest(smiles=smiles), self.assertRaisesRegex(ValueError, "Chem.AddHs"):
+                chargefw_rdkit.from_mol(Chem.MolFromSmiles(smiles))
+        with self.assertRaisesRegex(ValueError, "Chem.AddHs"):
+            chargefw_rdkit.from_mol(Chem.MolFromSmiles("CO", sanitize=False))
+        self.assertEqual(
+            chargefw_rdkit.from_mol(Chem.AddHs(Chem.MolFromSmiles("CCO"))).atom_count, 9
+        )
+
+    @unittest.skipIf(Chem is None, "RDKit is not installed")
     def test_real_rdkit_aromatic_and_dative_bond_conversion(self) -> None:
         assert Chem is not None
-        aromatic = Chem.MolFromSmiles("c1ccccc1")
+        aromatic = Chem.AddHs(Chem.MolFromSmiles("c1ccccc1"))
         self.assertIsNotNone(aromatic)
         with self.assertRaisesRegex(ValueError, "unsupported bond type AROMATIC"):
             chargefw_rdkit.from_mol(aromatic)
@@ -328,7 +351,9 @@ class RdkitAdapterTests(unittest.TestCase):
         for name in ("DATIVE", "DATIVEONE"):
             with self.subTest(bond_type=name):
                 editable = Chem.RWMol()
-                editable.AddAtom(Chem.Atom(7))
+                donor = Chem.Atom(7)
+                donor.SetNoImplicit(True)
+                editable.AddAtom(donor)
                 editable.AddAtom(Chem.Atom(26))
                 editable.AddBond(0, 1, getattr(Chem.BondType, name))
                 target = editable.GetMol()

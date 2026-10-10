@@ -566,8 +566,9 @@ the [PDB and mmCIF format reference](FORMATS.md#pdb-and-mmcif-input).
 
 RDKit is an optional dependency installed with `pip install "chargefw[rdkit]"`. The base package remains
 RDKit-free. `chargefw.io.rdkit.from_mol()` copies an existing `rdkit.Chem.Mol` without sanitization,
-hydrogen changes, protonation, embedding, or optimization. By default, it accepts only explicit RDKit
-single, double, and triple bond types. Pass `bond_conversion="single"` to convert aromatic bonds and the
+hydrogen changes, protonation, embedding, or optimization. Every hydrogen must be an explicit RDKit atom;
+call `Chem.AddHs()` first for molecules with implicit hydrogens, such as those from SMILES. By default,
+it accepts only explicit RDKit single, double, and triple bond types. Pass `bond_conversion="single"` to convert aromatic bonds and the
 RDKit dative bond family to native single bonds, matching the connectivity-only aromatic normalization
 used by ChargeFW's serialized format readers. The option does not convert query bonds or unsupported
 higher-order, fractional, ionic, hydrogen, three-center, zero-order, unspecified, or other bond types;
