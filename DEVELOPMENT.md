@@ -42,8 +42,15 @@ normal builds. Exclude it when invoking CTest directly.
 After design is stable, build the affected target and run its focused regression test first. For example:
 
 ```bash
-cmake --build build/gcc-debug --target test_molecule
-ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$' -R '^test_molecule$'
+cmake --build build/gcc-debug --target test_methods
+ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$' -R '^test_methods$'
+```
+
+Native test executables use Snitch. To run a subset of one executable's test cases, pass a tag or a
+test-name pattern; `--list-tags` and `--list-tests` show the available selections:
+
+```bash
+build/gcc-debug/tests/cpp/methods/test_methods '[sqeqp]'
 ```
 
 Available presets are:
