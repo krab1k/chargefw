@@ -120,8 +120,9 @@ Bond keys support these classifiers:
 | `plain` | Always `"*"` | `{"classifier": "plain", "type": "*"}` |
 | `bo` | Bond order as `"1"`, `"2"`, or `"3"` | A double bond has type `"2"` |
 
-`plain` keys therefore require `"*"` as their type to match. `bonded` ignores bond order and formal
-charge; it uses only the sorted immediate-neighbor element symbols.
+`plain` keys therefore use `"*"` as their type; loading reports any other type as an invalid key.
+`bonded` ignores bond order and formal charge; it uses only the sorted immediate-neighbor element
+symbols.
 
 ## Entry selection
 

@@ -268,6 +268,14 @@ template <typename Convert>
     }
 }
 
+// A plain classifier always derives type "*", so any other type could never match.
+auto ensure_plain_type(const bool plain, const std::string& type, const std::string& context)
+    -> void {
+    if (plain && type != "*") {
+        throw_error(child_context(context, "type"), "plain classifier requires type '*'");
+    }
+}
+
 [[nodiscard]] auto parse_atom_key(const Json& key_json, const std::string& context)
     -> AtomParameterKey {
     ensure_object(key_json, context);
@@ -276,10 +284,13 @@ template <typename Convert>
     const auto classifier = require_named_string(key_json, "classifier", context);
     const auto type = require_named_string(key_json, "type", context);
 
+    const auto classification = classifier_kind(atom_classification_kind_from_string, classifier,
+                                                child_context(context, "classifier"));
+    ensure_plain_type(classification == AtomParameterClassificationKind::PLAIN, type, context);
+
     return AtomParameterKey{
         .atomic_number = atomic_number_from_symbol(element, child_context(context, "element")),
-        .classification = classifier_kind(atom_classification_kind_from_string, classifier,
-                                          child_context(context, "classifier")),
+        .classification = classification,
         .type = type};
 }
 
@@ -290,10 +301,11 @@ template <typename Convert>
     const auto classifier = require_named_string(key_json, "classifier", context);
     const auto type = require_named_string(key_json, "type", context);
 
-    return BondTypeKey{.classification =
-                           classifier_kind(bond_classification_kind_from_string, classifier,
-                                           child_context(context, "classifier")),
-                       .type = type};
+    const auto classification = classifier_kind(bond_classification_kind_from_string, classifier,
+                                                child_context(context, "classifier"));
+    ensure_plain_type(classification == BondParameterClassificationKind::PLAIN, type, context);
+
+    return BondTypeKey{.classification = classification, .type = type};
 }
 
 [[nodiscard]] auto parse_bond_key(const Json& key_json, const std::string& context)

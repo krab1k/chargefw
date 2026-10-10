@@ -221,6 +221,23 @@ TEST_CASE("parameter set rejects malformed JSON", "[parameters][io]") {
     };
     CHECK_THROWS_MATCHES(load_unknown_classification(), std::invalid_argument,
                          snitch::matchers::with_what_contains{"atom.data[0].key.classifier"});
+
+    const auto load_section = [](const std::string_view section) {
+        std::istringstream input{
+            R"({"metadata": {"id": "bad", "name": "Bad", "method": "peoe"}, )" +
+            std::string{section} + "}"};
+        static_cast<void>(parameters::load_parameter_set_json(input));
+    };
+    CHECK_THROWS_MATCHES(
+        load_section(R"("atom": {"names": ["A"], "data": [{"key": )"
+                     R"({"element": "H", "classifier": "plain", "type": "1"}, "values": [1.0]}]})"),
+        std::invalid_argument, snitch::matchers::with_what_contains{"atom.data[0].key.type"});
+    CHECK_THROWS_MATCHES(
+        load_section(R"("bond": {"names": ["B"], "data": [{"key": {"atoms": [)"
+                     R"({"element": "H", "classifier": "plain", "type": "*"}, )"
+                     R"({"element": "H", "classifier": "plain", "type": "*"}], )"
+                     R"("bond": {"classifier": "plain", "type": "1"}}, "values": [1.0]}]})"),
+        std::invalid_argument, snitch::matchers::with_what_contains{"bond.data[0].key.bond.type"});
 }
 
 TEST_CASE("parameter set rejects priorities outside uint16 range", "[parameters][io]") {
