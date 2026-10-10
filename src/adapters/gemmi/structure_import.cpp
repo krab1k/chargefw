@@ -246,9 +246,14 @@ auto make_record(const ::gemmi::Structure& structure,
         name = structure.name;
     }
 
-    auto bonds = remap_bonds(::chargefw::adapters::gemmi::bonds::assign(
-                                 selected_model, bond_strategy, std::move(explicit_bonds)),
-                             source_orders.front());
+    const auto explicit_orders =
+        format == MolecularSourceFormat::pdb
+            ? ::chargefw::adapters::gemmi::bonds::ExplicitBondOrders::connectivity_only
+            : ::chargefw::adapters::gemmi::bonds::ExplicitBondOrders::from_source;
+    auto bonds =
+        remap_bonds(::chargefw::adapters::gemmi::bonds::assign(
+                        selected_model, bond_strategy, std::move(explicit_bonds), explicit_orders),
+                    source_orders.front());
 
     auto atom_references = source_models.front().conformer.sites;
     auto conformer_references = std::vector<SourceConformerReference>{};

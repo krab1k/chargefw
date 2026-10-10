@@ -294,7 +294,8 @@ auto explicit_mmcif(const ::gemmi::Structure& structure, ::gemmi::cif::Block& bl
 }
 
 auto assign(const selection::SelectedModel& model, const BondStrategy strategy,
-            std::vector<core::Bond> explicit_bonds) -> std::vector<core::Bond> {
+            std::vector<core::Bond> explicit_bonds, const ExplicitBondOrders explicit_orders)
+    -> std::vector<core::Bond> {
     switch (strategy) {
     case BondStrategy::none:
         return {};
@@ -303,13 +304,19 @@ auto assign(const selection::SelectedModel& model, const BondStrategy strategy,
     case BondStrategy::explicit_bonds:
         return explicit_bonds;
     case BondStrategy::hybrid: {
-        BondAccumulator bonds;
-        for (const auto& bond : explicit_bonds) {
-            bonds.add(bond.first_atom_index(), bond.second_atom_index(), bond.order());
+        // The first source to define a pair sets its order. Source orders take precedence over
+        // templates; connectivity-only records (PDB CONECT) only add pairs templates do not cover.
+        auto first = assign_template_bonds(model);
+        auto second = std::move(explicit_bonds);
+        if (explicit_orders == ExplicitBondOrders::from_source) {
+            std::swap(first, second);
         }
 
-        // Explicit connectivity overrides a conflicting template bond order.
-        for (const auto& bond : assign_template_bonds(model)) {
+        BondAccumulator bonds;
+        for (const auto& bond : first) {
+            bonds.add(bond.first_atom_index(), bond.second_atom_index(), bond.order());
+        }
+        for (const auto& bond : second) {
             bonds.add(bond.first_atom_index(), bond.second_atom_index(), bond.order());
         }
 

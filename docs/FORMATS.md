@@ -172,10 +172,11 @@ The selected atom retains its original alternate-location identity in source map
 Structural readers provide four explicit bond strategies:
 
 - `none` imports no bonds;
-- `explicit` imports PDB `CONECT` and covalent/disulfide connections, or mmCIF component bonds and
-  covalent/disulfide connections;
+- `explicit` imports PDB `CONECT` and covalent/disulfide connections as single bonds, or mmCIF
+  component bonds with their orders and covalent/disulfide connections;
 - `templates` applies ChargeFW's built-in residue templates and peptide/nucleotide polymer links; and
-- `hybrid` combines explicit and template bonds, with explicit connectivity taking precedence.
+- `hybrid` combines template and explicit bonds. Where both define a bond, mmCIF component bond orders
+  are used; PDB `CONECT` records only add bonds that templates do not define.
 
 Explicit structural aromatic bonds become single bonds. Delocalized (including `1.5`), metal,
 unspecified/null, and malformed component bond orders are skipped because the core graph cannot represent

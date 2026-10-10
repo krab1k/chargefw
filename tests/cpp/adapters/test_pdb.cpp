@@ -236,6 +236,20 @@ END
                   1);
         }
     }
+
+    {
+        // CONECT carries no order, so hybrid keeps the template's carbonyl double bond.
+        const auto carbonyl_input =
+            R"pdb(ATOM      1  C   ALA A   1       0.000   0.000   0.000  1.00 20.00           C
+ATOM      2  O   ALA A   1       1.230   0.000   0.000  1.00 20.00           O
+CONECT    1    2
+END
+)pdb";
+        const auto record =
+            read_first(carbonyl_input, {.bond_strategy = gemmi_adapter::BondStrategy::hybrid});
+        REQUIRE(record.molecule.bond_count() == 1);
+        CHECK(record.molecule.bond(0).order() == chargefw::core::BondOrder::DOUBLE);
+    }
 }
 
 TEST_CASE("PDB input selects the first noncontiguous alternate location", "[adapters][pdb]") {

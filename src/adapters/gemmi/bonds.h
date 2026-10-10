@@ -11,12 +11,18 @@ namespace gemmi::cif {
 class Block;
 }
 
+#include <cstdint>
 #include <vector>
 
 namespace chargefw::adapters::gemmi::bonds {
 
+// Whether explicit bonds carry source bond orders (mmCIF component bonds) or only connectivity
+// (PDB CONECT). The hybrid strategy lets source orders override template orders for the same pair.
+enum class ExplicitBondOrders : std::uint8_t { connectivity_only, from_source };
+
 [[nodiscard]] auto assign(const selection::SelectedModel& model, BondStrategy strategy,
-                          std::vector<core::Bond> explicit_bonds = {}) -> std::vector<core::Bond>;
+                          std::vector<core::Bond> explicit_bonds,
+                          ExplicitBondOrders explicit_orders) -> std::vector<core::Bond>;
 
 [[nodiscard]] auto explicit_pdb(const ::gemmi::Structure& structure,
                                 const selection::SelectedModel& model) -> std::vector<core::Bond>;
