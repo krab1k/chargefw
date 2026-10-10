@@ -7,8 +7,11 @@
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace chargefw::test {
 
@@ -99,6 +102,69 @@ namespace chargefw::test {
                                                     {.name = "B", .value = 10.0},
                                                     {.name = "C", .value = 0.5},
                                                     {.name = "D", .value = 0.5}}}}}};
+}
+
+/// EEM parameters for H and O with equal hardness.
+[[nodiscard]] inline auto make_eem_parameters() -> parameters::ParameterSet {
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{.id = "test-eem", .method_id = "eem", .name = "Test EEM"},
+        parameters::CommonParameters{{{.name = "kappa", .value = 1.0}}},
+        parameters::AtomParameters{
+            {{.key = plain_atom_key(1),
+              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 10.0}}},
+             {.key = plain_atom_key(8),
+              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 10.0}}}}}};
+}
+
+/// EEM parameters for H (A = 1, B = 5) and O (A = 2, B = 9) with a selectable kappa, chosen so
+/// that two-atom solutions have simple closed forms.
+[[nodiscard]] inline auto make_eem_ho_parameters(const double kappa) -> parameters::ParameterSet {
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{
+            .id = "test-eem-ho", .method_id = "eem", .name = "Test EEM H/O"},
+        parameters::CommonParameters{{{.name = "kappa", .value = kappa}}},
+        parameters::AtomParameters{
+            {{.key = plain_atom_key(1),
+              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 5.0}}},
+             {.key = plain_atom_key(8),
+              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 9.0}}}}}};
+}
+
+/// Per-element values that vary between SQE-family H/O fixtures.
+struct SqeHoValues {
+    double hydrogen_width = 1.0;
+    double oxygen_width = 1.0;
+    std::optional<double> hydrogen_q0;
+    std::optional<double> oxygen_q0;
+};
+
+/// SQE-family (sqe, sqeq0, sqeqp) parameters for H and O with an H-O single-bond kappa of 1.
+[[nodiscard]] inline auto make_sqe_ho_parameters(const std::string_view method_id,
+                                                 const SqeHoValues& values = {})
+    -> parameters::ParameterSet {
+    auto hydrogen =
+        std::vector<parameters::NamedParameter>{{.name = "electronegativity", .value = 4.5280},
+                                                {.name = "hardness", .value = 13.8904},
+                                                {.name = "width", .value = values.hydrogen_width}};
+    auto oxygen =
+        std::vector<parameters::NamedParameter>{{.name = "electronegativity", .value = 8.741},
+                                                {.name = "hardness", .value = 13.364},
+                                                {.name = "width", .value = values.oxygen_width}};
+    if (values.hydrogen_q0.has_value()) {
+        hydrogen.push_back({.name = "q0", .value = *values.hydrogen_q0});
+    }
+    if (values.oxygen_q0.has_value()) {
+        oxygen.push_back({.name = "q0", .value = *values.oxygen_q0});
+    }
+    return parameters::ParameterSet{
+        parameters::ParameterSetMetadata{.id = "test-" + std::string{method_id},
+                                         .method_id = std::string{method_id},
+                                         .name = "Test SQE-family parameters"},
+        {},
+        parameters::AtomParameters{{{.key = plain_atom_key(1), .parameters = std::move(hydrogen)},
+                                    {.key = plain_atom_key(8), .parameters = std::move(oxygen)}}},
+        parameters::BondParameters{
+            {{.key = single_bond_key(1, 8), .parameters = {{.name = "kappa", .value = 1.0}}}}}};
 }
 
 } // namespace chargefw::test

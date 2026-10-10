@@ -4,6 +4,7 @@
 #include <limits>
 #include <optional>
 #include <stdexcept>
+#include <utility>
 
 #include <snitch/snitch.hpp>
 
@@ -34,77 +35,52 @@ TEST_CASE("execution policy and selection convert to strings", "[calculation][ex
 }
 
 TEST_CASE("execution policy validates mode and radius", "[calculation][execution-policy]") {
+    using Mode = calculation::ExecutionMode;
+    using Case = std::pair<Mode, std::optional<double>>;
+    constexpr auto nan = std::numeric_limits<double>::quiet_NaN();
+    constexpr auto infinity = std::numeric_limits<double>::infinity();
+
     const calculation::ExecutionPolicy default_policy;
-    CHECK(default_policy.mode() == calculation::ExecutionMode::full);
+    CHECK(default_policy.mode() == Mode::full);
     CHECK_FALSE(default_policy.radius().has_value());
 
-    const calculation::ExecutionPolicy full_policy{calculation::ExecutionMode::full};
-    CHECK(full_policy.mode() == calculation::ExecutionMode::full);
-    CHECK_FALSE(full_policy.radius().has_value());
+    for (const auto& [mode, radius] :
+         {Case{Mode::full, std::nullopt}, Case{Mode::cutoff, 8.0}, Case{Mode::cover, 12.0}}) {
+        const calculation::ExecutionPolicy policy{mode, radius};
+        CHECK(policy.mode() == mode);
+        CHECK(policy.radius() == radius);
+    }
 
-    const auto full_with_radius = [] {
-        static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::full, 8.0});
-    };
-    CHECK_THROWS_AS(full_with_radius(), std::invalid_argument);
-
-    const auto cutoff_no_radius = [] {
-        static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff});
-    };
-    CHECK_THROWS_AS(cutoff_no_radius(), std::invalid_argument);
-
-    const auto cutoff_nan = [] {
-        static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff,
-                                                       std::numeric_limits<double>::quiet_NaN()});
-    };
-    CHECK_THROWS_AS(cutoff_nan(), std::invalid_argument);
-
-    const auto cutoff_infinite = [] {
-        static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::cutoff,
-                                                       std::numeric_limits<double>::infinity()});
-    };
-    CHECK_THROWS_AS(cutoff_infinite(), std::invalid_argument);
-
-    const auto cover_too_small = [] {
-        static_cast<void>(calculation::ExecutionPolicy{calculation::ExecutionMode::cover, 7.99});
-    };
-    CHECK_THROWS_AS(cover_too_small(), std::invalid_argument);
-
-    const calculation::ExecutionPolicy cutoff_policy{calculation::ExecutionMode::cutoff, 8.0};
-    CHECK(cutoff_policy.radius() == std::optional<double>{8.0});
-
-    const calculation::ExecutionPolicy cover_policy{calculation::ExecutionMode::cover, 12.0};
-    CHECK(cover_policy.radius() == std::optional<double>{12.0});
+    for (const auto& [mode, radius] :
+         {Case{Mode::full, 8.0}, Case{Mode::cutoff, std::nullopt}, Case{Mode::cutoff, nan},
+          Case{Mode::cutoff, infinity}, Case{Mode::cover, 7.99}}) {
+        CAPTURE(calculation::to_string(mode), radius.value_or(-1.0));
+        CHECK_THROWS_AS(static_cast<void>(calculation::ExecutionPolicy(mode, radius)),
+                        std::invalid_argument);
+    }
 }
 
 TEST_CASE("execution selection validates kind and radius", "[calculation][execution-policy]") {
+    using Kind = calculation::ExecutionSelectionKind;
+    using Case = std::pair<Kind, std::optional<double>>;
+
     const calculation::ExecutionSelection default_selection;
-    CHECK(default_selection.kind() == calculation::ExecutionSelectionKind::automatic);
+    CHECK(default_selection.kind() == Kind::automatic);
     CHECK_FALSE(default_selection.radius().has_value());
 
-    const calculation::ExecutionSelection automatic_radius{
-        calculation::ExecutionSelectionKind::automatic, 8.0};
-    CHECK(automatic_radius.radius() == std::optional<double>{8.0});
+    for (const auto& [kind, radius] :
+         {Case{Kind::automatic, 8.0}, Case{Kind::full, std::nullopt}}) {
+        const calculation::ExecutionSelection selection{kind, radius};
+        CHECK(selection.kind() == kind);
+        CHECK(selection.radius() == radius);
+    }
 
-    const calculation::ExecutionSelection full_selection{calculation::ExecutionSelectionKind::full};
-    CHECK_FALSE(full_selection.radius().has_value());
-
-    const auto auto_too_small = [] {
-        static_cast<void>(
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic, 7.99});
-    };
-    CHECK_THROWS_AS(auto_too_small(), std::invalid_argument);
-
-    const auto full_with_radius = [] {
-        static_cast<void>(
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::full, 8.0});
-    };
-    CHECK_THROWS_AS(full_with_radius(), std::invalid_argument);
-
-    const auto cutoff_no_radius = [] {
-        static_cast<void>(
-            calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff});
-    };
-    CHECK_THROWS_AS(cutoff_no_radius(), std::invalid_argument);
+    for (const auto& [kind, radius] :
+         {Case{Kind::automatic, 7.99}, Case{Kind::full, 8.0}, Case{Kind::cutoff, std::nullopt}}) {
+        CAPTURE(calculation::to_string(kind), radius.value_or(-1.0));
+        CHECK_THROWS_AS(static_cast<void>(calculation::ExecutionSelection(kind, radius)),
+                        std::invalid_argument);
+    }
 }
 
 TEST_CASE("resource policy exposes thresholds", "[calculation][execution-policy]") {

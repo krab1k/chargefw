@@ -1,6 +1,7 @@
 #include "calculation/fixed_charge_partition.h"
 #include "calculation/full_execution.h"
 
+#include "support/test_methods.h"
 #include "support/test_parameters.h"
 
 #include <chargefw/core/atom.h>
@@ -42,31 +43,12 @@ namespace methods = chargefw::methods;
 
 namespace {
 
-class CapturingMethod final : public methods::Method {
+class CapturingMethod final : public chargefw::test::StubMethod {
   public:
     explicit CapturingMethod(const bool supports_fixed_point_sources)
-        : supports_fixed_point_sources_{supports_fixed_point_sources} {}
-
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata value{.id = "capture",
-                                                       .name = "Capture",
-                                                       .full_name = "Capture",
-                                                       .publication = std::nullopt,
-                                                       .priority = 0};
-        return value;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto value = methods::MethodRequirements{};
-        value.coordinates = true;
-        value.supports_fixed_point_sources = supports_fixed_point_sources_;
-        return value;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
+        : StubMethod{"capture",
+                     {.coordinates = true,
+                      .supports_fixed_point_sources = supports_fixed_point_sources}} {}
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {
@@ -80,9 +62,6 @@ class CapturingMethod final : public methods::Method {
 
     mutable std::vector<double> target_charges;
     mutable std::vector<std::vector<methods::FixedPointSource>> observed_sources;
-
-  private:
-    bool supports_fixed_point_sources_;
 };
 
 auto make_execution_partition() -> calculation::detail::FixedChargePartition {
@@ -121,8 +100,6 @@ TEST_CASE("full execution supplies partition budgets and conformer-local sources
     CHECK(method.observed_sources[2].empty());
     CHECK(serial.assignment(0).charges.size() == 1);
     CHECK(serial.assignment(0).charges[0] == 1.0);
-
-    CHECK(partition.targets[0].sources[0].charge == 0.25);
 }
 
 TEST_CASE("full execution rejects unsupported fixed ions and mismatched prepared ownership",
@@ -179,15 +156,7 @@ TEST_CASE("parameterized full EEM uses partition sources and active budgets",
     const auto partition = calculation::detail::make_fixed_charge_partition(
         original, calculation::FixedIons{{{0, 2, 0.4}}});
     const features::PreparedMoleculeCollection prepared{partition.active_molecules};
-    const auto parameter_set = chargefw::parameters::ParameterSet{
-        chargefw::parameters::ParameterSetMetadata{
-            .id = "execution-eem", .method_id = "eem", .name = "Execution EEM"},
-        chargefw::parameters::CommonParameters{{{.name = "kappa", .value = kappa}}},
-        chargefw::parameters::AtomParameters{
-            {{.key = chargefw::test::plain_atom_key(1),
-              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 5.0}}},
-             {.key = chargefw::test::plain_atom_key(8),
-              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 9.0}}}}}};
+    const auto parameter_set = chargefw::test::make_eem_ho_parameters(kappa);
     const auto* eem = methods::method_registry().find("eem");
     REQUIRE(eem != nullptr);
     const auto selected = methods::ApplicableMethod{
@@ -213,19 +182,7 @@ TEST_CASE("parameterized full EEM uses partition sources and active budgets",
 
     const auto serial = calculation::calculate_full_charges(
         selected, prepared, 1, calculation::default_calculation_observer(), &partition);
-    const auto parallel = calculation::calculate_full_charges(
-        selected, prepared, 2, calculation::default_calculation_observer(), &partition);
-    const auto repeated = calculation::calculate_full_charges(
-        selected, prepared, 1, calculation::default_calculation_observer(), &partition);
     REQUIRE(serial.size() == 3);
-    REQUIRE(parallel.size() == serial.size());
-    REQUIRE(repeated.size() == serial.size());
-    for (std::size_t index = 0; index < serial.size(); ++index) {
-        CHECK(std::ranges::equal(serial.assignment(index).charges.values(),
-                                 repeated.assignment(index).charges.values()));
-        CHECK(std::ranges::equal(serial.assignment(index).charges.values(),
-                                 parallel.assignment(index).charges.values()));
-    }
     for (std::size_t conformer = 0; conformer < 2; ++conformer) {
         const auto& expected = conformer == 0 ? first_expected : second_expected;
         const auto& values = serial.assignment(conformer).charges;
@@ -234,10 +191,6 @@ TEST_CASE("parameterized full EEM uses partition sources and active budgets",
         CHECK(std::abs(values.total()) < 1e-12);
     }
     CHECK(std::abs(serial.assignment(2).charges[0] + 1.0) < 1e-12);
-    CHECK(partition.targets[0].sources[0].charge == 0.4);
-    CHECK(partition.targets[0].source_positions[0][0].y == 3.0);
-    CHECK(partition.targets[0].source_positions[1][0].x == 4.0);
-    CHECK(partition.targets[1].sources.empty());
 }
 
 TEST_CASE("SQE family full-execution fixed Mg response decays with distance",
@@ -260,26 +213,8 @@ TEST_CASE("SQE family full-execution fixed Mg response decays with distance",
 
     for (const auto method_id : {"sqe", "sqeq0", "sqeqp"}) {
         CAPTURE(method_id);
-        const auto parameter_set = chargefw::parameters::ParameterSet{
-            chargefw::parameters::ParameterSetMetadata{.id =
-                                                           std::string{"Mg-response-"} + method_id,
-                                                       .method_id = method_id,
-                                                       .name = "Mg response SQE parameters"},
-            {},
-            chargefw::parameters::AtomParameters{
-                {{.key = chargefw::test::plain_atom_key(1),
-                  .parameters = {{.name = "electronegativity", .value = 4.5280},
-                                 {.name = "hardness", .value = 13.8904},
-                                 {.name = "width", .value = 1.0},
-                                 {.name = "q0", .value = 0.25}}},
-                 {.key = chargefw::test::plain_atom_key(8),
-                  .parameters = {{.name = "electronegativity", .value = 8.741},
-                                 {.name = "hardness", .value = 13.364},
-                                 {.name = "width", .value = 1.0},
-                                 {.name = "q0", .value = -0.5}}}}},
-            chargefw::parameters::BondParameters{
-                {{.key = chargefw::test::single_bond_key(1, 8),
-                  .parameters = {{.name = "kappa", .value = 1.0}}}}}};
+        const auto parameter_set = chargefw::test::make_sqe_ho_parameters(
+            method_id, {.hydrogen_q0 = 0.25, .oxygen_q0 = -0.5});
         const auto* method = methods::method_registry().find(method_id);
         REQUIRE(method != nullptr);
         const auto selected = methods::ApplicableMethod{

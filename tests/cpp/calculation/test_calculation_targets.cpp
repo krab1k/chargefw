@@ -1,3 +1,5 @@
+#include "support/test_methods.h"
+
 #include "calculation/target_execution.h"
 
 #include <chargefw/core/atom.h>
@@ -25,32 +27,6 @@ namespace methods = chargefw::methods;
 
 namespace {
 
-class TestMethod final : public methods::Method {
-  public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "target-execution",
-                                                          .name = "Target execution",
-                                                          .full_name = "Target execution",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        return {};
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
-
-    [[nodiscard]] auto calculate(const methods::CalculationInput&) const
-        -> charges::AtomicCharges override {
-        return charges::AtomicCharges{std::vector<double>{}};
-    }
-};
-
 auto make_molecules(const std::size_t count) -> core::MoleculeCollection {
     auto molecules = std::vector<core::Molecule>{};
     molecules.reserve(count);
@@ -66,7 +42,7 @@ auto assert_worker_budget(const calculation::detail::ParallelizationLevel parall
                           const std::size_t expected_fragment_threads) -> void {
     const auto molecules = make_molecules(target_count);
     const features::PreparedMoleculeCollection prepared{molecules};
-    const TestMethod method;
+    const chargefw::test::StubMethod method{"target-execution"};
     const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
     auto received_fragment_threads = std::vector<std::size_t>(target_count);
     const auto mode = parallelization == calculation::detail::ParallelizationLevel::targets

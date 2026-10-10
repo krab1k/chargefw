@@ -1,3 +1,5 @@
+#include "support/test_methods.h"
+
 #include "calculation/cover_execution.h"
 
 #include <chargefw/calculation/execution_policy.h>
@@ -29,30 +31,16 @@ namespace methods = chargefw::methods;
 
 namespace {
 
-class FragmentSizeMethod final : public methods::Method {
+auto cover_requirements() -> methods::MethodRequirements {
+    return {.coordinates = true,
+            .resources = {.supports_cover = true,
+                          .reduced_charge_policy =
+                              methods::ReducedChargePolicy::uniform_target_global}};
+}
+
+class FragmentSizeMethod final : public chargefw::test::StubMethod {
   public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "cover-fragment-size",
-                                                          .name = "Cover fragment size",
-                                                          .full_name = "Cover fragment size",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.coordinates = true;
-        requirements.resources.supports_cover = true;
-        requirements.resources.reduced_charge_policy =
-            methods::ReducedChargePolicy::uniform_target_global;
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
+    FragmentSizeMethod() : StubMethod{"cover-fragment-size", cover_requirements()} {}
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {
@@ -64,30 +52,9 @@ class FragmentSizeMethod final : public methods::Method {
     mutable std::atomic_size_t calls = 0;
 };
 
-class TargetChargeMethod final : public methods::Method {
+class TargetChargeMethod final : public chargefw::test::StubMethod {
   public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "cover-target-charge",
-                                                          .name = "Cover target charge",
-                                                          .full_name = "Cover target charge",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.coordinates = true;
-        requirements.resources.supports_cover = true;
-        requirements.resources.reduced_charge_policy =
-            methods::ReducedChargePolicy::uniform_target_global;
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
+    TargetChargeMethod() : StubMethod{"cover-target-charge", cover_requirements()} {}
 
     [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
         -> charges::AtomicCharges override {

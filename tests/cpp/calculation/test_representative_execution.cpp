@@ -1,3 +1,5 @@
+#include "support/test_calculation.h"
+
 #include <chargefw/adapters/native/sdf_input.h>
 #include <chargefw/calculation/calculation.h>
 #include <chargefw/core/molecule.h>
@@ -24,6 +26,8 @@ namespace core = chargefw::core;
 namespace parameters = chargefw::parameters;
 namespace sdf = chargefw::adapters::native::sdf_input;
 
+using chargefw::test::calculate_application;
+
 namespace {
 
 [[nodiscard]] auto representative_fixture() -> std::filesystem::path {
@@ -47,20 +51,6 @@ namespace {
                                                                      .name = "Representative EEM"},
                                     parameters::CommonParameters{{{.name = "kappa", .value = 1.0}}},
                                     parameters::AtomParameters{std::move(entries)}};
-}
-
-[[nodiscard]] auto calculate_application(calculation::AssessmentRequest request)
-    -> calculation::ExecutionResult {
-    auto assessment = calculation::assess(std::move(request));
-    return calculation::calculate(assessment, 1);
-}
-
-auto assert_same_charges(const chargefw::charges::AtomicCharges& actual,
-                         const chargefw::charges::AtomicCharges& expected) -> void {
-    REQUIRE(actual.size() == expected.size());
-    for (std::size_t atom_index = 0; atom_index < actual.size(); ++atom_index) {
-        CHECK(std::abs(actual[atom_index] - expected[atom_index]) < 1.0e-10);
-    }
 }
 
 } // namespace
@@ -93,7 +83,8 @@ TEST_CASE("representative molecules preserve full execution under whole-radius r
                  .execution_selection = calculation::ExecutionSelection{selection, 20.0}});
             REQUIRE(reduced.calculated());
             REQUIRE(reduced.charges.has_value());
-            assert_same_charges(reduced.charges->assignment(0).charges, full_charges);
+            chargefw::test::assert_same_charges(reduced.charges->assignment(0).charges,
+                                                full_charges, 1.0e-10);
         }
 
         ++record_count;

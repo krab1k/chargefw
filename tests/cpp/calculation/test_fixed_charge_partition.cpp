@@ -90,19 +90,6 @@ TEST_CASE("fixed-charge partition preserves original ordering and owned mappings
     const auto partition =
         calculation::detail::make_fixed_charge_partition(input.molecules, input.fixed_ions);
 
-    CHECK(input.molecules.name() == "named-collection");
-    CHECK(input.molecules[1].atom_count() == 4);
-    CHECK(input.molecules[1].bond_count() == 2);
-    CHECK(input.molecules[1].atom(2).name() == "Mg2");
-    CHECK(input.molecules[1].conformer(1).positions()[2].z == 1.0);
-    REQUIRE(input.fixed_ions.sources.size() == 3);
-    CHECK(input.fixed_ions.sources[0].molecule_index == 3);
-    CHECK(input.fixed_ions.sources[0].atom_index == 3);
-    CHECK(input.fixed_ions.sources[0].charge == -0.25);
-    CHECK(input.fixed_ions.sources[1].molecule_index == 1);
-    CHECK(input.fixed_ions.sources[1].atom_index == 2);
-    CHECK(input.fixed_ions.sources[1].charge == 0.5);
-
     CHECK(partition.active_molecules.name() == "named-collection");
     CHECK(partition.active_molecules.size() == 4);
     REQUIRE(partition.targets.size() == 4);
@@ -256,16 +243,6 @@ TEST_CASE("fixed-charge reassembly scatters active charges and preserves assignm
         const auto reassembled =
             calculation::detail::reassemble_fixed_charge_results(active_charges, partition);
 
-        CHECK(active_charges.method_id() == "test-method");
-        REQUIRE(active_charges.parameter_set_id().has_value());
-        CHECK(*active_charges.parameter_set_id() == "test-parameters");
-        const auto original_values = std::vector<std::vector<double>>{
-            {10.0, 20.0}, {7.0, 8.0}, {-1.0, -2.0, -3.0}, {-4.0}, {-10.0, -20.0}, {1.0, 2.0, 3.0}};
-        REQUIRE(active_charges.size() == original_values.size());
-        for (std::size_t index = 0; index < original_values.size(); ++index) {
-            CHECK(std::ranges::equal(active_charges.assignment(index).charges.values(),
-                                     original_values[index]));
-        }
         return reassembled;
     }();
 

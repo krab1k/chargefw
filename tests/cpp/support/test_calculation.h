@@ -3,6 +3,7 @@
 #include "support/test_molecules.h"
 
 #include <chargefw/calculation/calculation.h>
+#include <chargefw/calculation/observer.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/methods/method_options.h>
@@ -19,6 +20,15 @@
 #include <snitch/snitch.hpp>
 
 namespace chargefw::test {
+
+/// Assesses the request and calculates its default plan.
+[[nodiscard]] inline auto calculate_application(
+    calculation::AssessmentRequest request,
+    const calculation::CalculationObserver& observer = calculation::default_calculation_observer(),
+    const std::size_t max_threads = 1) -> calculation::ExecutionResult {
+    const auto assessment = calculation::assess(std::move(request));
+    return calculation::calculate(assessment, max_threads, observer);
+}
 
 [[nodiscard]] inline auto
 calculate_method(core::Molecule molecule, std::string_view method_id,

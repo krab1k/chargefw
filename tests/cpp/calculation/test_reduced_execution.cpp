@@ -2,6 +2,8 @@
 #include "calculation/cutoff_execution.h"
 #include "calculation/fixed_charge_partition.h"
 #include "calculation/reduced_execution.h"
+#include "support/test_calculation.h"
+#include "support/test_methods.h"
 #include "support/test_molecules.h"
 #include "support/test_parameters.h"
 
@@ -51,102 +53,26 @@ namespace features = chargefw::features;
 namespace methods = chargefw::methods;
 namespace parameters = chargefw::parameters;
 
+using chargefw::test::calculate_application;
+
 namespace {
 
-[[nodiscard]] auto calculate_application(calculation::AssessmentRequest request)
-    -> calculation::ExecutionResult {
-    auto assessment = calculation::assess(std::move(request));
-    return calculation::calculate(assessment, 1);
-}
-
-class ZeroFragmentMethod final : public methods::Method {
+class FailingFixedIonsFragmentMethod final : public chargefw::test::StubMethod {
   public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "zero-fragment",
-                                                          .name = "Zero fragment",
-                                                          .full_name = "Zero fragment",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.coordinates = true;
-        requirements.resources.supports_cutoff = true;
-        requirements.resources.supports_cover = true;
-        requirements.resources.reduced_charge_policy =
-            methods::ReducedChargePolicy::uniform_target_global;
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
-
-    [[nodiscard]] auto calculate(const methods::CalculationInput& input) const
-        -> charges::AtomicCharges override {
-        return charges::AtomicCharges{std::vector<double>(input.molecule().atom_count(), 0.0)};
-    }
-};
-
-class FailingFixedIonsFragmentMethod final : public methods::Method {
-  public:
-    [[nodiscard]] auto metadata() const noexcept -> const methods::MethodMetadata& override {
-        static constexpr methods::MethodMetadata metadata{.id = "failing-fixed-ions-fragment",
-                                                          .name = "Failing fragment",
-                                                          .full_name = "Failing fragment",
-                                                          .publication = std::nullopt,
-                                                          .priority = 0};
-        return metadata;
-    }
-
-    [[nodiscard]] auto requirements() const -> methods::MethodRequirements override {
-        auto requirements = methods::MethodRequirements{};
-        requirements.coordinates = true;
-        requirements.resources.supports_cutoff = true;
-        requirements.resources.supports_cover = true;
-        requirements.resources.reduced_charge_policy =
-            methods::ReducedChargePolicy::uniform_target_global;
-        requirements.supports_fixed_point_sources = true;
-        return requirements;
-    }
-
-    [[nodiscard]] auto option_schema() const noexcept
-        -> std::span<const methods::MethodOptionSpec> override {
-        return {};
-    }
+    FailingFixedIonsFragmentMethod()
+        : StubMethod{"failing-fixed-ions-fragment",
+                     {.coordinates = true,
+                      .resources = {.supports_cutoff = true,
+                                    .supports_cover = true,
+                                    .reduced_charge_policy =
+                                        methods::ReducedChargePolicy::uniform_target_global},
+                      .supports_fixed_point_sources = true}} {}
 
     [[nodiscard]] auto calculate(const methods::CalculationInput&) const
         -> charges::AtomicCharges override {
         throw std::runtime_error{"deliberate fragment failure"};
     }
 };
-
-auto make_eem_parameters() -> parameters::ParameterSet {
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{.id = "test-eem", .method_id = "eem", .name = "Test EEM"},
-        parameters::CommonParameters{{{.name = "kappa", .value = 1.0}}},
-        parameters::AtomParameters{
-            {{.key = chargefw::test::plain_atom_key(1),
-              .parameters = {{.name = "A", .value = 1.0}, {.name = "B", .value = 10.0}}},
-             {.key = chargefw::test::plain_atom_key(8),
-              .parameters = {{.name = "A", .value = 2.0}, {.name = "B", .value = 10.0}}}}}};
-}
-
-auto make_invalid_qeq_parameters() -> parameters::ParameterSet {
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{
-            .id = "invalid-qeq", .method_id = "qeq", .name = "Invalid QEq"},
-        {},
-        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
-                                     .parameters = {{.name = "electronegativity", .value = 4.5280},
-                                                    {.name = "hardness", .value = 0.0}}},
-                                    {.key = chargefw::test::plain_atom_key(8),
-                                     .parameters = {{.name = "electronegativity", .value = 8.741},
-                                                    {.name = "hardness", .value = 13.364}}}}}};
-}
 
 auto make_eqeqc_parameters() -> parameters::ParameterSet {
     return parameters::ParameterSet{
@@ -157,34 +83,6 @@ auto make_eqeqc_parameters() -> parameters::ParameterSet {
                                      .parameters = {{.name = "Dz", .value = 0.1}}},
                                     {.key = chargefw::test::plain_atom_key(8),
                                      .parameters = {{.name = "Dz", .value = 0.2}}}}}};
-}
-
-auto make_sqe_parameters(const std::string_view method_id, const bool parameterized_initial_charge,
-                         const bool zero_widths = false) -> parameters::ParameterSet {
-    auto hydrogen_parameters = std::vector<parameters::NamedParameter>{
-        {.name = "electronegativity", .value = 4.5280},
-        {.name = "hardness", .value = 13.8904},
-        {.name = "width", .value = zero_widths ? 0.0 : 1.0}};
-    auto oxygen_parameters = std::vector<parameters::NamedParameter>{
-        {.name = "electronegativity", .value = 8.741},
-        {.name = "hardness", .value = 13.364},
-        {.name = "width", .value = zero_widths ? 0.0 : 1.0}};
-    if (parameterized_initial_charge) {
-        hydrogen_parameters.push_back({.name = "q0", .value = 0.25});
-        oxygen_parameters.push_back({.name = "q0", .value = -0.5});
-    }
-
-    return parameters::ParameterSet{
-        parameters::ParameterSetMetadata{.id = "test-" + std::string{method_id},
-                                         .method_id = std::string{method_id},
-                                         .name = "Test SQE-family parameters"},
-        {},
-        parameters::AtomParameters{{{.key = chargefw::test::plain_atom_key(1),
-                                     .parameters = std::move(hydrogen_parameters)},
-                                    {.key = chargefw::test::plain_atom_key(8),
-                                     .parameters = std::move(oxygen_parameters)}}},
-        parameters::BondParameters{{{.key = chargefw::test::single_bond_key(1, 8),
-                                     .parameters = {{.name = "kappa", .value = 1.0}}}}}};
 }
 
 auto make_charged_water() -> core::Molecule {
@@ -250,14 +148,6 @@ auto make_two_diatomic_components(const double separation) -> core::Molecule {
     return result.charges->assignment(0).charges;
 }
 
-[[nodiscard]] auto calculate_reduced(const core::Molecule& molecule,
-                                     const std::string_view method_id,
-                                     const parameters::ParameterSet& parameter_set,
-                                     const calculation::ExecutionSelectionKind mode,
-                                     const double radius = 8.0) -> charges::AtomicCharges {
-    return calculate_reduced(molecule, method_id, std::vector{parameter_set}, mode, radius);
-}
-
 [[nodiscard]] auto calculate_full(const core::Molecule& molecule, const std::string_view method_id,
                                   std::vector<parameters::ParameterSet> parameter_sets)
     -> charges::AtomicCharges {
@@ -268,12 +158,6 @@ auto make_two_diatomic_components(const double separation) -> core::Molecule {
     REQUIRE(result.calculated());
     REQUIRE(result.charges.has_value());
     return result.charges->assignment(0).charges;
-}
-
-[[nodiscard]] auto calculate_full(const core::Molecule& molecule, const std::string_view method_id,
-                                  const parameters::ParameterSet& parameter_set)
-    -> charges::AtomicCharges {
-    return calculate_full(molecule, method_id, std::vector{parameter_set});
 }
 
 struct ErrorMetrics {
@@ -341,10 +225,7 @@ auto assert_reduced_matches_full(
              ++assignment_index) {
             const auto& full_charges = full.charges->assignment(assignment_index).charges;
             const auto& reduced_charges = reduced.charges->assignment(assignment_index).charges;
-            REQUIRE(full_charges.size() == reduced_charges.size());
-            for (std::size_t atom_index = 0; atom_index < full_charges.size(); ++atom_index) {
-                CHECK(std::abs(full_charges[atom_index] - reduced_charges[atom_index]) < 1.0e-10);
-            }
+            chargefw::test::assert_same_charges(reduced_charges, full_charges, 1.0e-10);
         }
     }
 }
@@ -381,7 +262,13 @@ TEST_CASE("fragment classification projects source entries to local indices",
 
 TEST_CASE("reduced execution validates inputs and mode selection",
           "[calculation][reduced-execution]") {
-    const ZeroFragmentMethod zero_method;
+    const chargefw::test::StubMethod zero_method{
+        "zero-fragment",
+        {.coordinates = true,
+         .resources = {.supports_cutoff = true,
+                       .supports_cover = true,
+                       .reduced_charge_policy =
+                           methods::ReducedChargePolicy::uniform_target_global}}};
     const auto charged_molecule = core::Molecule{
         std::vector{core::Atom{1, 1}, core::Atom{1, 0}},
         {},
@@ -434,11 +321,11 @@ TEST_CASE("reduced execution validates inputs and mode selection",
     CHECK(cover.charges.assignment(0).charges[0] == 0.5);
     CHECK(cover.charges.assignment(0).charges[1] == 0.5);
 
-    assert_reduced_matches_full("eem", {make_eem_parameters()});
+    assert_reduced_matches_full("eem", {chargefw::test::make_eem_parameters()});
 
     const auto automatic_cutoff = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-        .parameter_sets = {make_eem_parameters()},
+        .parameter_sets = {chargefw::test::make_eem_parameters()},
         .method_id = "eem",
         .resource_policy = {.cutoff_atom_threshold = 2}});
     REQUIRE(automatic_cutoff.calculated());
@@ -450,7 +337,7 @@ TEST_CASE("reduced execution validates inputs and mode selection",
 
     const auto overridden_automatic_cutoff = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-        .parameter_sets = {make_eem_parameters()},
+        .parameter_sets = {chargefw::test::make_eem_parameters()},
         .method_id = "eem",
         .execution_selection =
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::automatic, 8.0},
@@ -464,7 +351,7 @@ TEST_CASE("reduced execution validates inputs and mode selection",
 
     const auto automatic_cover = calculate_application(calculation::AssessmentRequest{
         .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-        .parameter_sets = {make_eem_parameters()},
+        .parameter_sets = {chargefw::test::make_eem_parameters()},
         .method_id = "eem",
         .resource_policy = {.cutoff_atom_threshold = 2, .cover_atom_threshold = 2}});
     REQUIRE(automatic_cover.calculated());
@@ -474,7 +361,7 @@ TEST_CASE("reduced execution validates inputs and mode selection",
     const auto explicit_cutoff_above_cover_threshold =
         calculate_application(calculation::AssessmentRequest{
             .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {make_eem_parameters()},
+            .parameter_sets = {chargefw::test::make_eem_parameters()},
             .method_id = "eem",
             .execution_selection =
                 calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff,
@@ -491,16 +378,26 @@ TEST_CASE("reduced execution validates inputs and mode selection",
     assert_reduced_matches_full("eqeq");
     assert_reduced_matches_full("eqeqc", {make_eqeqc_parameters()});
     assert_reduced_matches_full("abeem", {chargefw::test::make_abeem_ho_parameters()});
-    assert_reduced_matches_full("sqe", {make_sqe_parameters("sqe", false)});
-    assert_reduced_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)});
-    assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)});
-    assert_reduced_matches_full("sqe", {make_sqe_parameters("sqe", false, true)});
-    assert_reduced_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false, true)});
-    assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true, true)});
-    assert_reduced_matches_full("sqeq0", {make_sqe_parameters("sqeq0", false)},
+    assert_reduced_matches_full("sqe", {chargefw::test::make_sqe_ho_parameters("sqe")});
+    assert_reduced_matches_full("sqeq0", {chargefw::test::make_sqe_ho_parameters("sqeq0")});
+    assert_reduced_matches_full("sqeqp", {chargefw::test::make_sqe_ho_parameters(
+                                             "sqeqp", {.hydrogen_q0 = 0.25, .oxygen_q0 = -0.5})});
+    assert_reduced_matches_full("sqe", {chargefw::test::make_sqe_ho_parameters(
+                                           "sqe", {.hydrogen_width = 0.0, .oxygen_width = 0.0})});
+    assert_reduced_matches_full("sqeq0",
+                                {chargefw::test::make_sqe_ho_parameters(
+                                    "sqeq0", {.hydrogen_width = 0.0, .oxygen_width = 0.0})});
+    assert_reduced_matches_full(
+        "sqeqp",
+        {chargefw::test::make_sqe_ho_parameters(
+            "sqeqp",
+            {.hydrogen_width = 0.0, .oxygen_width = 0.0, .hydrogen_q0 = 0.25, .oxygen_q0 = -0.5})});
+    assert_reduced_matches_full("sqeq0", {chargefw::test::make_sqe_ho_parameters("sqeq0")},
                                 make_charged_water());
-    assert_reduced_matches_full("sqeqp", {make_sqe_parameters("sqeqp", true)},
-                                make_charged_water());
+    assert_reduced_matches_full(
+        "sqeqp",
+        {chargefw::test::make_sqe_ho_parameters("sqeqp", {.hydrogen_q0 = 0.25, .oxygen_q0 = -0.5})},
+        make_charged_water());
 }
 
 TEST_CASE("SQE reduced execution preserves original component charge budgets",
@@ -511,18 +408,22 @@ TEST_CASE("SQE reduced execution preserves original component charge budgets",
         CAPTURE(mode);
 
         const auto neutral = make_extended_components(0);
-        const auto sqe = calculate_reduced(neutral, "sqe", make_sqe_parameters("sqe", false), mode);
+        const auto sqe = calculate_reduced(neutral, "sqe",
+                                           {chargefw::test::make_sqe_ho_parameters("sqe")}, mode);
         check_component_total(sqe, 0, chain_atom_count, 0.0);
         check_component_total(sqe, chain_atom_count, chain_atom_count + 1, 0.0);
 
         const auto charged = make_extended_components(1);
-        const auto sqeq0 =
-            calculate_reduced(charged, "sqeq0", make_sqe_parameters("sqeq0", false), mode);
+        const auto sqeq0 = calculate_reduced(
+            charged, "sqeq0", {chargefw::test::make_sqe_ho_parameters("sqeq0")}, mode);
         check_component_total(sqeq0, 0, chain_atom_count, 0.0);
         check_component_total(sqeq0, chain_atom_count, chain_atom_count + 1, 1.0);
 
         const auto sqeqp =
-            calculate_reduced(charged, "sqeqp", make_sqe_parameters("sqeqp", true), mode);
+            calculate_reduced(charged, "sqeqp",
+                              {chargefw::test::make_sqe_ho_parameters(
+                                  "sqeqp", {.hydrogen_q0 = 0.25, .oxygen_q0 = -0.5})},
+                              mode);
         constexpr auto atom_count = chain_atom_count + 1;
         constexpr auto raw_total = -1.25;
         constexpr auto offset = (1.0 - raw_total) / static_cast<double>(atom_count);
@@ -546,61 +447,62 @@ TEST_CASE("reduced approximation remains bounded across a truncated radius sweep
     const auto charged = make_extended_components(1);
     // Fixture-specific comparisons with full execution, not independent scientific reference
     // values or accuracy guarantees for other molecules and parameter sets.
-    const auto cases =
-        std::vector<AccuracyCase>{{.method_id = "abeem",
-                                   .molecule = charged,
-                                   .parameter_sets = {chargefw::test::make_abeem_ho_parameters()},
-                                   .max_rmsd = 0.01,
-                                   .max_mae = 0.01,
-                                   .max_maxabs = 0.02},
-                                  {.method_id = "eem",
-                                   .molecule = charged,
-                                   .parameter_sets = {make_eem_parameters()},
-                                   .max_rmsd = 0.03,
-                                   .max_mae = 0.02,
-                                   .max_maxabs = 0.08},
-                                  {.method_id = "eqeq",
-                                   .molecule = charged,
-                                   .parameter_sets = {},
-                                   .max_rmsd = 0.05,
-                                   .max_mae = 0.03,
-                                   .max_maxabs = 0.15},
-                                  {.method_id = "eqeqc",
-                                   .molecule = charged,
-                                   .parameter_sets = {make_eqeqc_parameters()},
-                                   .max_rmsd = 0.05,
-                                   .max_mae = 0.03,
-                                   .max_maxabs = 0.15},
-                                  {.method_id = "qeq",
-                                   .molecule = charged,
-                                   .parameter_sets = {chargefw::test::make_qeq_ho_parameters()},
-                                   .max_rmsd = 0.1,
-                                   .max_mae = 0.05,
-                                   .max_maxabs = 0.3},
-                                  {.method_id = "sfkeem",
-                                   .molecule = charged,
-                                   .parameter_sets = {chargefw::test::make_sfkeem_ho_parameters()},
-                                   .max_rmsd = 0.04,
-                                   .max_mae = 0.02,
-                                   .max_maxabs = 0.1},
-                                  {.method_id = "sqe",
-                                   .molecule = make_extended_components(0),
-                                   .parameter_sets = {make_sqe_parameters("sqe", false)},
-                                   .max_rmsd = 0.01,
-                                   .max_mae = 0.01,
-                                   .max_maxabs = 0.02},
-                                  {.method_id = "sqeq0",
-                                   .molecule = charged,
-                                   .parameter_sets = {make_sqe_parameters("sqeq0", false)},
-                                   .max_rmsd = 0.01,
-                                   .max_mae = 0.01,
-                                   .max_maxabs = 0.02},
-                                  {.method_id = "sqeqp",
-                                   .molecule = charged,
-                                   .parameter_sets = {make_sqe_parameters("sqeqp", true)},
-                                   .max_rmsd = 0.01,
-                                   .max_mae = 0.01,
-                                   .max_maxabs = 0.02}};
+    const auto cases = std::vector<AccuracyCase>{
+        {.method_id = "abeem",
+         .molecule = charged,
+         .parameter_sets = {chargefw::test::make_abeem_ho_parameters()},
+         .max_rmsd = 0.01,
+         .max_mae = 0.01,
+         .max_maxabs = 0.02},
+        {.method_id = "eem",
+         .molecule = charged,
+         .parameter_sets = {chargefw::test::make_eem_parameters()},
+         .max_rmsd = 0.03,
+         .max_mae = 0.02,
+         .max_maxabs = 0.08},
+        {.method_id = "eqeq",
+         .molecule = charged,
+         .parameter_sets = {},
+         .max_rmsd = 0.05,
+         .max_mae = 0.03,
+         .max_maxabs = 0.15},
+        {.method_id = "eqeqc",
+         .molecule = charged,
+         .parameter_sets = {make_eqeqc_parameters()},
+         .max_rmsd = 0.05,
+         .max_mae = 0.03,
+         .max_maxabs = 0.15},
+        {.method_id = "qeq",
+         .molecule = charged,
+         .parameter_sets = {chargefw::test::make_qeq_ho_parameters()},
+         .max_rmsd = 0.1,
+         .max_mae = 0.05,
+         .max_maxabs = 0.3},
+        {.method_id = "sfkeem",
+         .molecule = charged,
+         .parameter_sets = {chargefw::test::make_sfkeem_ho_parameters()},
+         .max_rmsd = 0.04,
+         .max_mae = 0.02,
+         .max_maxabs = 0.1},
+        {.method_id = "sqe",
+         .molecule = make_extended_components(0),
+         .parameter_sets = {chargefw::test::make_sqe_ho_parameters("sqe")},
+         .max_rmsd = 0.01,
+         .max_mae = 0.01,
+         .max_maxabs = 0.02},
+        {.method_id = "sqeq0",
+         .molecule = charged,
+         .parameter_sets = {chargefw::test::make_sqe_ho_parameters("sqeq0")},
+         .max_rmsd = 0.01,
+         .max_mae = 0.01,
+         .max_maxabs = 0.02},
+        {.method_id = "sqeqp",
+         .molecule = charged,
+         .parameter_sets = {chargefw::test::make_sqe_ho_parameters(
+             "sqeqp", {.hydrogen_q0 = 0.25, .oxygen_q0 = -0.5})},
+         .max_rmsd = 0.01,
+         .max_mae = 0.01,
+         .max_maxabs = 0.02}};
 
     for (const auto& test_case : cases) {
         const features::PreparedMolecule prepared{test_case.molecule};
@@ -631,77 +533,24 @@ TEST_CASE("reduced approximation remains bounded across a truncated radius sweep
 
 TEST_CASE("SQE component totals coexist with intermolecular polarization",
           "[calculation][reduced-execution][sqe]") {
-    const auto parameters = make_sqe_parameters("sqeq0", false);
+    const auto parameter_sets = std::vector{chargefw::test::make_sqe_ho_parameters("sqeq0")};
     const auto near = make_two_diatomic_components(4.0);
     const auto far = make_two_diatomic_components(30.0);
 
-    const auto full_near = calculate_full(near, "sqeq0", parameters);
-    const auto full_far = calculate_full(far, "sqeq0", parameters);
+    const auto full_near = calculate_full(near, "sqeq0", parameter_sets);
+    const auto full_far = calculate_full(far, "sqeq0", parameter_sets);
     check_component_total(full_near, 0, 2, 0.0);
     check_component_total(full_near, 2, 4, 0.0);
     CHECK(std::abs(full_near[0] - full_far[0]) > 1.0e-6);
 
     for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
                             calculation::ExecutionSelectionKind::cover}) {
-        const auto reduced_near = calculate_reduced(near, "sqeq0", parameters, mode);
-        const auto reduced_far = calculate_reduced(far, "sqeq0", parameters, mode);
+        const auto reduced_near = calculate_reduced(near, "sqeq0", parameter_sets, mode);
+        const auto reduced_far = calculate_reduced(far, "sqeq0", parameter_sets, mode);
         CAPTURE(mode);
         check_component_total(reduced_near, 0, 2, 0.0);
         check_component_total(reduced_near, 2, 4, 0.0);
         CHECK(std::abs(reduced_near[0] - reduced_far[0]) > 1.0e-6);
-    }
-}
-
-TEST_CASE("reduced solver failures retain method and target context",
-          "[calculation][reduced-execution]") {
-    for (const auto mode : {calculation::ExecutionSelectionKind::cutoff,
-                            calculation::ExecutionSelectionKind::cover}) {
-        const auto result = calculate_application(calculation::AssessmentRequest{
-            .molecules = core::MoleculeCollection{std::vector{chargefw::test::make_water()}},
-            .parameter_sets = {make_invalid_qeq_parameters()},
-            .method_id = "qeq",
-            .parameter_set_id = "invalid-qeq",
-            .execution_selection =
-                calculation::ExecutionSelection{mode, calculation::minimum_reduced_radius}});
-
-        CHECK(result.status == calculation::ExecutionStatus::numerical_failure);
-        CHECK_FALSE(result.calculated());
-        REQUIRE(result.failure_message.has_value());
-        const auto message = std::string_view{*result.failure_message};
-        CHECK(message.contains("method 'qeq', molecule 1 ('water'), conformer 1 failed:"));
-        CHECK(message.contains(mode == calculation::ExecutionSelectionKind::cutoff
-                                   ? "cutoff fragment around source atom 1 failed:"
-                                   : "cover fragment around source atom 1 failed:"));
-        CHECK_FALSE(message.contains("center atom"));
-        CHECK_FALSE(message.contains("pivot atom"));
-    }
-}
-
-TEST_CASE("reduced execution preserves mixed source target order",
-          "[calculation][reduced-execution]") {
-    const auto collection = core::MoleculeCollection{
-        std::vector{chargefw::test::make_two_conformer_water(), chargefw::test::make_water()},
-        "mixed-water"};
-    const features::PreparedMoleculeCollection prepared{collection};
-    const ZeroFragmentMethod method;
-    const methods::ApplicableMethod selected{.method = &method, .parameter_set = nullptr};
-
-    for (const auto mode :
-         {calculation::ExecutionMode::cutoff, calculation::ExecutionMode::cover}) {
-        const auto result = calculation::calculate(
-            {.molecules = prepared,
-             .selected = selected,
-             .execution_policy =
-                 calculation::ExecutionPolicy{mode, calculation::minimum_reduced_radius},
-             .max_threads = 2});
-
-        REQUIRE(result.charges.size() == 3);
-        CHECK(result.charges.assignment(0).target.molecule_index == 0);
-        CHECK(result.charges.assignment(0).target.conformer_index == std::optional<std::size_t>{0});
-        CHECK(result.charges.assignment(1).target.molecule_index == 0);
-        CHECK(result.charges.assignment(1).target.conformer_index == std::optional<std::size_t>{1});
-        CHECK(result.charges.assignment(2).target.molecule_index == 1);
-        CHECK(result.charges.assignment(2).target.conformer_index == std::optional<std::size_t>{0});
     }
 }
 
@@ -784,10 +633,11 @@ TEST_CASE("reduced fragment calculations forward the complete fixed-source envir
         }
     };
 
-    exercise("eem", make_eem_parameters(), false);
-    exercise("sqeqp", make_sqe_parameters("sqeqp", true), true);
-    CHECK(sources[0].position.x == 50.0);
-    CHECK(sources[0].charge == 1.25);
+    exercise("eem", chargefw::test::make_eem_parameters(), false);
+    exercise(
+        "sqeqp",
+        chargefw::test::make_sqe_ho_parameters("sqeqp", {.hydrogen_q0 = 0.25, .oxygen_q0 = -0.5}),
+        true);
 }
 
 TEST_CASE("fixed-charge cutoff and cover diagnostics map active centers to original atoms",
