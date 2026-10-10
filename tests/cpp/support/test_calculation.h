@@ -11,7 +11,6 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -51,21 +50,6 @@ calculate_single_method(core::Molecule molecule, std::string_view method_id,
         calculate_method(std::move(molecule), method_id, std::move(parameter_sets), method_options);
     REQUIRE(charge_set.size() == 1);
     return charge_set;
-}
-
-inline auto assert_calculation_provenance(const charges::ChargeSet& charge_set,
-                                          const std::string_view method_id,
-                                          const std::optional<std::string_view> parameter_set_id)
-    -> void {
-    CHECK(charge_set.method_id() == method_id);
-    CHECK(charge_set.parameter_set_id() == parameter_set_id);
-}
-
-inline auto assert_conformer_independent(const charges::ChargeSet& charge_set) -> void {
-    CHECK(charge_set.size() == 1);
-    const auto& assignment = charge_set.assignment(0);
-    CHECK(assignment.target.molecule_index == 0);
-    CHECK_FALSE(assignment.target.conformer_index.has_value());
 }
 
 inline auto assert_conformer_dependent(const charges::ChargeSet& charge_set,

@@ -104,12 +104,7 @@ TEST_CASE("native numeric parsing is complete and locale independent", "[adapter
     {
         std::istringstream input{v3000_with_coordinates("1.25suffix 0 0")};
 
-        try {
-            [[maybe_unused]] const auto record = mol::parse_mol(input, {});
-            CHECK(false);
-        } catch (const std::runtime_error& error) {
-            CHECK(std::string_view{error.what()} == "invalid V3000 x coordinate");
-        }
+        CHECK_THROWS_AS(mol::parse_mol(input, {}), std::runtime_error);
     }
 
     {

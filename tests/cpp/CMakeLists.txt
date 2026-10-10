@@ -19,30 +19,6 @@ if(CHARGEFW_ENABLE_WARNINGS)
     target_compile_options(chargefw_test_support PRIVATE -Wno-missing-field-initializers)
 endif()
 
-function(chargefw_add_test name)
-    add_executable(${name}
-            ${ARGN}
-    )
-
-    target_link_libraries(${name}
-            PRIVATE
-            chargefw::core
-            chargefw_test_support
-    )
-
-    target_link_options(${name} PRIVATE "LINKER:--disable-new-dtags")
-
-    if(CHARGEFW_ENABLE_WARNINGS)
-        chargefw_enable_warnings(${name})
-        target_compile_options(${name} PRIVATE -Wno-missing-field-initializers)
-    endif()
-
-    add_test(
-            NAME ${name}
-            COMMAND ${name}
-    )
-endfunction()
-
 function(chargefw_add_snitch_test name)
     add_executable(${name}
             ${ARGN}

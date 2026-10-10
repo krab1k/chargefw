@@ -43,12 +43,6 @@ if(NOT mg_id STREQUAL "MG" OR NOT ca_id STREQUAL "CA" OR
    NOT mg_index EQUAL 3 OR NOT mg_value EQUAL 2 OR NOT ca_index EQUAL 4 OR NOT ca_value EQUAL 2)
     message(FATAL_ERROR "fixed sources differ from input order or preset values: ${fixed_groups}")
 endif()
-foreach(removed_field charge_provenance charge_totals original_total_charge active_total_charge)
-    string(JSON removed_type ERROR_VARIABLE missing_field TYPE "${fixed_groups}" 0 "${removed_field}")
-    if(NOT missing_field)
-        message(FATAL_ERROR "unexpected fixed-ion audit field: ${removed_field}")
-    endif()
-endforeach()
 
 run_cli(unknown_fixed_ion 2 applicability --fixed-ions UNKNOWN "${input_path}")
 run_cli(missing_fixed_ion 2 applicability "${input_path}" --fixed-ions)

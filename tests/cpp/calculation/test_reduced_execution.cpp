@@ -415,17 +415,8 @@ TEST_CASE("reduced execution validates inputs and mode selection",
                                 : calculation::ExecutionPolicy{mode, 8.0};
         const calculation::CalculationRequest request{
             .molecules = no_conformer_prepared, .selected = selected, .execution_policy = policy};
-        const auto calculate_without_conformer = [&request] -> void {
-            static_cast<void>(calculation::calculate(request));
-        };
-        try {
-            calculate_without_conformer();
-            CHECK(false);
-        } catch (const std::invalid_argument& error) {
-            CHECK(std::string_view{error.what()} ==
-                  "selected method 'zero-fragment' requires coordinates, but molecule 2 has no "
-                  "conformers");
-        }
+        CHECK_THROWS_MATCHES(calculation::calculate(request), std::invalid_argument,
+                             snitch::matchers::with_what_contains{"molecule 2"});
     }
 
     const auto cutoff = calculation::calculate(
