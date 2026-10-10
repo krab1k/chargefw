@@ -597,5 +597,7 @@ def test_generic_input_requires_explicit_compatible_format_options() -> None:
         chargefw_io.parse(MOL_TEXT, format="mol", selection="polymers")
     with pytest.raises(ValueError, match="bonds"):
         chargefw_io.parse(MOL_TEXT, format="mol", bonds="explicit")
+    with pytest.raises(ValueError):
+        chargefw_io.parse(BOND_STRATEGY_PDB, format="pdb", bonds=cast(Any, ""))
     with pytest.raises(ValueError, match="conformers"):
         chargefw_io.parse(MOL_TEXT, format="mol", conformers="first")

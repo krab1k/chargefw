@@ -155,7 +155,7 @@ def parse(
         raise TypeError("source_name must be a string")
     _validate_options(format, selection, bonds, conformers)
     payloads = _native_adapters._parse(
-        contents, source_name, format, selection, bonds or "hybrid", conformers
+        contents, source_name, format, selection, "hybrid" if bonds is None else bonds, conformers
     )
     return _collection(payloads, source_name)
 
