@@ -27,7 +27,6 @@ PrerequisiteIssueKind: TypeAlias = Literal[
 MethodOptionType: TypeAlias = Literal["boolean", "integer", "floating_point", "string"]
 ExecutionStatus: TypeAlias = Literal[
     "success",
-    "invalid_input_or_request",
     "no_executable_plan",
     "numerical_failure",
     "cancelled",

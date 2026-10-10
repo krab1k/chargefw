@@ -241,10 +241,6 @@ class ChargeFWError(RuntimeError):
         self.result = result
 
 
-class InvalidInputError(ChargeFWError):
-    pass
-
-
 class NoExecutablePlanError(ChargeFWError):
     pass
 
@@ -407,7 +403,6 @@ class CalculationResult:
 
     def _raise_for_status(self) -> None:
         exception_types = {
-            "invalid_input_or_request": InvalidInputError,
             "no_executable_plan": NoExecutablePlanError,
             "numerical_failure": NumericalFailureError,
             "cancelled": CalculationCancelledError,

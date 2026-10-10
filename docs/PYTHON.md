@@ -450,7 +450,6 @@ assignment per molecule without conformer identity.
 Invalid Python values and request arguments raise `TypeError` or `ValueError`. Failed calculations raise
 a typed `ChargeFWError` subclass:
 
-- `InvalidInputError`;
 - `NoExecutablePlanError`;
 - `NumericalFailureError`;
 - `CalculationCancelledError`.
