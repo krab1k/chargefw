@@ -44,7 +44,12 @@ auto SFKEEMMethod::calculate(const CalculationInput& input) const -> charges::At
     }
 
     const auto a = parameters.atom("A");
-    const auto b_parameter = parameters.atom("B");
+    // The pair loop below reads B O(n^2) times; resolve it once per atom.
+    const auto b_accessor = parameters.atom("B");
+    std::vector<double> b_parameter(atom_count);
+    for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
+        b_parameter[atom_index] = b_accessor[atom_index];
+    }
 
     const auto n = static_cast<Eigen::Index>(atom_count);
 

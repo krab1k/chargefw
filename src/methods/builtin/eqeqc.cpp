@@ -44,7 +44,12 @@ auto EQeqCMethod::calculate(const CalculationInput& input) const -> charges::Ato
         throw std::logic_error{"EQeq+C common parameter 'alpha' must be positive"};
     }
 
-    const auto dz = parameters.atom("Dz");
+    // The pair loop below reads Dz O(n^2) times; resolve it once per atom.
+    const auto dz_parameter = parameters.atom("Dz");
+    std::vector<double> dz(atom_count);
+    for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
+        dz[atom_index] = dz_parameter[atom_index];
+    }
     auto values = eqeq_core::calculate(input, "EQeq+C");
 
     const auto& table = core::periodic_table();

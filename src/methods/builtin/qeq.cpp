@@ -78,7 +78,12 @@ auto QEqMethod::calculate(const CalculationInput& input) const -> charges::Atomi
     }
 
     const auto electronegativity = parameters.atom("electronegativity");
-    const auto hardness = parameters.atom("hardness");
+    // The pair loop below reads hardness O(n^2) times; resolve it once per atom.
+    const auto hardness_parameter = parameters.atom("hardness");
+    std::vector<double> hardness(atom_count);
+    for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
+        hardness[atom_index] = hardness_parameter[atom_index];
+    }
     const auto& type = input.method_options().get<std::string>("overlap_term");
 
     for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {

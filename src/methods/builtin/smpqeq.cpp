@@ -51,7 +51,12 @@ auto SMPQEqMethod::calculate(const CalculationInput& input) const -> charges::At
     }
 
     const auto first = parameters.atom("first");
-    const auto second = parameters.atom("second");
+    // The pair loop below reads second O(n^2) times; resolve it once per atom.
+    const auto second_parameter = parameters.atom("second");
+    std::vector<double> second(atom_count);
+    for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
+        second[atom_index] = second_parameter[atom_index];
+    }
     const auto third = parameters.atom("third");
     const auto fourth = parameters.atom("fourth");
 

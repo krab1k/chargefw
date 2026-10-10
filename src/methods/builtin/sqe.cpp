@@ -87,7 +87,12 @@ auto sqe_core::calculate(const CalculationInput& input,
 
     const auto electronegativity = parameters.atom("electronegativity");
     const auto hardness = parameters.atom("hardness");
-    const auto width = parameters.atom("width");
+    // The pair loop below reads widths O(n^2) times; resolve them once per atom.
+    const auto width_parameter = parameters.atom("width");
+    std::vector<double> width(atom_count);
+    for (std::size_t atom_index = 0; atom_index < atom_count; ++atom_index) {
+        width[atom_index] = width_parameter[atom_index];
+    }
     const auto kappa = parameters.bond("kappa");
 
     const auto n = static_cast<Eigen::Index>(atom_count);
