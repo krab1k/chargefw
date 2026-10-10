@@ -591,7 +591,7 @@ HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
         policy = encoded["results"][0]["input"]["import"]["policy"]
         self.assertEqual(policy["conformer_selection"], "first")
         self.assertEqual(policy["record_selection"], "polymers")
-        self.assertEqual(policy["bond_strategy"], "none")
+        self.assertEqual(policy["bond_strategy"], "hybrid")
         requested = encoded["calculation_provenance"]["requested"]
         self.assertNotIn("input", requested)
         self.assertNotIn("structural_input", requested)

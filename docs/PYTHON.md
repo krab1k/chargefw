@@ -523,8 +523,8 @@ actionable `ImportError`. With the extra installed, use the object-conversion mo
 ```python
 import chargefw.io.gemmi
 
-structure_molecules = chargefw.io.gemmi.from_structure(structure, bonds="hybrid")
-document_molecules = chargefw.io.gemmi.from_document(document, bonds="hybrid")
+structure_molecules = chargefw.io.gemmi.from_structure(structure)
+document_molecules = chargefw.io.gemmi.from_document(document)
 fresh_document = chargefw.io.gemmi.to_document(result)
 ```
 
@@ -559,7 +559,7 @@ chargefw.io.gemmi.attach_charges(document, result)
 document.write_file("charged-with-source-metadata.cif")
 ```
 
-Structural input defaults are `selection="all"`, `bonds="none"`, and `conformers="all"`. Bond choices are
+Structural input defaults are `selection="all"`, `bonds="hybrid"`, and `conformers="all"`. Bond choices are
 `"none"`, `"explicit"`, `"templates"`, and `"hybrid"`; selection choices are `"all"`,
 `"polymers-and-ligands"`, and `"polymers"`. Their language-independent import semantics are defined in
 the [PDB and mmCIF format reference](FORMATS.md#pdb-and-mmcif-input).

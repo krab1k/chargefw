@@ -14,7 +14,7 @@ def inspect_molecules(
     *,
     input_format: str,
     selection: str = "all",
-    bonds: str = "none",
+    bonds: str | None = None,
     conformers: str = "all",
 ) -> None:
     """Print source identities, dimensions, and formal charges for imported records."""
@@ -48,9 +48,7 @@ def main() -> None:
     parser.add_argument(
         "--selection", choices=("all", "polymers-and-ligands", "polymers"), default="all"
     )
-    parser.add_argument(
-        "--bonds", choices=("none", "explicit", "templates", "hybrid"), default="none"
-    )
+    parser.add_argument("--bonds", choices=("none", "explicit", "templates", "hybrid"))
     parser.add_argument("--conformers", choices=("first", "all"), default="all")
     arguments = parser.parse_args()
     inspect_molecules(

@@ -24,7 +24,6 @@ def calculate_structure(
         input_path,
         format=input_format,
         selection=selection,
-        bonds="hybrid",
     )
     return chargefw.calculate(
         molecules,

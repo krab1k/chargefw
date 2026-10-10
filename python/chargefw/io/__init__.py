@@ -122,7 +122,7 @@ def _collection(
 def _validate_options(
     format: InputFormat,
     selection: RecordSelection,
-    bonds: BondStrategy,
+    bonds: BondStrategy | None,
     conformers: ConformerSelection,
 ) -> None:
     if not isinstance(format, str):
@@ -132,7 +132,7 @@ def _validate_options(
     if format not in _STRUCTURAL_FORMATS:
         if selection != "all":
             raise ValueError("selection is only supported for PDB and mmCIF input")
-        if bonds != "none":
+        if bonds is not None:
             raise ValueError("bonds is only supported for PDB and mmCIF input")
     if format not in _MULTI_CONFORMER_FORMATS and conformers != "all":
         raise ValueError("conformers is only supported for molecule JSON, PDB, and mmCIF input")
@@ -144,7 +144,7 @@ def parse(
     format: InputFormat,
     source_name: str = "",
     selection: RecordSelection = "all",
-    bonds: BondStrategy = "none",
+    bonds: BondStrategy | None = None,
     conformers: ConformerSelection = "all",
 ) -> MoleculeCollection:
     """Parse molecular text using an explicitly selected native reader."""
@@ -154,7 +154,9 @@ def parse(
     if not isinstance(source_name, str):
         raise TypeError("source_name must be a string")
     _validate_options(format, selection, bonds, conformers)
-    payloads = _native_adapters._parse(contents, source_name, format, selection, bonds, conformers)
+    payloads = _native_adapters._parse(
+        contents, source_name, format, selection, bonds or "hybrid", conformers
+    )
     return _collection(payloads, source_name)
 
 
@@ -163,7 +165,7 @@ def read(
     *,
     format: InputFormat,
     selection: RecordSelection = "all",
-    bonds: BondStrategy = "none",
+    bonds: BondStrategy | None = None,
     conformers: ConformerSelection = "all",
 ) -> MoleculeCollection:
     """Read UTF-8 molecular text using an explicitly selected native reader."""

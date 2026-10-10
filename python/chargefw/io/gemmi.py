@@ -41,7 +41,7 @@ def from_structure(
     *,
     source_name: str = "",
     selection: RecordSelection = "all",
-    bonds: BondStrategy = "none",
+    bonds: BondStrategy = "hybrid",
     conformers: ConformerSelection = "all",
 ) -> MoleculeCollection:
     """Convert a ``gemmi.Structure`` to a one-molecule collection."""
@@ -64,7 +64,7 @@ def from_document(
     *,
     source_name: str = "",
     selection: RecordSelection = "all",
-    bonds: BondStrategy = "none",
+    bonds: BondStrategy = "hybrid",
     conformers: ConformerSelection = "all",
 ) -> MoleculeCollection:
     """Convert a ``gemmi.cif.Document`` through ChargeFW's mmCIF parser."""

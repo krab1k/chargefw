@@ -38,7 +38,6 @@ def charge_document(
         document,
         source_name=str(input_path),
         selection=selection,
-        bonds="hybrid",
     )
     result = chargefw.calculate(
         molecules,
