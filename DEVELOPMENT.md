@@ -9,8 +9,9 @@ Native development requires CMake 3.28 or newer, Ninja, and a C++23-capable GCC 
 CMake downloads pinned dependencies when compatible system packages are unavailable.
 
 The checked-in presets also build the Python bindings. Their Python interpreter needs Python 3.10 or
-newer, development headers, NumPy, Nanobind, mypy, and Gemmi 0.7.4. RDKit is optional. The presets use
-`/usr/bin/python3`; select another interpreter explicitly when needed:
+newer, development headers, NumPy, Nanobind, Gemmi 0.7.4, and the test tools pytest, jsonschema, and
+mypy. RDKit is optional; its tests are skipped when it is absent. The presets use `/usr/bin/python3`;
+select another interpreter explicitly when needed:
 
 ```bash
 cmake --preset gcc-debug \
@@ -97,13 +98,20 @@ The full-suite and profile examples above document how to run selected checks, n
 
 ## Python checks
 
-CTest runs the Python API, adapter, recipe, installation, and mypy tests with the correct build-tree
-`PYTHONPATH`. A focused Python test is run like any other CTest test:
+CTest runs each `tests/python/test_<name>.py` file with pytest as `test_chargefw_python_<name>`, plus
+the installed-package and mypy tests, with the correct build-tree `PYTHONPATH`. A focused Python test is
+run like any other CTest test:
 
 ```bash
 cmake --build build/gcc-debug --target chargefw_python
 ctest --test-dir build/gcc-debug --output-on-failure -E '^cpptest$' \
     -R '^test_chargefw_python_calculation$'
+```
+
+To select individual pytest cases, run pytest directly against the build-tree package:
+
+```bash
+PYTHONPATH=build/gcc-debug/python python -m pytest tests/python/test_output.py -k failed_result
 ```
 
 Ruff is configured in `pyproject.toml`. Run it on modified Python files:

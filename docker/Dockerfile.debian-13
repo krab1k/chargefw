@@ -15,9 +15,11 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
 RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir \
         'gemmi==0.7.4' \
+        'jsonschema' \
         'mypy' \
         'nanobind>=2.11' \
-        'numpy>=1.26'
+        'numpy>=1.26' \
+        'pytest'
 
 WORKDIR /source
 COPY . .

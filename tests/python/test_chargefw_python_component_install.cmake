@@ -22,10 +22,12 @@ endif()
 execute_process(
     COMMAND "${CMAKE_COMMAND}" -E env "PYTHONPATH=${CHARGEFW_INSTALL_PREFIX}/${CHARGEFW_PYTHON_SITEARCH}"
             "CHARGEFW_EXPECTED_VERSION=${CHARGEFW_EXPECTED_VERSION}"
-            "${CHARGEFW_PYTHON_EXECUTABLE}" "${CHARGEFW_TEST_SOURCE_DIR}/test_import.py"
+            "${CHARGEFW_PYTHON_EXECUTABLE}" -m pytest -p no:cacheprovider -q
+            "${CHARGEFW_TEST_SOURCE_DIR}/test_import.py"
     RESULT_VARIABLE import_result
-    ERROR_VARIABLE import_error
+    OUTPUT_VARIABLE import_output
+    ERROR_VARIABLE import_output
 )
 if(NOT import_result EQUAL 0)
-    message(FATAL_ERROR "Installed ChargeFW Python package import failed: ${import_error}")
+    message(FATAL_ERROR "Installed ChargeFW Python package import failed: ${import_output}")
 endif()

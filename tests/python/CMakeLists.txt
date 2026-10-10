@@ -1,10 +1,12 @@
-add_test(
-    NAME test_chargefw_python_import
-    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_import.py"
-)
-set_tests_properties(test_chargefw_python_import PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python;CHARGEFW_EXPECTED_VERSION=${PROJECT_VERSION}"
-)
+set(CHARGEFW_PYTHON_TESTS)
+foreach(name IN ITEMS import molecule calculation gemmi output rdkit recipes)
+    add_test(
+        NAME test_chargefw_python_${name}
+        COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" -m pytest -p no:cacheprovider -q
+                "${CMAKE_CURRENT_SOURCE_DIR}/test_${name}.py"
+    )
+    list(APPEND CHARGEFW_PYTHON_TESTS test_chargefw_python_${name})
+endforeach()
 
 add_test(
     NAME test_chargefw_python_component_install
@@ -17,66 +19,11 @@ add_test(
             -P ${CMAKE_CURRENT_SOURCE_DIR}/test_chargefw_python_component_install.cmake
 )
 
-add_test(
-    NAME test_chargefw_python_molecule
-    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_molecule.py"
+set_tests_properties(${CHARGEFW_PYTHON_TESTS} PROPERTIES
+    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python;CHARGEFW_EXPECTED_VERSION=${PROJECT_VERSION}"
 )
-set_tests_properties(test_chargefw_python_molecule PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
-)
-
-add_test(
-    NAME test_chargefw_python_calculation
-    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_calculation.py"
-)
-set_tests_properties(test_chargefw_python_calculation PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
-)
-
-add_test(
-    NAME test_chargefw_python_gemmi
-    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_gemmi.py"
-)
-
-add_test(
-    NAME test_chargefw_python_output
-    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_output.py"
-)
-
-add_test(
-    NAME test_chargefw_python_rdkit
-    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_rdkit.py"
-)
-
-add_test(
-    NAME test_chargefw_python_recipes
-    COMMAND "${CHARGEFW_RESOLVED_PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_recipes.py"
-)
-set_tests_properties(test_chargefw_python_rdkit PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
-)
-set_tests_properties(test_chargefw_python_recipes PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
-)
-
-set_tests_properties(test_chargefw_python_output PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
-)
-set_tests_properties(test_chargefw_python_gemmi PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${PROJECT_BINARY_DIR}/python"
-)
-
-set_tests_properties(
-    test_chargefw_python_import
-    test_chargefw_python_component_install
-    test_chargefw_python_molecule
-    test_chargefw_python_calculation
-    test_chargefw_python_gemmi
-    test_chargefw_python_output
-    test_chargefw_python_rdkit
-    test_chargefw_python_recipes
-    PROPERTIES FAIL_REGULAR_EXPRESSION "nanobind: leaked"
-)
+list(APPEND CHARGEFW_PYTHON_TESTS test_chargefw_python_component_install)
+set_tests_properties(${CHARGEFW_PYTHON_TESTS} PROPERTIES FAIL_REGULAR_EXPRESSION "nanobind: leaked")
 
 add_test(
     NAME test_chargefw_python_mypy
@@ -86,6 +33,7 @@ set_tests_properties(test_chargefw_python_mypy PROPERTIES
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     ENVIRONMENT "MYPYPATH=${PROJECT_SOURCE_DIR}/python"
 )
+list(APPEND CHARGEFW_PYTHON_TESTS test_chargefw_python_mypy)
 
 # A shared library loaded by an unsanitized Python interpreter cannot resolve Clang's sanitizer
 # symbols unless the runtime is loaded into the process first. Native test executables link the runtime
@@ -114,16 +62,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_SYSTEM_NAME STREQUAL "Linux" 
             "${CHARGEFW_CLANG_RESOURCE_DIRECTORY}, found ${CHARGEFW_SANITIZER_RUNTIME_COUNT}")
     endif()
     list(GET CHARGEFW_SANITIZER_RUNTIMES 0 CHARGEFW_SANITIZER_RUNTIME)
-    set_property(TEST
-        test_chargefw_python_import
-        test_chargefw_python_component_install
-        test_chargefw_python_molecule
-        test_chargefw_python_calculation
-        test_chargefw_python_gemmi
-        test_chargefw_python_output
-        test_chargefw_python_rdkit
-        test_chargefw_python_recipes
-        test_chargefw_python_mypy
+    set_property(TEST ${CHARGEFW_PYTHON_TESTS}
         APPEND PROPERTY ENVIRONMENT
         "LD_PRELOAD=${CHARGEFW_SANITIZER_RUNTIME}"
         "${CHARGEFW_SANITIZER_OPTIONS}"

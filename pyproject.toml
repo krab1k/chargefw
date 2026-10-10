@@ -47,7 +47,7 @@ CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS = "OFF"
 [tool.cibuildwheel]
 build = "cp31[0-4]-manylinux_x86_64"
 config-settings = { "cmake.define.CHARGEFW_ENABLE_NATIVE_OPTIMIZATIONS" = "OFF" }
-test-requires = "pytest"
+test-requires = ["pytest", "jsonschema"]
 test-extras = "gemmi"
 test-command = "pytest {project}/tests/python -q"
 
@@ -59,6 +59,10 @@ regex = '(?is)project\s*\(\s*chargefw\s+VERSION\s+(?P<value>[0-9]+\.[0-9]+(?:\.[
 
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
+
+[[tool.mypy.overrides]]
+module = ["jsonschema"]
+follow_untyped_imports = true
 
 [tool.ruff]
 line-length = 100
