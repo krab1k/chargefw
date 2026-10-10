@@ -13,11 +13,11 @@
 #include <chargefw/parameters/models/parameter_set_metadata.h>
 #include <snitch/snitch.hpp>
 
+#include "support/test_charge_results.h"
 #include "support/test_parameters.h"
 
 #include <nlohmann/json.hpp>
 
-#include <limits>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -31,6 +31,8 @@ namespace charges = chargefw::charges;
 namespace core = chargefw::core;
 namespace mmcif_input = chargefw::adapters::gemmi::mmcif_input;
 namespace json_output = chargefw::adapters::native::json_output;
+
+using chargefw::test::full_effective;
 
 namespace {
 
@@ -240,11 +242,10 @@ TEST_CASE("JSON output projects fixed ion provenance", "[adapters][json]") {
                                          .charges = charges::AtomicCharges{{-0.25, 0.25}}},
                                         {.target = {.molecule_index = 1, .conformer_index = 0},
                                          .charges = charges::AtomicCharges{{0.0}}}}},
-         .effective = calculation::EffectiveCalculation{
-             .method_id = "eem",
-             .execution_policy = calculation::ExecutionPolicy{},
-             .fixed_ions = calculation::FixedIons{
-                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25}}}}});
+         .effective = full_effective(
+             "eem", std::nullopt,
+             calculation::FixedIons{
+                 .sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.25}}})});
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(result, "test");
@@ -284,11 +285,8 @@ TEST_CASE("JSON fixed ions retain sources with missing or ambiguous component la
     const auto result = adapters::make_charge_calculation_result(
         std::move(records), {},
         {.charges = charges::ChargeSet{"eem", std::move(assignments), "component-groups"},
-         .effective = calculation::EffectiveCalculation{
-             .method_id = "eem",
-             .parameter_set_id = "component-groups",
-             .execution_policy = calculation::ExecutionPolicy{},
-             .fixed_ions = calculation::FixedIons{.sources = std::move(sources)}}});
+         .effective = full_effective("eem", "component-groups",
+                                     calculation::FixedIons{.sources = std::move(sources)})});
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(result, "test");
@@ -371,103 +369,47 @@ HETATM 3 Mg MG . MG B 1 ? 0 3 1 1 20 2 1 MG B MG E2 1
           nlohmann::json{{"molecule_index", 1}, {"atom_index", 2}});
 }
 
-TEST_CASE("JSON output serializes a cancelled result without assignments", "[adapters][json]") {
-    const auto owned = adapters::make_charge_calculation_result(
-        {{.molecule = chargefw::core::Molecule{std::vector{chargefw::core::Atom{8},
-                                                           chargefw::core::Atom{1}}},
-          .identity = {.source = "water.sdf", .record_index = 0}}},
-        {},
-        calculation::ExecutionResult{
-            .status = calculation::ExecutionStatus::cancelled,
-            .effective = calculation::EffectiveCalculation{
-                .method_id = "eem",
-                .execution_policy = calculation::ExecutionPolicy{},
-                .fixed_ions = calculation::FixedIons{
-                    .sources = {{.molecule_index = 0, .atom_index = 0, .charge = 0.5}}}}});
-
-    auto output = std::ostringstream{};
-    json_output::JsonWriter{output}.write(owned, "test");
-    const auto result = nlohmann::json::parse(output.str());
-
-    CHECK(result.at("status") == "cancelled");
-    CHECK(result.at("calculation_provenance").at("requested").at("execution").at("kind") == "auto");
-    CHECK(result.at("diagnostics").at(0).at("code") == "calculation_cancelled");
-    const auto& record = result.at("results").at(0);
-    CHECK(record.at("status") == "cancelled");
-    CHECK_FALSE(record.contains("assignments"));
-    CHECK(result.at("calculation_provenance").at("effective").at("fixed_ions").is_array());
-}
-
-TEST_CASE("JSON output retains fixed ion metadata on numerical failure without charges",
-          "[adapters][json]") {
-    const auto result = adapters::make_charge_calculation_result(
-        {{.molecule = chargefw::core::Molecule{std::vector{chargefw::core::Atom{6},
-                                                           chargefw::core::Atom{1}}},
-          .identity = {.source = "carbon.json", .record_index = 0}}},
-        {},
-        calculation::ExecutionResult{
-            .status = calculation::ExecutionStatus::numerical_failure,
-            .effective = calculation::EffectiveCalculation{
-                .method_id = "eem",
-                .execution_policy = calculation::ExecutionPolicy{},
-                .fixed_ions = calculation::FixedIons{
-                    .sources = {{.molecule_index = 0, .atom_index = 0, .charge = -0.2}}}}});
-    auto output = std::ostringstream{};
-    json_output::JsonWriter{output}.write(result, "test");
-    const auto document = nlohmann::json::parse(output.str());
-
-    CHECK(document.at("status") == "numerical_failure");
-    CHECK(document.at("results").at(0).at("status") == "numerical_failure");
-    CHECK_FALSE(document.at("results").at(0).contains("assignments"));
-    CHECK(document.at("calculation_provenance").at("effective").at("fixed_ions").is_array());
-}
-
-TEST_CASE("JSON output retains cancelled results without effective provenance",
-          "[adapters][json]") {
-    const auto result = adapters::make_charge_calculation_result(
-        {{.molecule = chargefw::core::Molecule{std::vector{chargefw::core::Atom{8}}},
-          .identity = {.source = "water.sdf", .record_index = 0}}},
-        {}, calculation::ExecutionResult{.status = calculation::ExecutionStatus::cancelled});
-    auto output = std::ostringstream{};
-    json_output::JsonWriter{output}.write(result, "test");
-    const auto document = nlohmann::json::parse(output.str());
-
-    CHECK(document.at("status") == "cancelled");
-    CHECK_FALSE(document.at("calculation_provenance").at("effective").contains("fixed_ions"));
-}
-
-TEST_CASE("result assembly validates fixed ion provenance", "[adapters][json]") {
-    const auto records = std::vector{
-        adapters::ImportedMoleculeRecord{.molecule = chargefw::core::Molecule{std::vector{
-                                             chargefw::core::Atom{6}, chargefw::core::Atom{8}}}}};
-    const auto make_result = [&records](calculation::FixedIons fixed_ions) {
-        return adapters::make_charge_calculation_result(
-            records, {},
-            {.status = calculation::ExecutionStatus::cancelled,
-             .effective = calculation::EffectiveCalculation{.method_id = "eem",
-                                                            .execution_policy =
-                                                                calculation::ExecutionPolicy{},
-                                                            .fixed_ions = std::move(fixed_ions)}});
+TEST_CASE("JSON output serializes unsuccessful results without assignments", "[adapters][json]") {
+    struct StatusCase {
+        calculation::ExecutionStatus status;
+        std::string_view expected_status;
+        bool with_fixed_ions;
     };
-    const auto valid =
-        calculation::FixedIons{.sources = {{.molecule_index = 0, .atom_index = 1, .charge = 0.5}}};
-    CHECK_NOTHROW(make_result(valid));
+    for (const auto& test_case :
+         {StatusCase{calculation::ExecutionStatus::cancelled, "cancelled", true},
+          StatusCase{calculation::ExecutionStatus::numerical_failure, "numerical_failure", true},
+          StatusCase{calculation::ExecutionStatus::cancelled, "cancelled", false}}) {
+        CAPTURE(test_case.expected_status, test_case.with_fixed_ions);
+        auto execution = calculation::ExecutionResult{.status = test_case.status};
+        if (test_case.with_fixed_ions) {
+            execution.effective = full_effective(
+                "eem", std::nullopt,
+                calculation::FixedIons{
+                    .sources = {{.molecule_index = 0, .atom_index = 0, .charge = 0.5}}});
+        }
+        const auto result = adapters::make_charge_calculation_result(
+            {{.molecule = core::Molecule{std::vector{core::Atom{8}, core::Atom{1}}},
+              .identity = {.source = "water.sdf", .record_index = 0}}},
+            {}, std::move(execution));
 
-    auto invalid = valid;
-    invalid.sources.clear();
-    CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
-    invalid = valid;
-    invalid.sources[0].molecule_index = 1;
-    CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
-    invalid = valid;
-    invalid.sources[0].atom_index = 2;
-    CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
-    invalid = valid;
-    invalid.sources[0].charge = std::numeric_limits<double>::quiet_NaN();
-    CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
-    invalid = valid;
-    invalid.sources.push_back(invalid.sources.front());
-    CHECK_THROWS_AS(make_result(invalid), std::invalid_argument);
+        auto output = std::ostringstream{};
+        json_output::JsonWriter{output}.write(result, "test");
+        const auto document = nlohmann::json::parse(output.str());
+
+        CHECK(document.at("status") == test_case.expected_status);
+        const auto& record = document.at("results").at(0);
+        CHECK(record.at("status") == test_case.expected_status);
+        CHECK_FALSE(record.contains("assignments"));
+        if (test_case.status == calculation::ExecutionStatus::cancelled) {
+            CHECK(document.at("diagnostics").at(0).at("code") == "calculation_cancelled");
+        }
+        const auto& effective = document.at("calculation_provenance").at("effective");
+        if (test_case.with_fixed_ions) {
+            CHECK(effective.at("fixed_ions").is_array());
+        } else {
+            CHECK_FALSE(effective.contains("fixed_ions"));
+        }
+    }
 }
 
 TEST_CASE("JSON output serializes caller atom IDs for a manual record", "[adapters][json]") {
@@ -484,8 +426,7 @@ TEST_CASE("JSON output serializes caller atom IDs for a manual record", "[adapte
                                        {{.target = {.molecule_index = 0},
                                          .charges = charges::AtomicCharges{{0.0, 0.0}}}},
                                        std::nullopt},
-         .effective = calculation::EffectiveCalculation{
-             .method_id = "formal", .execution_policy = calculation::ExecutionPolicy{}}});
+         .effective = full_effective("formal")});
 
     auto output = std::ostringstream{};
     json_output::JsonWriter{output}.write(owned, "test");
@@ -493,104 +434,4 @@ TEST_CASE("JSON output serializes caller atom IDs for a manual record", "[adapte
 
     CHECK(result.at("results").at(0).at("input").at("atom_ids") == nlohmann::json{"H", 9});
     CHECK(result.at("calculation_provenance").at("requested").at("execution").at("kind") == "auto");
-}
-
-TEST_CASE("result assembly validates assignment dimensions targets and scope", "[adapters][json]") {
-    const auto records = std::vector{adapters::ImportedMoleculeRecord{
-        .molecule =
-            chargefw::core::Molecule{
-                std::vector{chargefw::core::Atom{1}, chargefw::core::Atom{1}},
-                {},
-                std::vector{chargefw::core::Conformer{{chargefw::core::Position{0.0, 0.0, 0.0},
-                                                       chargefw::core::Position{1.0, 0.0, 0.0}}}},
-                "hydrogen"},
-        .identity = {.source = "hydrogen.json", .record_id = "hydrogen"},
-        .import_metadata = std::nullopt}};
-    const auto make_result = [&records](calculation::ExecutionResult result) {
-        if (result.status == calculation::ExecutionStatus::success &&
-            !result.effective.has_value()) {
-            result.effective = calculation::EffectiveCalculation{
-                .method_id = "formal", .execution_policy = calculation::ExecutionPolicy{}};
-        }
-        return adapters::make_charge_calculation_result(records, {}, std::move(result));
-    };
-
-    CHECK_THROWS_AS(make_result(calculation::ExecutionResult{}), std::invalid_argument);
-    CHECK_THROWS_AS(
-        make_result(calculation::ExecutionResult{
-            .charges = charges::ChargeSet{"formal",
-                                          {{.target = {.molecule_index = 0},
-                                            .charges = charges::AtomicCharges{{0.0}}}}}}),
-        std::invalid_argument);
-    CHECK_THROWS_AS(
-        make_result(calculation::ExecutionResult{
-            .charges = charges::ChargeSet{"formal",
-                                          {{.target = {.molecule_index = 1},
-                                            .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}),
-        std::invalid_argument);
-    CHECK_THROWS_AS(
-        make_result(calculation::ExecutionResult{
-            .charges = charges::ChargeSet{"formal",
-                                          {{.target = {.molecule_index = 0, .conformer_index = 1},
-                                            .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}),
-        std::invalid_argument);
-    CHECK_THROWS_AS(
-        make_result(calculation::ExecutionResult{
-            .charges = charges::ChargeSet{"formal",
-                                          {{.target = {.molecule_index = 0},
-                                            .charges = charges::AtomicCharges{{0.0, 0.0}}},
-                                           {.target = {.molecule_index = 0, .conformer_index = 0},
-                                            .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}),
-        std::invalid_argument);
-    CHECK_THROWS_AS(
-        make_result(calculation::ExecutionResult{
-            .status = calculation::ExecutionStatus::numerical_failure,
-            .charges = charges::ChargeSet{"formal",
-                                          {{.target = {.molecule_index = 0},
-                                            .charges = charges::AtomicCharges{{0.0, 0.0}}}}}}),
-        std::invalid_argument);
-
-    auto invalid_mapping = records;
-    invalid_mapping[0].import_metadata = adapters::MoleculeImportMetadata{
-        .format = adapters::MolecularSourceFormat::molecule_json,
-        .atoms = {{.position = 0}},
-        .conformers = {{.position = 0, .sites = {{.position = 0}}}}};
-    CHECK_THROWS_AS(
-        adapters::make_charge_calculation_result(
-            std::move(invalid_mapping), {},
-            calculation::ExecutionResult{
-                .charges = charges::ChargeSet{"formal",
-                                              {{.target = {.molecule_index = 0},
-                                                .charges = charges::AtomicCharges{{0.0, 0.0}}}}},
-                .effective =
-                    calculation::EffectiveCalculation{.method_id = "formal",
-                                                      .execution_policy =
-                                                          calculation::ExecutionPolicy{}}}),
-        std::invalid_argument);
-}
-
-TEST_CASE("result assembly requires canonical assignment order", "[adapters][json]") {
-    const auto records =
-        std::vector{adapters::ImportedMoleculeRecord{
-                        .molecule = chargefw::core::Molecule{{chargefw::core::Atom{1}}}},
-                    adapters::ImportedMoleculeRecord{
-                        .molecule = chargefw::core::Molecule{{chargefw::core::Atom{1}}}}};
-    const auto make_result = [&records](charges::ChargeSet charge_set) {
-        return adapters::make_charge_calculation_result(
-            records, {},
-            {.charges = std::move(charge_set),
-             .effective = calculation::EffectiveCalculation{
-                 .method_id = "formal", .execution_policy = calculation::ExecutionPolicy{}}});
-    };
-
-    CHECK_NOTHROW(make_result(charges::ChargeSet{
-        "formal",
-        {{.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{{0.0}}},
-         {.target = {.molecule_index = 1}, .charges = charges::AtomicCharges{{0.0}}}}}));
-    CHECK_THROWS_AS(
-        make_result(charges::ChargeSet{
-            "formal",
-            {{.target = {.molecule_index = 1}, .charges = charges::AtomicCharges{{0.0}}},
-             {.target = {.molecule_index = 0}, .charges = charges::AtomicCharges{{0.0}}}}}),
-        std::invalid_argument);
 }
