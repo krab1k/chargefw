@@ -1,7 +1,7 @@
 #include "methods/builtin/sqe.h"
 #include "methods/builtin/dense_solve.h"
+#include "methods/builtin/prerequisite_helpers.h"
 
-#include "features/topology_helpers.h"
 #include "methods/fixed_source_validation.h"
 
 #include <chargefw/core/molecule.h>
@@ -12,7 +12,6 @@
 
 #include <cmath>
 #include <cstddef>
-#include <numeric>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -37,32 +36,16 @@ namespace {
 
 auto SQEMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                         PrerequisiteResult& result) const -> void {
-    const auto& molecule = input.prepared_molecule.molecule();
-    const auto components =
-        features::connected_components(input.prepared_molecule.topology().adjacency());
-
-    for (const auto& component : components) {
-        const auto formal_charge =
-            std::accumulate(component.begin(), component.end(), 0,
-                            [&molecule](const int sum, const std::size_t atom_index) {
-                                return sum + molecule.atom(atom_index).formal_charge();
-                            });
-        if (formal_charge != 0) {
-            result.add(PrerequisiteIssue{
-                .kind = PrerequisiteIssueKind::unsupported_molecule,
-                .message =
-                    "SQE supports only molecules with neutral connected components because its "
-                    "split-charge construction has no initial charges and conserves zero total "
-                    "charge within each component"});
-            return;
-        }
-    }
+    detail::add_component_neutrality_prerequisite_issue(
+        input, result, "SQE",
+        "its split-charge construction has no initial charges and conserves zero total charge "
+        "within each component");
 }
 
 auto sqe_core::calculate(const CalculationInput& input,
                          const std::span<const double> initial_charge_values)
     -> std::vector<double> {
-    detail::validate_fixed_source_input(input, "SQE-family");
+    methods::detail::validate_fixed_source_input(input, "SQE-family");
     const auto& molecule = input.molecule();
     const auto& geometry = input.geometry();
     const auto& parameters = input.parameters();

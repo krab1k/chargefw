@@ -1,7 +1,6 @@
 #include "methods/builtin/delre.h"
 #include "methods/builtin/dense_solve.h"
-
-#include "features/topology_helpers.h"
+#include "methods/builtin/prerequisite_helpers.h"
 
 #include <chargefw/core/bond.h>
 #include <chargefw/core/molecule.h>
@@ -10,7 +9,6 @@
 #include <Eigen/Core>
 
 #include <cstddef>
-#include <numeric>
 #include <stdexcept>
 #include <vector>
 
@@ -19,25 +17,9 @@ namespace chargefw::methods::builtin {
 auto DelReMethod::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                           PrerequisiteResult& result) const
     -> void {
-    const auto& molecule = input.prepared_molecule.molecule();
-    const auto components =
-        features::connected_components(input.prepared_molecule.topology().adjacency());
-
-    for (const auto& component : components) {
-        const auto formal_charge =
-            std::accumulate(component.begin(), component.end(), 0,
-                            [&molecule](const int sum, const std::size_t atom_index) {
-                                return sum + molecule.atom(atom_index).formal_charge();
-                            });
-        if (formal_charge != 0) {
-            result.add(PrerequisiteIssue{
-                .kind = PrerequisiteIssueKind::unsupported_molecule,
-                .message =
-                    "DelRe supports only molecules with neutral connected components because its "
-                    "bond-charge construction conserves zero total charge within each component"});
-            return;
-        }
-    }
+    detail::add_component_neutrality_prerequisite_issue(
+        input, result, "DelRe",
+        "its bond-charge construction conserves zero total charge within each component");
 }
 
 auto DelReMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {

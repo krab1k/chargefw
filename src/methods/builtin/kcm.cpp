@@ -1,7 +1,7 @@
 #include "methods/builtin/kcm.h"
 #include "methods/builtin/dense_solve.h"
 
-#include "methods/builtin/element_prerequisites.h"
+#include "methods/builtin/prerequisite_helpers.h"
 
 #include <chargefw/parameters/models/parameter_view.h>
 

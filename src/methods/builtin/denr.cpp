@@ -1,6 +1,6 @@
 #include "methods/builtin/denr.h"
 
-#include "methods/builtin/element_prerequisites.h"
+#include "methods/builtin/prerequisite_helpers.h"
 
 #include <chargefw/parameters/models/parameter_view.h>
 

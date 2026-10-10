@@ -16,9 +16,12 @@
 
 namespace chargefw::methods::builtin::detail {
 
+// Rejects molecules with a formally charged connected component. A non-empty reason is appended
+// to the message as an explanation.
 inline auto add_component_neutrality_prerequisite_issue(const MethodPrerequisiteInput& input,
                                                         PrerequisiteResult& result,
-                                                        const std::string_view method_name)
+                                                        const std::string_view method_name,
+                                                        const std::string_view reason = {})
     -> void {
     const auto& molecule = input.prepared_molecule.molecule();
     const auto components =
@@ -34,7 +37,8 @@ inline auto add_component_neutrality_prerequisite_issue(const MethodPrerequisite
             result.add(PrerequisiteIssue{
                 .kind = PrerequisiteIssueKind::unsupported_molecule,
                 .message = std::string{method_name} +
-                           " supports only molecules with neutral connected components"});
+                           " supports only molecules with neutral connected components" +
+                           (reason.empty() ? std::string{} : " because " + std::string{reason})});
             return;
         }
     }

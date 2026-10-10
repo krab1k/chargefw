@@ -1,6 +1,5 @@
 #include "methods/builtin/charge2.h"
-
-#include "features/topology_helpers.h"
+#include "methods/builtin/prerequisite_helpers.h"
 
 #include <chargefw/core/periodic_table.h>
 #include <chargefw/parameters/models/parameter_view.h>
@@ -8,7 +7,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <numeric>
 #include <vector>
 
 namespace chargefw::methods::builtin {
@@ -77,23 +75,7 @@ struct Charge2Shells {
 auto Charge2Method::add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                             PrerequisiteResult& result) const
     -> void {
-    const auto& molecule = input.prepared_molecule.molecule();
-    const auto components =
-        features::connected_components(input.prepared_molecule.topology().adjacency());
-
-    for (const auto& component : components) {
-        const auto formal_charge =
-            std::accumulate(component.begin(), component.end(), 0,
-                            [&molecule](const int sum, const std::size_t atom_index) {
-                                return sum + molecule.atom(atom_index).formal_charge();
-                            });
-        if (formal_charge != 0) {
-            result.add(PrerequisiteIssue{
-                .kind = PrerequisiteIssueKind::unsupported_molecule,
-                .message = "Charge2 supports only molecules with neutral connected components"});
-            return;
-        }
-    }
+    detail::add_component_neutrality_prerequisite_issue(input, result, "Charge2");
 }
 
 auto Charge2Method::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
