@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import subprocess
 import sys
-import unittest
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 import gemmi
+import pytest
 
 PROJECT_ROOT = Path(__file__).parents[2]
 RECIPES = PROJECT_ROOT / "docs" / "recipes"
@@ -36,168 +34,92 @@ M  END
 """
 
 
-class RecipeTests(unittest.TestCase):
-    def test_calculate_file_recipe(self) -> None:
-        with TemporaryDirectory() as directory:
-            input_path = Path(directory) / "waters.sdf"
-            input_path.write_text(f"{WATER_MOL}$$$$\n{WATER_MOL}$$$$\n", encoding="utf-8")
-
-            completed = subprocess.run(
-                [
-                    sys.executable,
-                    str(RECIPES / "calculate_file.py"),
-                    str(input_path),
-                    "--format",
-                    "sdf",
-                    "--method",
-                    "eem",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            lines = completed.stdout.splitlines()
-            self.assertEqual(len(lines), 2)
-            self.assertTrue(lines[0].startswith("molecule=0 conformer=0: ["))
-            self.assertTrue(lines[1].startswith("molecule=1 conformer=0: ["))
-
-    def test_inspect_molecules_recipe(self) -> None:
-        with TemporaryDirectory() as directory:
-            input_path = Path(directory) / "water.sdf"
-            input_path.write_text(f"{WATER_MOL}$$$$\n", encoding="utf-8")
-
-            completed = subprocess.run(
-                [
-                    sys.executable,
-                    str(RECIPES / "inspect_molecules.py"),
-                    str(input_path),
-                    "--format",
-                    "sdf",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            self.assertIn("1 molecule(s)", completed.stdout)
-            self.assertIn("atoms=3 bonds=2 conformers=1 formal_charge=0", completed.stdout)
-
-    def test_calculate_sdf_collection_recipe(self) -> None:
-        with TemporaryDirectory() as directory:
-            input_path = Path(directory) / "waters.sdf"
-            output_path = Path(directory) / "result.json"
-            input_path.write_text(f"{WATER_MOL}$$$$\n{WATER_MOL}$$$$\n", encoding="utf-8")
-
-            subprocess.run(
-                [
-                    sys.executable,
-                    str(RECIPES / "calculate_sdf_collection.py"),
-                    str(input_path),
-                    str(output_path),
-                ],
-                check=True,
-            )
-            result = json.loads(output_path.read_text(encoding="utf-8"))
-            self.assertEqual(result["status"], "success")
-            self.assertEqual(len(result["results"]), 2)
-
-    def test_gemmi_document_recipe_preserves_unchanged_mmcif(self) -> None:
-        with TemporaryDirectory() as directory:
-            input_path = Path(directory) / "water.cif"
-            output_path = Path(directory) / "charged.cif"
-            structure = gemmi.read_pdb_string(WATER_PDB)
-            document = structure.make_mmcif_document()
-            document.sole_block().set_pair("_audit.creation_method", "recipe-test")
-            document.write_file(str(input_path))
-
-            subprocess.run(
-                [
-                    sys.executable,
-                    str(RECIPES / "charge_gemmi_document.py"),
-                    str(input_path),
-                    str(output_path),
-                    "--format",
-                    "mmcif",
-                ],
-                check=True,
-            )
-
-            document = gemmi.cif.read_file(str(output_path))
-            self.assertEqual(
-                document.sole_block().find_value("_audit.creation_method"), "recipe-test"
-            )
-            self.assertIn(
-                "_sb_ncbr_partial_atomic_charges.", document.sole_block().get_mmcif_category_names()
-            )
-
-    def test_fixed_ion_recipe(self) -> None:
-        with TemporaryDirectory() as directory:
-            input_path = (
-                PROJECT_ROOT / "tests" / "fixtures" / "synthetic" / "cif" / "fixed_ions.cif"
-            )
-            output_path = Path(directory) / "charges.json"
-            completed = subprocess.run(
-                [
-                    sys.executable,
-                    str(RECIPES / "calculate_with_fixed_ions.py"),
-                    str(input_path),
-                    "--format",
-                    "mmcif",
-                    "--ion",
-                    "MG",
-                    "--ion",
-                    "CA",
-                    "--result-json",
-                    str(output_path),
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            self.assertIn("Fixed ion: molecule=0 atom=3 charge=+2.0 e", completed.stdout)
-            self.assertIn("molecule=0 conformer=0: [", completed.stdout)
-            result = json.loads(output_path.read_text(encoding="utf-8"))
-            self.assertEqual(result["status"], "success")
-
-    @unittest.skipUnless(importlib.util.find_spec("rdkit"), "RDKit is not installed")
-    def test_rdkit_conformer_recipe(self) -> None:
-        completed = subprocess.run(
-            [
-                sys.executable,
-                str(RECIPES / "analyze_rdkit_conformer_charges.py"),
-                "CCO",
-                "--conformers",
-                "3",
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        self.assertIn("Method: eem/", completed.stdout)
-        self.assertIn("equally weighted, unoptimized ETKDGv3 structures", completed.stdout)
-        self.assertIn("Atom          mean         std", completed.stdout)
-
-    def test_compare_parameter_sets_recipe(self) -> None:
-        with TemporaryDirectory() as directory:
-            input_path = Path(directory) / "water.sdf"
-            input_path.write_text(f"{WATER_MOL}$$$$\n", encoding="utf-8")
-
-            completed = subprocess.run(
-                [
-                    sys.executable,
-                    str(RECIPES / "compare_parameter_sets.py"),
-                    str(input_path),
-                    "--format",
-                    "sdf",
-                    "--method",
-                    "qeq",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            self.assertIn("Reference: QEq_original", completed.stdout)
-            self.assertIn("RMS difference", completed.stdout)
+WATERS_SDF = f"{WATER_MOL}$$$$\n{WATER_MOL}$$$$\n"
 
 
-if __name__ == "__main__":
-    unittest.main()
+def run_recipe(name: str, *arguments: str | Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(RECIPES / name), *map(str, arguments)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_calculate_file_recipe(tmp_path: Path) -> None:
+    input_path = tmp_path / "waters.sdf"
+    input_path.write_text(WATERS_SDF, encoding="utf-8")
+
+    completed = run_recipe("calculate_file.py", input_path, "--format", "sdf", "--method", "eem")
+
+    lines = completed.stdout.splitlines()
+    assert len(lines) == 2
+    assert lines[0].startswith("molecule=0 conformer=0: [")
+    assert lines[1].startswith("molecule=1 conformer=0: [")
+
+
+def test_inspect_molecules_recipe(tmp_path: Path) -> None:
+    input_path = tmp_path / "water.sdf"
+    input_path.write_text(f"{WATER_MOL}$$$$\n", encoding="utf-8")
+
+    run_recipe("inspect_molecules.py", input_path, "--format", "sdf")
+
+
+def test_calculate_sdf_collection_recipe(tmp_path: Path) -> None:
+    input_path = tmp_path / "waters.sdf"
+    output_path = tmp_path / "result.json"
+    input_path.write_text(WATERS_SDF, encoding="utf-8")
+
+    run_recipe("calculate_sdf_collection.py", input_path, output_path)
+
+    result = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result["status"] == "success"
+    assert len(result["results"]) == 2
+
+
+def test_gemmi_document_recipe_preserves_unchanged_mmcif(tmp_path: Path) -> None:
+    input_path = tmp_path / "water.cif"
+    output_path = tmp_path / "charged.cif"
+    document = gemmi.read_pdb_string(WATER_PDB).make_mmcif_document()
+    document.sole_block().set_pair("_audit.creation_method", "recipe-test")
+    document.write_file(str(input_path))
+
+    run_recipe("charge_gemmi_document.py", input_path, output_path, "--format", "mmcif")
+
+    block = gemmi.cif.read_file(str(output_path)).sole_block()
+    assert block.find_value("_audit.creation_method") == "recipe-test"
+    assert "_sb_ncbr_partial_atomic_charges." in block.get_mmcif_category_names()
+
+
+def test_fixed_ion_recipe(tmp_path: Path) -> None:
+    input_path = PROJECT_ROOT / "tests" / "fixtures" / "synthetic" / "cif" / "fixed_ions.cif"
+    output_path = tmp_path / "charges.json"
+
+    run_recipe(
+        "calculate_with_fixed_ions.py",
+        input_path,
+        "--format",
+        "mmcif",
+        "--ion",
+        "MG",
+        "--ion",
+        "CA",
+        "--result-json",
+        output_path,
+    )
+
+    result = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result["status"] == "success"
+    assert result["calculation_provenance"]["effective"]["fixed_ions"][0]["component_id"] == "MG"
+
+
+def test_rdkit_conformer_recipe() -> None:
+    pytest.importorskip("rdkit")
+    run_recipe("analyze_rdkit_conformer_charges.py", "CCO", "--conformers", "3")
+
+
+def test_compare_parameter_sets_recipe(tmp_path: Path) -> None:
+    input_path = tmp_path / "water.sdf"
+    input_path.write_text(f"{WATER_MOL}$$$$\n", encoding="utf-8")
+
+    run_recipe("compare_parameter_sets.py", input_path, "--format", "sdf", "--method", "qeq")

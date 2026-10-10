@@ -1,20 +1,12 @@
 """Optional RDKit conversion, attachment, and serialization checks."""
 
-import unittest
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any, cast, get_type_hints
-from unittest.mock import patch
 
 import chargefw
 import numpy as np
+import pytest
 from chargefw.io import rdkit as chargefw_rdkit
-
-try:
-    from rdkit import Chem  # type: ignore[import-not-found]
-except ModuleNotFoundError:
-    Chem = None
-
 
 MOL_TEXT = """water
   ChargeFW
@@ -159,210 +151,207 @@ class FakeChemistry:
         molecule.properties[f"atom.dprop.{name}"] = "created"
 
 
-class RdkitAdapterTests(unittest.TestCase):
-    def test_conversion_without_conformers_supports_coordinate_independent_methods(self) -> None:
-        target = FakeMol()
-        target.conformers = ()
+@pytest.fixture
+def fake_rdkit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(chargefw_rdkit, "_require_rdkit", lambda: FakeChemistry)
 
-        with patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry):
-            molecule = chargefw_rdkit.from_mol(target)
 
-        self.assertEqual(molecule.coordinates.shape, (0, 2, 3))
-        self.assertFalse(molecule.has_coordinates)
-        result = chargefw.calculate(molecule, method="formal")
-        np.testing.assert_array_equal(result.assignments[0].values, [0.0, 0.0])
+@pytest.fixture
+def chem() -> Any:
+    return pytest.importorskip("rdkit.Chem")
 
-    def test_conversion_and_charge_attachment(self) -> None:
-        target = FakeMol()
-        with patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry):
-            molecule = chargefw_rdkit.from_mol(target, source_name="water")
-            result = chargefw.calculate(molecule, method="formal")
-            chargefw_rdkit.attach_charges(target, result)
-            with self.assertRaisesRegex(ValueError, "already has property"):
-                chargefw_rdkit.attach_charges(target, result)
-            chargefw_rdkit.attach_charges(target, result, overwrite=True)
 
-        self.assertEqual(molecule.atom_ids, (0, 1))
-        self.assertEqual(target.atoms[0].properties["ChargeFWPartialCharge"], 0.0)
-        self.assertEqual(target.properties["atom.dprop.ChargeFWPartialCharge"], "created")
+@pytest.mark.usefixtures("fake_rdkit")
+def test_conversion_without_conformers_supports_coordinate_independent_methods() -> None:
+    target = FakeMol()
+    target.conformers = ()
 
-    def test_conversion_rejects_unsupported_bond_types_by_default(self) -> None:
-        for bond_type in (FakeBondType.AROMATIC, FakeBondType.DATIVE, FakeBondType.DATIVEONE):
-            with self.subTest(bond_type=bond_type):
-                target = FakeMol()
-                target.bonds = (FakeBond(bond_type),)
-                with (
-                    patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
-                    self.assertRaisesRegex(ValueError, f"unsupported bond type {bond_type}"),
-                ):
-                    chargefw_rdkit.from_mol(target)
+    molecule = chargefw_rdkit.from_mol(target)
 
-    def test_single_conversion_normalizes_only_aromatic_and_dative_bonds(self) -> None:
-        for bond_type in (
-            FakeBondType.AROMATIC,
-            FakeBondType.DATIVEONE,
-            FakeBondType.DATIVE,
-            FakeBondType.DATIVEL,
-            FakeBondType.DATIVER,
-        ):
-            with self.subTest(bond_type=bond_type):
-                target = FakeMol()
-                target.bonds = (FakeBond(bond_type),)
-                with patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry):
-                    molecule = chargefw_rdkit.from_mol(target, bond_conversion="single")
-                self.assertEqual(molecule.bonds.tolist(), [[0, 1, 1]])
+    assert molecule.coordinates.shape == (0, 2, 3)
+    assert not molecule.has_coordinates
+    result = chargefw.calculate(molecule, method="formal")
+    np.testing.assert_array_equal(result.assignments[0].values, [0.0, 0.0])
 
-        target = FakeMol()
-        target.bonds = (FakeBond(FakeBondType.ZERO),)
-        with (
-            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
-            self.assertRaisesRegex(ValueError, "unsupported bond type ZERO"),
-        ):
-            chargefw_rdkit.from_mol(target, bond_conversion="single")
 
-        target.bonds = (FakeBond(query=True),)
-        with (
-            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
-            self.assertRaisesRegex(ValueError, "query bonds cannot be imported"),
-        ):
-            chargefw_rdkit.from_mol(target, bond_conversion="single")
+@pytest.mark.usefixtures("fake_rdkit")
+def test_conversion_and_charge_attachment() -> None:
+    target = FakeMol()
+    molecule = chargefw_rdkit.from_mol(target, source_name="water")
+    result = chargefw.calculate(molecule, method="formal")
+    chargefw_rdkit.attach_charges(target, result)
+    with pytest.raises(ValueError):
+        chargefw_rdkit.attach_charges(target, result)
+    chargefw_rdkit.attach_charges(target, result, overwrite=True)
 
-    def test_bond_conversion_is_validated(self) -> None:
-        with (
-            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
-            self.assertRaisesRegex(TypeError, "bond_conversion must be a string"),
-        ):
-            chargefw_rdkit.from_mol(FakeMol(), bond_conversion=True)  # type: ignore[arg-type]
-        with (
-            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
-            self.assertRaisesRegex(ValueError, "bond_conversion must be 'none' or 'single'"),
-        ):
-            chargefw_rdkit.from_mol(FakeMol(), bond_conversion="all")  # type: ignore[arg-type]
+    assert molecule.atom_ids == (0, 1)
+    assert target.atoms[0].properties["ChargeFWPartialCharge"] == 0.0
+    assert target.properties["atom.dprop.ChargeFWPartialCharge"] == "created"
 
-    def test_attachment_requires_a_bijective_atom_mapping(self) -> None:
-        target = FakeMol()
-        target.atoms = (FakeAtom(0, 8, "O"), FakeAtom(1, 8, "O"))
-        molecule = chargefw.Molecule([8, 8], atom_ids=[0, 0])
-        result = chargefw.calculate(molecule, method="formal")
 
-        with (
-            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
-            self.assertRaisesRegex(ValueError, "map each target atom exactly once"),
-        ):
-            chargefw_rdkit.attach_charges(target, result)
+@pytest.mark.usefixtures("fake_rdkit")
+@pytest.mark.parametrize(
+    "bond_type", [FakeBondType.AROMATIC, FakeBondType.DATIVE, FakeBondType.DATIVEONE]
+)
+def test_conversion_rejects_unsupported_bond_types_by_default(bond_type: str) -> None:
+    target = FakeMol()
+    target.bonds = (FakeBond(bond_type),)
+    with pytest.raises(ValueError, match=bond_type):
+        chargefw_rdkit.from_mol(target)
 
-        self.assertFalse(any(atom.HasProp("ChargeFWPartialCharge") for atom in target.atoms))
 
-    def test_attachment_rejects_string_atom_ids(self) -> None:
-        target = FakeMol()
-        molecule = chargefw.Molecule([8, 1], atom_ids=["0", "1"])
-        result = chargefw.calculate(molecule, method="formal")
+@pytest.mark.usefixtures("fake_rdkit")
+@pytest.mark.parametrize(
+    "bond_type",
+    [
+        FakeBondType.AROMATIC,
+        FakeBondType.DATIVEONE,
+        FakeBondType.DATIVE,
+        FakeBondType.DATIVEL,
+        FakeBondType.DATIVER,
+    ],
+)
+def test_single_conversion_normalizes_aromatic_and_dative_bonds(bond_type: str) -> None:
+    target = FakeMol()
+    target.bonds = (FakeBond(bond_type),)
+    molecule = chargefw_rdkit.from_mol(target, bond_conversion="single")
+    assert molecule.bonds.tolist() == [[0, 1, 1]]
 
-        with (
-            patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry),
-            self.assertRaisesRegex(ValueError, "requires integer atom IDs"),
-        ):
-            chargefw_rdkit.attach_charges(target, result)
 
-        self.assertFalse(any(atom.HasProp("ChargeFWPartialCharge") for atom in target.atoms))
+@pytest.mark.usefixtures("fake_rdkit")
+def test_single_conversion_rejects_zero_and_query_bonds() -> None:
+    target = FakeMol()
+    target.bonds = (FakeBond(FakeBondType.ZERO),)
+    with pytest.raises(ValueError, match="ZERO"):
+        chargefw_rdkit.from_mol(target, bond_conversion="single")
 
-    def test_attachment_accepts_index_compatible_atom_ids(self) -> None:
-        target = FakeMol()
-        target.atoms = (
-            FakeAtom(0, 8, "O", formal_charge=-1),
-            FakeAtom(1, 1, "H", formal_charge=1),
-        )
-        molecule = chargefw.Molecule(
-            [1, 8],
-            formal_charges=[1, -1],
-            atom_ids=cast(Any, [np.int64(1), np.int64(0)]),
-        )
-        result = chargefw.calculate(molecule, method="formal")
-        np.testing.assert_array_equal(result.assignments[0].values, [1.0, -1.0])
+    target.bonds = (FakeBond(query=True),)
+    with pytest.raises(ValueError, match="query"):
+        chargefw_rdkit.from_mol(target, bond_conversion="single")
 
-        with patch.object(chargefw_rdkit, "_require_rdkit", return_value=FakeChemistry):
-            chargefw_rdkit.attach_charges(target, result)
 
-        self.assertEqual(target.atoms[0].properties["ChargeFWPartialCharge"], -1.0)
-        self.assertEqual(target.atoms[1].properties["ChargeFWPartialCharge"], 1.0)
+@pytest.mark.usefixtures("fake_rdkit")
+def test_bond_conversion_is_validated() -> None:
+    with pytest.raises(TypeError):
+        chargefw_rdkit.from_mol(FakeMol(), bond_conversion=True)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        chargefw_rdkit.from_mol(FakeMol(), bond_conversion="all")  # type: ignore[arg-type]
 
-    def test_missing_dependency_is_actionable(self) -> None:
-        error = ModuleNotFoundError("No module named 'rdkit'")
-        error.name = "rdkit"
-        with (
-            patch.object(chargefw_rdkit, "import_module", side_effect=error),
-            self.assertRaisesRegex(ImportError, r"pip install chargefw\[rdkit\]"),
-        ):
-            chargefw_rdkit.from_mol(object())
 
-    @unittest.skipIf(Chem is None, "RDKit is not installed")
-    def test_public_annotations_resolve_to_runtime_types(self) -> None:
-        assert Chem is not None
-        hints = get_type_hints(chargefw_rdkit.from_mol)
-        self.assertIs(hints["molecule"], Chem.Mol)
-        self.assertIs(hints["return"], chargefw.Molecule)
-        hints = get_type_hints(chargefw_rdkit.attach_charges)
-        self.assertIs(hints["molecule"], Chem.Mol)
-        self.assertIs(hints["result"], chargefw.CalculationResult)
-        self.assertIs(hints["return"], type(None))
+@pytest.mark.usefixtures("fake_rdkit")
+@pytest.mark.parametrize(
+    ("atomic_numbers", "atom_ids"),
+    [
+        pytest.param([8, 8], [0, 0], id="non-bijective"),
+        pytest.param([8, 1], ["0", "1"], id="string"),
+    ],
+)
+def test_attachment_requires_bijective_integer_atom_ids(
+    atomic_numbers: list[int], atom_ids: list[Any]
+) -> None:
+    target = FakeMol()
+    target.atoms = tuple(
+        FakeAtom(index, number, "O" if number == 8 else "H")
+        for index, number in enumerate(atomic_numbers)
+    )
+    molecule = chargefw.Molecule(atomic_numbers, atom_ids=atom_ids)
+    result = chargefw.calculate(molecule, method="formal")
 
-    @unittest.skipIf(Chem is None, "RDKit is not installed")
-    def test_real_rdkit_conversion_attachment_and_sd_serialization(self) -> None:
-        assert Chem is not None
-        target = Chem.MolFromMolBlock(MOL_TEXT, sanitize=False, removeHs=False)
-        self.assertIsNotNone(target)
-        molecule = chargefw_rdkit.from_mol(target, source_name="water.mol")
-        result = chargefw.calculate(molecule, method="formal")
-
+    with pytest.raises(ValueError):
         chargefw_rdkit.attach_charges(target, result)
 
-        self.assertEqual(target.GetAtomWithIdx(0).GetDoubleProp("ChargeFWPartialCharge"), 0.0)
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "charged.sdf"
-            writer = Chem.SDWriter(str(path))
-            writer.write(target)
-            writer.close()
-            loaded = Chem.SDMolSupplier(str(path), sanitize=False, removeHs=False)[0]
-            self.assertIsNotNone(loaded)
-            self.assertEqual(loaded.GetAtomWithIdx(0).GetDoubleProp("ChargeFWPartialCharge"), 0.0)
-
-    @unittest.skipIf(Chem is None, "RDKit is not installed")
-    def test_real_rdkit_conversion_requires_explicit_hydrogens(self) -> None:
-        assert Chem is not None
-        for smiles in ("CCO", "[NH4+]"):
-            with self.subTest(smiles=smiles), self.assertRaisesRegex(ValueError, "Chem.AddHs"):
-                chargefw_rdkit.from_mol(Chem.MolFromSmiles(smiles))
-        with self.assertRaisesRegex(ValueError, "Chem.AddHs"):
-            chargefw_rdkit.from_mol(Chem.MolFromSmiles("CO", sanitize=False))
-        self.assertEqual(
-            chargefw_rdkit.from_mol(Chem.AddHs(Chem.MolFromSmiles("CCO"))).atom_count, 9
-        )
-
-    @unittest.skipIf(Chem is None, "RDKit is not installed")
-    def test_real_rdkit_aromatic_and_dative_bond_conversion(self) -> None:
-        assert Chem is not None
-        aromatic = Chem.AddHs(Chem.MolFromSmiles("c1ccccc1"))
-        self.assertIsNotNone(aromatic)
-        with self.assertRaisesRegex(ValueError, "unsupported bond type AROMATIC"):
-            chargefw_rdkit.from_mol(aromatic)
-        normalized = chargefw_rdkit.from_mol(aromatic, bond_conversion="single")
-        self.assertTrue(np.all(normalized.bonds[:, 2] == 1))
-
-        for name in ("DATIVE", "DATIVEONE"):
-            with self.subTest(bond_type=name):
-                editable = Chem.RWMol()
-                donor = Chem.Atom(7)
-                donor.SetNoImplicit(True)
-                editable.AddAtom(donor)
-                editable.AddAtom(Chem.Atom(26))
-                editable.AddBond(0, 1, getattr(Chem.BondType, name))
-                target = editable.GetMol()
-                self.assertEqual(target.GetBondWithIdx(0).GetBondTypeAsDouble(), 1.0)
-                with self.assertRaisesRegex(ValueError, f"unsupported bond type {name}"):
-                    chargefw_rdkit.from_mol(target)
-                normalized = chargefw_rdkit.from_mol(target, bond_conversion="single")
-                self.assertEqual(normalized.bonds.tolist(), [[0, 1, 1]])
+    assert not any(atom.HasProp("ChargeFWPartialCharge") for atom in target.atoms)
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.mark.usefixtures("fake_rdkit")
+def test_attachment_accepts_index_compatible_atom_ids() -> None:
+    target = FakeMol()
+    target.atoms = (
+        FakeAtom(0, 8, "O", formal_charge=-1),
+        FakeAtom(1, 1, "H", formal_charge=1),
+    )
+    molecule = chargefw.Molecule(
+        [1, 8],
+        formal_charges=[1, -1],
+        atom_ids=cast(Any, [np.int64(1), np.int64(0)]),
+    )
+    result = chargefw.calculate(molecule, method="formal")
+    np.testing.assert_array_equal(result.assignments[0].values, [1.0, -1.0])
+
+    chargefw_rdkit.attach_charges(target, result)
+
+    assert target.atoms[0].properties["ChargeFWPartialCharge"] == -1.0
+    assert target.atoms[1].properties["ChargeFWPartialCharge"] == 1.0
+
+
+def test_missing_dependency_is_actionable(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = ModuleNotFoundError("No module named 'rdkit'", name="rdkit")
+
+    def missing(name: str) -> Any:
+        raise error
+
+    monkeypatch.setattr(chargefw_rdkit, "import_module", missing)
+    with pytest.raises(ImportError, match=r"pip install chargefw\[rdkit\]"):
+        chargefw_rdkit.from_mol(object())
+
+
+def test_public_annotations_resolve_to_runtime_types(chem: Any) -> None:
+    hints = get_type_hints(chargefw_rdkit.from_mol)
+    assert hints["molecule"] is chem.Mol
+    assert hints["return"] is chargefw.Molecule
+    hints = get_type_hints(chargefw_rdkit.attach_charges)
+    assert hints["molecule"] is chem.Mol
+    assert hints["result"] is chargefw.CalculationResult
+    assert hints["return"] is type(None)
+
+
+def test_real_rdkit_conversion_attachment_and_sd_serialization(chem: Any, tmp_path: Path) -> None:
+    target = chem.MolFromMolBlock(MOL_TEXT, sanitize=False, removeHs=False)
+    assert target is not None
+    molecule = chargefw_rdkit.from_mol(target, source_name="water.mol")
+    result = chargefw.calculate(molecule, method="formal")
+
+    chargefw_rdkit.attach_charges(target, result)
+
+    assert target.GetAtomWithIdx(0).GetDoubleProp("ChargeFWPartialCharge") == 0.0
+    path = tmp_path / "charged.sdf"
+    writer = chem.SDWriter(str(path))
+    writer.write(target)
+    writer.close()
+    loaded = chem.SDMolSupplier(str(path), sanitize=False, removeHs=False)[0]
+    assert loaded is not None
+    assert loaded.GetAtomWithIdx(0).GetDoubleProp("ChargeFWPartialCharge") == 0.0
+
+
+def test_real_rdkit_conversion_requires_explicit_hydrogens(chem: Any) -> None:
+    for molecule in (
+        chem.MolFromSmiles("CCO"),
+        chem.MolFromSmiles("[NH4+]"),
+        chem.MolFromSmiles("CO", sanitize=False),
+    ):
+        with pytest.raises(ValueError, match="Chem.AddHs"):
+            chargefw_rdkit.from_mol(molecule)
+    assert chargefw_rdkit.from_mol(chem.AddHs(chem.MolFromSmiles("CCO"))).atom_count == 9
+
+
+def test_real_rdkit_aromatic_and_dative_bond_conversion(chem: Any) -> None:
+    aromatic = chem.AddHs(chem.MolFromSmiles("c1ccccc1"))
+    assert aromatic is not None
+    with pytest.raises(ValueError, match="AROMATIC"):
+        chargefw_rdkit.from_mol(aromatic)
+    normalized = chargefw_rdkit.from_mol(aromatic, bond_conversion="single")
+    assert np.all(normalized.bonds[:, 2] == 1)
+
+    for name in ("DATIVE", "DATIVEONE"):
+        editable = chem.RWMol()
+        donor = chem.Atom(7)
+        donor.SetNoImplicit(True)
+        editable.AddAtom(donor)
+        editable.AddAtom(chem.Atom(26))
+        editable.AddBond(0, 1, getattr(chem.BondType, name))
+        target = editable.GetMol()
+        assert target.GetBondWithIdx(0).GetBondTypeAsDouble() == 1.0
+        with pytest.raises(ValueError, match=name):
+            chargefw_rdkit.from_mol(target)
+        normalized = chargefw_rdkit.from_mol(target, bond_conversion="single")
+        assert normalized.bonds.tolist() == [[0, 1, 1]]

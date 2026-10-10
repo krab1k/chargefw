@@ -185,7 +185,3 @@ NO_CHARGES
                 self.assertRaises(error_type),
             ):
                 operation()
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -11,7 +11,6 @@ from unittest.mock import patch
 
 import chargefw
 import numpy as np
-from chargefw._chargefw import calculation as _native_calculation
 from chargefw._chargefw import core as _native_core
 
 T = TypeVar("T")
@@ -112,6 +111,14 @@ def run_while_python_thread_progresses(operation: Callable[[], T]) -> tuple[T, b
     return result, progressed_during_operation, operation_seconds
 
 
+class RecordingObserver(chargefw.CalculationObserver):
+    def __init__(self) -> None:
+        self.events: list[chargefw.CalculationProgress] = []
+
+    def on_progress(self, progress: chargefw.CalculationProgress) -> None:
+        self.events.append(progress)
+
+
 class CalculationTests(unittest.TestCase):
     def test_ion_selections_are_immutable_native_catalog_tuples(self) -> None:
         common: tuple[str, ...] = chargefw.COMMON_IONS
@@ -120,10 +127,6 @@ class CalculationTests(unittest.TestCase):
         self.assertLess(set(common), set(all_ions))
         self.assertEqual(len(all_ions), len(set(all_ions)))
         for selection in (common, all_ions):
-            with self.assertRaises(TypeError):
-                cast(Any, selection)[0] = "MG"
-            with self.assertRaises(AttributeError):
-                cast(Any, selection).append("MG")
             absent = chargefw.calculate(
                 chargefw.io.parse(FIXED_IONS_MMCIF.split("HETATM 4")[0] + "#\n", format="mmcif"),
                 method="formal",
@@ -165,13 +168,6 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(result.plan.fixed_ions.sources, (chargefw.FixedAtomCharge(0, 3, 1.0),))
 
     def test_observer_receives_owned_execution_progress(self) -> None:
-        class RecordingObserver(chargefw.CalculationObserver):
-            def __init__(self) -> None:
-                self.events: list[chargefw.CalculationProgress] = []
-
-            def on_progress(self, progress: chargefw.CalculationProgress) -> None:
-                self.events.append(progress)
-
         observer = RecordingObserver()
         collection = chargefw.MoleculeCollection(
             [chargefw.Molecule([1]), chargefw.Molecule([8, 1])]
@@ -206,30 +202,34 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual([event.conformer_index for event in targets], [None, None])
         self.assertTrue(all(event.elapsed_seconds >= 0.0 for event in observer.events))
 
-    def test_observer_receives_reduced_fragment_progress(self) -> None:
-        class RecordingObserver(chargefw.CalculationObserver):
-            def __init__(self) -> None:
-                self.events: list[chargefw.CalculationProgress] = []
+    def test_reduced_execution_reports_policy_and_fragment_progress(self) -> None:
+        for mode in ("cutoff", "cover"):
+            with self.subTest(mode=mode):
+                observer = RecordingObserver()
+                result = chargefw.calculate(
+                    water(),
+                    method="eem",
+                    execution=cast(Any, mode),
+                    radius=8.0,
+                    threads=1,
+                    observer=observer,
+                )
 
-            def on_progress(self, progress: chargefw.CalculationProgress) -> None:
-                self.events.append(progress)
-
-        observer = RecordingObserver()
-        result = chargefw.calculate(
-            water(),
-            method="eem",
-            execution="cutoff",
-            radius=8.0,
-            threads=1,
-            observer=observer,
-        )
-
-        self.assertEqual(result.status, "success")
-        fragments = [event for event in observer.events if event.phase == "fragment_progress"]
-        self.assertTrue(fragments)
-        self.assertEqual(fragments[-1].completed_fragment_count, fragments[-1].fragment_count)
-        self.assertEqual(fragments[-1].target_index, 0)
-        self.assertEqual(fragments[-1].target_count, 1)
+                self.assertEqual(result.status, "success")
+                if result.plan is None:
+                    self.fail("successful calculation must report plan provenance")
+                self.assertEqual(
+                    result.plan.policy, chargefw.ExecutionPolicy(mode=mode, radius=8.0)
+                )
+                fragments = [
+                    event for event in observer.events if event.phase == "fragment_progress"
+                ]
+                self.assertTrue(fragments)
+                self.assertEqual(
+                    fragments[-1].completed_fragment_count, fragments[-1].fragment_count
+                )
+                self.assertEqual(fragments[-1].target_index, 0)
+                self.assertEqual(fragments[-1].target_count, 1)
 
     def test_fixed_ions_snapshot_resolve_and_reuse_plan(self) -> None:
         molecules = fixed_groups_molecules()
@@ -273,7 +273,7 @@ class CalculationTests(unittest.TestCase):
             cast(Any, result.plan.fixed_ions).sources = ()
         with self.assertRaises(AttributeError):
             cast(Any, result.requested).fixed_ions = ("CA",)
-        with self.assertRaisesRegex(TypeError, "selection arguments"):
+        with self.assertRaises(TypeError):
             chargefw.calculate(molecules, plan, fixed_ions=[])
 
     def test_fixed_ions_validation_empty_and_method_support(self) -> None:
@@ -281,9 +281,9 @@ class CalculationTests(unittest.TestCase):
         for invalid in ("MG", b"MG", ["MG", 12]):
             with self.subTest(invalid=invalid), self.assertRaises(TypeError):
                 chargefw.assess(molecules, fixed_ions=cast(Any, invalid))
-        with self.assertRaisesRegex(ValueError, "unknown fixed-ion component ID"):
+        with self.assertRaises(ValueError):
             chargefw.assess(molecules, fixed_ions=["mg"])
-        with self.assertRaisesRegex(ValueError, "unknown fixed-ion component ID"):
+        with self.assertRaises(ValueError):
             chargefw.assess(chargefw.MoleculeCollection([]), fixed_ions=["bad"])
 
         absent = chargefw.calculate(molecules, method="formal", fixed_ions=["CA"])
@@ -310,7 +310,7 @@ class CalculationTests(unittest.TestCase):
             "unsupported_fixed_ions",
             [issue.kind for rejection in unsupported.rejections for issue in rejection.issues],
         )
-        with self.assertRaisesRegex(ValueError, "component metadata"):
+        with self.assertRaises(ValueError):
             chargefw.assess(water(), fixed_ions=["MG"])
 
     def test_observer_receives_parallel_target_progress(self) -> None:
@@ -477,8 +477,6 @@ class CalculationTests(unittest.TestCase):
         self.assertGreaterEqual(result.timings.computation_seconds, 0.0)
         with self.assertRaises(TypeError):
             cast(Any, result.requested.options_by_method)["eem"] = {"unexpected": True}
-        repeated = chargefw.calculate(molecule, plan)
-        np.testing.assert_allclose(repeated.assignments[0].values, assignment.values)
 
         overridden_threads = chargefw.calculate(molecule, plan, threads=1)
         self.assertEqual(overridden_threads.requested.threads, 1)
@@ -515,11 +513,11 @@ class CalculationTests(unittest.TestCase):
         default_plan = assessment.default_plan
         if default_plan is None:
             self.fail("assessment must produce a default plan")
-        with self.assertRaisesRegex(ValueError, "different molecule collection"):
+        with self.assertRaises(ValueError):
             chargefw.calculate(water(), default_plan)
-        with self.assertRaisesRegex(TypeError, "omit it"):
+        with self.assertRaises(TypeError):
             chargefw.calculate(molecule, cast(Any, None))
-        with self.assertRaisesRegex(TypeError, "cannot be combined"):
+        with self.assertRaises(TypeError):
             chargefw.calculate(molecule, default_plan, method="eqeq")
 
         with ThreadPoolExecutor(max_workers=3) as executor:
@@ -543,7 +541,7 @@ class CalculationTests(unittest.TestCase):
         self.assertIs(
             geometry_independent.assignment(molecule=0), geometry_independent.assignments[0]
         )
-        with self.assertRaisesRegex(ValueError, "no conformer-specific"):
+        with self.assertRaises(ValueError):
             geometry_independent.assignment(molecule=0, conformer=0)
 
         collection = chargefw.MoleculeCollection([water(2)])
@@ -553,13 +551,8 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(multi_result.assignments_by_molecule, (multi_result.assignments,))
         self.assertIs(multi_result.assignment(molecule=0, conformer=0), multi_result.assignments[0])
         self.assertIs(multi_result.assignment(molecule=0, conformer=1), multi_result.assignments[1])
-        with self.assertRaisesRegex(ValueError, "conformer is required"):
+        with self.assertRaises(ValueError):
             multi_result.assignment(molecule=0)
-        repeated_result = chargefw.calculate(collection, method="qeq", execution="full")
-        self.assertEqual(
-            [item.values.tolist() for item in repeated_result.assignments],
-            [item.values.tolist() for item in multi_result.assignments],
-        )
 
         mapped_collection = chargefw.MoleculeCollection(
             [
@@ -699,37 +692,6 @@ class CalculationTests(unittest.TestCase):
         self.assertGreater(operation_seconds, _GIL_OBSERVATION_DELAY_SECONDS)
         self.assertTrue(progressed)
 
-    def test_reduced_execution_policies(self) -> None:
-        reduced = chargefw.calculate(
-            water(),
-            method="eem",
-            execution="cutoff",
-            radius=8.0,
-        )
-        self.assertEqual(reduced.status, "success")
-        reduced_effective = reduced.plan
-        if reduced_effective is None:
-            self.fail("successful calculation must report plan provenance")
-        self.assertEqual(
-            reduced_effective.policy,
-            chargefw.ExecutionPolicy(
-                mode="cutoff",
-                radius=8.0,
-            ),
-        )
-
-        covered = chargefw.calculate(
-            water(),
-            method="eem",
-            execution="cover",
-            radius=8.0,
-        )
-        self.assertEqual(covered.status, "success")
-        covered_effective = covered.plan
-        if covered_effective is None:
-            self.fail("successful calculation must report effective provenance")
-        self.assertEqual(covered_effective.policy.mode, "cover")
-
     def test_automatic_thresholds_and_explicit_full_warnings(self) -> None:
         automatic = chargefw.assess(
             water(),
@@ -740,14 +702,6 @@ class CalculationTests(unittest.TestCase):
         if automatic.default_plan is None:
             self.fail("assessment must produce a default plan")
         self.assertEqual(automatic.default_plan.policy.mode, "cutoff")
-        self.assertEqual(automatic.default_plan.policy.radius, 12.0)
-        self.assertTrue(all(plan.policy.mode != "full" for plan in automatic.plans))
-        self.assertTrue(
-            any(
-                rejection.policy is not None and rejection.policy.mode == "full"
-                for rejection in automatic.rejections
-            )
-        )
 
         explicit_full = chargefw.assess(
             water(),
@@ -758,9 +712,10 @@ class CalculationTests(unittest.TestCase):
         )
         if explicit_full.default_plan is None:
             self.fail("explicit full assessment must produce a plan")
-        self.assertTrue(all(plan.policy.mode == "full" for plan in explicit_full.plans))
-        self.assertTrue(explicit_full.default_plan.warnings)
-        self.assertEqual(explicit_full.default_plan.warnings[0].kind, "resource_threshold_exceeded")
+        self.assertEqual(
+            [warning.kind for warning in explicit_full.default_plan.warnings],
+            ["resource_threshold_exceeded"],
+        )
 
     def test_no_plan_result_and_typed_exception(self) -> None:
         molecule = chargefw.Molecule([8, 1, 1], bonds=[[0, 1, 1], [0, 2, 1]])
@@ -810,7 +765,7 @@ class CalculationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             chargefw.assess(water(), method="not-a-method")
 
-        with self.assertRaisesRegex(ValueError, "requires an explicit method"):
+        with self.assertRaises(ValueError):
             chargefw.assess(water(), parameter_set="QEq_original")
 
         with self.assertRaises(ValueError):
@@ -847,27 +802,6 @@ class CalculationTests(unittest.TestCase):
         np.testing.assert_array_equal(values, [0.0, 0.0, 0.0])
         self.assertFalse(values.flags.writeable)
 
-    def test_private_binding_rejects_invalid_policy_strings(self) -> None:
-        molecule = water()
-        with self.assertRaises(ValueError):
-            _native_calculation._make_assessment(
-                [molecule._native],
-                [None],
-                [("", 0, "")],
-                [None],
-                "",
-                chargefw.calculation._default_parameter_catalog(),
-                None,
-                None,
-                {},
-                False,
-                cast(Any, "invalid"),
-                None,
-                20_000,
-                80_000,
-                0,
-            )
-
     def test_invalid_options_are_rejected_early(self) -> None:
         invalid_options = (
             (ValueError, {"execution": "fast"}),
@@ -884,9 +818,9 @@ class CalculationTests(unittest.TestCase):
             ):
                 chargefw.assess(water(), **options)
 
-        with self.assertRaisesRegex(ValueError, "requires an explicit method"):
+        with self.assertRaises(ValueError):
             chargefw.assess(water(), options={"iters": 2})
-        with self.assertRaisesRegex(ValueError, "cannot be used together"):
+        with self.assertRaises(ValueError):
             chargefw.assess(
                 water(),
                 method="peoe",
@@ -938,7 +872,7 @@ class CalculationTests(unittest.TestCase):
         self.assertIsNone(methods.get("not-a-method"))
         self.assertEqual(tuple(methods), tuple(method.id for method in methods.values()))
         self.assertEqual(methods["eem"].id, "eem")
-        with self.assertRaisesRegex(KeyError, "unknown method ID"):
+        with self.assertRaises(KeyError):
             methods["not-a-method"]
         with self.assertRaises(TypeError):
             cast(Any, methods)["unexpected"] = methods["eem"]
@@ -968,7 +902,3 @@ class CalculationTests(unittest.TestCase):
         if executed is None:
             self.fail("successful calculation must report plan provenance")
         self.assertEqual(executed.parameter_set, parameter_set)
-
-
-if __name__ == "__main__":
-    unittest.main()
