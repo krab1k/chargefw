@@ -1,16 +1,14 @@
 """Molecular format input and Gemmi conversion checks."""
 
 import json
-import unittest
 from dataclasses import FrozenInstanceError
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any, cast, get_type_hints
-from unittest.mock import patch
 
 import chargefw.io.gemmi
 import gemmi
 import numpy as np
+import pytest
 from chargefw import calculate
 from chargefw import io as chargefw_io
 
@@ -180,221 +178,213 @@ MOLECULE_JSON_TEXT = """{
 """
 
 
-class NativeInputTests(unittest.TestCase):
-    def test_fixed_ions_resolve_gemmi_components_and_provenance(self) -> None:
-        molecules = chargefw_io.parse(
-            FIXED_IONS_MMCIF_TEXT,
-            format="mmcif",
-            conformers=cast(Any, "all"),
-            bonds="templates",
-        )
-        self.assertEqual(molecules[0].formal_charges.tolist(), [0, 0, 0, 0])
-        mapping = molecules[0].source_mapping
-        self.assertIsNotNone(mapping)
-        assert mapping is not None
-        labels = mapping.atoms[3].structural_labels
-        self.assertIsNotNone(labels)
-        assert labels is not None
-        self.assertEqual(labels.label.residue, "MG")
-        self.assertEqual(labels.author.residue, "AUTH_MG")
-        result = chargefw.calculate(
-            molecules,
-            method="sqeqp",
-            parameter_set="SQEqp_Schindler2021_CCD_gen",
-            execution="full",
-            fixed_ions=["MG"],
-        )
+def test_fixed_ions_resolve_gemmi_components_and_provenance() -> None:
+    molecules = chargefw_io.parse(
+        FIXED_IONS_MMCIF_TEXT,
+        format="mmcif",
+        conformers=cast(Any, "all"),
+        bonds="templates",
+    )
+    assert molecules[0].formal_charges.tolist() == [0, 0, 0, 0]
+    mapping = molecules[0].source_mapping
+    assert mapping is not None
+    labels = mapping.atoms[3].structural_labels
+    assert labels is not None
+    assert labels.label.residue == "MG"
+    assert labels.author.residue == "AUTH_MG"
+    result = chargefw.calculate(
+        molecules,
+        method="sqeqp",
+        parameter_set="SQEqp_Schindler2021_CCD_gen",
+        execution="full",
+        fixed_ions=["MG"],
+    )
 
-        encoded = json.loads(chargefw_io.dumps(result, format="result-json"))
-        effective = encoded["calculation_provenance"]["effective"]["fixed_ions"]
-        self.assertEqual(
-            effective,
-            [
+    encoded = json.loads(chargefw_io.dumps(result, format="result-json"))
+    effective = encoded["calculation_provenance"]["effective"]["fixed_ions"]
+    assert effective == [
+        {
+            "component_id": "MG",
+            "charge": 2.0,
+            "instances": [{"molecule_index": 0, "atom_index": 3}],
+        }
+    ]
+
+
+def test_parse_native_molecular_formats() -> None:
+    molecules = chargefw_io.parse(MOL_TEXT, format="mol", source_name="charged.mol")
+    assert len(molecules) == 1
+    molecule = molecules[0]
+    assert molecule.atomic_numbers.tolist() == [7, 8]
+    assert molecule.formal_charges.tolist() == [1, -1]
+    assert molecule.source_name == "charged.mol"
+
+    sdf = chargefw_io.parse(f"{MOL_TEXT}$$$$\n", format="sdf", source_name="charged.sdf")
+    assert len(sdf) == 1
+    assert sdf[0].record_index == 0
+
+    mol2 = chargefw_io.parse(MOL2_TEXT, format="mol2", source_name="water.mol2")
+    assert len(mol2) == 1
+    assert mol2[0].atom_names == ("O", "H1", "H2")
+    assert mol2[0].bond_count == 2
+
+
+def test_parse_molecule_json_conformer_selection() -> None:
+    all_conformers = chargefw_io.parse(MOLECULE_JSON_TEXT, format="molecule-json")
+    first_conformer = chargefw_io.parse(
+        MOLECULE_JSON_TEXT, format="molecule-json", conformers="first"
+    )
+
+    assert all_conformers[0].conformer_names == ("first", "second")
+    assert first_conformer[0].conformer_names == ("first",)
+
+
+def test_parse_topology_only_molecule_json_supports_formal_calculation() -> None:
+    topology_only_conformers: tuple[list[Any] | None, ...] = (None, [])
+    for conformers in topology_only_conformers:
+        molecule_data: dict[str, Any] = {
+            "schema_version": "1.0",
+            "molecules": [
                 {
-                    "component_id": "MG",
-                    "charge": 2.0,
-                    "instances": [{"molecule_index": 0, "atom_index": 3}],
+                    "atoms": [
+                        {"atomic_number": 7, "formal_charge": 1},
+                        {"atomic_number": 1, "formal_charge": 0},
+                    ],
+                    "bonds": [{"atoms": [0, 1], "order": 1}],
                 }
             ],
-        )
+        }
+        if conformers is not None:
+            molecule_data["molecules"][0]["conformers"] = conformers
 
-    def test_parse_native_molecular_formats(self) -> None:
-        molecules = chargefw_io.parse(MOL_TEXT, format="mol", source_name="charged.mol")
-        self.assertEqual(len(molecules), 1)
-        molecule = molecules[0]
-        self.assertEqual(molecule.atomic_numbers.tolist(), [7, 8])
-        self.assertEqual(molecule.formal_charges.tolist(), [1, -1])
-        self.assertEqual(molecule.source_name, "charged.mol")
+        molecules = chargefw_io.parse(json.dumps(molecule_data), format="molecule-json")
+        assert molecules[0].conformer_count == 0
+        result = calculate(molecules, method="formal", execution="full")
 
-        sdf = chargefw_io.parse(f"{MOL_TEXT}$$$$\n", format="sdf", source_name="charged.sdf")
-        self.assertEqual(len(sdf), 1)
-        self.assertEqual(sdf[0].record_index, 0)
-
-        mol2 = chargefw_io.parse(MOL2_TEXT, format="mol2", source_name="water.mol2")
-        self.assertEqual(len(mol2), 1)
-        self.assertEqual(mol2[0].atom_names, ("O", "H1", "H2"))
-        self.assertEqual(mol2[0].bond_count, 2)
-
-    def test_parse_molecule_json_conformer_selection(self) -> None:
-        all_conformers = chargefw_io.parse(MOLECULE_JSON_TEXT, format="molecule-json")
-        first_conformer = chargefw_io.parse(
-            MOLECULE_JSON_TEXT, format="molecule-json", conformers="first"
-        )
-
-        self.assertEqual(all_conformers[0].conformer_names, ("first", "second"))
-        self.assertEqual(first_conformer[0].conformer_names, ("first",))
-
-    def test_parse_topology_only_molecule_json_supports_formal_calculation(self) -> None:
-        topology_only_conformers: tuple[list[Any] | None, ...] = (None, [])
-        for conformers in topology_only_conformers:
-            with self.subTest(conformers=conformers):
-                molecule_data: dict[str, Any] = {
-                    "schema_version": "1.0",
-                    "molecules": [
-                        {
-                            "atoms": [
-                                {"atomic_number": 7, "formal_charge": 1},
-                                {"atomic_number": 1, "formal_charge": 0},
-                            ],
-                            "bonds": [{"atoms": [0, 1], "order": 1}],
-                        }
-                    ],
-                }
-                if conformers is not None:
-                    molecule_data["molecules"][0]["conformers"] = conformers
-
-                molecules = chargefw_io.parse(json.dumps(molecule_data), format="molecule-json")
-                self.assertEqual(molecules[0].conformer_count, 0)
-                result = calculate(molecules, method="formal", execution="full")
-
-                self.assertEqual(result.status, "success")
-                np.testing.assert_array_equal(result.assignments[0].values, [1.0, 0.0])
-
-    def test_path_readers_set_source_name(self) -> None:
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "charged.mol"
-            path.write_text(MOL_TEXT, encoding="utf-8")
-            molecules = chargefw_io.read(path, format="mol")
-
-        self.assertEqual(molecules[0].source_name, str(path))
+        assert result.status == "success"
+        np.testing.assert_array_equal(result.assignments[0].values, [1.0, 0.0])
 
 
-class GemmiAdapterTests(unittest.TestCase):
-    def test_public_annotations_resolve_to_runtime_types(self) -> None:
-        adapter = chargefw.io.gemmi
-        cases = (
-            (
-                adapter.from_structure,
-                {"structure": gemmi.Structure, "return": chargefw.MoleculeCollection},
-            ),
-            (
-                adapter.from_document,
-                {"document": gemmi.cif.Document, "return": chargefw.MoleculeCollection},
-            ),
-            (
-                adapter.to_document,
-                {"result": chargefw.CalculationResult, "return": gemmi.cif.Document},
-            ),
-            (
-                adapter.attach_charges,
-                {
-                    "document": gemmi.cif.Document,
-                    "result": chargefw.CalculationResult,
-                    "return": type(None),
-                },
-            ),
-        )
-        for function, expected in cases:
-            with self.subTest(function=function.__name__):
-                hints = get_type_hints(function)
-                for name, expected_type in expected.items():
-                    self.assertIs(hints[name], expected_type)
+def test_path_readers_set_source_name(tmp_path: Path) -> None:
+    path = tmp_path / "charged.mol"
+    path.write_text(MOL_TEXT, encoding="utf-8")
+    molecules = chargefw_io.read(path, format="mol")
 
-    def test_object_conversion_reports_missing_optional_dependency(self) -> None:
-        missing_gemmi = ModuleNotFoundError("No module named 'gemmi'", name="gemmi")
-        with (
-            patch.object(chargefw.io.gemmi, "import_module", side_effect=missing_gemmi),
-            self.assertRaisesRegex(ImportError, r"pip install chargefw\[gemmi\]"),
-        ):
-            chargefw.io.gemmi.from_structure(cast(Any, object()))
+    assert molecules[0].source_name == str(path)
 
-    def test_pdb_text_file_and_structure_preserve_mapping(self) -> None:
-        text_collection = chargefw_io.parse(
-            PDB_TEXT,
-            format="pdb",
-            source_name="water.pdb",
-            bonds="explicit",
-        )
-        self.assertEqual(len(text_collection), 1)
-        text_molecule = text_collection[0]
-        self.assertEqual(text_molecule.atom_names, ("O", "H1"))
-        self.assertEqual(text_molecule.atom_ids, ("1", "2"))
-        self.assertEqual(text_molecule.conformer_names, ("1", "2"))
-        self.assertEqual(text_molecule.source_name, "water.pdb")
-        self.assertEqual(text_molecule.bonds.tolist(), [[0, 1, 1]])
-        np.testing.assert_allclose(text_molecule.coordinates[:, 0, 0], [0.0, 0.1])
-        mapping = text_molecule.source_mapping
-        self.assertIsNotNone(mapping)
-        assert mapping is not None
-        self.assertEqual(mapping.format, "pdb")
-        self.assertEqual(mapping.components, (chargefw.SourceComponentInstance("HOH", (0, 1)),))
-        self.assertEqual(mapping.alternate_location_selection, "first-source-order")
-        self.assertEqual([value.id for value in mapping.conformers], ["1", "2"])
-        labels = mapping.atoms[1].structural_labels
-        self.assertIsNotNone(labels)
-        assert labels is not None
-        self.assertEqual(labels.author.atom, "H1")
-        self.assertEqual(labels.author.residue, "HOH")
-        self.assertEqual(labels.author.chain, "A")
-        self.assertEqual(labels.alternate_location, "A")
 
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "water.pdb"
-            path.write_text(PDB_TEXT, encoding="utf-8")
-            file_molecule = chargefw_io.read(path, format="pdb", bonds="explicit")[0]
-        np.testing.assert_array_equal(file_molecule.atomic_numbers, text_molecule.atomic_numbers)
-        np.testing.assert_array_equal(file_molecule.coordinates, text_molecule.coordinates)
+def test_public_annotations_resolve_to_runtime_types() -> None:
+    adapter = chargefw.io.gemmi
+    cases = (
+        (
+            adapter.from_structure,
+            {"structure": gemmi.Structure, "return": chargefw.MoleculeCollection},
+        ),
+        (
+            adapter.from_document,
+            {"document": gemmi.cif.Document, "return": chargefw.MoleculeCollection},
+        ),
+        (
+            adapter.to_document,
+            {"result": chargefw.CalculationResult, "return": gemmi.cif.Document},
+        ),
+        (
+            adapter.attach_charges,
+            {
+                "document": gemmi.cif.Document,
+                "result": chargefw.CalculationResult,
+                "return": type(None),
+            },
+        ),
+    )
+    for function, expected in cases:
+        hints = get_type_hints(function)
+        for name, expected_type in expected.items():
+            assert hints[name] is expected_type
 
-        structure = gemmi.read_pdb_string(PDB_TEXT)
-        structure_collection = chargefw.io.gemmi.from_structure(structure, source_name="structure")
-        self.assertEqual(len(structure_collection), 1)
-        structure_molecule = structure_collection[0]
-        np.testing.assert_array_equal(
-            structure_molecule.atomic_numbers, text_molecule.atomic_numbers
-        )
-        np.testing.assert_array_equal(structure_molecule.coordinates, text_molecule.coordinates)
 
-    def test_mmcif_text_file_and_document_preserve_records(self) -> None:
-        collection = chargefw_io.parse(MMCIF_TEXT, format="mmcif", source_name="models.cif")
-        self.assertEqual(len(collection), 2)
-        self.assertEqual([value.record_index for value in collection], [0, 1])
-        self.assertEqual([value.record_id for value in collection], ["first", "second"])
-        self.assertEqual(collection[0].conformer_names, ("1", "2"))
-        self.assertEqual(collection[0].atom_ids, ("1", "2"))
-        mapping = collection[0].source_mapping
-        self.assertIsNotNone(mapping)
-        assert mapping is not None
-        self.assertEqual([value.id for value in mapping.conformers], ["1", "2"])
-        self.assertEqual([site.id for site in mapping.conformers[1].sites], ["3", "4"])
-        labels = mapping.atoms[0].structural_labels
-        self.assertIsNotNone(labels)
-        assert labels is not None
-        self.assertEqual(labels.author.atom, "CA")
-        self.assertEqual(labels.label.atom, "CA")
+def test_object_conversion_reports_missing_optional_dependency(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def missing(name: str) -> Any:
+        raise ModuleNotFoundError(f"No module named {name!r}", name=name)
 
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "models.cif"
-            path.write_text(MMCIF_TEXT, encoding="utf-8")
-            from_file = chargefw_io.read(path, format="mmcif")
-        self.assertEqual([value.atom_count for value in from_file], [2, 1])
+    monkeypatch.setattr(chargefw.io.gemmi, "import_module", missing)
+    with pytest.raises(ImportError, match=r"pip install chargefw\[gemmi\]"):
+        chargefw.io.gemmi.from_structure(cast(Any, object()))
 
-        document = gemmi.cif.read_string(MMCIF_TEXT)
-        from_document = chargefw.io.gemmi.from_document(document, source_name="document")
-        self.assertEqual([value.record_id for value in from_document], ["first", "second"])
-        np.testing.assert_array_equal(from_document[0].coordinates, collection[0].coordinates)
 
-    def test_mmcif_mapping_exposes_arbitrary_ids_and_label_namespaces(self) -> None:
-        contents = """data_mapping
+def test_pdb_text_file_and_structure_preserve_mapping(tmp_path: Path) -> None:
+    text_collection = chargefw_io.parse(
+        PDB_TEXT,
+        format="pdb",
+        source_name="water.pdb",
+        bonds="explicit",
+    )
+    assert len(text_collection) == 1
+    text_molecule = text_collection[0]
+    assert text_molecule.atom_names == ("O", "H1")
+    assert text_molecule.atom_ids == ("1", "2")
+    assert text_molecule.conformer_names == ("1", "2")
+    assert text_molecule.source_name == "water.pdb"
+    assert text_molecule.bonds.tolist() == [[0, 1, 1]]
+    np.testing.assert_allclose(text_molecule.coordinates[:, 0, 0], [0.0, 0.1])
+    mapping = text_molecule.source_mapping
+    assert mapping is not None
+    assert mapping.format == "pdb"
+    assert mapping.components == (chargefw.SourceComponentInstance("HOH", (0, 1)),)
+    assert mapping.alternate_location_selection == "first-source-order"
+    assert [value.id for value in mapping.conformers] == ["1", "2"]
+    labels = mapping.atoms[1].structural_labels
+    assert labels is not None
+    assert labels.author.atom == "H1"
+    assert labels.author.residue == "HOH"
+    assert labels.author.chain == "A"
+    assert labels.alternate_location == "A"
+
+    path = tmp_path / "water.pdb"
+    path.write_text(PDB_TEXT, encoding="utf-8")
+    file_molecule = chargefw_io.read(path, format="pdb", bonds="explicit")[0]
+    np.testing.assert_array_equal(file_molecule.atomic_numbers, text_molecule.atomic_numbers)
+    np.testing.assert_array_equal(file_molecule.coordinates, text_molecule.coordinates)
+
+    structure = gemmi.read_pdb_string(PDB_TEXT)
+    structure_collection = chargefw.io.gemmi.from_structure(structure, source_name="structure")
+    assert len(structure_collection) == 1
+    structure_molecule = structure_collection[0]
+    np.testing.assert_array_equal(structure_molecule.atomic_numbers, text_molecule.atomic_numbers)
+    np.testing.assert_array_equal(structure_molecule.coordinates, text_molecule.coordinates)
+
+
+def test_mmcif_text_file_and_document_preserve_records(tmp_path: Path) -> None:
+    collection = chargefw_io.parse(MMCIF_TEXT, format="mmcif", source_name="models.cif")
+    assert len(collection) == 2
+    assert [value.record_index for value in collection] == [0, 1]
+    assert [value.record_id for value in collection] == ["first", "second"]
+    assert collection[0].conformer_names == ("1", "2")
+    assert collection[0].atom_ids == ("1", "2")
+    mapping = collection[0].source_mapping
+    assert mapping is not None
+    assert [value.id for value in mapping.conformers] == ["1", "2"]
+    assert [site.id for site in mapping.conformers[1].sites] == ["3", "4"]
+    labels = mapping.atoms[0].structural_labels
+    assert labels is not None
+    assert labels.author.atom == "CA"
+    assert labels.label.atom == "CA"
+
+    path = tmp_path / "models.cif"
+    path.write_text(MMCIF_TEXT, encoding="utf-8")
+    from_file = chargefw_io.read(path, format="mmcif")
+    assert [value.atom_count for value in from_file] == [2, 1]
+
+    document = gemmi.cif.read_string(MMCIF_TEXT)
+    from_document = chargefw.io.gemmi.from_document(document, source_name="document")
+    assert [value.record_id for value in from_document] == ["first", "second"]
+    np.testing.assert_array_equal(from_document[0].coordinates, collection[0].coordinates)
+
+
+def test_mmcif_mapping_exposes_arbitrary_ids_and_label_namespaces() -> None:
+    contents = """data_mapping
 loop_
 _atom_site.group_PDB
 _atom_site.id
@@ -420,199 +410,192 @@ _atom_site.pdbx_PDB_model_num
 HETATM 001 C LABEL . LIG LC 7 ? 0 0 0 1 20 0 17 AUTH AC AUTHOR E1 1
 #
 """
-        molecule = chargefw_io.parse(contents, format="mmcif")[0]
-        del contents
+    molecule = chargefw_io.parse(contents, format="mmcif")[0]
+    del contents
 
-        self.assertEqual(molecule.atom_ids, ("001",))
-        mapping = molecule.source_mapping
-        self.assertIsNotNone(mapping)
-        assert mapping is not None
-        labels = mapping.atoms[0].structural_labels
-        self.assertIsNotNone(labels)
-        assert labels is not None
-        self.assertEqual(labels.author.atom, "AUTHOR")
-        self.assertEqual(labels.author.residue, "AUTH")
-        self.assertEqual(labels.author.chain, "AC")
-        self.assertEqual(labels.label.atom, "LABEL")
-        self.assertEqual(labels.label.residue, "LIG")
-        self.assertEqual(labels.label.chain, "LC")
-        self.assertEqual(mapping.components, (chargefw.SourceComponentInstance("LIG", (0,)),))
-        self.assertIsInstance(mapping.components, tuple)
-        self.assertIsInstance(mapping.components[0].atom_indices, tuple)
-        with self.assertRaises(FrozenInstanceError):
-            setattr(mapping.components[0], "component_id", "AUTHOR")
+    assert molecule.atom_ids == ("001",)
+    mapping = molecule.source_mapping
+    assert mapping is not None
+    labels = mapping.atoms[0].structural_labels
+    assert labels is not None
+    assert labels.author.atom == "AUTHOR"
+    assert labels.author.residue == "AUTH"
+    assert labels.author.chain == "AC"
+    assert labels.label.atom == "LABEL"
+    assert labels.label.residue == "LIG"
+    assert labels.label.chain == "LC"
+    assert mapping.components == (chargefw.SourceComponentInstance("LIG", (0,)),)
+    assert isinstance(mapping.components, tuple)
+    assert isinstance(mapping.components[0].atom_indices, tuple)
+    with pytest.raises(FrozenInstanceError):
+        setattr(mapping.components[0], "component_id", "AUTHOR")
 
-        result = calculate(molecule, method="formal")
-        self.assertEqual(result.molecules[0].source_mapping, mapping)
-        imported = json.loads(chargefw_io.dumps(result, format="result-json"))["results"][0][
-            "input"
-        ]["import"]
-        self.assertEqual(imported["format"], "mmcif")
+    result = calculate(molecule, method="formal")
+    assert result.molecules[0].source_mapping == mapping
+    imported = json.loads(chargefw_io.dumps(result, format="result-json"))["results"][0]["input"][
+        "import"
+    ]
+    assert imported["format"] == "mmcif"
 
-    def test_to_document_creates_fresh_mapped_mmcif(self) -> None:
-        source = gemmi.cif.read_string(MMCIF_TEXT)
-        source[0].set_pair("_audit.creation_method", "source-only")
-        molecules = chargefw.io.gemmi.from_document(source)
-        result = calculate(molecules, method="formal")
 
-        generated = chargefw.io.gemmi.to_document(result)
+def test_to_document_creates_fresh_mapped_mmcif() -> None:
+    source = gemmi.cif.read_string(MMCIF_TEXT)
+    source[0].set_pair("_audit.creation_method", "source-only")
+    molecules = chargefw.io.gemmi.from_document(source)
+    result = calculate(molecules, method="formal")
 
-        self.assertEqual(len(generated), 2)
-        self.assertEqual(source[0].find_value("_audit.creation_method"), "source-only")
-        self.assertNotIn("_sb_ncbr_partial_atomic_charges.", source[0].get_mmcif_category_names())
-        self.assertFalse(generated[0].find_value("_audit.creation_method"))
-        sites = generated[0].find(
-            "_atom_site.",
-            ["id", "label_atom_id", "auth_atom_id", "label_alt_id", "pdbx_PDB_model_num"],
-        )
-        self.assertEqual(len(sites), 4)
-        self.assertEqual([gemmi.cif.as_string(row[0]) for row in sites], ["1", "2", "3", "4"])
-        self.assertEqual(gemmi.cif.as_string(sites[0][1]), "CA")
-        self.assertEqual(gemmi.cif.as_string(sites[0][2]), "CA")
-        self.assertEqual(gemmi.cif.as_string(sites[0][4]), "1")
-        self.assertEqual(gemmi.cif.as_string(sites[2][4]), "2")
-        charges = generated[0].find(
-            "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id", "charge"]
-        )
-        self.assertEqual(len(charges), 4)
-        self.assertEqual([gemmi.cif.as_string(row[1]) for row in charges], ["1", "2", "3", "4"])
-        with self.assertRaises(TypeError):
-            chargefw.io.gemmi.to_document(cast(Any, object()))
+    generated = chargefw.io.gemmi.to_document(result)
 
-    def test_attach_charges_requires_the_unchanged_import_document(self) -> None:
-        document = gemmi.cif.read_string(MMCIF_TEXT)
-        document[0].set_pair("_audit.creation_method", "attachment-test")
-        molecules = chargefw.io.gemmi.from_document(document)
-        result = calculate(molecules, method="formal")
+    assert len(generated) == 2
+    assert source[0].find_value("_audit.creation_method") == "source-only"
+    assert "_sb_ncbr_partial_atomic_charges." not in source[0].get_mmcif_category_names()
+    assert not generated[0].find_value("_audit.creation_method")
+    sites = generated[0].find(
+        "_atom_site.",
+        ["id", "label_atom_id", "auth_atom_id", "label_alt_id", "pdbx_PDB_model_num"],
+    )
+    assert len(sites) == 4
+    assert [gemmi.cif.as_string(row[0]) for row in sites] == ["1", "2", "3", "4"]
+    assert gemmi.cif.as_string(sites[0][1]) == "CA"
+    assert gemmi.cif.as_string(sites[0][2]) == "CA"
+    assert gemmi.cif.as_string(sites[0][4]) == "1"
+    assert gemmi.cif.as_string(sites[2][4]) == "2"
+    charges = generated[0].find(
+        "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id", "charge"]
+    )
+    assert len(charges) == 4
+    assert [gemmi.cif.as_string(row[1]) for row in charges] == ["1", "2", "3", "4"]
+    with pytest.raises(TypeError):
+        chargefw.io.gemmi.to_document(cast(Any, object()))
 
+
+def test_attach_charges_requires_the_unchanged_import_document() -> None:
+    document = gemmi.cif.read_string(MMCIF_TEXT)
+    document[0].set_pair("_audit.creation_method", "attachment-test")
+    molecules = chargefw.io.gemmi.from_document(document)
+    result = calculate(molecules, method="formal")
+
+    chargefw.io.gemmi.attach_charges(document, result)
+
+    assert document[0].find_value("_audit.creation_method") == "attachment-test"
+    first_ids = [
+        gemmi.cif.as_string(row[0])
+        for row in document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])
+    ]
+    assert first_ids == ["1", "2", "3", "4"]
+    before_rejected_overwrite = document.as_string()
+    with pytest.raises(ValueError):
         chargefw.io.gemmi.attach_charges(document, result)
+    assert document.as_string() == before_rejected_overwrite
+    chargefw.io.gemmi.attach_charges(document, result, overwrite=True)
 
-        self.assertEqual(document[0].find_value("_audit.creation_method"), "attachment-test")
-        first_ids = [
-            gemmi.cif.as_string(row[0])
-            for row in document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])
-        ]
-        self.assertEqual(first_ids, ["1", "2", "3", "4"])
-        before_rejected_overwrite = document.as_string()
-        with self.assertRaises(ValueError):
-            chargefw.io.gemmi.attach_charges(document, result)
-        self.assertEqual(document.as_string(), before_rejected_overwrite)
-        chargefw.io.gemmi.attach_charges(document, result, overwrite=True)
+    conformer_document = gemmi.cif.read_string(MMCIF_TEXT)
+    conformer_result = calculate(chargefw.io.gemmi.from_document(conformer_document), method="qeq")
+    assert [assignment.conformer_index for assignment in conformer_result.assignments] == [0, 1, 0]
+    chargefw.io.gemmi.attach_charges(conformer_document, conformer_result)
+    first_charge_rows = conformer_document[0].find(
+        "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id"]
+    )
+    assert [
+        (gemmi.cif.as_string(row[0]), gemmi.cif.as_string(row[1])) for row in first_charge_rows
+    ] == [("1", "1"), ("1", "2"), ("2", "3"), ("2", "4")]
 
-        conformer_document = gemmi.cif.read_string(MMCIF_TEXT)
-        conformer_result = calculate(
-            chargefw.io.gemmi.from_document(conformer_document), method="qeq"
-        )
-        self.assertEqual(
-            [assignment.conformer_index for assignment in conformer_result.assignments], [0, 1, 0]
-        )
-        chargefw.io.gemmi.attach_charges(conformer_document, conformer_result)
-        first_charge_rows = conformer_document[0].find(
-            "_sb_ncbr_partial_atomic_charges.", ["type_id", "atom_id"]
-        )
-        self.assertEqual(
-            [
-                (gemmi.cif.as_string(row[0]), gemmi.cif.as_string(row[1]))
-                for row in first_charge_rows
-            ],
-            [("1", "1"), ("1", "2"), ("2", "3"), ("2", "4")],
-        )
+    altloc_document = gemmi.cif.read_string(MMCIF_TEXT.replace(" C CA . ALA", " C CA B ALA"))
+    altloc_result = calculate(chargefw.io.gemmi.from_document(altloc_document), method="formal")
+    chargefw.io.gemmi.attach_charges(altloc_document, altloc_result)
+    assert (
+        gemmi.cif.as_string(altloc_document[0].find("_atom_site.", ["label_alt_id"])[0][0]) == "B"
+    )
+    assert len(altloc_document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])) == 4
 
-        altloc_document = gemmi.cif.read_string(MMCIF_TEXT.replace(" C CA . ALA", " C CA B ALA"))
-        altloc_result = calculate(chargefw.io.gemmi.from_document(altloc_document), method="formal")
-        chargefw.io.gemmi.attach_charges(altloc_document, altloc_result)
-        self.assertEqual(
-            gemmi.cif.as_string(altloc_document[0].find("_atom_site.", ["label_alt_id"])[0][0]),
-            "B",
-        )
-        self.assertEqual(
-            len(altloc_document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])), 4
-        )
+    for column, value in (
+        ("id", "99"),
+        ("Cartn_x", "9.0"),
+        ("pdbx_formal_charge", "1"),
+        ("type_symbol", "O"),
+        ("auth_atom_id", "CB"),
+    ):
+        modified = gemmi.cif.read_string(MMCIF_TEXT)
+        modified_molecules = chargefw.io.gemmi.from_document(modified)
+        modified_result = calculate(modified_molecules, method="formal")
+        modified[0].find("_atom_site.", [column])[0][0] = value
+        before_mismatch = modified.as_string()
+        with pytest.raises(ValueError):
+            chargefw.io.gemmi.attach_charges(modified, modified_result)
+        assert modified.as_string() == before_mismatch
+    with pytest.raises(TypeError):
+        chargefw.io.gemmi.attach_charges(document, result, overwrite=cast(Any, 1))
 
-        for column, value in (
-            ("id", "99"),
-            ("Cartn_x", "9.0"),
-            ("pdbx_formal_charge", "1"),
-            ("type_symbol", "O"),
-            ("auth_atom_id", "CB"),
-        ):
-            with self.subTest(column=column):
-                modified = gemmi.cif.read_string(MMCIF_TEXT)
-                modified_molecules = chargefw.io.gemmi.from_document(modified)
-                modified_result = calculate(modified_molecules, method="formal")
-                modified[0].find("_atom_site.", [column])[0][0] = value
-                before_mismatch = modified.as_string()
-                with self.assertRaises(ValueError):
-                    chargefw.io.gemmi.attach_charges(modified, modified_result)
-                self.assertEqual(modified.as_string(), before_mismatch)
-        with self.assertRaises(TypeError):
-            chargefw.io.gemmi.attach_charges(document, result, overwrite=cast(Any, 1))
 
-    def test_attach_charges_ignores_atom_site_categories_without_ids(self) -> None:
-        document = gemmi.cif.read_string(
-            f"{MMCIF_TEXT}data_auxiliary\nloop_\n_atom_site.label_atom_id\nX\n#\n"
-        )
-        result = calculate(chargefw.io.gemmi.from_document(document), method="formal")
+def test_attach_charges_ignores_atom_site_categories_without_ids() -> None:
+    document = gemmi.cif.read_string(
+        f"{MMCIF_TEXT}data_auxiliary\nloop_\n_atom_site.label_atom_id\nX\n#\n"
+    )
+    result = calculate(chargefw.io.gemmi.from_document(document), method="formal")
 
-        chargefw.io.gemmi.attach_charges(document, result)
+    chargefw.io.gemmi.attach_charges(document, result)
 
-        self.assertEqual(len(document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])), 4)
-        self.assertEqual(len(document[1].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])), 1)
-        self.assertNotIn("_sb_ncbr_partial_atomic_charges.", document[2].get_mmcif_category_names())
+    assert len(document[0].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])) == 4
+    assert len(document[1].find("_sb_ncbr_partial_atomic_charges.", ["atom_id"])) == 1
+    assert "_sb_ncbr_partial_atomic_charges." not in document[2].get_mmcif_category_names()
 
-    def test_selection_conformers_and_types_are_explicit(self) -> None:
-        with self.assertRaises(RuntimeError):
-            chargefw_io.parse(MMCIF_TEXT, format="mmcif", selection="polymers", conformers="first")
 
-        polymers = chargefw_io.parse(
-            BOND_STRATEGY_PDB,
+def test_selection_conformers_and_types_are_explicit() -> None:
+    with pytest.raises(RuntimeError):
+        chargefw_io.parse(MMCIF_TEXT, format="mmcif", selection="polymers", conformers="first")
+
+    polymers = chargefw_io.parse(
+        BOND_STRATEGY_PDB,
+        format="pdb",
+        selection="polymers",
+        conformers="first",
+    )
+    assert polymers[0].conformer_count == 1
+    result = calculate(polymers, method="formal")
+    encoded = json.loads(chargefw_io.dumps(result, format="result-json"))
+    policy = encoded["results"][0]["input"]["import"]["policy"]
+    assert policy["conformer_selection"] == "first"
+    assert policy["record_selection"] == "polymers"
+    assert policy["bond_strategy"] == "hybrid"
+
+    with pytest.raises(TypeError):
+        chargefw.io.gemmi.from_structure(cast(Any, object()))
+    with pytest.raises(ValueError):
+        chargefw_io.parse(PDB_TEXT, format="pdb", selection=cast(Any, "invalid"))
+    with pytest.raises(ValueError):
+        chargefw_io.parse(
+            PDB_TEXT,
             format="pdb",
-            selection="polymers",
-            conformers="first",
+            selection=cast(Any, "polymers_and_ligands"),
         )
-        self.assertEqual(polymers[0].conformer_count, 1)
-        result = calculate(polymers, method="formal")
-        encoded = json.loads(chargefw_io.dumps(result, format="result-json"))
-        policy = encoded["results"][0]["input"]["import"]["policy"]
-        self.assertEqual(policy["conformer_selection"], "first")
-        self.assertEqual(policy["record_selection"], "polymers")
-        self.assertEqual(policy["bond_strategy"], "hybrid")
+    with pytest.raises(TypeError):
+        chargefw_io.parse(PDB_TEXT, format="pdb", selection=cast(Any, 1))
 
-        with self.assertRaises(TypeError):
-            chargefw.io.gemmi.from_structure(cast(Any, object()))
-        with self.assertRaises(ValueError):
-            chargefw_io.parse(PDB_TEXT, format="pdb", selection=cast(Any, "invalid"))
-        with self.assertRaises(ValueError):
-            chargefw_io.parse(
-                PDB_TEXT,
-                format="pdb",
-                selection=cast(Any, "polymers_and_ligands"),
-            )
-        with self.assertRaises(TypeError):
-            chargefw_io.parse(PDB_TEXT, format="pdb", selection=cast(Any, 1))
 
-    def test_bond_strategy_is_forwarded_to_native_adapter(self) -> None:
-        molecule = chargefw_io.parse(BOND_STRATEGY_PDB, format="pdb", bonds="explicit")[0]
-        self.assertEqual(molecule.bond_count, 2)
+def test_bond_strategy_is_forwarded_to_native_adapter() -> None:
+    molecule = chargefw_io.parse(BOND_STRATEGY_PDB, format="pdb", bonds="explicit")[0]
+    assert molecule.bond_count == 2
 
-    def test_source_atom_ids_distinguish_repeated_atom_names(self) -> None:
-        molecule = chargefw_io.parse(
-            "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  \n"
-            "ATOM      2  CA  GLY A   2       1.000   0.000   0.000  1.00 20.00           C  \n"
-            "END\n",
-            format="pdb",
-        )[0]
-        self.assertEqual(molecule.atom_names, ("CA", "CA"))
-        self.assertEqual(molecule.atom_ids, ("1", "2"))
 
-    def test_generic_input_requires_explicit_compatible_format_options(self) -> None:
-        with self.assertRaises(TypeError):
-            chargefw_io.parse(MOL_TEXT)  # type: ignore[call-arg]
-        with self.assertRaises(ValueError):
-            chargefw_io.parse(MOL_TEXT, format=cast(Any, "xyz"))
-        with self.assertRaisesRegex(ValueError, "selection"):
-            chargefw_io.parse(MOL_TEXT, format="mol", selection="polymers")
-        with self.assertRaisesRegex(ValueError, "bonds"):
-            chargefw_io.parse(MOL_TEXT, format="mol", bonds="explicit")
-        with self.assertRaisesRegex(ValueError, "conformers"):
-            chargefw_io.parse(MOL_TEXT, format="mol", conformers="first")
+def test_source_atom_ids_distinguish_repeated_atom_names() -> None:
+    molecule = chargefw_io.parse(
+        "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C  \n"
+        "ATOM      2  CA  GLY A   2       1.000   0.000   0.000  1.00 20.00           C  \n"
+        "END\n",
+        format="pdb",
+    )[0]
+    assert molecule.atom_names == ("CA", "CA")
+    assert molecule.atom_ids == ("1", "2")
+
+
+def test_generic_input_requires_explicit_compatible_format_options() -> None:
+    with pytest.raises(TypeError):
+        chargefw_io.parse(MOL_TEXT)  # type: ignore[call-arg]
+    with pytest.raises(ValueError):
+        chargefw_io.parse(MOL_TEXT, format=cast(Any, "xyz"))
+    with pytest.raises(ValueError, match="selection"):
+        chargefw_io.parse(MOL_TEXT, format="mol", selection="polymers")
+    with pytest.raises(ValueError, match="bonds"):
+        chargefw_io.parse(MOL_TEXT, format="mol", bonds="explicit")
+    with pytest.raises(ValueError, match="conformers"):
+        chargefw_io.parse(MOL_TEXT, format="mol", conformers="first")
