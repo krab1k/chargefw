@@ -20,12 +20,8 @@ TEST_CASE("molecule collection preserves ordered molecules", "[core][molecule-co
     CHECK(collection.molecules().size() == 2);
     CHECK(collection[0].name() == std::string_view{"water"});
     CHECK(collection.at(1).name() == std::string_view{"charged-pair"});
-}
 
-TEST_CASE("molecule collection supports no molecules", "[core][molecule-collection]") {
-    const core::MoleculeCollection collection{std::vector<core::Molecule>{}, "empty"};
-
-    CHECK(collection.empty());
+    CHECK(core::MoleculeCollection{std::vector<core::Molecule>{}, "empty"}.empty());
 }
 
 TEST_CASE("molecule collection bounds-checked access rejects an invalid index",

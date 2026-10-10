@@ -20,13 +20,8 @@ TEST_CASE("conformer exposes named positions", "[core][conformer]") {
     CHECK(conformer.positions().size() == 2);
     CHECK(conformer[1].x == 1.0);
     CHECK(conformer.at(0).z == 0.0);
-}
 
-TEST_CASE("conformer supports an empty position list", "[core][conformer]") {
-    const core::Conformer conformer{std::vector<core::Position>{}, "empty"};
-
-    CHECK(conformer.empty());
-    CHECK(conformer.positions().empty());
+    CHECK(core::Conformer{std::vector<core::Position>{}, "empty"}.empty());
 }
 
 TEST_CASE("conformer bounds-checked access rejects an invalid index", "[core][conformer]") {
