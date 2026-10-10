@@ -99,6 +99,10 @@ Each `bond.data` entry uses two atom keys and one bond key:
 endpoint may match either object. The `bond` object requires `classifier` and `type` fields and determines
 the bond property to match.
 
+Some methods use bond parameters that belong to one endpoint. ABEEM applies `D` to the endpoint
+with the higher atomic number, or the lower atom index for equal elements, and `C` to the other endpoint,
+independent of key order.
+
 ## Classifiers
 
 Atom keys support these classifiers:
@@ -106,8 +110,8 @@ Atom keys support these classifiers:
 | Classifier | Derived type | Example |
 | --- | --- | --- |
 | `plain` | Always `"*"` | `{"element": "O", "classifier": "plain", "type": "*"}` |
-| `hbo` | Highest bond order among bonds incident to the atom, as a decimal string | An atom incident to a double bond has type `"2"` |
-| `bonded` | Concatenation of neighboring element symbols, sorted lexically | Carbon bonded to C, N, and O has type `"CNO"` |
+| `hbo` | Highest bond order among bonds incident to the atom, as a decimal string; `"0"` for an atom without bonds | An atom incident to a double bond has type `"2"` |
+| `bonded` | Concatenation of neighboring element symbols, sorted lexically; `""` for an atom without bonds | Carbon bonded to C, N, and O has type `"CNO"` |
 
 Bond keys support these classifiers:
 

@@ -100,14 +100,15 @@ Method resource requirements describe asymptotic time and memory scaling in Big-
 is the atom count and `m` is the bond count. These terms guide execution planning; they do not predict a
 specific runtime or memory allocation.
 
-PEOE and MPEOE initialize charge transfer from zero by default and therefore support only neutral
-molecules in that mode. Their `initial_charges=formal` option instead starts each atom at its supplied
-formal charge and supports charged molecules while conserving the molecular formal-charge total. Every
-connected component must be formally neutral for DelRe and ordinary SQE because their implemented
-bond-transfer formulations start from zero and conserve zero charge within each component. Connected,
-net-neutral zwitterions remain supported. SQE+q0 and SQE+qp include initial charges and support charged
-molecules when their other requirements are met. SQE+q0 preserves the formal-charge seed total of each
-active connected component; SQE+qp normalizes its fitted reference charges globally to the active target.
+PEOE and MPEOE initialize charge transfer from zero by default, so in that mode every connected
+component must be formally neutral. Their `initial_charges=formal` option instead starts each atom at
+its supplied formal charge and supports charged molecules while conserving the molecular formal-charge
+total. Every connected component must be formally neutral for DelRe and ordinary SQE because their
+implemented bond-transfer formulations start from zero and conserve zero charge within each component.
+DENR, GDAC, KCM, and MGC have the same per-component requirement. Connected, net-neutral zwitterions
+remain supported. SQE+q0 and SQE+qp include initial charges and support charged molecules when their
+other requirements are met. SQE+q0 preserves the formal-charge seed total of each active connected
+component; SQE+qp normalizes its fitted reference charges globally to the active target.
 
 Charge2 implements the neutral-molecule inductive scheme from Abraham, Griffiths, and Loftus (1982).
 Its one-, two-, and three-bond effects are applied as conservative bond transfers, and its iterative
@@ -248,6 +249,10 @@ Application-facing results distinguish success, invalid input or request, no exe
 failure, and cancellation. Successful results retain the effective method, parameter set, validated
 options, execution mode, radius, and execution warnings. The CLI additionally records requested policy,
 diagnostics, timings, timestamps, and peak resident memory in its JSON result.
+
+Cancellation is cooperative. A request is checked before each molecule or conformer target and before
+each cutoff or cover fragment, so reduced calculations stop promptly, while a full calculation of one
+target completes its solve before cancellation takes effect. A cancelled result contains no charges.
 
 ## Molecular data scope
 

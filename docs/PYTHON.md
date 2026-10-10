@@ -414,9 +414,10 @@ observers that update compound state should still use synchronization and must n
 arrival order during parallel execution. Callback exceptions are reported through Python's unraisable
 exception hook and do not alter calculation control flow.
 
-Returning true from `cancelled()` requests termination at the next cancellation checkpoint. The call
-then raises `CalculationCancelledError`; its `result` has status `"cancelled"` and contains no partial
-charge assignments. Assessment itself is not observed.
+Returning true from `cancelled()` requests termination at the next
+[cancellation check point](PROJECT.md#results-and-provenance). The call then raises
+`CalculationCancelledError`; its `result` has status `"cancelled"` and contains no partial charge
+assignments. Assessment itself is not observed.
 
 ## Results and failures
 
@@ -540,8 +541,10 @@ mmCIF document passed to `from_document()` for the molecules used by `result`. B
 object, ChargeFW validates coordinate-block order, block names, source site positions, exact atom IDs,
 model IDs, elements, structural labels, coordinates, and formal charges against the result's owned import
 mapping. Occupancy and B factors may change. Any mismatch or output error leaves the document unchanged.
-Existing charge categories are rejected unless `overwrite=True`; append mode is not supported. After
-successful attachment, subsequent document changes are the caller's responsibility.
+Existing charge categories are rejected unless `overwrite=True`; append mode is not supported.
+Successful attachment replaces the document's blocks with annotated copies, so obtain block objects such
+as `document.sole_block()` again after the call. Subsequent document changes are the caller's
+responsibility.
 
 ```python
 result = chargefw.calculate(

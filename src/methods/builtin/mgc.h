@@ -12,8 +12,8 @@ class MGCMethod final : public Method {
             .name = "MGC",
             .full_name = "Molecular Graph Charge",
             .publication = "10.1002/poc.378",
-            .notes = "Supports only net-neutral molecules; input bond "
-                     "orders weight the molecular graph.",
+            .notes = "Every connected component must be formally neutral; "
+                     "input bond orders weight the molecular graph.",
             .priority = 70};
 
         return metadata;

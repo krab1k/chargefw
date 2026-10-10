@@ -153,8 +153,9 @@ failure can leave that destination incomplete. Import, request-construction, pri
 filesystem failures are reported on standard error and can occur before a result document is published.
 
 During calculation, press `Ctrl+C` once to request cooperative cancellation. ChargeFW stops at its next
-cancellation check point, writes `<basename>.json` with status `cancelled` and no charge assignments, and
-exits with status 5. This does not interrupt import, request construction, or output writing.
+[cancellation check point](PROJECT.md#results-and-provenance), writes `<basename>.json` with status
+`cancelled` and no charge assignments, and exits with status 5. This does not interrupt import, request
+construction, or output writing.
 
 ### JSON result
 

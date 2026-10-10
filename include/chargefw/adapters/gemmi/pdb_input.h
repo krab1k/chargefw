@@ -10,11 +10,9 @@
 namespace chargefw::adapters::gemmi::pdb_input {
 
 // Reads a PDB structure through Gemmi. The first PDB MODEL defines atom topology and each model
-// becomes a conformer after validating the same atom sequence. Selection can retain all records,
-// exclude water, or retain only ATOM records. Alternate locations are excluded: blank locations are
-// preferred, otherwise location A, otherwise the first location. BondStrategy::none imports no
-// bonds; explicit_bonds imports PDB connectivity; templates adds basic component templates and
-// polymer-backbone bonds; hybrid combines explicit_bonds and templates.
+// becomes a conformer after validating the same atom sequence. Record selection, alternate-location
+// selection (the first location in source order), and bond strategies follow the PDB and mmCIF
+// input contract in docs/FORMATS.md.
 class PdbReader {
   public:
     explicit PdbReader(std::istream& input, std::string source = {},

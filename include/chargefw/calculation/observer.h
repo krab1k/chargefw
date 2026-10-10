@@ -77,8 +77,9 @@ class CalculationObserver {
 
     virtual void on_progress(const CalculationProgress& /*progress*/) const {}
 
-    // When true, the running calculation is asked to stop as soon as control returns to a
-    // cancellation check point. Checked at the fragment tier inside progress_for_indexed.
+    // When true, the running calculation is asked to stop at its next check point: before each
+    // molecule or conformer target and before each cutoff or cover fragment. A full solve of one
+    // target is not interrupted.
     [[nodiscard]] virtual auto cancelled() const noexcept -> bool {
         return false;
     }

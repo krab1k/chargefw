@@ -15,7 +15,7 @@ class DENRMethod final : public Method {
             .full_name = "Dynamical Electronegativity Relaxation",
             .publication = "10.1080/10629360701844142",
             .notes = "This implementation fixes initial charges to "
-                     "zero and supports only net-neutral molecules.",
+                     "zero; every connected component must be formally neutral.",
             .priority = 50};
 
         return metadata;
