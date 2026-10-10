@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <numeric>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace chargefw::methods::builtin {
@@ -94,7 +95,6 @@ auto sqe_core::calculate(const CalculationInput& input,
 
     Eigen::MatrixXd charge_matrix = Eigen::MatrixXd::Zero(n, n);
     Eigen::VectorXd charge_rhs = Eigen::VectorXd::Zero(n);
-    Eigen::MatrixXd transfer_matrix = Eigen::MatrixXd::Zero(m, n);
     Eigen::VectorXd initial_charges = Eigen::VectorXd::Zero(n);
 
     if (!initial_charge_values.empty()) {
@@ -124,27 +124,45 @@ auto sqe_core::calculate(const CalculationInput& input,
         }
     }
 
-    for (std::size_t bond_index = 0; bond_index < bond_count; ++bond_index) {
-        const auto& bond = molecule.bond(bond_index);
-        const auto row = static_cast<Eigen::Index>(bond_index);
-        transfer_matrix(row, static_cast<Eigen::Index>(bond.first_atom_index())) = 1.0;
-        transfer_matrix(row, static_cast<Eigen::Index>(bond.second_atom_index())) = -1.0;
-    }
-
     if (!initial_charge_values.empty()) {
         charge_rhs -= charge_matrix * initial_charges;
         charge_rhs += charge_matrix.diagonal().cwiseProduct(initial_charges);
     }
 
-    Eigen::MatrixXd split_matrix = transfer_matrix * charge_matrix * transfer_matrix.transpose();
+    const auto endpoints = [&molecule](const Eigen::Index bond_index) {
+        const auto& bond = molecule.bond(static_cast<std::size_t>(bond_index));
+        return std::pair{static_cast<Eigen::Index>(bond.first_atom_index()),
+                         static_cast<Eigen::Index>(bond.second_atom_index())};
+    };
 
-    for (std::size_t bond_index = 0; bond_index < bond_count; ++bond_index) {
-        split_matrix(static_cast<Eigen::Index>(bond_index),
-                     static_cast<Eigen::Index>(bond_index)) += kappa[bond_index];
+    // Split-charge system S p = T r with S = T J T^T + diag(kappa), where the transfer matrix T has
+    // row a = +1 at atom i and -1 at atom j for bond a = (i, j). T is not formed; for bonds
+    // a = (i, j) and b = (k, l):
+    //   S(a, b) = J(i, k) - J(i, l) - J(j, k) + J(j, l)  (+ kappa(a) if a == b)
+    //   (T r)(a) = r(i) - r(j)
+    // Atom charges are q = T^T p: q(i) += p(a), q(j) -= p(a).
+    Eigen::MatrixXd split_matrix(m, m);
+    Eigen::VectorXd split_rhs(m);
+    for (Eigen::Index a = 0; a < m; ++a) {
+        const auto [i, j] = endpoints(a);
+        split_rhs(a) = charge_rhs(i) - charge_rhs(j);
+        for (Eigen::Index b = a; b < m; ++b) {
+            const auto [k, l] = endpoints(b);
+            const auto value = charge_matrix(i, k) - charge_matrix(i, l) - charge_matrix(j, k) +
+                               charge_matrix(j, l);
+            split_matrix(a, b) = value;
+            split_matrix(b, a) = value;
+        }
+        split_matrix(a, a) += kappa[static_cast<std::size_t>(a)];
     }
 
-    const Eigen::VectorXd split_charge = solve_in_place(split_matrix, transfer_matrix * charge_rhs);
-    Eigen::VectorXd charges = transfer_matrix.transpose() * split_charge;
+    const Eigen::VectorXd split_charge = solve_in_place(split_matrix, split_rhs);
+    Eigen::VectorXd charges = Eigen::VectorXd::Zero(n);
+    for (Eigen::Index a = 0; a < m; ++a) {
+        const auto [i, j] = endpoints(a);
+        charges(i) += split_charge(a);
+        charges(j) -= split_charge(a);
+    }
 
     if (!initial_charge_values.empty()) {
         charges += initial_charges;
