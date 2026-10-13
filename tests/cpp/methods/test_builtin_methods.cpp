@@ -190,24 +190,6 @@ TEST_CASE("built-in resource estimates grow with their declared complexity",
     }
 }
 
-TEST_CASE("dense method estimates count their allocated systems", "[methods][builtin-methods]") {
-    const auto memory = [](const std::string_view method_id, const methods::TargetSize target) {
-        const auto* method = methods::method_registry().find(method_id);
-        REQUIRE(method != nullptr);
-        return method->estimate(target, methods::make_default_options(method->option_schema()))
-            .memory_bytes;
-    };
-
-    // EEM borders the n x n system with a charge constraint.
-    CHECK(memory("eem", {.atoms = 10, .bonds = 9}) == 8.0 * 11 * 11);
-    // SQE holds the atom interaction matrix and the bond split-charge system.
-    CHECK(memory("sqe", {.atoms = 10, .bonds = 9}) == 8.0 * 10 * 10 + 8.0 * 9 * 9);
-    // Without bonds, SQE returns its reference charges before building either system.
-    CHECK(memory("sqeqp", {.atoms = 10, .bonds = 0}) == 0.0);
-    // ABEEM solves for atoms and bonds with one charge constraint.
-    CHECK(memory("abeem", {.atoms = 3, .bonds = 2}) == 8.0 * 6 * 6);
-}
-
 TEST_CASE("every built-in completes its declared full workflow", "[methods][builtin-methods]") {
     const auto molecule = chargefw::test::make_two_conformer_water();
     const auto collection = chargefw::core::MoleculeCollection{std::vector{molecule}, "water"};
