@@ -7,13 +7,14 @@ from operator import index as as_index
 from typing import Any, SupportsIndex
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ._arrays import as_ids, immutable_array
 from ._types import PortableId
 from .core import SourceIdentity
 
 
-def _charge_values(values: Any) -> np.ndarray:
+def _charge_values(values: Any) -> NDArray[np.float64]:
     try:
         array = np.asarray(values)
     except Exception as error:
@@ -47,7 +48,7 @@ def _nonnegative_index(value: SupportsIndex, name: str) -> int:
 class ChargeAssignment:
     """Source-mapped, owned charges for one molecule or conformer."""
 
-    values: np.ndarray
+    values: NDArray[np.float64]
     molecule_index: int
     conformer_index: int | None
     source: SourceIdentity
@@ -89,7 +90,7 @@ class ChargeAssignment:
     @classmethod
     def _from_native_values(
         cls,
-        values: np.ndarray,
+        values: NDArray[np.float64],
         *,
         molecule_index: int,
         conformer_index: int | None,

@@ -8,6 +8,7 @@ from operator import index as as_index
 from typing import Any, Literal, TypeAlias, overload
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ._arrays import (
     as_coordinates,
@@ -138,10 +139,10 @@ class Molecule:
         "_native",
     )
 
-    _atomic_numbers: np.ndarray
-    _formal_charges: np.ndarray
-    _bonds: np.ndarray
-    _coordinates: np.ndarray
+    _atomic_numbers: NDArray[np.int64]
+    _formal_charges: NDArray[np.int64]
+    _bonds: NDArray[np.int64]
+    _coordinates: NDArray[np.float64]
     _name: str
     _atom_names: tuple[str, ...]
     _conformer_names: tuple[str, ...]
@@ -250,19 +251,19 @@ class Molecule:
         raise AttributeError(f"{type(self).__name__} is immutable")
 
     @property
-    def atomic_numbers(self) -> np.ndarray:
+    def atomic_numbers(self) -> NDArray[np.int64]:
         """Read-only int64 array of shape (atom_count,) in molecule atom order."""
 
         return self._atomic_numbers
 
     @property
-    def formal_charges(self) -> np.ndarray:
+    def formal_charges(self) -> NDArray[np.int64]:
         """Read-only int64 array of formal charges, shape (atom_count,)."""
 
         return self._formal_charges
 
     @property
-    def bonds(self) -> np.ndarray:
+    def bonds(self) -> NDArray[np.int64]:
         """Read-only int64 array of shape (bond_count, 3).
 
         Rows contain (first_atom, second_atom, order), with zero-based atom indices
@@ -272,7 +273,7 @@ class Molecule:
         return self._bonds
 
     @property
-    def coordinates(self) -> np.ndarray:
+    def coordinates(self) -> NDArray[np.float64]:
         """Read-only float64 array in angstroms, shape (conformer_count, atom_count, 3).
 
         The first dimension is zero when no conformers are present.

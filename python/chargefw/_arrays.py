@@ -5,16 +5,19 @@ from __future__ import annotations
 import numbers
 from collections.abc import Iterable, Sequence
 from operator import index as as_index
-from typing import Any, SupportsIndex
+from typing import Any, SupportsIndex, TypeVar
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ._types import PortableId
+
+_ScalarT = TypeVar("_ScalarT", bound=np.generic)
 
 
 def as_integer_array(
     value: Any, field: str, ndim: int, empty_1d_shape: tuple[int, ...] | None = None
-) -> np.ndarray:
+) -> NDArray[np.int64]:
     try:
         array = np.asarray(value)
     except Exception as error:
@@ -62,7 +65,7 @@ def as_integer_array(
         raise ValueError(f"{field} contains values outside the supported integer range") from error
 
 
-def as_coordinates(value: Any, atom_count: int) -> np.ndarray:
+def as_coordinates(value: Any, atom_count: int) -> NDArray[np.float64]:
     if value is None:
         return np.empty((0, atom_count, 3), dtype=np.float64)
     try:
@@ -132,7 +135,6 @@ def as_ids(value: Iterable[PortableId] | None, count: int, field: str) -> tuple[
     return tuple(as_portable_id(item, field) for item in result)
 
 
-def immutable_array(array: np.ndarray) -> np.ndarray:
+def immutable_array(array: NDArray[_ScalarT]) -> NDArray[_ScalarT]:
     """Copy an array into C-contiguous storage that cannot be made writable."""
-    contiguous = np.asarray(array, order="C")
-    return np.frombuffer(contiguous.tobytes(), dtype=contiguous.dtype).reshape(contiguous.shape)
+    return np.frombuffer(array.tobytes(), dtype=array.dtype).reshape(array.shape)
