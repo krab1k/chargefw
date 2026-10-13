@@ -873,6 +873,15 @@ def test_catalogs_and_descriptors_are_immutable_values() -> None:
     assert isinstance(chargefw.parameter_sets, Mapping)
     parameter_set = next(iter(eem.parameter_sets.values()))
     assert chargefw.parameter_sets[parameter_set.id] == parameter_set
+
+    qeq = chargefw.parameter_sets["QEq_original"]
+    assert {key.classifier for key in qeq.atom_keys} == {"plain"}
+    assert qeq.bond_keys == ()
+    peptide = chargefw.parameter_sets["SQEqp_Schindler2021_PUB_pept"]
+    assert chargefw.AtomParameterKey("C", "bonded", "COO") in peptide.atom_keys
+    bond = peptide.bond_keys[0]
+    assert bond.classifier == "bo"
+    assert all(atom.classifier == "bonded" for atom in bond.atoms)
     result = chargefw.calculate(
         water(),
         method=eem,

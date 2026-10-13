@@ -228,6 +228,12 @@ for parameter_set in eem.parameter_sets.values():
 
 iterations = chargefw.methods["peoe"].options["iters"]
 print(iterations.default, iterations.minimum, iterations.maximum)
+
+peptide = chargefw.parameter_sets["SQEqp_Schindler2021_PUB_pept"]
+for key in peptide.atom_keys:
+    print(key.element, key.classifier, key.type)
+for key in peptide.bond_keys:
+    print([(atom.element, atom.type) for atom in key.atoms], key.classifier, key.type)
 ```
 
 Method descriptors expose names, publication metadata, human-readable `notes`, priority, coordinate
@@ -239,12 +245,19 @@ remains the authoritative applicability check for a specific request.
 `requires_coordinates=True` means every input molecule must have coordinates and every conformer must
 contain finite, non-coincident coordinates; the method then produces one assignment per conformer.
 Complexity uses `n` for atoms and `m` for bonds, as defined in the
-[project design](PROJECT.md#methods-and-parameters). Python exposes only the installed bundled parameter
-catalog. Its package-level and method-level mappings are immutable and cannot be extended. The
+[project design](PROJECT.md#methods-and-parameters). The `formal` method copies input formal
+charges and `dummy` returns zeros; neither is an empirical partial-charge model.
+
+Parameter-set descriptors expose metadata and their entry keys, which show the atom and bond
+environments a set parameterizes separately. `atom_keys` is a tuple of
+`AtomParameterKey(element, classifier, type)` values; element `"*"` matches every element.
+`bond_keys` is a tuple of `BondParameterKey(atoms, classifier, type)` values, where `atoms` holds the two
+endpoint atom keys and the classifier and type describe the bond. Both tuples follow the file's entry
+order, which is the matching precedence. Python exposes only the installed bundled parameter catalog.
+Its package-level and method-level mappings are immutable and cannot be extended. The
 [parameter-set JSON reference](PARAMETERS.md) documents the bundled data and classifier behavior,
 including permissive matching. Selection order and method scope are defined in
-[Methods and parameters](PROJECT.md#methods-and-parameters). The `formal` method copies input formal
-charges and `dummy` returns zeros; neither is an empirical partial-charge model.
+[Methods and parameters](PROJECT.md#methods-and-parameters).
 
 ## Calculation policy
 

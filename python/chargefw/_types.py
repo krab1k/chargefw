@@ -6,6 +6,8 @@ MethodOptionValue: TypeAlias = bool | int | float | str
 PortableId: TypeAlias = str | int
 Execution: TypeAlias = Literal["auto", "full", "cutoff", "cover"]
 ParameterMatching: TypeAlias = Literal["strict", "permissive"]
+AtomClassifier: TypeAlias = Literal["plain", "hbo", "bonded"]
+BondClassifier: TypeAlias = Literal["plain", "bo"]
 ExecutionMode: TypeAlias = Literal["full", "cutoff", "cover"]
 CalculationPhase: TypeAlias = Literal[
     "computation_started",

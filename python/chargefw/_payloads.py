@@ -8,6 +8,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ._types import (
+    AtomClassifier,
+    BondClassifier,
     CalculationPhase,
     ExecutionIssueKind,
     ExecutionMode,
@@ -143,6 +145,18 @@ class MethodDescriptorPayload(TypedDict):
     options: list[MethodOptionDescriptorPayload]
 
 
+class AtomParameterKeyPayload(TypedDict):
+    element: str
+    classifier: AtomClassifier
+    type: str
+
+
+class BondParameterKeyPayload(TypedDict):
+    atoms: tuple[AtomParameterKeyPayload, AtomParameterKeyPayload]
+    classifier: BondClassifier
+    type: str
+
+
 class ParameterSetDescriptorPayload(TypedDict):
     id: str
     method_id: str
@@ -150,3 +164,5 @@ class ParameterSetDescriptorPayload(TypedDict):
     publication: str
     notes: str
     priority: int
+    atom_keys: list[AtomParameterKeyPayload]
+    bond_keys: list[BondParameterKeyPayload]

@@ -6,7 +6,7 @@ from . import io as io
 from ._chargefw import version as _native_version
 from ._chargefw.calculation import _fixed_ion_names
 from ._methods import ExecutionIssue, Method, MethodOption, PrerequisiteIssue
-from ._parameters import ParameterSet
+from ._parameters import AtomParameterKey, BondParameterKey, ParameterSet
 from .calculation import (
     Assessment,
     CalculationCancelledError,
@@ -89,5 +89,7 @@ __all__ = [
     "MethodOption",
     "Method",
     "ParameterSet",
+    "AtomParameterKey",
+    "BondParameterKey",
     "io",
 ]
