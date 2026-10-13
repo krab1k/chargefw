@@ -5,10 +5,13 @@
 #include <chargefw/parameters/io/parameter_set_io.h>
 
 #include <algorithm>
+#include <array>
+#include <format>
 #include <iostream>
 #include <map>
 #include <print>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <variant>
 #include <vector>
@@ -29,6 +32,16 @@ void print_summary(const std::vector<SummaryRow>& rows) {
     for (const auto& row : rows) {
         std::println("{:<{}}  {}", row.id, id_width, row.name);
     }
+}
+
+[[nodiscard]] auto format_bytes(double bytes) -> std::string {
+    constexpr auto units = std::array{"B", "KiB", "MiB", "GiB", "TiB"};
+    auto unit = std::size_t{0};
+    while (bytes >= 1024.0 && unit + 1 < units.size()) {
+        bytes /= 1024.0;
+        ++unit;
+    }
+    return std::format("{:.1f}{}", bytes, units[unit]);
 }
 
 } // namespace
@@ -55,12 +68,16 @@ void print_inspection(const ImportedCollection& imported) {
     }
 }
 
-void print_applicability(const calculation::AssessmentResult& assessment) {
+void print_applicability(const calculation::AssessmentResult& assessment,
+                         const std::size_t max_threads) {
     std::println("runnable plans: {}", assessment.plans().size());
     for (const auto& plan : assessment.plans()) {
-        std::println("plan method={} parameter_set={} execution={}", plan.method().id(),
+        const auto estimate = calculation::estimate(assessment, plan, max_threads);
+        std::println("plan method={} parameter_set={} execution={} memory={} operations={:.1e}",
+                     plan.method().id(),
                      plan.parameter_set() == nullptr ? "-" : plan.parameter_set()->id(),
-                     calculation::to_string(plan.policy().mode()));
+                     calculation::to_string(plan.policy().mode()),
+                     format_bytes(estimate.memory_bytes), estimate.operations);
     }
     std::println("rejected alternatives: {}", assessment.rejections().size());
     for (const auto& rejected : assessment.rejections()) {

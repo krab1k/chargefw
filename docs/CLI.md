@@ -73,8 +73,8 @@ The CLI reads the imported collection before calculation and stops at the first 
 
 ### Method and execution options
 
-These options are accepted by both `calculate` and `applicability`, except `--threads` and
-`--progress`, which apply only to `calculate`.
+These options are accepted by both `calculate` and `applicability`, except `--progress`, which applies
+only to `calculate`. For `applicability`, `--threads` sets the thread limit used for plan estimates.
 
 | Option | Meaning |
 | --- | --- |
@@ -174,8 +174,11 @@ chargefw inspect molecule.sdf
 Report runnable plans, rejected alternatives, and the selected plan without calculating:
 
 ```bash
-chargefw applicability --method eem molecule.sdf
+chargefw applicability --method eem --threads 4 molecule.sdf
 ```
+
+Each runnable plan reports its estimated peak working memory and operation count for the thread limit;
+the [project design](PROJECT.md#assessment-and-execution) describes the estimate.
 
 List method IDs and full names, inspect one method, or list bundled parameter sets:
 

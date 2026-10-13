@@ -150,6 +150,8 @@ auto run(std::span<char*> arguments) -> int {
     chargefw::cli::add_input_options(*inspect, inspect_input);
     chargefw::cli::add_input_options(*applicability, applicability_input);
     chargefw::cli::add_selection_options(*applicability, applicability_selection);
+    applicability->add_option("--threads", applicability_selection.max_threads,
+                              "Thread limit for plan estimates; 0 uses the oneTBB default");
     methods->add_option("method", method_info, "Show details for a method ID");
     auto* parameter_set_option = parameters->add_option("parameter-set", parameter_set_info,
                                                         "Show details for a parameter-set ID");
@@ -182,7 +184,8 @@ auto run(std::span<char*> arguments) -> int {
             return chargefw::cli::make_request(std::move(imported.molecules),
                                                applicability_selection, imported.records);
         }();
-        chargefw::cli::print_applicability(chargefw::calculation::assess(std::move(request)));
+        chargefw::cli::print_applicability(chargefw::calculation::assess(std::move(request)),
+                                           applicability_selection.max_threads);
         return 0;
     }
     auto run =

@@ -69,7 +69,7 @@ void add_selection_options(CLI::App& command, SelectionArguments& arguments);
     -> adapters::RequestedCalculationProvenance;
 
 void print_inspection(const ImportedCollection& imported);
-void print_applicability(const calculation::AssessmentResult& assessment);
+void print_applicability(const calculation::AssessmentResult& assessment, std::size_t max_threads);
 void print_methods(const std::string& method_id);
 void print_parameter_sets(const std::string& parameter_set_id, const std::string& method_id);
 
