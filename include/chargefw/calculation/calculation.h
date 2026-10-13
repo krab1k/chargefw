@@ -4,6 +4,7 @@
 #include <chargefw/calculation/observer.h>
 #include <chargefw/charges/charge_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
+#include <chargefw/methods/method_requirements.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -88,6 +89,14 @@ struct ExecutionResult {
                              std::size_t max_threads = 0,
                              const CalculationObserver& observer = default_calculation_observer())
     -> ExecutionResult;
+
+// Estimates the peak working memory and total operations of executing one plan from an assessment
+// with a thread limit, where zero means the oneTBB default concurrency. Fragments of cutoff and
+// cover execution are sized from a typical biomolecular atom density. Memory covers the method
+// workspaces that can run concurrently and the retained output charges; it excludes
+// already-prepared inputs and is not process RSS.
+[[nodiscard]] auto estimate(const AssessmentResult& assessment, const ExecutionPlan& plan,
+                            std::size_t max_threads = 0) -> methods::ResourceEstimate;
 
 // Executes a plan returned by assess() without repeating preparation or applicability assessment.
 // This convenience overload executes the default plan. It delegates computation observation to the

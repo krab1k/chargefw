@@ -37,9 +37,9 @@ struct TargetSize {
     double bonds = 0.0;
 };
 
-// Approximate cost of one target in full mode. memory_bytes covers the method's working storage
-// beyond its inputs and output charges. operations counts dense linear algebra in floating-point
-// operations and other loops per atom, bond, or atom-pair visit.
+// Approximate cost of a calculation: one target in full mode for a method, or a whole plan.
+// memory_bytes covers working storage beyond inputs and output charges. operations counts dense
+// linear algebra in floating-point operations and other loops per atom, bond, or atom-pair visit.
 struct ResourceEstimate {
     double memory_bytes = 0.0;
     double operations = 0.0;

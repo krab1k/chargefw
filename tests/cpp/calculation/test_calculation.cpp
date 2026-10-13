@@ -9,14 +9,17 @@
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
 #include <chargefw/core/molecule_collection.h>
+#include <chargefw/core/position.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method.h>
 #include <chargefw/methods/method_metadata.h>
 #include <chargefw/methods/method_options.h>
+#include <chargefw/methods/method_registry.h>
 #include <chargefw/methods/method_requirements.h>
 #include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
+#include <cmath>
 #include <limits>
 #include <optional>
 #include <snitch/snitch.hpp>
@@ -348,6 +351,67 @@ TEST_CASE("resource thresholds guide automatic execution and warn on explicit fu
             calculation::ExecutionSelection{calculation::ExecutionSelectionKind::cutoff, 8.0}});
     CHECK(unsupported_cutoff_result.status == calculation::ExecutionStatus::no_executable_plan);
     CHECK_FALSE(unsupported_cutoff_result.calculated());
+}
+
+TEST_CASE("plan estimates compose unit costs by execution mode", "[calculation][calculation]") {
+    // Four waters 20 A apart: every cutoff fragment and cover pivot holds exactly one water.
+    auto atoms = std::vector<core::Atom>{};
+    auto bonds = std::vector<core::Bond>{};
+    auto positions = std::vector<core::Position>{};
+    const auto water = chargefw::test::make_water();
+    for (std::size_t copy = 0; copy < 4; ++copy) {
+        const auto offset = atoms.size();
+        for (std::size_t atom_index = 0; atom_index < water.atom_count(); ++atom_index) {
+            atoms.push_back(water.atom(atom_index));
+            auto position = water.conformer(0).positions()[atom_index];
+            position.x += 20.0 * static_cast<double>(copy);
+            positions.push_back(position);
+        }
+        for (const auto& bond : water.bonds()) {
+            bonds.emplace_back(offset + bond.first_atom_index(), offset + bond.second_atom_index());
+        }
+    }
+    const auto cluster = core::Molecule{
+        std::move(atoms), std::move(bonds), {core::Conformer{std::move(positions)}}, "waters"};
+    const auto molecules = core::MoleculeCollection{std::vector{water, cluster}};
+    const auto* eqeq = methods::method_registry().find("eqeq");
+    REQUIRE(eqeq != nullptr);
+    const auto options = methods::make_default_options(eqeq->option_schema());
+    const auto water_cost = eqeq->estimate({.atoms = 3, .bonds = 2}, options);
+    const auto cluster_cost = eqeq->estimate({.atoms = 12, .bonds = 8}, options);
+
+    const auto full = calculation::assess(
+        calculation::AssessmentRequest{.molecules = molecules, .method_id = "eqeq"});
+    REQUIRE(full.default_plan() != nullptr);
+    REQUIRE(full.default_plan()->policy().mode() == calculation::ExecutionMode::full);
+    const auto serial = calculation::estimate(full, *full.default_plan(), 1);
+    const auto parallel = calculation::estimate(full, *full.default_plan(), 2);
+    const auto oversubscribed = calculation::estimate(full, *full.default_plan(), 8);
+    CHECK(std::abs(serial.operations - (water_cost.operations + cluster_cost.operations)) <
+          1e-9 * serial.operations);
+    // A second thread adds the smaller target's workspace; further threads have no targets to run.
+    CHECK(std::abs(parallel.memory_bytes - serial.memory_bytes - water_cost.memory_bytes) <
+          1e-9 * parallel.memory_bytes);
+    CHECK(oversubscribed.memory_bytes == parallel.memory_bytes);
+    CHECK(calculation::estimate(full, *full.default_plan()).memory_bytes >= serial.memory_bytes);
+
+    const auto reduced = [&](const calculation::ExecutionSelectionKind kind) {
+        return calculation::assess(calculation::AssessmentRequest{
+            .molecules = molecules,
+            .method_id = "eqeq",
+            .execution_selection =
+                calculation::ExecutionSelection{kind, calculation::minimum_reduced_radius}});
+    };
+    const auto cutoff = reduced(calculation::ExecutionSelectionKind::cutoff);
+    const auto cover = reduced(calculation::ExecutionSelectionKind::cover);
+    REQUIRE(cutoff.default_plan() != nullptr);
+    REQUIRE(cover.default_plan() != nullptr);
+    const auto cutoff_serial = calculation::estimate(cutoff, *cutoff.default_plan(), 1);
+    const auto cutoff_parallel = calculation::estimate(cutoff, *cutoff.default_plan(), 4);
+    const auto cover_serial = calculation::estimate(cover, *cover.default_plan(), 1);
+    // Cutoff runs one fragment per atom in parallel; cover runs fewer fragments.
+    CHECK(cutoff_parallel.memory_bytes > cutoff_serial.memory_bytes);
+    CHECK(cover_serial.operations < cutoff_serial.operations);
 }
 
 TEST_CASE("assessment rejects invalid requests", "[calculation][calculation]") {

@@ -4,6 +4,7 @@ target_sources(chargefw_core
         calculation.cpp
         cover_execution.cpp
         cutoff_execution.cpp
+        estimate.cpp
         fixed_charge_partition.cpp
         full_execution.cpp
         execution_policy.cpp

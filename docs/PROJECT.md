@@ -103,9 +103,11 @@ These terms guide execution planning; they do not predict a specific runtime or 
 
 Each method also estimates the cost of one target of a given atom and bond count: its working memory in
 bytes, counted as for the memory term, and its operation count. Dense linear algebra is counted in
-floating-point operations; other loops are counted per atom, bond, or atom-pair visit. The estimates follow the dense allocations and loops of the implementation, so their
-leading terms match the declared complexity. They are approximate: iterative methods are costed at their
-configured or maximum iteration count, and operation counts compare work rather than predict seconds.
+floating-point operations; other loops are counted per atom, bond, or atom-pair visit. The estimates
+follow the dense allocations and loops of the implementation, so their leading terms match the declared
+complexity. They are approximate: iterative methods are costed at their configured or maximum iteration
+count, and operation counts compare work rather than predict seconds. Plans combine these estimates for
+a whole calculation, as described under [assessment and execution](#assessment-and-execution).
 
 PEOE and MPEOE initialize charge transfer from zero by default, so in that mode every connected
 component must be formally neutral. Their `initial_charges=formal` option instead starts each atom at
@@ -216,6 +218,15 @@ Automatic reduced execution uses a 12 Å radius. Explicit reduced execution requ
 full calculations. Larger radii generally improve agreement with full execution by including more of the
 molecular environment, but increase calculation time. Explicit full execution may override a resource
 threshold and returns a warning rather than changing the requested mode.
+
+A plan can estimate its peak working memory and total operation count before execution, for a thread
+limit where zero means the oneTBB default concurrency. Full execution runs whole targets in parallel, so
+the memory estimate adds the workspaces of the largest targets that can run together. Reduced execution
+runs targets one at a time and their fragments in parallel: cutoff runs one fragment per active atom and
+cover one per pivot. Fragment sizes follow an atom density of 0.1 atoms/Å³, typical of packed
+biomolecular structures with hydrogens, and never exceed their target. Both modes add the retained output
+charges. The estimate describes calculation working memory on top of the prepared assessment, not total
+process memory, and is most representative for compact structures.
 
 For ordinary calculations, cutoff and cover are implemented for:
 

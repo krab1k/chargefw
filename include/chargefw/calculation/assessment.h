@@ -4,6 +4,7 @@
 #include <chargefw/core/molecule_collection.h>
 #include <chargefw/features/prepared_molecule_collection.h>
 #include <chargefw/methods/method_applicability.h>
+#include <chargefw/methods/method_requirements.h>
 #include <chargefw/parameters/classification/classification_result.h>
 #include <chargefw/parameters/models/parameter_set.h>
 
@@ -52,6 +53,8 @@ class ExecutionPlan {
     friend auto calculate(const AssessmentResult& assessment, const ExecutionPlan& plan,
                           std::size_t max_threads, const CalculationObserver& observer)
         -> ExecutionResult;
+    friend auto estimate(const AssessmentResult& assessment, const ExecutionPlan& plan,
+                         std::size_t max_threads) -> methods::ResourceEstimate;
 
     std::shared_ptr<const PlanIdentity> identity_;
     const methods::ApplicableMethod* candidate_ = nullptr;
@@ -140,6 +143,8 @@ class AssessmentResult {
     friend auto calculate(const AssessmentResult& assessment, const ExecutionPlan& plan,
                           std::size_t max_threads, const CalculationObserver& observer)
         -> ExecutionResult;
+    friend auto estimate(const AssessmentResult& assessment, const ExecutionPlan& plan,
+                         std::size_t max_threads) -> methods::ResourceEstimate;
 
     std::vector<parameters::ParameterSet> parameter_sets_;
     methods::ApplicabilityResult applicability_;
