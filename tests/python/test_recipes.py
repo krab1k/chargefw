@@ -110,6 +110,23 @@ def test_fixed_ion_recipe(tmp_path: Path) -> None:
     assert result["calculation_provenance"]["effective"]["fixed_ions"][0]["component_id"] == "MG"
 
 
+def test_rdkit_sdf_recipe(tmp_path: Path) -> None:
+    chemistry = pytest.importorskip("rdkit.Chem")
+    input_path = tmp_path / "waters.sdf"
+    output_path = tmp_path / "charged.sdf"
+    input_path.write_text(WATERS_SDF, encoding="utf-8")
+
+    run_recipe("charge_rdkit_sdf.py", input_path, output_path, "--method", "eem")
+
+    molecules = list(chemistry.SDMolSupplier(str(output_path), removeHs=False))
+    assert len(molecules) == 2
+    assert all(
+        atom.HasProp("ChargeFWPartialCharge")
+        for molecule in molecules
+        for atom in molecule.GetAtoms()
+    )
+
+
 def test_rdkit_conformer_recipe() -> None:
     pytest.importorskip("rdkit")
     run_recipe("analyze_rdkit_conformer_charges.py", "CCO", "--conformers", "3")

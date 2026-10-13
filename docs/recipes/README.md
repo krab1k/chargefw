@@ -80,6 +80,26 @@ This is a sensitivity analysis over one generated coordinate set, not a thermody
 claim that the ranked atoms are chemically significant hotspots. The useful analysis function also
 accepts an externally prepared RDKit conformer ensemble.
 
+## Write charges to RDKit molecules
+
+[`charge_rdkit_sdf.py`](charge_rdkit_sdf.py) reads an SDF with RDKit, calculates all records with one
+method, parameter set, and execution mode, attaches the charges as the `ChargeFWPartialCharge` atom
+property, and records the model as molecule properties. The output SDF stores the charges as an
+`atom.dprop.ChargeFWPartialCharge` property list, which RDKit restores as atom properties when it reads
+the file. Records that RDKit cannot read are reported and skipped. Every remaining record must convert,
+so records need explicit hydrogens.
+
+```bash
+pip install "chargefw[rdkit]"
+python docs/recipes/charge_rdkit_sdf.py input.sdf charged.sdf --method eem
+```
+
+Because the converted records form one collection, ChargeFW selects a parameter set applicable to all of
+them, and a record the selected model cannot handle makes the calculation fail rather than switching
+models. Pass `--parameter-set` to choose the model explicitly. The recipe kekulizes aromatic rings so
+ChargeFW receives explicit single and double bonds; see the
+[RDKit integration contract](../PYTHON.md#toolkit-integrations).
+
 ## Compare bundled parameter sets
 
 [`compare_parameter_sets.py`](compare_parameter_sets.py) performs one explicit assessment for a method
