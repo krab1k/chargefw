@@ -8,7 +8,7 @@ are in [AGENTS.md](AGENTS.md); public behavior is documented under [`docs/`](doc
 Native development requires CMake 3.28 or newer, Ninja, and a C++23-capable GCC or Clang toolchain.
 CMake downloads pinned dependencies when compatible system packages are unavailable.
 
-The checked-in presets also build the Python bindings. Their Python interpreter needs Python 3.10 or
+The checked-in presets also build the Python bindings. Their Python interpreter needs Python 3.11 or
 newer, development headers, NumPy, Nanobind, Gemmi 0.7.4, and the test tools pytest, jsonschema, and
 mypy. RDKit is optional; its tests are skipped when it is absent. The presets use `/usr/bin/python3`;
 select another interpreter explicitly when needed:

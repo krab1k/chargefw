@@ -12,14 +12,14 @@ The executable [Python recipes](recipes/README.md) demonstrate complete toolkit 
 
 ## Installation
 
-Python 3.10 or newer is required. NumPy 1.26 or newer is the only required runtime dependency. Install a
+Python 3.11 or newer is required. NumPy 1.26 or newer is the only required runtime dependency. Install a
 published wheel with:
 
 ```bash
 pip install chargefw
 ```
 
-Published wheels currently target CPython 3.10 through 3.14 on Linux x86-64. Build and install a local
+Published wheels currently target CPython 3.11 through 3.14 on Linux x86-64. Build and install a local
 wheel from the source tree with:
 
 ```bash

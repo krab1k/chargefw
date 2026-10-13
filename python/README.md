@@ -11,7 +11,7 @@ bonds, or generate coordinates.
 
 ## Installation
 
-ChargeFW requires Python 3.10 or newer:
+ChargeFW requires Python 3.11 or newer:
 
 ```bash
 pip install chargefw

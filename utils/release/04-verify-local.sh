@@ -18,11 +18,11 @@ shopt -s nullglob
 artifacts=("$ARTIFACT_DIRECTORY"/*)
 sdists=("$ARTIFACT_DIRECTORY"/chargefw-*.tar.gz)
 wheels=("$ARTIFACT_DIRECTORY"/chargefw-*.whl)
-[[ ${#artifacts[@]} -eq 6 ]] || die "expected exactly six release artifacts"
+[[ ${#artifacts[@]} -eq 5 ]] || die "expected exactly five release artifacts"
 [[ ${#sdists[@]} -eq 1 ]] || die "expected exactly one source distribution"
-[[ ${#wheels[@]} -eq 5 ]] || die "expected exactly five wheels"
+[[ ${#wheels[@]} -eq 4 ]] || die "expected exactly four wheels"
 
-for python_tag in 310 311 312 313 314; do
+for python_tag in 311 312 313 314; do
     matches=("$ARTIFACT_DIRECTORY"/chargefw-"$RELEASE_VERSION"-cp"$python_tag"-cp"$python_tag"-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl)
     [[ ${#matches[@]} -eq 1 ]] || die "expected one CPython $python_tag manylinux wheel"
 done

@@ -6,7 +6,7 @@ TestPyPI, tags their source commit, and publishes the same files to PyPI. The nu
 
 ## Current wheel matrix
 
-The current release target is CPython 3.10 through 3.14 on Linux x86-64. `cibuildwheel` builds each wheel
+The current release target is CPython 3.11 through 3.14 on Linux x86-64. `cibuildwheel` builds each wheel
 in a manylinux container, repairs its native libraries, installs it, and runs the Python test suite. The
 resulting wheels carry `manylinux_2_27_x86_64` and `manylinux_2_28_x86_64` tags.
 
@@ -67,7 +67,7 @@ Build one source distribution and then build all wheels from that source distrib
 ./utils/release/04-verify-local.sh
 ```
 
-The local verification requires exactly one sdist and the five configured wheels, runs strict package
+The local verification requires exactly one sdist and the four configured wheels, runs strict package
 metadata checks, writes `build/release/sha256sums.txt`, installs a wheel in a clean environment, verifies
 its runtime version, and runs a smoke calculation. Do not rebuild after this point.
 

@@ -1,7 +1,7 @@
 if(CHARGEFW_PYTHON_EXECUTABLE)
     set(Python_EXECUTABLE "${CHARGEFW_PYTHON_EXECUTABLE}")
 endif()
-find_package(Python 3.10 REQUIRED COMPONENTS Interpreter Development.Module)
+find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module)
 set(CHARGEFW_RESOLVED_PYTHON_EXECUTABLE "${Python_EXECUTABLE}" PARENT_SCOPE)
 if(SKBUILD)
     set(CHARGEFW_PYTHON_INSTALL_PACKAGE_DIRECTORY "chargefw")
