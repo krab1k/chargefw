@@ -29,38 +29,35 @@ auto DENRMethod::calculate(const CalculationInput& input) const -> charges::Atom
 
     const auto electronegativity = parameters.atom("electronegativity");
     const auto hardness = parameters.atom("hardness");
-
-    Eigen::MatrixXd eta = Eigen::MatrixXd::Zero(n, n);
-    Eigen::MatrixXd L = Eigen::MatrixXd::Zero(n, n);
-    Eigen::VectorXd chi = Eigen::VectorXd::Zero(n);
-    Eigen::VectorXd q = Eigen::VectorXd::Zero(n);
-
-    for (Eigen::Index i = 0; i < n; ++i) {
-        const auto atom_index = static_cast<std::size_t>(i);
-
-        chi(i) = electronegativity[atom_index];
-        eta(i, i) = hardness[atom_index];
-    }
-
-    for (const auto& bond : molecule.bonds()) {
-        const auto i = static_cast<Eigen::Index>(bond.first_atom_index());
-        const auto j = static_cast<Eigen::Index>(bond.second_atom_index());
-
-        L(i, i) += 1.0;
-        L(j, j) += 1.0;
-        L(i, j) -= 1.0;
-        L(j, i) -= 1.0;
-    }
-
     const auto dt = options.get<double>("step");
     const auto iterations = options.get<int>("iters");
 
-    const Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n, n);
-    Eigen::MatrixXd A = I + dt * L * eta;
+    // DENR iterates q <- A^-1 (q - dt L chi) with A = I + dt L eta, where L is the bond-graph
+    // Laplacian and eta = diag(hardness). Neither L nor eta is formed; for bond (i, j):
+    //   A(i, i) += dt eta(i),  A(j, j) += dt eta(j),  A(i, j) -= dt eta(j),  A(j, i) -= dt eta(i)
+    //   (dt L chi)(i) += dt (chi(i) - chi(j)),  (dt L chi)(j) -= dt (chi(i) - chi(j))
+    Eigen::MatrixXd A = Eigen::MatrixXd::Identity(n, n);
+    Eigen::VectorXd tmp = Eigen::VectorXd::Zero(n);
+
+    for (const auto& bond : molecule.bonds()) {
+        const auto first = bond.first_atom_index();
+        const auto second = bond.second_atom_index();
+        const auto i = static_cast<Eigen::Index>(first);
+        const auto j = static_cast<Eigen::Index>(second);
+
+        A(i, i) += dt * hardness[first];
+        A(j, j) += dt * hardness[second];
+        A(i, j) -= dt * hardness[second];
+        A(j, i) -= dt * hardness[first];
+
+        const auto transfer = dt * (electronegativity[first] - electronegativity[second]);
+        tmp(i) += transfer;
+        tmp(j) -= transfer;
+    }
 
     // Factorize in place to avoid holding a second dense copy of A.
     const Eigen::PartialPivLU<Eigen::Ref<Eigen::MatrixXd>> lu{A};
-    const Eigen::VectorXd tmp = dt * L * chi;
+    Eigen::VectorXd q = Eigen::VectorXd::Zero(n);
 
     for (auto i = 0; i < iterations; ++i) {
         q = lu.solve(q - tmp);
@@ -73,9 +70,9 @@ auto DENRMethod::estimate(const TargetSize& target, const MethodOptions& options
     -> ResourceEstimate {
     const auto n = target.atoms;
     const auto iterations = options.get<int>("iters");
-    // eta, L, I, and A are dense n x n; L * eta, LU, and one solve per iteration.
-    return {.memory_bytes = 32.0 * n * n,
-            .operations = 2.0 * n * n * n + 2.0 / 3.0 * n * n * n + iterations * 2.0 * n * n};
+    // A is dense n x n; LU and one solve per iteration.
+    return {.memory_bytes = 8.0 * n * n,
+            .operations = 2.0 / 3.0 * n * n * n + iterations * 2.0 * n * n};
 }
 
 } // namespace chargefw::methods::builtin
