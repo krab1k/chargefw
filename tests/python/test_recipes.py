@@ -77,6 +77,13 @@ def test_calculate_file_recipe(tmp_path: Path) -> None:
     assert all(row["conformer"] == "0" for row in rows)
 
 
+def test_dipole_moment_recipe(tmp_path: Path) -> None:
+    input_path = tmp_path / "waters.sdf"
+    input_path.write_text(WATERS_SDF, encoding="utf-8")
+
+    run_recipe("calculate_dipole_moments.py", input_path, "--format", "sdf", "--method", "eem")
+
+
 def test_inspect_molecules_recipe(tmp_path: Path) -> None:
     input_path = tmp_path / "water.sdf"
     input_path.write_text(f"{WATER_MOL}$$$$\n", encoding="utf-8")
