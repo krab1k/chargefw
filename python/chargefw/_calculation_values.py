@@ -35,6 +35,14 @@ class ExecutionPolicy:
     radius: float | None
 
 
+@dataclass(frozen=True, slots=True)
+class ResourceEstimate:
+    """Approximate peak working memory and operation count of executing a plan."""
+
+    memory_bytes: float
+    operations: float
+
+
 class Plan:
     """A complete reusable execution plan bound to one assessed molecule collection."""
 
@@ -96,6 +104,15 @@ class Plan:
                 for supplied, assessed in zip(molecules, self._molecules, strict=True)
             )
         )
+
+    def estimate(self, threads: int | None = None) -> ResourceEstimate:
+        """Estimate execution with a thread limit; None uses the assessment's threads."""
+
+        normalized_threads = (
+            None if threads is None else RequestedCalculation(threads=threads).threads
+        )
+        memory_bytes, operations = self._native.estimate(normalized_threads)
+        return ResourceEstimate(memory_bytes=memory_bytes, operations=operations)
 
     def _calculate(
         self, threads: int | None, observer: object | None

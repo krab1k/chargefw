@@ -20,6 +20,7 @@ from ._calculation_values import (
     NumericalFailureError,
     Plan,
     Rejection,
+    ResourceEstimate,
     _rejections,
 )
 from ._chargefw import calculation as _native_calculation
@@ -54,6 +55,7 @@ __all__ = [
     "Plan",
     "Rejection",
     "RequestedCalculation",
+    "ResourceEstimate",
     "assess",
     "calculate",
     "methods",
@@ -122,6 +124,7 @@ for _value_type in (
     CalculationResult,
     Plan,
     Rejection,
+    ResourceEstimate,
     FixedIons,
     FixedAtomCharge,
 ):

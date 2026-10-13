@@ -506,6 +506,22 @@ def test_plans_are_filtered_reusable_and_target_bound() -> None:
     assert all(result.status == "success" for result in results)
 
 
+def test_plan_estimates_resources_for_a_thread_limit() -> None:
+    molecules = [water(), water()]
+    plan = chargefw.assess(molecules, method="eqeq", execution="full").default_plan
+    assert plan is not None, "assessment must produce a default plan"
+
+    serial = plan.estimate(threads=1)
+    parallel = plan.estimate(threads=2)
+    assert serial.memory_bytes > 0.0
+    assert serial.operations > 0.0
+    assert parallel.memory_bytes > serial.memory_bytes
+    assert parallel.operations == serial.operations
+    assert plan.estimate().memory_bytes >= serial.memory_bytes
+    with pytest.raises(ValueError):
+        plan.estimate(threads=-1)
+
+
 def test_assignment_cardinality_and_mapping() -> None:
     geometry_independent = chargefw.calculate(
         chargefw.Molecule([8, 1, 1]),

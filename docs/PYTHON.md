@@ -360,6 +360,16 @@ if plan is not None:
     result = chargefw.calculate(molecule, plan, threads=1)
 ```
 
+Estimate a plan's peak working memory and operation count before executing it:
+
+```python
+estimate = plan.estimate(threads=4)
+print(estimate.memory_bytes / 2**30, estimate.operations)
+```
+
+`threads=None` uses the assessment's `threads`. The returned `ResourceEstimate` is approximate; the
+[project design](PROJECT.md#assessment-and-execution) describes what it covers.
+
 Plans are bound to the exact molecule objects and collection name used during assessment. They cannot be
 applied to another record or a reconstructed equivalent molecule, and selection arguments cannot be
 supplied with a plan, including `fixed_ions`. A plan is reusable after its `Assessment`

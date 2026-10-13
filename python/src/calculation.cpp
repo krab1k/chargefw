@@ -18,6 +18,7 @@
 #include <nanobind/nanobind.h>
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/optional.h>
+#include <nanobind/stl/pair.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
@@ -352,6 +353,14 @@ class NativePlan {
             state_->inputs_, std::move(requested), std::move(result))};
     }
 
+    [[nodiscard]] auto estimate(const std::optional<std::size_t> max_threads) const
+        -> std::pair<double, double> {
+        const auto estimate =
+            calculation::estimate(state_->assessment_, state_->assessment_.plans()[index_],
+                                  max_threads.value_or(state_->max_threads_));
+        return {estimate.memory_bytes, estimate.operations};
+    }
+
   private:
     std::shared_ptr<NativeAssessmentState> state_;
     std::size_t index_ = 0;
@@ -521,7 +530,8 @@ void bind_calculation(nb::module_& module) {
     nb::class_<NativePlan>(module, "_NativePlan")
         .def("report", &NativePlan::report)
         .def("calculate", &NativePlan::calculate, nb::arg("max_threads") = nb::none(),
-             nb::arg("observer") = nb::none());
+             nb::arg("observer") = nb::none())
+        .def("estimate", &NativePlan::estimate, nb::arg("max_threads") = nb::none());
     nb::class_<NativeAssessment>(module, "_NativeAssessment")
         .def("report", &NativeAssessment::report)
         .def("plans", &NativeAssessment::plans)
