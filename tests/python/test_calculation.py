@@ -799,7 +799,6 @@ def test_invalid_options_are_rejected_early() -> None:
         (TypeError, {"threads": True}),
         (TypeError, {"cutoff_threshold": False}),
         (ValueError, {"cover_threshold": np.iinfo(np.uintp).max + 1}),
-        (ValueError, {"threads": np.iinfo(np.int32).max + 1}),
     )
     for error_type, options in invalid_options:
         with pytest.raises(error_type):

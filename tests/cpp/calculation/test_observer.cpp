@@ -20,7 +20,6 @@
 #include <chargefw/parameters/models/common_parameters.h>
 #include <chargefw/parameters/models/parameter_set.h>
 #include <chargefw/parameters/models/parameter_set_metadata.h>
-#include <limits>
 #include <mutex>
 #include <optional>
 #include <snitch/snitch.hpp>
@@ -394,20 +393,6 @@ TEST_CASE("fixed-charge cancellation retains provenance and permits plan reuse",
         REQUIRE(repeated.effective->fixed_ions.has_value());
         CHECK(repeated.effective->fixed_ions->sources[0].charge == 0.4);
     }
-}
-
-TEST_CASE("validation failures finish observation and propagate unchanged",
-          "[calculation][observer]") {
-    const auto observer = RecordingObserver{};
-    const auto assessment = calculation::assess(make_formal_water_request());
-
-    CHECK_THROWS_AS(static_cast<void>(calculation::calculate(
-                        assessment, std::numeric_limits<std::size_t>::max(), observer)),
-                    std::invalid_argument);
-
-    const auto events = observer.events();
-    assert_computation_boundary(events, calculation::ExecutionMode::full);
-    CHECK(events.back().method_id == std::string_view{"formal"});
 }
 
 TEST_CASE("solver failures finish observation with a numerical result in every mode",

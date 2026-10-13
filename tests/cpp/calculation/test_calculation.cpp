@@ -394,6 +394,11 @@ TEST_CASE("plan estimates compose unit costs by execution mode", "[calculation][
           1e-9 * parallel.memory_bytes);
     CHECK(oversubscribed.memory_bytes == parallel.memory_bytes);
     CHECK(calculation::estimate(full, *full.default_plan()).memory_bytes >= serial.memory_bytes);
+    // A limit above oneTBB's allowed parallelism runs and estimates at that parallelism.
+    const auto unlimited = std::numeric_limits<std::size_t>::max();
+    CHECK(calculation::estimate(full, *full.default_plan(), unlimited).memory_bytes ==
+          calculation::estimate(full, *full.default_plan()).memory_bytes);
+    CHECK(calculation::calculate(full, *full.default_plan(), unlimited).calculated());
 
     const auto reduced = [&](const calculation::ExecutionSelectionKind kind) {
         return calculation::assess(calculation::AssessmentRequest{

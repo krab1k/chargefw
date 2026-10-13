@@ -91,7 +91,7 @@ struct ExecutionResult {
     -> ExecutionResult;
 
 // Estimates the peak working memory and total operations of executing one plan from an assessment
-// with a thread limit, where zero means the oneTBB default concurrency. Fragments of cutoff and
+// with a thread limit, capped at oneTBB's allowed parallelism. Fragments of cutoff and
 // cover execution are sized from a typical biomolecular atom density. Memory covers the method
 // workspaces that can run concurrently and the retained output charges; it excludes
 // already-prepared inputs and is not process RSS.

@@ -15,7 +15,6 @@ from ._methods import Method
 from ._parameters import ParameterSet
 from ._types import Execution, MethodOptionValue, ParameterMatching
 
-_MAX_NATIVE_THREADS = int(np.iinfo(np.int32).max)
 _EXECUTIONS = frozenset(("auto", "full", "cutoff", "cover"))
 
 
@@ -186,8 +185,6 @@ class RequestedCalculation:
             else _normalized_nonnegative_integer(cover_threshold, "cover_threshold")
         )
         normalized_threads = _normalized_nonnegative_integer(threads, "threads")
-        if normalized_threads > _MAX_NATIVE_THREADS:
-            raise ValueError("threads exceeds oneTBB's supported integer range")
         normalized_fixed_ions: tuple[str, ...]
         if fixed_ions is None:
             normalized_fixed_ions = ()

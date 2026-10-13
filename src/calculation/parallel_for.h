@@ -4,24 +4,32 @@
 
 #include <chargefw/calculation/observer.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <mutex>
 #include <optional>
-#include <stdexcept>
 #include <string_view>
 #include <utility>
 
+#include <oneapi/tbb/global_control.h>
 #include <oneapi/tbb/parallel_for.h>
 #include <oneapi/tbb/task_arena.h>
 
 namespace chargefw::calculation::detail {
 
-// A zero thread count delegates the worker count to oneTBB. The callable must write only to the
-// result associated with its index; execution order is intentionally unspecified.
+// A thread limit caps oneTBB's allowed parallelism, which bounds the workers any arena can use.
+// Zero uses that parallelism.
+[[nodiscard]] inline auto thread_count(const std::size_t max_threads) -> std::size_t {
+    const auto allowed = oneapi::tbb::global_control::active_value(
+        oneapi::tbb::global_control::max_allowed_parallelism);
+    return max_threads == 0 ? allowed : std::min(max_threads, allowed);
+}
+
+// The callable must write only to the result associated with its index; execution order is
+// intentionally unspecified.
 template <typename Function>
 auto parallel_for_indexed(const std::size_t count, const std::size_t max_threads,
                           Function&& function) -> void {
@@ -29,18 +37,15 @@ auto parallel_for_indexed(const std::size_t count, const std::size_t max_threads
         return;
     }
 
-    if (max_threads == 1) {
+    const auto threads = thread_count(max_threads);
+    if (threads == 1) {
         for (std::size_t index = 0; index < count; ++index) {
             function(index);
         }
         return;
     }
 
-    if (max_threads > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-        throw std::invalid_argument{"maximum thread count exceeds oneTBB's supported range"};
-    }
-
-    oneapi::tbb::task_arena arena{static_cast<int>(max_threads)};
+    oneapi::tbb::task_arena arena{static_cast<int>(threads)};
     arena.execute([&] {
         oneapi::tbb::parallel_for(std::size_t{0}, count,
                                   [&function](const std::size_t index) { function(index); });

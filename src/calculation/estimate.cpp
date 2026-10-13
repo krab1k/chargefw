@@ -1,4 +1,5 @@
 #include "calculation/cover_execution.h"
+#include "calculation/parallel_for.h"
 #include "calculation/target_execution.h"
 
 #include <chargefw/calculation/calculation.h>
@@ -12,8 +13,6 @@
 #include <numeric>
 #include <stdexcept>
 #include <vector>
-
-#include <oneapi/tbb/info.h>
 
 namespace chargefw::calculation {
 namespace {
@@ -42,9 +41,7 @@ auto estimate(const AssessmentResult& assessment, const ExecutionPlan& plan,
     const auto& molecules = assessment.prepared_molecules();
     const auto targets = detail::make_calculation_targets(
         molecules, reduced || selected.method->requirements().coordinates);
-    const auto threads = static_cast<double>(
-        max_threads == 0 ? static_cast<std::size_t>(oneapi::tbb::info::default_concurrency())
-                         : max_threads);
+    const auto threads = static_cast<double>(detail::thread_count(max_threads));
 
     auto result = methods::ResourceEstimate{};
     auto full_workspaces = std::vector<double>{};

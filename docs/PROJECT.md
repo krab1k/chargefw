@@ -219,14 +219,17 @@ full calculations. Larger radii generally improve agreement with full execution 
 molecular environment, but increase calculation time. Explicit full execution may override a resource
 threshold and returns a warning rather than changing the requested mode.
 
+A thread limit caps the parallelism oneTBB allows the process, which is the hardware concurrency unless
+the embedding application restricts it. Zero, or any larger limit, uses that full parallelism.
+
 A plan can estimate its peak working memory and total operation count before execution, for a thread
-limit where zero means the oneTBB default concurrency. Full execution runs whole targets in parallel, so
-the memory estimate adds the workspaces of the largest targets that can run together. Reduced execution
-runs targets one at a time and their fragments in parallel: cutoff runs one fragment per active atom and
-cover one per pivot. Fragment sizes follow an atom density of 0.1 atoms/Å³, typical of packed
-biomolecular structures with hydrogens, and never exceed their target. Both modes add the retained output
-charges. The estimate describes calculation working memory on top of the prepared assessment, not total
-process memory, and is most representative for compact structures.
+limit. Full execution runs whole targets in parallel, so the memory estimate adds the workspaces of the
+largest targets that can run together. Reduced execution runs targets one at a time and their fragments
+in parallel: cutoff runs one fragment per active atom and cover one per pivot. Fragment sizes follow an
+atom density of 0.1 atoms/Å³, typical of packed biomolecular structures with hydrogens, and never exceed
+their target. Both modes add the retained output charges. The estimate describes calculation working
+memory on top of the prepared assessment, not total process memory, and is most representative for
+compact structures.
 
 For ordinary calculations, cutoff and cover are implemented for:
 
