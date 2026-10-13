@@ -178,15 +178,15 @@ from a partial upload when every file already present has the expected hash.
 If source code, the version, the release commit, or an artifact changes, restart from the appropriate
 earlier phase. Once an upload has occurred, a required rebuild means creating a new version.
 
-After production verification, retain these files outside the working build directory:
+Keep release artifacts and records in `build/release/`. Do not create optional backup archives or copy
+release files into the repository's parent directory. The next release validation replaces state for a
+different version only when the previous release has a `release-complete.ok` gate; no backup step is
+required before replacement.
 
-- `build/release/artifacts/`
-- `build/release/sha256sums.txt`
-- `build/release/build-info.txt`
-- `build/release/state.env`
-
-The next release validation replaces state for a different version only when the previous release has a
-`release-complete.ok` gate. Archive the listed files before beginning that next release.
+This output-location rule applies to project build outputs and release records, not tool-managed caches,
+container storage, or runtime files. Let Podman and other build tools use their normal configured
+locations, including the system-managed `XDG_RUNTIME_DIR`; do not relocate those directories into the
+repository to satisfy this rule.
 
 Create the GitHub release from the pushed tag and attach the release notes. Release automation, trusted
 publishing, durable CI artifact retention, and additional wheel platforms remain tracked in
