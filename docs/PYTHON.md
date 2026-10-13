@@ -227,7 +227,7 @@ for parameter_set in eem.parameter_sets.values():
     print(parameter_set.id, parameter_set.name)
 
 iterations = chargefw.methods["peoe"].options["iters"]
-print(iterations.default, iterations.minimum)
+print(iterations.default, iterations.minimum, iterations.maximum)
 ```
 
 Method descriptors expose names, publication metadata, human-readable `notes`, priority, coordinate

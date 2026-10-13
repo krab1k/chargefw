@@ -814,6 +814,7 @@ def test_method_option_overrides_are_validated_and_reported() -> None:
 
     for options in (
         {"iters": 0},
+        {"iters": 26},
         {"initial_charges": "unknown"},
         {"unknown": 1},
     ):

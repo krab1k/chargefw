@@ -42,7 +42,8 @@ class GDACMethod final : public Method {
                              .type = MethodOptionType::integer,
                              .default_value = 7,
                              .choices = {},
-                             .minimum = 1}};
+                             .minimum = 1,
+                             .maximum = 25}};
         return {option_schema.data(), option_schema.size()};
     }
 

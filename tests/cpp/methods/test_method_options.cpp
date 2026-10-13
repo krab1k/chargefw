@@ -68,7 +68,8 @@ TEST_CASE("method options reject missing, wrong type, and out-of-bounds values",
                                   .description = "Iteration limit",
                                   .type = methods::MethodOptionType::integer,
                                   .default_value = 25,
-                                  .choices = {}},
+                                  .choices = {},
+                                  .maximum = 100},
         methods::MethodOptionSpec{.id = "radius",
                                   .description = "Search radius",
                                   .type = methods::MethodOptionType::floating_point,
@@ -103,6 +104,17 @@ TEST_CASE("method options reject missing, wrong type, and out-of-bounds values",
         methods::validate_method_options(schema, invalid);
     };
     CHECK_THROWS_AS(below_minimum(), std::invalid_argument);
+
+    // inclusive maximum accepts the bound and rejects values above it
+    auto at_maximum = methods::make_default_options(schema);
+    at_maximum.set("limit", 100);
+    CHECK_NOTHROW(methods::validate_method_options(schema, at_maximum));
+    const auto above_maximum = [&] {
+        auto invalid = methods::make_default_options(schema);
+        invalid.set("limit", 101);
+        methods::validate_method_options(schema, invalid);
+    };
+    CHECK_THROWS_AS(above_maximum(), std::invalid_argument);
 
     // unknown option key
     const auto unknown_key = [&] {

@@ -39,12 +39,13 @@ class DENRMethod final : public Method {
                              .choices = {},
                              .minimum = 0.0,
                              .minimum_inclusive = false},
-            MethodOptionSpec{.id = "iterations",
+            MethodOptionSpec{.id = "iters",
                              .description = "Number of DENR iterations",
                              .type = MethodOptionType::integer,
                              .default_value = 3,
                              .choices = {},
-                             .minimum = 0}};
+                             .minimum = 0,
+                             .maximum = 25}};
 
         return {option_schema.data(), option_schema.size()};
     }

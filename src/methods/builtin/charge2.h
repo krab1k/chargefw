@@ -36,7 +36,8 @@ class Charge2Method final : public Method {
                              .type = MethodOptionType::integer,
                              .default_value = 10,
                              .choices = {},
-                             .minimum = 1}};
+                             .minimum = 1,
+                             .maximum = 25}};
         return {option_schema.data(), option_schema.size()};
     }
 

@@ -53,7 +53,7 @@ auto DENRMethod::calculate(const CalculationInput& input) const -> charges::Atom
     }
 
     const auto dt = options.get<double>("step");
-    const auto iterations = options.get<int>("iterations");
+    const auto iterations = options.get<int>("iters");
 
     const Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n, n);
     Eigen::MatrixXd A = I + dt * L * eta;

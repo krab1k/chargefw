@@ -314,7 +314,7 @@ TEST_CASE("built-in iteration options reach the charge calculation", "[methods][
         parameters::load_parameter_sets_json_directory(CHARGEFW_TEST_PARAMETER_DIR);
     auto denr_options = methods::MethodOptions{};
     denr_options.set("step", 0.1);
-    denr_options.set("iterations", 100);
+    denr_options.set("iters", 25);
     auto charge2_options = methods::MethodOptions{};
     charge2_options.set("iters", 1);
     // Charge2 polarizability feedback needs a chain longer than water to respond to iterations.
