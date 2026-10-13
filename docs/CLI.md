@@ -188,6 +188,7 @@ chargefw methods eem
 chargefw parameters
 chargefw parameters --method eem
 chargefw parameters QEq_original
+chargefw parameters SQEqp_Schindler2021_PUB_pept --keys
 ```
 
 `chargefw methods METHOD` reports the selected method's identity, publication, human-readable notes,
@@ -198,7 +199,10 @@ Complexity uses Big-O notation with `n` for atoms and `m` for bonds, as defined 
 
 `chargefw parameters` lists parameter-set IDs and names. Use `--method METHOD` to filter the summary by
 the parameter set's declared method. Pass a parameter-set ID instead to report its method, name,
-publication, notes, and priority; the positional ID and `--method` cannot be combined.
+publication, notes, priority, and the number and classifiers of its atom and bond keys; the positional ID
+and `--method` cannot be combined. Add `--keys` to a parameter-set ID to list every atom and bond key
+in matching order, as `classifier=type` after the element symbol; an empty type is shown as `""`.
+[Parameter-set JSON](PARAMETERS.md#classifiers) defines classifiers and matching precedence.
 
 ## Exit statuses
 

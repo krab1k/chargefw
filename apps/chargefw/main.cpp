@@ -133,6 +133,7 @@ auto run(std::span<char*> arguments) -> int {
     std::string method_info;
     std::string parameter_method;
     std::string parameter_set_info;
+    bool parameter_keys = false;
     bool progress = false;
     auto* calculate = app.add_subcommand("calculate", "Calculate and write partial charges");
     auto* inspect = app.add_subcommand("inspect", "Inspect imported molecular records");
@@ -158,6 +159,9 @@ auto run(std::span<char*> arguments) -> int {
     auto* parameter_method_option =
         parameters->add_option("--method", parameter_method, "Limit results to a method ID");
     parameter_set_option->excludes(parameter_method_option);
+    parameters
+        ->add_flag("--keys", parameter_keys, "List atom and bond parameter keys in matching order")
+        ->needs(parameter_set_option);
     const auto argc = static_cast<int>(arguments.size());
     auto* const argv = arguments.data();
     try {
@@ -171,7 +175,7 @@ auto run(std::span<char*> arguments) -> int {
         return 0;
     }
     if (*parameters) {
-        chargefw::cli::print_parameter_sets(parameter_set_info, parameter_method);
+        chargefw::cli::print_parameter_sets(parameter_set_info, parameter_method, parameter_keys);
         return 0;
     }
     if (*inspect) {

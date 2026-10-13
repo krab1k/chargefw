@@ -3,6 +3,7 @@
 #include <chargefw/core/periodic_table.h>
 #include <chargefw/methods/method_registry.h>
 #include <chargefw/parameters/io/parameter_set_io.h>
+#include <chargefw/parameters/models/parameter_key.h>
 
 #include <algorithm>
 #include <array>
@@ -42,6 +43,112 @@ void print_summary(const std::vector<SummaryRow>& rows) {
         ++unit;
     }
     return std::format("{:.1f}{}", bytes, units[unit]);
+}
+
+// Shows a classifier and its expected type; an empty type is quoted to stay visible.
+[[nodiscard]] auto classified_type(const std::string_view classifier, const std::string& type)
+    -> std::string {
+    return std::format("{}={}", classifier, type.empty() ? std::string{"\"\""} : type);
+}
+
+struct AtomKeyText {
+    std::string element;
+    std::string type;
+};
+
+[[nodiscard]] auto atom_key_text(const parameters::AtomParameterKey& key) -> AtomKeyText {
+    return {.element = key.atomic_number == 0
+                           ? std::string{"*"}
+                           : std::string{core::element_symbol(key.atomic_number)},
+            .type = classified_type(parameters::to_string(key.classification), key.type)};
+}
+
+// Classifier names in order of first use, joined by commas.
+template <typename Entries, typename Classifier>
+[[nodiscard]] auto classifier_names(const Entries& entries, const Classifier& classifier)
+    -> std::string {
+    auto names = std::vector<std::string_view>{};
+    for (const auto& entry : entries) {
+        const auto name = classifier(entry);
+        if (std::ranges::find(names, name) == names.end()) {
+            names.push_back(name);
+        }
+    }
+    auto joined = std::string{};
+    for (const auto name : names) {
+        joined += joined.empty() ? "" : ",";
+        joined += name;
+    }
+    return joined;
+}
+
+void print_atom_keys(const parameters::AtomParameters& atoms, const bool keys) {
+    std::print("atom keys: {}", atoms.size());
+    if (!atoms.empty()) {
+        std::print(" classifiers={}", classifier_names(atoms.entries(), [](const auto& entry) {
+                       return parameters::to_string(entry.key.classification);
+                   }));
+    }
+    std::println();
+    if (!keys) {
+        return;
+    }
+    auto rows = std::vector<AtomKeyText>{};
+    auto element_width = std::size_t{0};
+    for (const auto& entry : atoms.entries()) {
+        rows.push_back(atom_key_text(entry.key));
+        element_width = std::max(element_width, rows.back().element.size());
+    }
+    const auto index_width = std::to_string(rows.size()).size();
+    for (std::size_t index = 0; index < rows.size(); ++index) {
+        std::println("  {:>{}}  {:<{}}  {}", index + 1, index_width, rows[index].element,
+                     element_width, rows[index].type);
+    }
+}
+
+void print_bond_keys(const parameters::BondParameters& bonds, const bool keys) {
+    std::print("bond keys: {}", bonds.size());
+    if (!bonds.empty()) {
+        std::print(" atom-classifiers={} bond-classifiers={}",
+                   classifier_names(bonds.entries(),
+                                    [](const auto& entry) {
+                                        return parameters::to_string(
+                                            entry.key.first_atom.classification);
+                                    }),
+                   classifier_names(bonds.entries(), [](const auto& entry) {
+                       return parameters::to_string(entry.key.bond.classification);
+                   }));
+    }
+    std::println();
+    if (!keys) {
+        return;
+    }
+    struct Row {
+        AtomKeyText first;
+        AtomKeyText second;
+        std::string bond;
+    };
+    auto rows = std::vector<Row>{};
+    auto element_width = std::size_t{0};
+    auto type_width = std::size_t{0};
+    for (const auto& entry : bonds.entries()) {
+        rows.push_back(
+            {.first = atom_key_text(entry.key.first_atom),
+             .second = atom_key_text(entry.key.second_atom),
+             .bond = classified_type(parameters::to_string(entry.key.bond.classification),
+                                     entry.key.bond.type)});
+        for (const auto* atom : {&rows.back().first, &rows.back().second}) {
+            element_width = std::max(element_width, atom->element.size());
+            type_width = std::max(type_width, atom->type.size());
+        }
+    }
+    const auto index_width = std::to_string(rows.size()).size();
+    for (std::size_t index = 0; index < rows.size(); ++index) {
+        const auto& row = rows[index];
+        std::println("  {:>{}}  {:<{}}  {:<{}}  {:<{}}  {:<{}}  {}", index + 1, index_width,
+                     row.first.element, element_width, row.first.type, type_width,
+                     row.second.element, element_width, row.second.type, type_width, row.bond);
+    }
 }
 
 } // namespace
@@ -163,7 +270,8 @@ void print_methods(const std::string& method_id) {
     }
 }
 
-void print_parameter_sets(const std::string& parameter_set_id, const std::string& method_id) {
+void print_parameter_sets(const std::string& parameter_set_id, const std::string& method_id,
+                          const bool keys) {
     const auto parameter_sets = parameters::load_default_parameter_sets();
     if (parameter_set_id.empty()) {
         if (!method_id.empty() && methods::method_registry().find(method_id) == nullptr) {
@@ -195,6 +303,8 @@ void print_parameter_sets(const std::string& parameter_set_id, const std::string
     std::println("publication: {}", metadata.publication.empty() ? "-" : metadata.publication);
     std::println("notes: {}", metadata.notes.empty() ? "-" : metadata.notes);
     std::println("priority: {}", metadata.priority);
+    print_atom_keys(parameter_set->atom(), keys);
+    print_bond_keys(parameter_set->bond(), keys);
 }
 
 } // namespace chargefw::cli

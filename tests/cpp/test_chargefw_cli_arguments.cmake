@@ -8,6 +8,7 @@ run_cli(unknown_method 2 methods not-a-method)
 run_cli(unknown_parameter_set 2 parameters not-a-parameter-set)
 run_cli(unknown_parameter_method 2 parameters --method not-a-method)
 run_cli(parameter_filter_and_detail 2 parameters --method qeq QEq_original)
+run_cli(parameter_keys_without_set 2 parameters --keys)
 run_cli(method_option_preserves_positionals 0 applicability --method-option peoe.iters=8
         "${CHARGEFW_INPUT}")
 
@@ -21,3 +22,4 @@ run_cli(method_details 0 methods eem)
 run_cli(parameters 0 parameters)
 run_cli(parameter_filter 0 parameters --method qeq)
 run_cli(parameter_details 0 parameters QEq_original)
+run_cli(parameter_keys 0 parameters SQEqp_Schindler2021_PUB_pept --keys)
