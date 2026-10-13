@@ -10,12 +10,23 @@ advanced workflow for inspecting and executing several prepared plans. The
 
 [`calculate_file.py`](calculate_file.py) is the shortest complete file-to-charges workflow. It reads any
 supported molecular format, calculates one explicitly selected method, and prints one row per atom in
-source order with its molecule and conformer indices, atom ID, atom name, element, and charge. A `-`
-conformer identifies charges from a geometry-independent method. `--result-json` also writes complete
-result JSON with requested and effective provenance.
+source order with its molecule and conformer indices, atom index, atom ID, atom name, element, and
+charge. A `-` conformer identifies charges from a geometry-independent method. `--csv` writes the same
+rows to a CSV file instead, with full-precision charges and an empty conformer field for
+geometry-independent methods. `--result-json` also writes complete result JSON with requested and
+effective provenance.
 
 ```bash
-python docs/recipes/calculate_file.py molecules.sdf --format sdf --method eem --result-json result.json
+python docs/recipes/calculate_file.py molecules.sdf --format sdf --method eem --csv charges.csv
+```
+
+The CSV loads directly into analysis tools; for example, with pandas installed:
+
+```python
+import pandas as pd
+
+charges = pd.read_csv("charges.csv")
+print(charges.groupby("element")["charge"].describe())
 ```
 
 One method, parameter set, and execution mode apply to the whole file, so one inapplicable record makes

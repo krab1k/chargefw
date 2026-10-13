@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import subprocess
 import sys
@@ -49,6 +50,7 @@ def run_recipe(name: str, *arguments: str | Path) -> subprocess.CompletedProcess
 def test_calculate_file_recipe(tmp_path: Path) -> None:
     input_path = tmp_path / "waters.sdf"
     output_path = tmp_path / "result.json"
+    csv_path = tmp_path / "charges.csv"
     input_path.write_text(WATERS_SDF, encoding="utf-8")
 
     run_recipe(
@@ -60,11 +62,19 @@ def test_calculate_file_recipe(tmp_path: Path) -> None:
         "eem",
         "--result-json",
         output_path,
+        "--csv",
+        csv_path,
     )
 
     result = json.loads(output_path.read_text(encoding="utf-8"))
     assert result["status"] == "success"
     assert len(result["results"]) == 2
+    with csv_path.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    assert [(row["molecule"], row["element"]) for row in rows] == [
+        (molecule, element) for molecule in ("0", "1") for element in ("O", "H", "H")
+    ]
+    assert all(row["conformer"] == "0" for row in rows)
 
 
 def test_inspect_molecules_recipe(tmp_path: Path) -> None:
