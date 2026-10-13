@@ -1,3 +1,4 @@
+#include "calculation/cover_execution.h"
 #include "calculation/target_execution.h"
 
 #include <chargefw/calculation/calculation.h>
@@ -19,8 +20,6 @@ namespace {
 
 // Packed biomolecular structures, hydrogens included, hold about 0.1 atoms per cubic angstrom.
 constexpr double atom_density = 0.1;
-// Radius within which a cover pivot retains atoms during cover execution.
-constexpr double cover_retained_radius = 3.0;
 // Output charges retained for every atom of every target.
 constexpr double charge_bytes_per_atom = 8.0;
 
@@ -72,7 +71,8 @@ auto estimate(const AssessmentResult& assessment, const ExecutionPlan& plan,
         const auto fragments =
             policy.mode() == ExecutionMode::cutoff
                 ? atoms
-                : std::ceil(atoms / std::max(1.0, atoms_within(cover_retained_radius, atoms)));
+                : std::ceil(atoms /
+                            std::max(1.0, atoms_within(detail::cover_retained_radius, atoms)));
         const auto cost = selected.method->estimate(
             {.atoms = fragment_atoms, .bonds = fragment_bonds}, selected.method_options);
         result.operations += fragments * cost.operations;

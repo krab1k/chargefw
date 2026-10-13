@@ -11,7 +11,10 @@
 namespace chargefw::calculation {
 namespace detail {
 struct FixedChargePartition;
-}
+
+// Radius within which a cover pivot retains atoms during cover execution.
+inline constexpr double cover_retained_radius = 3.0;
+} // namespace detail
 
 [[nodiscard]] auto calculate_cover_charges(
     const methods::ApplicableMethod& selected,
