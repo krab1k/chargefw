@@ -9,15 +9,21 @@ advanced workflow for inspecting and executing several prepared plans. The
 ## Calculate a molecular file
 
 [`calculate_file.py`](calculate_file.py) is the shortest complete file-to-charges workflow. It reads any
-supported molecular format, calculates one explicitly selected method, and prints charges in input atom
-order, labeled with zero-based molecule and conformer indices. `conformer=None` identifies charges from a
-geometry-independent method. Its EEM invocation lets ChargeFW select an applicable bundled parameter set.
+supported molecular format, calculates one explicitly selected method, and prints one row per atom in
+source order with its molecule and conformer indices, atom ID, atom name, element, and charge. A `-`
+conformer identifies charges from a geometry-independent method. `--result-json` also writes complete
+result JSON with requested and effective provenance.
 
 ```bash
-python docs/recipes/calculate_file.py ethanol.sdf \
-    --format sdf \
-    --method eem
+python docs/recipes/calculate_file.py molecules.sdf --format sdf --method eem --result-json result.json
 ```
+
+One method, parameter set, and execution mode apply to the whole file, so one inapplicable record makes
+the request inapplicable; the recipe does not silently choose a separate model per record. Its EEM
+invocation lets ChargeFW select a bundled parameter set applicable to every record. The
+[Python collection guide](../PYTHON.md#reading-molecular-files) explains when to calculate a collection or
+its records independently, and the [format reference](../FORMATS.md) defines import and result JSON
+behavior.
 
 ## Inspect imported molecules
 
@@ -30,20 +36,6 @@ showing how finely that classifier separates the atoms, for example before group
 ```bash
 python docs/recipes/inspect_molecules.py input.sdf --format sdf --classifier bonded
 ```
-
-## Calculate an SDF collection
-
-[`calculate_sdf_collection.py`](calculate_sdf_collection.py) reads a multimolecule SDF, directly
-calculates one EEM policy for the complete collection, and writes result JSON with requested and effective
-provenance. One inapplicable record makes the policy inapplicable to the collection; the recipe does not
-silently choose a separate model per record. The [Python collection guide](../PYTHON.md#reading-molecular-files)
-explains when to calculate a collection or its records independently.
-
-```bash
-python docs/recipes/calculate_sdf_collection.py input.sdf result.json
-```
-
-The [format reference](../FORMATS.md) defines SDF import and result JSON behavior.
 
 ## Charge a Gemmi document
 

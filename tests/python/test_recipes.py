@@ -48,14 +48,23 @@ def run_recipe(name: str, *arguments: str | Path) -> subprocess.CompletedProcess
 
 def test_calculate_file_recipe(tmp_path: Path) -> None:
     input_path = tmp_path / "waters.sdf"
+    output_path = tmp_path / "result.json"
     input_path.write_text(WATERS_SDF, encoding="utf-8")
 
-    completed = run_recipe("calculate_file.py", input_path, "--format", "sdf", "--method", "eem")
+    run_recipe(
+        "calculate_file.py",
+        input_path,
+        "--format",
+        "sdf",
+        "--method",
+        "eem",
+        "--result-json",
+        output_path,
+    )
 
-    lines = completed.stdout.splitlines()
-    assert len(lines) == 2
-    assert lines[0].startswith("molecule=0 conformer=0: [")
-    assert lines[1].startswith("molecule=1 conformer=0: [")
+    result = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result["status"] == "success"
+    assert len(result["results"]) == 2
 
 
 def test_inspect_molecules_recipe(tmp_path: Path) -> None:
@@ -63,18 +72,6 @@ def test_inspect_molecules_recipe(tmp_path: Path) -> None:
     input_path.write_text(f"{WATER_MOL}$$$$\n", encoding="utf-8")
 
     run_recipe("inspect_molecules.py", input_path, "--format", "sdf", "--classifier", "hbo")
-
-
-def test_calculate_sdf_collection_recipe(tmp_path: Path) -> None:
-    input_path = tmp_path / "waters.sdf"
-    output_path = tmp_path / "result.json"
-    input_path.write_text(WATERS_SDF, encoding="utf-8")
-
-    run_recipe("calculate_sdf_collection.py", input_path, output_path)
-
-    result = json.loads(output_path.read_text(encoding="utf-8"))
-    assert result["status"] == "success"
-    assert len(result["results"]) == 2
 
 
 def test_gemmi_document_recipe_preserves_unchanged_mmcif(tmp_path: Path) -> None:
