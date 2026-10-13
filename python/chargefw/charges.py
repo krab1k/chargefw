@@ -32,7 +32,7 @@ def _charge_values(values: Any) -> np.ndarray:
 
 
 def _nonnegative_index(value: SupportsIndex, name: str) -> int:
-    if isinstance(value, (bool, np.bool_)):
+    if isinstance(value, (bool, np.bool)):
         raise TypeError(f"{name} must be an integer")
     try:
         result = as_index(value)
@@ -84,10 +84,7 @@ class ChargeAssignment:
     def __array__(self, dtype: np.dtype[Any] | None = None, copy: bool | None = None) -> np.ndarray:
         """Expose charge values through NumPy's array conversion protocol."""
 
-        if copy is False and dtype is not None and np.dtype(dtype) != self.values.dtype:
-            raise ValueError("a dtype conversion cannot be performed without copying")
-        result = self.values if dtype is None else self.values.astype(dtype, copy=False)
-        return result.copy() if copy is True else result
+        return np.asarray(self.values, dtype=dtype, copy=copy)
 
     @classmethod
     def _from_native_values(

@@ -179,7 +179,7 @@ def test_invalid_inputs_are_rejected() -> None:
         (TypeError, lambda: chargefw.SourceIdentity(record_id=cast(Any, ("record", 1)))),
         (
             TypeError,
-            lambda: chargefw.Molecule([1], record_index=cast(Any, np.bool_(True))),
+            lambda: chargefw.Molecule([1], record_index=cast(Any, np.bool(True))),
         ),
     )
     for error_type, operation in invalid_cases:

@@ -41,7 +41,7 @@ def as_integer_array(
         return np.empty(array.shape, dtype=np.int64)
     if array.dtype.kind == "O":
         if not all(
-            isinstance(item, numbers.Integral) and not isinstance(item, (bool, np.bool_))
+            isinstance(item, numbers.Integral) and not isinstance(item, (bool, np.bool))
             for item in array.flat
         ):
             raise TypeError(f"{field} must contain integers")
@@ -107,7 +107,7 @@ def as_names(value: Sequence[str] | None, count: int, field: str) -> tuple[str, 
 def as_portable_id(value: str | SupportsIndex, field: str) -> PortableId:
     if isinstance(value, str):
         return value
-    if isinstance(value, (bool, np.bool_)):
+    if isinstance(value, (bool, np.bool)):
         raise TypeError(f"{field} must be a string or integer")
     try:
         result = as_index(value)

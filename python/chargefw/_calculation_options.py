@@ -20,7 +20,7 @@ _EXECUTIONS = frozenset(("auto", "full", "cutoff", "cover"))
 
 
 def _normalized_nonnegative_integer(value: SupportsIndex, name: str) -> int:
-    if isinstance(value, (bool, np.bool_)):
+    if isinstance(value, (bool, np.bool)):
         raise TypeError(f"{name} must be an integer")
     try:
         result = as_index(value)
@@ -44,7 +44,7 @@ class FixedAtomCharge:
     def __init__(
         self, molecule_index: SupportsIndex, atom_index: SupportsIndex, charge: float
     ) -> None:
-        if isinstance(charge, (bool, np.bool_)) or not isinstance(charge, numbers.Real):
+        if isinstance(charge, (bool, np.bool)) or not isinstance(charge, numbers.Real):
             raise TypeError("charge must be a real number")
         try:
             normalized_charge = float(charge)
@@ -71,7 +71,7 @@ def _normalized_option_values(
     for option_id, value in values.items():
         if not isinstance(option_id, str):
             raise TypeError("method option IDs must be strings")
-        if isinstance(value, (bool, np.bool_)):
+        if isinstance(value, (bool, np.bool)):
             result[option_id] = bool(value)
         elif isinstance(value, numbers.Integral):
             integer = int(value)
@@ -171,7 +171,7 @@ class RequestedCalculation:
         if execution not in _EXECUTIONS:
             raise ValueError("execution must be 'auto', 'full', 'cutoff', or 'cover'")
         if radius is not None:
-            if not isinstance(radius, numbers.Real) or isinstance(radius, (bool, np.bool_)):
+            if not isinstance(radius, numbers.Real) or isinstance(radius, (bool, np.bool)):
                 raise TypeError("radius must be a real number or None")
             radius = float(radius)
 

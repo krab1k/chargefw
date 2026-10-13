@@ -12,7 +12,7 @@ The executable [Python recipes](recipes/README.md) demonstrate complete toolkit 
 
 ## Installation
 
-Python 3.11 or newer is required. NumPy 1.26 or newer is the only required runtime dependency. Install a
+Python 3.11 or newer is required. NumPy 2.0 or newer is the only required runtime dependency. Install a
 published wheel with:
 
 ```bash

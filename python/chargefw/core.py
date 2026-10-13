@@ -34,7 +34,7 @@ class SourceIdentity:
     def __post_init__(self) -> None:
         if not isinstance(self.source, str):
             raise TypeError("source must be a string")
-        if isinstance(self.record_index, (bool, np.bool_)):
+        if isinstance(self.record_index, (bool, np.bool)):
             raise TypeError("record_index must be an integer")
         try:
             normalized_record_index = as_index(self.record_index)
