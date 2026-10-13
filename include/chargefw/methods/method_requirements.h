@@ -8,16 +8,17 @@
 namespace chargefw::methods {
 
 enum class ComplexityTerm : std::uint8_t {
-    constant,                 // 1
-    atoms,                    // N
-    bonds,                    // M
-    atoms_plus_bonds,         // N + M
-    atoms_squared,            // N^2
-    atoms_cubed,              // N^3
-    bonds_squared,            // M^2
-    bonds_cubed,              // M^3
-    atoms_plus_bonds_squared, // (N + M)^2
-    atoms_plus_bonds_cubed,   // (N + M)^3
+    constant,                         // 1
+    atoms,                            // N
+    bonds,                            // M
+    atoms_plus_bonds,                 // N + M
+    atoms_squared,                    // N^2
+    atoms_cubed,                      // N^3
+    bonds_squared,                    // M^2
+    bonds_cubed,                      // M^3
+    atoms_plus_bonds_squared,         // (N + M)^2
+    atoms_plus_bonds_cubed,           // (N + M)^3
+    atoms_squared_plus_bonds_squared, // N^2 + M^2
 };
 
 [[nodiscard]] auto complexity_notation(ComplexityTerm value) -> std::string_view;

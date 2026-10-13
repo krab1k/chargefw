@@ -37,7 +37,7 @@ class SQEMethod final : public Method {
         requirements.atom_parameters = {"electronegativity", "hardness", "width"};
         requirements.bond_parameters = {"kappa"};
         requirements.resources.time = ComplexityTerm::bonds_cubed;
-        requirements.resources.memory = ComplexityTerm::bonds_squared;
+        requirements.resources.memory = ComplexityTerm::atoms_squared_plus_bonds_squared;
         requirements.resources.supports_cutoff = true;
         requirements.resources.supports_cover = true;
         requirements.resources.reduced_charge_policy = ReducedChargePolicy::zero_components;

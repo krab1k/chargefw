@@ -97,8 +97,9 @@ input behavior. Notes explain structured requirements and deliberate variants; a
 authoritative for a specific molecule and parameter set.
 
 Method resource requirements describe asymptotic time and memory scaling in Big-O notation, where `n`
-is the atom count and `m` is the bond count. These terms guide execution planning; they do not predict a
-specific runtime or memory allocation.
+is the atom count and `m` is the bond count. Each term keeps the leading-order growth of one target's
+full calculation; memory terms count the method's working storage beyond its inputs and output charges.
+These terms guide execution planning; they do not predict a specific runtime or memory allocation.
 
 PEOE and MPEOE initialize charge transfer from zero by default, so in that mode every connected
 component must be formally neutral. Their `initial_charges=formal` option instead starts each atom at

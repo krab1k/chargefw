@@ -91,7 +91,8 @@ valid_classification_count(const MethodRequirements& requirements,
     const auto quadratic = [](const ComplexityTerm complexity) noexcept -> bool {
         return complexity == ComplexityTerm::atoms_squared ||
                complexity == ComplexityTerm::bonds_squared ||
-               complexity == ComplexityTerm::atoms_plus_bonds_squared;
+               complexity == ComplexityTerm::atoms_plus_bonds_squared ||
+               complexity == ComplexityTerm::atoms_squared_plus_bonds_squared;
     };
 
     return cubic(resources.time) || quadratic(resources.memory);

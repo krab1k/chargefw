@@ -72,6 +72,8 @@ auto complexity_notation(const ComplexityTerm value) -> std::string_view {
         return "O((n + m)^2)";
     case ComplexityTerm::atoms_plus_bonds_cubed:
         return "O((n + m)^3)";
+    case ComplexityTerm::atoms_squared_plus_bonds_squared:
+        return "O(n^2 + m^2)";
     }
     throw std::invalid_argument{"unknown complexity term"};
 }

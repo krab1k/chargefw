@@ -145,7 +145,8 @@ auto check_neutrality_prerequisites(const chargefw::core::Molecule& molecule,
 TEST_CASE("method complexity terms have Big-O notation", "[methods]") {
     CHECK(methods::complexity_notation(Complexity::constant) == "O(1)");
     CHECK(methods::complexity_notation(Complexity::atoms_cubed) == "O(n^3)");
-    CHECK(methods::complexity_notation(Complexity::bonds_squared) == "O(m^2)");
+    CHECK(methods::complexity_notation(Complexity::atoms_squared_plus_bonds_squared) ==
+          "O(n^2 + m^2)");
     CHECK(methods::complexity_notation(Complexity::atoms_plus_bonds_cubed) == "O((n + m)^3)");
 }
 
