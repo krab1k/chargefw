@@ -5,6 +5,7 @@ from typing import Final
 from . import io as io
 from ._chargefw import version as _native_version
 from ._chargefw.calculation import _fixed_ion_names
+from ._elements import Element, PeriodicTable, periodic_table
 from ._methods import ExecutionIssue, Method, MethodOption, PrerequisiteIssue
 from ._parameters import AtomParameterKey, BondParameterKey, ParameterSet
 from .calculation import (
@@ -72,6 +73,7 @@ __all__ = [
     "calculate",
     "methods",
     "parameter_sets",
+    "periodic_table",
     "RequestedCalculation",
     "ChargeFWError",
     "NoExecutablePlanError",
@@ -89,6 +91,8 @@ __all__ = [
     "MethodOption",
     "Method",
     "ParameterSet",
+    "Element",
+    "PeriodicTable",
     "AtomParameterKey",
     "BondParameterKey",
     "io",

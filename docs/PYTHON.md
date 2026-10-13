@@ -205,6 +205,16 @@ bonds, duplicate bonds, invalid indices, non-integral integer input, unsupported
 mismatched shapes are rejected. Non-finite coordinates are retained, but methods that require geometry
 are inapplicable when coordinates are missing or non-finite.
 
+`chargefw.periodic_table` is the immutable bundled table in atomic-number order. Index it by atomic
+number, including NumPy integers, or by exact element symbol to get an `Element` with `atomic_number`,
+`symbol`, `name`, `period`, and `group`. `group` is the IUPAC group 1–18, and `None` for lanthanides and
+actinides placed in the f-block:
+
+```python
+symbols = [chargefw.periodic_table[number].symbol for number in molecule.atomic_numbers]
+print(chargefw.periodic_table["Se"].atomic_number, "Fm" in chargefw.periodic_table)
+```
+
 `MoleculeCollection` is an immutable source-ordered sequence with an optional name. Omitted atom IDs
 default to source-order integers.
 

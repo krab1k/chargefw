@@ -4,6 +4,7 @@
 #include <chargefw/core/bond.h>
 #include <chargefw/core/conformer.h>
 #include <chargefw/core/molecule.h>
+#include <chargefw/core/periodic_table.h>
 #include <chargefw/core/position.h>
 
 #include <nanobind/ndarray.h>
@@ -119,6 +120,24 @@ auto make_molecule(const integer_array_1d& atomic_numbers, const integer_array_1
                           std::move(name)};
 }
 
+// Groups above 18 place f-block elements in an extended layout; Python reports them without a
+// group.
+constexpr auto last_main_group = 18;
+
+auto element_payloads() -> nb::list {
+    auto result = nb::list{};
+    for (const auto& element : core::periodic_table().elements()) {
+        auto payload = nb::dict{};
+        payload["atomic_number"] = element.atomic_number;
+        payload["symbol"] = std::string{element.symbol};
+        payload["name"] = std::string{element.name};
+        payload["period"] = element.period;
+        payload["group"] = element.group <= last_main_group ? nb::cast(element.group) : nb::none();
+        result.append(std::move(payload));
+    }
+    return result;
+}
+
 } // namespace
 
 void bind_core(nb::module_& module) {
@@ -126,6 +145,7 @@ void bind_core(nb::module_& module) {
     module.def("_make_molecule", &make_molecule, nb::arg("atomic_numbers"),
                nb::arg("formal_charges"), nb::arg("bonds"), nb::arg("coordinates"),
                nb::arg("atom_names"), nb::arg("conformer_names"), nb::arg("name"));
+    module.def("_elements", &element_payloads);
 }
 
 } // namespace chargefw::python

@@ -145,6 +145,14 @@ class MethodDescriptorPayload(TypedDict):
     options: list[MethodOptionDescriptorPayload]
 
 
+class ElementPayload(TypedDict):
+    atomic_number: int
+    symbol: str
+    name: str
+    period: int
+    group: int | None
+
+
 class AtomParameterKeyPayload(TypedDict):
     element: str
     classifier: AtomClassifier

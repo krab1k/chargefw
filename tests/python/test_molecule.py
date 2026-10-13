@@ -156,6 +156,24 @@ def test_supported_atomic_number_boundaries() -> None:
         chargefw.Molecule([101])
 
 
+def test_periodic_table_identifies_supported_elements() -> None:
+    table = chargefw.periodic_table
+    assert [element.atomic_number for element in table] == list(range(1, 101))
+    molecule = chargefw.Molecule([6, 34])
+    assert [table[number].symbol for number in molecule.atomic_numbers] == ["C", "Se"]
+    assert table["C"] is table[6]
+    assert table["C"].group == 14
+    assert table["Ce"].group is None
+    assert 0 not in table
+    assert "c" not in table
+    with pytest.raises(KeyError):
+        table[101]
+    with pytest.raises(TypeError):
+        table[cast(Any, True)]
+    with pytest.raises(AttributeError):
+        cast(Any, table).extra = None
+
+
 def test_invalid_inputs_are_rejected() -> None:
     invalid_cases = (
         (TypeError, lambda: chargefw.Molecule([1.0])),

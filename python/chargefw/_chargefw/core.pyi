@@ -3,6 +3,8 @@ from collections.abc import Sequence
 import numpy as np
 from numpy.typing import NDArray
 
+from .._payloads import ElementPayload
+
 class _NativeMolecule: ...
 
 def _make_molecule(
@@ -14,3 +16,4 @@ def _make_molecule(
     conformer_names: Sequence[str],
     name: str,
 ) -> _NativeMolecule: ...
+def _elements() -> list[ElementPayload]: ...

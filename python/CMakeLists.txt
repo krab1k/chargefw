@@ -72,6 +72,7 @@ set(CHARGEFW_PYTHON_PACKAGE_SOURCES
     __init__.py
     _arrays.py
     _catalog.py
+    _elements.py
     _calculation_options.py
     _calculation_values.py
     _methods.py
