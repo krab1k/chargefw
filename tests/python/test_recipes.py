@@ -62,7 +62,7 @@ def test_inspect_molecules_recipe(tmp_path: Path) -> None:
     input_path = tmp_path / "water.sdf"
     input_path.write_text(f"{WATER_MOL}$$$$\n", encoding="utf-8")
 
-    run_recipe("inspect_molecules.py", input_path, "--format", "sdf")
+    run_recipe("inspect_molecules.py", input_path, "--format", "sdf", "--classifier", "hbo")
 
 
 def test_calculate_sdf_collection_recipe(tmp_path: Path) -> None:
