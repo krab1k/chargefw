@@ -41,6 +41,10 @@ class Method {
     [[nodiscard]] virtual auto calculate(const CalculationInput& input) const
         -> charges::AtomicCharges = 0;
 
+    // Options are validated and complete. The leading-order terms match requirements().resources.
+    [[nodiscard]] virtual auto estimate(const TargetSize& target,
+                                        const MethodOptions& options) const -> ResourceEstimate = 0;
+
   protected:
     Method() = default;
 

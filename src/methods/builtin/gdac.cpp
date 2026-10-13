@@ -93,4 +93,12 @@ auto GDACMethod::calculate(const CalculationInput& input) const -> charges::Atom
     return charges::AtomicCharges{std::move(charges)};
 }
 
+auto GDACMethod::estimate(const TargetSize& target, const MethodOptions& options) const
+    -> ResourceEstimate {
+    const auto iterations = options.get<int>("iters");
+    // Electronegativity vector; each iteration visits every atom and bond.
+    return {.memory_bytes = 8.0 * target.atoms,
+            .operations = iterations * (target.atoms + target.bonds)};
+}
+
 } // namespace chargefw::methods::builtin

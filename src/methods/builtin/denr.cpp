@@ -69,4 +69,13 @@ auto DENRMethod::calculate(const CalculationInput& input) const -> charges::Atom
     return charges::AtomicCharges{std::vector<double>{q.data(), q.data() + q.size()}};
 }
 
+auto DENRMethod::estimate(const TargetSize& target, const MethodOptions& options) const
+    -> ResourceEstimate {
+    const auto n = target.atoms;
+    const auto iterations = options.get<int>("iters");
+    // eta, L, I, and A are dense n x n; L * eta, LU, and one solve per iteration.
+    return {.memory_bytes = 32.0 * n * n,
+            .operations = 2.0 * n * n * n + 2.0 / 3.0 * n * n * n + iterations * 2.0 * n * n};
+}
+
 } // namespace chargefw::methods::builtin

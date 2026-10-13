@@ -80,4 +80,14 @@ auto EQeqCMethod::calculate(const CalculationInput& input) const -> charges::Ato
     return charges::AtomicCharges{std::move(values)};
 }
 
+auto EQeqCMethod::estimate(const TargetSize& target, const MethodOptions& /*options*/) const
+    -> ResourceEstimate {
+    const auto n = target.atoms;
+    const auto size = n + 1.0;
+    // Dense (n + 1) x (n + 1) system with a charge constraint; the correction adds an all-pairs
+    // pass.
+    return {.memory_bytes = 8.0 * size * size,
+            .operations = 2.0 / 3.0 * size * size * size + n * n + 0.5 * n * n};
+}
+
 } // namespace chargefw::methods::builtin

@@ -13,6 +13,8 @@ namespace sqe_core {
                              std::span<const double> initial_charge_values = {})
     -> std::vector<double>;
 
+[[nodiscard]] auto estimate(const TargetSize& target, bool initial_charges) -> ResourceEstimate;
+
 } // namespace sqe_core
 
 class SQEMethod final : public Method {
@@ -52,6 +54,9 @@ class SQEMethod final : public Method {
 
     [[nodiscard]] auto calculate(const CalculationInput& input) const
         -> charges::AtomicCharges override;
+
+    [[nodiscard]] auto estimate(const TargetSize& target, const MethodOptions& options) const
+        -> ResourceEstimate override;
 
   protected:
     auto add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,

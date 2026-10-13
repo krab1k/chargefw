@@ -31,6 +31,20 @@ enum class ReducedChargePolicy : std::uint8_t {
     parameterized_charge_components,
 };
 
+// Size of one calculation target: a whole molecule, one conformer, or one spatial fragment.
+struct TargetSize {
+    double atoms = 0.0;
+    double bonds = 0.0;
+};
+
+// Approximate cost of one target in full mode. memory_bytes covers the method's working storage
+// beyond its inputs and output charges. operations counts dense linear algebra in floating-point
+// operations and other loops per atom, bond, or atom-pair visit.
+struct ResourceEstimate {
+    double memory_bytes = 0.0;
+    double operations = 0.0;
+};
+
 struct ResourceRequirements {
     ComplexityTerm time = ComplexityTerm::constant;
     ComplexityTerm memory = ComplexityTerm::constant;

@@ -213,4 +213,11 @@ auto ABEEMMethod::calculate(const CalculationInput& input) const -> charges::Ato
     return charges::AtomicCharges{std::move(values)};
 }
 
+auto ABEEMMethod::estimate(const TargetSize& target, const MethodOptions& /*options*/) const
+    -> ResourceEstimate {
+    const auto size = target.atoms + target.bonds + 1.0;
+    // Dense atom-plus-bond system with a charge constraint.
+    return {.memory_bytes = 8.0 * size * size, .operations = 2.0 / 3.0 * size * size * size};
+}
+
 } // namespace chargefw::methods::builtin

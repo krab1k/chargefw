@@ -151,4 +151,15 @@ auto Charge2Method::calculate(const CalculationInput& input) const -> charges::A
     return charges::AtomicCharges{std::move(q)};
 }
 
+auto Charge2Method::estimate(const TargetSize& target, const MethodOptions& options) const
+    -> ResourceEstimate {
+    // An atom with at most four bonds has up to 4 one-bond, 12 two-bond, and 36 three-bond paths.
+    // Per atom: two charge vectors, three path-vector headers, and the stored paths.
+    constexpr auto bytes_per_atom = 16.0 + 72.0 + 8.0 * 4 + 16.0 * (12 + 36);
+    constexpr auto paths_per_atom = 4.0 + 12.0 + 36.0;
+    const auto iterations = options.get<int>("iters");
+    return {.memory_bytes = bytes_per_atom * target.atoms,
+            .operations = iterations * paths_per_atom * target.atoms};
+}
+
 } // namespace chargefw::methods::builtin

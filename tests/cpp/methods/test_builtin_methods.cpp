@@ -150,6 +150,64 @@ TEST_CASE("method complexity terms have Big-O notation", "[methods]") {
     CHECK(methods::complexity_notation(Complexity::atoms_plus_bonds_cubed) == "O((n + m)^3)");
 }
 
+TEST_CASE("built-in resource estimates grow with their declared complexity",
+          "[methods][builtin-methods]") {
+    const auto degree = [](const Complexity term) -> double {
+        switch (term) {
+        case Complexity::constant:
+            return 0.0;
+        case Complexity::atoms:
+        case Complexity::bonds:
+        case Complexity::atoms_plus_bonds:
+            return 1.0;
+        case Complexity::atoms_squared:
+        case Complexity::bonds_squared:
+        case Complexity::atoms_plus_bonds_squared:
+        case Complexity::atoms_squared_plus_bonds_squared:
+            return 2.0;
+        case Complexity::atoms_cubed:
+        case Complexity::bonds_cubed:
+        case Complexity::atoms_plus_bonds_cubed:
+            return 3.0;
+        }
+        return -1.0;
+    };
+    const auto growth = [](const double small, const double large) -> double {
+        return small == 0.0 && large == 0.0 ? 0.0 : std::log2(large / small);
+    };
+    // Joint scaling keeps the mean degree fixed and makes lower-order terms negligible.
+    constexpr auto size = 1.0e5;
+
+    for (const auto& method : methods::method_registry().methods()) {
+        CAPTURE(method->id());
+        const auto options = methods::make_default_options(method->option_schema());
+        const auto small = method->estimate({.atoms = size, .bonds = size}, options);
+        const auto large = method->estimate({.atoms = 2.0 * size, .bonds = 2.0 * size}, options);
+        const auto resources = method->requirements().resources;
+        CHECK(std::abs(growth(small.operations, large.operations) - degree(resources.time)) < 0.05);
+        CHECK(std::abs(growth(small.memory_bytes, large.memory_bytes) - degree(resources.memory)) <
+              0.05);
+    }
+}
+
+TEST_CASE("dense method estimates count their allocated systems", "[methods][builtin-methods]") {
+    const auto memory = [](const std::string_view method_id, const methods::TargetSize target) {
+        const auto* method = methods::method_registry().find(method_id);
+        REQUIRE(method != nullptr);
+        return method->estimate(target, methods::make_default_options(method->option_schema()))
+            .memory_bytes;
+    };
+
+    // EEM borders the n x n system with a charge constraint.
+    CHECK(memory("eem", {.atoms = 10, .bonds = 9}) == 8.0 * 11 * 11);
+    // SQE holds the atom interaction matrix and the bond split-charge system.
+    CHECK(memory("sqe", {.atoms = 10, .bonds = 9}) == 8.0 * 10 * 10 + 8.0 * 9 * 9);
+    // Without bonds, SQE returns its reference charges before building either system.
+    CHECK(memory("sqeqp", {.atoms = 10, .bonds = 0}) == 0.0);
+    // ABEEM solves for atoms and bonds with one charge constraint.
+    CHECK(memory("abeem", {.atoms = 3, .bonds = 2}) == 8.0 * 6 * 6);
+}
+
 TEST_CASE("every built-in completes its declared full workflow", "[methods][builtin-methods]") {
     const auto molecule = chargefw::test::make_two_conformer_water();
     const auto collection = chargefw::core::MoleculeCollection{std::vector{molecule}, "water"};

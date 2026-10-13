@@ -68,4 +68,9 @@ auto VEEMMethod::calculate(const CalculationInput& input) const -> charges::Atom
     return charges::AtomicCharges{std::move(charges)};
 }
 
+auto VEEMMethod::estimate(const TargetSize& target, const MethodOptions& /*options*/) const
+    -> ResourceEstimate {
+    return {.memory_bytes = 0.0, .operations = target.atoms};
+}
+
 } // namespace chargefw::methods::builtin

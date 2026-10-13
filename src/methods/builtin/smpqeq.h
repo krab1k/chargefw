@@ -34,6 +34,9 @@ class SMPQEqMethod final : public Method {
 
     [[nodiscard]] auto calculate(const CalculationInput& input) const
         -> charges::AtomicCharges override;
+
+    [[nodiscard]] auto estimate(const TargetSize& target, const MethodOptions& options) const
+        -> ResourceEstimate override;
 };
 
 } // namespace chargefw::methods::builtin

@@ -99,4 +99,11 @@ auto DelReMethod::calculate(const CalculationInput& input) const -> charges::Ato
     return charges::AtomicCharges{std::move(values)};
 }
 
+auto DelReMethod::estimate(const TargetSize& target, const MethodOptions& /*options*/) const
+    -> ResourceEstimate {
+    const auto n = target.atoms;
+    // Dense n x n system factorized by LU.
+    return {.memory_bytes = 8.0 * n * n, .operations = 2.0 / 3.0 * n * n * n};
+}
+
 } // namespace chargefw::methods::builtin

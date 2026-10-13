@@ -42,6 +42,12 @@ class StubMethod : public methods::Method {
         return charges::AtomicCharges{std::vector<double>(input.molecule().atom_count(), 0.0)};
     }
 
+    [[nodiscard]] auto estimate(const methods::TargetSize& target,
+                                const methods::MethodOptions& /*options*/) const
+        -> methods::ResourceEstimate override {
+        return {.memory_bytes = 0.0, .operations = target.atoms};
+    }
+
   private:
     methods::MethodMetadata metadata_;
     methods::MethodRequirements requirements_;

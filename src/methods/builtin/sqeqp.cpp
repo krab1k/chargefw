@@ -38,4 +38,9 @@ auto SQEqpMethod::calculate(const CalculationInput& input) const -> charges::Ato
     return charges::AtomicCharges{sqe_core::calculate(input, {initial_charges.data(), atom_count})};
 }
 
+auto SQEqpMethod::estimate(const TargetSize& target, const MethodOptions& /*options*/) const
+    -> ResourceEstimate {
+    return sqe_core::estimate(target, true);
+}
+
 } // namespace chargefw::methods::builtin

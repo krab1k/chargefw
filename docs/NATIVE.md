@@ -170,7 +170,8 @@ and warnings. Plans are tied to the assessment that created them.
 
 Use `methods::method_registry()` to inspect built-in method metadata, human-readable implementation
 notes, and option schemas. Use `methods::complexity_notation()` to format declared time and memory
-complexity. The notation and its variables are defined in the
+complexity, and `Method::estimate()` for the approximate memory and work of one target of a given
+`TargetSize` with validated options. The notation, variables, and estimate accounting are defined in the
 [project design](PROJECT.md#methods-and-parameters). Use
 `parameters::load_default_parameter_sets()` for the installed bundled catalog. Parameter-set IDs in one
 assessment request must be unique. The [parameter-set JSON reference](PARAMETERS.md) documents the bundled

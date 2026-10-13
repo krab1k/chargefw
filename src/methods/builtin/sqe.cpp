@@ -42,6 +42,20 @@ auto SQEMethod::add_method_specific_prerequisite_issues(const MethodPrerequisite
         "within each component");
 }
 
+auto sqe_core::estimate(const TargetSize& target, const bool initial_charges) -> ResourceEstimate {
+    const auto n = target.atoms;
+    const auto m = target.bonds;
+    if (m == 0.0) {
+        // calculate() returns zero or initial charges without building either system.
+        return {.memory_bytes = 0.0, .operations = n};
+    }
+    // Dense n x n atom interactions and the m x m split-charge system factorized by LU.
+    // Initial charges add one dense matrix-vector product.
+    return {.memory_bytes = 8.0 * n * n + 8.0 * m * m,
+            .operations = 2.0 / 3.0 * m * m * m + 0.5 * n * n + m * m +
+                          (initial_charges ? 2.0 * n * n : 0.0)};
+}
+
 auto sqe_core::calculate(const CalculationInput& input,
                          const std::span<const double> initial_charge_values)
     -> std::vector<double> {
@@ -163,6 +177,11 @@ auto sqe_core::calculate(const CalculationInput& input,
 
 auto SQEMethod::calculate(const CalculationInput& input) const -> charges::AtomicCharges {
     return charges::AtomicCharges{sqe_core::calculate(input)};
+}
+
+auto SQEMethod::estimate(const TargetSize& target, const MethodOptions& /*options*/) const
+    -> ResourceEstimate {
+    return sqe_core::estimate(target, false);
 }
 
 } // namespace chargefw::methods::builtin

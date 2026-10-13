@@ -89,4 +89,13 @@ auto TSEFMethod::calculate(const CalculationInput& input) const -> charges::Atom
     return charges::AtomicCharges{std::vector<double>{q.data(), q.data() + q.size()}};
 }
 
+auto TSEFMethod::estimate(const TargetSize& target, const MethodOptions& /*options*/) const
+    -> ResourceEstimate {
+    const auto n = target.atoms;
+    const auto size = n + 1.0;
+    // Dense (n + 1) x (n + 1) system plus all-pairs integer bond distances from one BFS per atom.
+    return {.memory_bytes = 8.0 * size * size + 4.0 * n * n,
+            .operations = n * (n + target.bonds) + 2.0 / 3.0 * size * size * size};
+}
+
 } // namespace chargefw::methods::builtin

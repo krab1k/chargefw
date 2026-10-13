@@ -91,4 +91,13 @@ auto EEMMethod::calculate(const CalculationInput& input) const -> charges::Atomi
     return charges::AtomicCharges{std::vector<double>{q.data(), q.data() + q.size()}};
 }
 
+auto EEMMethod::estimate(const TargetSize& target, const MethodOptions& /*options*/) const
+    -> ResourceEstimate {
+    const auto n = target.atoms;
+    const auto size = n + 1.0;
+    // Dense (n + 1) x (n + 1) system with a charge constraint.
+    return {.memory_bytes = 8.0 * size * size,
+            .operations = 2.0 / 3.0 * size * size * size + 0.5 * n * n};
+}
+
 } // namespace chargefw::methods::builtin

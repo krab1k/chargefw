@@ -16,4 +16,9 @@ auto FormalMethod::calculate(const CalculationInput& input) const -> charges::At
     return charges::AtomicCharges{std::move(values)};
 }
 
+auto FormalMethod::estimate(const TargetSize& target, const MethodOptions& /*options*/) const
+    -> ResourceEstimate {
+    return {.memory_bytes = 0.0, .operations = target.atoms};
+}
+
 } // namespace chargefw::methods::builtin

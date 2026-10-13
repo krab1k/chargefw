@@ -44,6 +44,9 @@ class Charge2Method final : public Method {
     [[nodiscard]] auto calculate(const CalculationInput& input) const
         -> charges::AtomicCharges override;
 
+    [[nodiscard]] auto estimate(const TargetSize& target, const MethodOptions& options) const
+        -> ResourceEstimate override;
+
   protected:
     auto add_method_specific_prerequisite_issues(const MethodPrerequisiteInput& input,
                                                  PrerequisiteResult& result) const -> void override;

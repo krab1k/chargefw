@@ -101,6 +101,12 @@ is the atom count and `m` is the bond count. Each term keeps the leading-order g
 full calculation; memory terms count the method's working storage beyond its inputs and output charges.
 These terms guide execution planning; they do not predict a specific runtime or memory allocation.
 
+Each method also estimates the cost of one target of a given atom and bond count: its working memory in
+bytes, counted as for the memory term, and its operation count. Dense linear algebra is counted in
+floating-point operations; other loops are counted per atom, bond, or atom-pair visit. The estimates follow the dense allocations and loops of the implementation, so their
+leading terms match the declared complexity. They are approximate: iterative methods are costed at their
+configured or maximum iteration count, and operation counts compare work rather than predict seconds.
+
 PEOE and MPEOE initialize charge transfer from zero by default, so in that mode every connected
 component must be formally neutral. Their `initial_charges=formal` option instead starts each atom at
 its supplied formal charge and supports charged molecules while conserving the molecular formal-charge
